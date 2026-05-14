@@ -1,0 +1,37 @@
+/**
+ * 与 src/theme/plexTokens.ts 保持同名变量，供非 Naive 区域（壳层、背景）使用。
+ */
+:root {
+  --plex-bg: #07111f;
+  --plex-bg-elevated: #0b1628;
+  --plex-bg-glass: rgba(11, 22, 40, 0.72);
+  --plex-accent: #10f0c0;
+  --plex-accent-hover: #5fffe8;
+  --plex-accent-pressed: #0d9a7f;
+  --plex-text: #ffffff;
+  --plex-muted: #8ea3b8;
+  --plex-border: rgba(16, 240, 192, 0.18);
+  --plex-node-teal: #10b9b1;
+  --plex-node-green: #34d399;
+  --plex-node-purple: #aa55f7;
+  --plex-node-blue: #06b6d4;
+  --plex-node-orange: #f59e0b;
+  --plex-node-gray: #64748b;
+}
+
+html,
+body,
+#app {
+  background-color: var(--plex-bg);
+  color: var(--plex-text);
+}
+
+body {
+  font-family:
+    'Inter',
+    'PingFang SC',
+    'Microsoft YaHei',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}

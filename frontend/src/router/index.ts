@@ -42,6 +42,26 @@ const router = createRouter({
       name: 'star-path-lab',
       component: () => import('../views/StarPathLabView.vue'),
     },
+    {
+      path: '/trial-arena',
+      name: 'trial-arena',
+      component: () => import('../views/TrialArenaView.vue'),
+    },
+    {
+      path: '/messenger',
+      name: 'messenger',
+      component: () => import('../views/MessengerView.vue'),
+    },
+    {
+      path: '/daily',
+      name: 'daily-quest',
+      component: () => import('../views/DailyQuestView.vue'),
+    },
+    {
+      path: '/archives',
+      name: 'archives',
+      component: () => import('../views/ExplorationArchivesView.vue'),
+    },
   ],
 })
 

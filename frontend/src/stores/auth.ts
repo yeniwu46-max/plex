@@ -54,6 +54,12 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(LS_USER)
   }
 
+  function syncProfile(nextProfile: Partial<Omit<LoginPayload, 'access_token' | 'refresh_token' | 'expiresIn'>>) {
+    if (!profile.value) return
+    profile.value = { ...profile.value, ...nextProfile }
+    localStorage.setItem(LS_USER, JSON.stringify(profile.value))
+  }
+
   async function login(username: string, password: string) {
     try {
       const { data } = await http.post<ApiEnvelope<LoginPayload>>('/v1/auth/login', { username, password })
@@ -67,9 +73,16 @@ export const useAuthStore = defineStore('auth', () => {
       return data.data
     } catch (e) {
       if (axios.isAxiosError(e)) {
-        const body = (e as AxiosError<ApiEnvelope>).response?.data
+        const ax = e as AxiosError<ApiEnvelope>
+        const body = ax.response?.data
         if (body && typeof body.message === 'string') {
           throw new Error(body.message)
+        }
+        const status = ax.response?.status
+        if (status === 502 || status === 503 || ax.code === 'ERR_NETWORK') {
+          throw new Error(
+            '无法连接后端 API（502）。请先在 backend 目录执行 python run.py，并确认 http://127.0.0.1:5000 可访问。',
+          )
         }
       }
       throw e instanceof Error ? e : new Error('登录失败')
@@ -86,7 +99,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function homePathForRole(role: string | undefined) {
+  /** 登录后进入学生端总览，再由总览承接探索舱、委托、档案与试炼入口。 */
+  function homePathForRole(role?: string) {
     if (role === 'admin') return '/admin'
     if (role === 'teacher') return '/teacher'
     return '/student'
@@ -100,6 +114,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     clearSession,
+    syncProfile,
     homePathForRole,
   }
 })

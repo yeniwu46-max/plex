@@ -1,141 +1,171 @@
 <script setup lang="ts">
 import { NIcon } from 'naive-ui'
 import {
-  FlaskOutline,
   ExtensionPuzzleOutline,
-  TrophyOutline,
   HardwareChipOutline,
   LockClosedOutline,
+  SparklesOutline,
+  StorefrontOutline,
+  TrophyOutline,
 } from '@vicons/ionicons5'
 </script>
 
 <template>
-  <div class="map">
-    <svg class="map__lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+  <div class="star-map" aria-label="探索舱星图">
+    <div class="orbit-field" aria-hidden="true">
+      <span class="orbit orbit--outer" />
+      <span class="orbit orbit--middle" />
+      <span class="orbit orbit--inner" />
+      <span class="orbit orbit--core" />
+    </div>
+
+    <svg class="star-map__lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
       <defs>
-        <linearGradient id="lnTeal" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="rgba(0,245,212,0.15)" />
-          <stop offset="50%" stop-color="rgba(0,245,212,0.55)" />
-          <stop offset="100%" stop-color="rgba(0,245,212,0.15)" />
-        </linearGradient>
-        <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="0.35" result="b" />
+        <filter id="mapLineGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="0.45" result="blur" />
           <feMerge>
-            <feMergeNode in="b" />
+            <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+        <linearGradient id="lineTeal" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="rgba(39,255,238,0.2)" />
+          <stop offset="52%" stop-color="rgba(39,255,238,0.86)" />
+          <stop offset="100%" stop-color="rgba(39,255,238,0.2)" />
+        </linearGradient>
+        <linearGradient id="lineAmber" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="rgba(255,199,104,0.78)" />
+          <stop offset="100%" stop-color="rgba(39,255,238,0.42)" />
+        </linearGradient>
+        <linearGradient id="linePurple" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="rgba(39,255,238,0.48)" />
+          <stop offset="100%" stop-color="rgba(199,83,255,0.8)" />
+        </linearGradient>
       </defs>
-      <!-- 中心到各节点 -->
-      <g filter="url(#lineGlow)">
-        <line x1="50" y1="50" x2="50" y2="14" stroke="url(#lnTeal)" stroke-width="0.35" />
-        <line x1="50" y1="50" x2="22" y2="28" stroke="url(#lnTeal)" stroke-width="0.3" />
-        <line x1="50" y1="50" x2="78" y2="28" stroke="url(#lnTeal)" stroke-width="0.3" />
-        <line x1="50" y1="50" x2="24" y2="76" stroke="url(#lnTeal)" stroke-width="0.28" />
-        <line x1="50" y1="50" x2="50" y2="88" stroke="rgba(148,163,184,0.25)" stroke-width="0.25" />
-        <line x1="50" y1="50" x2="76" y2="80" stroke="rgba(148,163,184,0.22)" stroke-width="0.25" />
+      <g filter="url(#mapLineGlow)">
+        <line x1="50" y1="51" x2="50" y2="21" stroke="url(#lineTeal)" stroke-width="0.35" />
+        <line x1="50" y1="51" x2="22" y2="37" stroke="url(#lineAmber)" stroke-width="0.28" />
+        <line x1="50" y1="51" x2="80" y2="38" stroke="url(#linePurple)" stroke-width="0.28" />
+        <line x1="50" y1="51" x2="23" y2="65" stroke="url(#lineTeal)" stroke-width="0.28" />
+        <line x1="50" y1="51" x2="50" y2="82" stroke="rgba(177,206,222,0.34)" stroke-width="0.25" />
+        <line x1="50" y1="51" x2="79" y2="64" stroke="rgba(177,206,222,0.3)" stroke-width="0.25" />
+      </g>
+      <g fill="#e9fbff">
+        <circle cx="50" cy="38" r="0.55" />
+        <circle cx="37" cy="47" r="0.45" />
+        <circle cx="63" cy="48" r="0.45" />
+        <circle cx="25" cy="65" r="0.55" />
+        <circle cx="78" cy="64" r="0.52" />
+        <circle cx="50" cy="82" r="0.55" />
       </g>
     </svg>
 
-    <div class="map__nodes">
-      <!-- 顶部：补给站 -->
-      <button type="button" class="node node--teal node--pos-top">
-        <span class="node__tag">推荐</span>
-        <span class="node__ring" />
-        <span class="node__icon-wrap">
-          <n-icon :component="FlaskOutline" class="node__icon" />
-        </span>
-        <span class="node__label">边界条件补给站</span>
-      </button>
+    <button type="button" class="map-node map-node--teal map-node--top">
+      <span class="map-node__tag">推荐</span>
+      <span class="map-node__orb">
+        <n-icon :component="StorefrontOutline" />
+      </span>
+      <span class="map-node__label">边界条件补给站</span>
+    </button>
 
-      <!-- 左上：碎片 -->
-      <button type="button" class="node node--orange node--pos-tl">
-        <span class="node__ring" />
-        <span class="node__icon-wrap">
-          <n-icon :component="ExtensionPuzzleOutline" class="node__icon" />
-        </span>
-        <span class="node__label">待修复碎片 x2</span>
-      </button>
+    <button type="button" class="map-node map-node--amber map-node--left">
+      <span class="map-node__orb">
+        <n-icon :component="ExtensionPuzzleOutline" />
+      </span>
+      <span class="map-node__label">待修复碎片 x2</span>
+    </button>
 
-      <!-- 右上：试炼 -->
-      <button type="button" class="node node--purple node--pos-tr">
-        <span class="node__ring" />
-        <span class="node__icon-wrap">
-          <n-icon :component="TrophyOutline" class="node__icon" />
-        </span>
-        <span class="node__label">路径优化试炼</span>
-      </button>
+    <button type="button" class="map-node map-node--purple map-node--right">
+      <span class="map-node__orb">
+        <n-icon :component="TrophyOutline" />
+      </span>
+      <span class="map-node__label">路径优化试炼</span>
+    </button>
 
-      <!-- 左下：AI -->
-      <button type="button" class="node node--blue node--pos-bl">
-        <span class="node__ring" />
-        <span class="node__icon-wrap">
-          <n-icon :component="HardwareChipOutline" class="node__icon" />
-        </span>
-        <span class="node__label">AI驿站</span>
-      </button>
+    <button type="button" class="map-node map-node--blue map-node--bottom-left">
+      <span class="map-node__orb">
+        <n-icon :component="HardwareChipOutline" />
+      </span>
+      <span class="map-node__label">AI驿站</span>
+    </button>
 
-      <!-- 中下、右下：锁定 -->
-      <div class="node node--locked node--pos-b">
-        <span class="node__ring" />
-        <span class="node__icon-wrap node__icon-wrap--muted">
-          <n-icon :component="LockClosedOutline" class="node__icon" />
-        </span>
-        <span class="node__label">未解锁</span>
-      </div>
+    <div class="map-node map-node--locked map-node--bottom">
+      <span class="map-node__orb">
+        <n-icon :component="LockClosedOutline" />
+      </span>
+      <span class="map-node__label">未解锁</span>
+    </div>
 
-      <div class="node node--locked node--pos-br">
-        <span class="node__ring" />
-        <span class="node__icon-wrap node__icon-wrap--muted">
-          <n-icon :component="LockClosedOutline" class="node__icon" />
-        </span>
-        <span class="node__label">未解锁</span>
-      </div>
+    <div class="map-node map-node--locked map-node--bottom-right">
+      <span class="map-node__orb">
+        <n-icon :component="LockClosedOutline" />
+      </span>
+      <span class="map-node__label">未解锁</span>
+    </div>
 
-      <!-- 中心当前位置 -->
-      <div class="hub">
-        <div class="hub__glow" />
-        <div class="hub__star-wrap">
-          <svg class="hub__star" viewBox="0 0 64 64" width="56" height="56">
-            <defs>
-              <filter id="hubStarGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2.5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            <path
-              fill="#00f5d4"
-              filter="url(#hubStarGlow)"
-              d="M32 8l5.5 15.5L54 32l-16.5 8.5L32 56l-5.5-15.5L10 32l16.5-8.5L32 8z"
-            />
-          </svg>
-        </div>
-        <p class="hub__cap">当前位置</p>
-        <p class="hub__title">算法星域 · 第二阶段</p>
-      </div>
+    <div class="map-hub" aria-label="当前位置：算法星域 第二阶段">
+      <span class="map-hub__halo" aria-hidden="true" />
+      <span class="map-hub__core">
+        <n-icon :component="SparklesOutline" />
+      </span>
+      <strong>当前位置</strong>
+      <span>算法星域 · 第二阶段</span>
     </div>
   </div>
 </template>
 
 <style scoped>
-.map {
+.star-map {
   position: relative;
-  flex: 1;
-  min-height: 380px;
-  min-width: 0;
-  border-radius: 1rem;
-  background:
-    radial-gradient(ellipse 70% 55% at 50% 45%, rgba(0, 245, 212, 0.06), transparent 60%),
-    radial-gradient(circle at 30% 70%, rgba(139, 92, 246, 0.05), transparent 45%),
-    rgba(15, 23, 42, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
-.map__lines {
+.orbit-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.orbit {
+  position: absolute;
+  left: 50%;
+  top: 53%;
+  border: 1px solid rgba(40, 238, 219, 0.14);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  box-shadow: 0 0 22px rgba(39, 255, 238, 0.035);
+}
+
+.orbit--outer {
+  width: min(88vw, 1040px);
+  height: min(38vw, 450px);
+  border-color: rgba(143, 190, 221, 0.08);
+}
+
+.orbit--middle {
+  width: min(68vw, 790px);
+  height: min(29vw, 340px);
+  border-style: dashed;
+}
+
+.orbit--inner {
+  width: min(48vw, 560px);
+  height: min(21vw, 245px);
+}
+
+.orbit--core {
+  width: min(24vw, 280px);
+  height: min(10vw, 118px);
+  border-color: rgba(39, 255, 238, 0.46);
+  box-shadow:
+    0 0 26px rgba(39, 255, 238, 0.16),
+    inset 0 0 28px rgba(39, 255, 238, 0.08);
+}
+
+.star-map__lines {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -143,255 +173,258 @@ import {
   pointer-events: none;
 }
 
-.map__nodes {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 400px;
-}
-
-.hub {
+.map-node {
+  --node-color: #27ffee;
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.hub__glow {
-  position: absolute;
-  left: 50%;
-  top: 42%;
-  transform: translate(-50%, -50%);
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 245, 212, 0.25) 0%, transparent 70%);
-  animation: pulse 3.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.08);
-  }
-}
-
-.hub__star-wrap {
-  position: relative;
   display: flex;
-  justify-content: center;
-  filter: drop-shadow(0 0 20px rgba(0, 245, 212, 0.55));
+  width: 156px;
+  margin-left: -78px;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
 }
 
-.hub__star {
-  animation: breathe 2.8s ease-in-out infinite;
+.map-node:not(.map-node--locked):hover .map-node__orb {
+  transform: translateY(-2px) scale(1.04);
 }
 
-@keyframes breathe {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.04);
-  }
+.map-node__orb {
+  position: relative;
+  display: grid;
+  width: 92px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--node-color) 65%, transparent);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--node-color) 26%, transparent) 0 40%, transparent 62%),
+    rgba(5, 17, 29, 0.88);
+  box-shadow:
+    0 0 0 8px color-mix(in srgb, var(--node-color) 9%, transparent),
+    0 0 28px color-mix(in srgb, var(--node-color) 32%, transparent),
+    inset 0 0 20px rgba(255, 255, 255, 0.035);
+  color: #ffffff;
+  transition: transform 0.18s ease;
 }
 
-.hub__cap {
-  margin: 0.5rem 0 0.15rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  color: rgba(148, 163, 184, 0.85);
-  text-transform: none;
+.map-node__orb::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border: 1px solid color-mix(in srgb, var(--node-color) 52%, transparent);
+  border-radius: inherit;
 }
 
-.hub__title {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #f1f5f9;
+.map-node__orb .n-icon {
+  font-size: 2.25rem;
+  color: currentColor;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--node-color) 80%, transparent));
+}
+
+.map-node__label {
+  color: rgba(237, 247, 255, 0.82);
+  font-size: 0.96rem;
+  line-height: 1.3;
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.65);
+}
+
+.map-node__tag {
+  position: absolute;
+  left: calc(50% + 38px);
+  top: 4px;
+  z-index: 2;
+  padding: 0.2rem 0.42rem;
+  border-radius: 0.35rem;
+  background: rgba(16, 240, 192, 0.52);
+  color: #eaffff;
+  font-size: 0.76rem;
+  font-weight: 720;
   white-space: nowrap;
 }
 
-.node {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  width: 112px;
-  margin-left: -56px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
-  z-index: 3;
-  transition: transform 0.2s ease;
+.map-node--teal {
+  --node-color: #27ffee;
 }
 
-.node:not(.node--locked):hover {
-  transform: scale(1.04);
+.map-node--amber {
+  --node-color: #ffc86b;
 }
 
-.node--locked {
+.map-node--purple {
+  --node-color: #c95fff;
+}
+
+.map-node--blue {
+  --node-color: #38bdf8;
+}
+
+.map-node--locked {
+  --node-color: #c4d4de;
   cursor: default;
   pointer-events: none;
 }
 
-.node__tag {
-  position: absolute;
-  top: -1.35rem;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.62rem;
-  padding: 0.12rem 0.4rem;
-  border-radius: 999px;
-  background: rgba(0, 245, 212, 0.2);
-  color: #00f5d4;
-  border: 1px solid rgba(0, 245, 212, 0.35);
-  white-space: nowrap;
+.map-node--locked .map-node__orb {
+  opacity: 0.65;
+  background: rgba(12, 23, 35, 0.76);
+  box-shadow:
+    0 0 0 8px rgba(177, 206, 222, 0.04),
+    0 0 20px rgba(177, 206, 222, 0.1);
 }
 
-.node__ring {
+.map-node--locked .map-node__label {
+  color: rgba(219, 230, 240, 0.48);
+}
+
+.map-node--top {
+  left: 50%;
+  top: 11%;
+}
+
+.map-node--left {
+  left: 22%;
+  top: 31%;
+}
+
+.map-node--right {
+  left: 78%;
+  top: 32%;
+}
+
+.map-node--bottom-left {
+  left: 21%;
+  top: 62%;
+}
+
+.map-node--bottom {
+  left: 50%;
+  top: 77%;
+}
+
+.map-node--bottom-right {
+  left: 76%;
+  top: 63%;
+}
+
+.map-hub {
   position: absolute;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 1px solid currentColor;
-  opacity: 0.35;
-  top: 0.35rem;
+  left: 50%;
+  top: 53%;
+  display: grid;
+  justify-items: center;
+  transform: translate(-50%, -50%);
+  color: #27ffee;
+  text-align: center;
   pointer-events: none;
 }
 
-.node--teal {
-  color: #00f5d4;
-}
-
-.node--orange {
-  color: #fb923c;
-}
-
-.node--purple {
-  color: #c084fc;
-}
-
-.node--blue {
-  color: #38bdf8;
-}
-
-.node--locked {
-  color: rgba(148, 163, 184, 0.5);
-}
-
-.node__icon-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
+.map-hub__halo {
+  position: absolute;
+  top: -82px;
+  width: 310px;
+  aspect-ratio: 1;
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle, rgba(16, 240, 192, 0.5) 0 8%, rgba(16, 240, 192, 0.22) 18%, transparent 62%);
+  filter: blur(3px);
+  opacity: 0.88;
 }
 
-.node--teal .node__icon-wrap {
-  box-shadow: 0 0 20px rgba(0, 245, 212, 0.35);
+.map-hub__core {
+  position: relative;
+  display: grid;
+  width: 116px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(39, 255, 238, 0.68);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(39, 255, 238, 0.32), transparent 64%),
+    rgba(4, 23, 29, 0.82);
+  box-shadow:
+    0 0 0 11px rgba(16, 240, 192, 0.1),
+    0 0 38px rgba(16, 240, 192, 0.56);
+  color: #eaffff;
 }
 
-.node--orange .node__icon-wrap {
-  box-shadow: 0 0 18px rgba(251, 146, 60, 0.35);
+.map-hub__core::before {
+  content: '';
+  position: absolute;
+  inset: 11px;
+  border: 1px solid rgba(39, 255, 238, 0.54);
+  border-radius: inherit;
 }
 
-.node--purple .node__icon-wrap {
-  box-shadow: 0 0 18px rgba(192, 132, 252, 0.35);
+.map-hub__core .n-icon {
+  font-size: 3.1rem;
+  filter: drop-shadow(0 0 16px rgba(39, 255, 238, 0.95));
 }
 
-.node--blue .node__icon-wrap {
-  box-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+.map-hub strong {
+  position: relative;
+  margin-top: 1.15rem;
+  color: #32ffef;
+  font-size: 1.22rem;
+  line-height: 1.2;
 }
 
-.node__icon-wrap--muted {
-  box-shadow: none;
-  opacity: 0.65;
+.map-hub span:last-child {
+  position: relative;
+  margin-top: 0.28rem;
+  color: #23ffde;
+  font-size: 1rem;
+  font-weight: 620;
 }
 
-.node__icon {
-  font-size: 1.35rem;
-  color: currentColor;
+@media (max-width: 1100px) {
+  .map-node--right,
+  .map-node--bottom-right {
+    left: 82%;
+  }
 }
 
-.node__label {
-  font-size: 0.68rem;
-  line-height: 1.25;
-  text-align: center;
-  color: rgba(226, 232, 240, 0.88);
-  max-width: 7.5rem;
-}
-
-.node--locked .node__label {
-  color: rgba(148, 163, 184, 0.65);
-}
-
-.node--pos-top {
-  left: 50%;
-  top: 8%;
-}
-
-.node--pos-tl {
-  left: 18%;
-  top: 18%;
-}
-
-.node--pos-tr {
-  left: 82%;
-  top: 20%;
-}
-
-.node--pos-bl {
-  left: 20%;
-  bottom: 14%;
-  top: auto;
-}
-
-.node--pos-b {
-  left: 50%;
-  bottom: 6%;
-  top: auto;
-}
-
-.node--pos-br {
-  left: 80%;
-  bottom: 12%;
-  top: auto;
-}
-
-@media (max-width: 640px) {
-  .map__nodes {
-    min-height: 340px;
+@media (max-width: 760px) {
+  .star-map {
+    height: 620px;
+    min-height: 620px;
   }
 
-  .node {
-    width: 96px;
-    margin-left: -48px;
+  .orbit--outer {
+    width: 940px;
+    height: 420px;
   }
 
-  .node__label {
-    font-size: 0.62rem;
+  .orbit--middle {
+    width: 720px;
+    height: 320px;
   }
 
-  .hub__title {
+  .orbit--inner {
+    width: 520px;
+    height: 230px;
+  }
+
+  .map-node {
+    width: 128px;
+    margin-left: -64px;
+  }
+
+  .map-node__orb {
+    width: 72px;
+  }
+
+  .map-node__label {
     font-size: 0.82rem;
+  }
+
+  .map-hub__core {
+    width: 92px;
   }
 }
 </style>

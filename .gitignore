@@ -1,0 +1,10 @@
+node_modules/
+dist/
+output/
+test-results/
+.playwright-mcp/
+*.log
+*.db
+__pycache__/
+.pytest_cache/
+.cache/

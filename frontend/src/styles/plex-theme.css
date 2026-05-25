@@ -1,7 +1,8 @@
 /**
- * 与 src/theme/plexTokens.ts 保持同名变量，供非 Naive 区域（壳层、背景）使用。
+ * Shared Plex visual tokens for shells, panels, and page backgrounds.
  */
 :root {
+  --plex-space-bg-image: url('/assets/plex-space-bg.png');
   --plex-bg: #07111f;
   --plex-bg-elevated: #0b1628;
   --plex-bg-glass: rgba(11, 22, 40, 0.72);
@@ -22,7 +23,9 @@
 html,
 body,
 #app {
-  background-color: var(--plex-bg);
+  background:
+    linear-gradient(180deg, rgba(2, 8, 14, 0.22), rgba(1, 7, 13, 0.36)),
+    var(--plex-space-bg-image) center top / cover fixed no-repeat;
   color: var(--plex-text);
 }
 
@@ -34,4 +37,24 @@ body {
     system-ui,
     -apple-system,
     sans-serif;
+}
+
+.messenger-main,
+.daily-main,
+.cabin-main,
+.starpath-main,
+.main {
+  background:
+    linear-gradient(180deg, rgba(2, 9, 16, 0.36), rgba(1, 7, 13, 0.52)),
+    var(--plex-space-bg-image) center top / cover no-repeat !important;
+}
+
+.messenger-shell,
+.daily-shell,
+.cabin-shell,
+.starpath-shell,
+.shell {
+  background:
+    linear-gradient(180deg, rgba(2, 8, 14, 0.24), rgba(1, 7, 13, 0.42)),
+    var(--plex-space-bg-image) center top / cover no-repeat !important;
 }

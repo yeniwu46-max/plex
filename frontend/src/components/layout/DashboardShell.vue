@@ -1,44 +1,33 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { ref } from 'vue'
 import {
-  NInput,
   NIcon,
-  NAvatar,
-  NBadge,
   NButton,
   NDropdown,
   type DropdownOption,
 } from 'naive-ui'
 import {
-  RocketOutline,
-  GitNetworkOutline,
-  BarbellOutline,
-  MailOutline,
-  CalendarOutline,
-  ArchiveOutline,
-  ChevronBackOutline,
-  SearchOutline,
-  NotificationsOutline,
   ChevronDownOutline,
   MapOutline,
 } from '@vicons/ionicons5'
+import PlexSidebar from './PlexSidebar.vue'
+import PlexTopbar from './PlexTopbar.vue'
 
 const props = withDefaults(
   defineProps<{
-    activeNav: 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive'
+    activeNav: 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'admin'
     pageTitle: string
+    pageSubtitle?: string
     searchPlaceholder: string
     showViewSwitcher?: boolean
   }>(),
-  { showViewSwitcher: false },
+  { pageSubtitle: '每一步探索，都是成长的轨迹', showViewSwitcher: false },
 )
 
 const emit = defineEmits<{
   viewSwitch: [key: string]
 }>()
 
-const router = useRouter()
 const sidebarCollapsed = ref(false)
 const searchText = ref('')
 
@@ -47,26 +36,6 @@ const viewOptions: DropdownOption[] = [
   { label: '列表视图', key: 'list' },
 ]
 
-const navItems = computed(() => {
-  const k = props.activeNav
-  return [
-    { key: 'cabin' as const, label: '探索舱', icon: RocketOutline, active: k === 'cabin', to: '/discovery' },
-    { key: 'track' as const, label: '星轨路径', icon: GitNetworkOutline, active: k === 'track', to: '/star-path' },
-    { key: 'trial' as const, label: '试炼关卡', icon: BarbellOutline, active: k === 'trial', to: '#' },
-    { key: 'messenger' as const, label: '驿站使者', icon: MailOutline, active: k === 'messenger', to: '#' },
-    { key: 'daily' as const, label: '今日委托', icon: CalendarOutline, active: k === 'daily', to: '#' },
-    { key: 'archive' as const, label: '探索档案', icon: ArchiveOutline, active: k === 'archive', to: '#' },
-  ]
-})
-
-function goBack() {
-  if (window.history.length > 1) router.back()
-  else router.push('/login')
-}
-
-function toggleSidebar() {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-}
 
 function onViewSelect(key: string) {
   emit('viewSwitch', key)
@@ -75,89 +44,25 @@ function onViewSelect(key: string) {
 
 <template>
   <div class="shell" :class="{ 'shell--collapsed': sidebarCollapsed }">
-    <aside class="sidebar" aria-label="主导航">
-      <div class="sidebar__brand">
-        <svg class="sidebar__logo" viewBox="0 0 48 48" width="28" height="28" aria-hidden="true">
-          <path fill="currentColor" d="M24 4l5.2 14.8L44 24l-14.8 5.2L24 44l-5.2-14.8L4 24l14.8-5.2L24 4z" />
-        </svg>
-        <span v-if="!sidebarCollapsed" class="sidebar__name">PLEX</span>
-      </div>
-
-      <nav class="sidebar__nav">
-        <component
-          :is="item.to.startsWith('/') ? RouterLink : 'a'"
-          v-for="item in navItems"
-          :key="item.key"
-          :to="item.to.startsWith('/') ? item.to : undefined"
-          :href="item.to.startsWith('/') ? undefined : item.to"
-          class="nav-item"
-          :class="{ 'nav-item--active': item.active }"
-          @click="item.to === '#' ? $event.preventDefault() : undefined"
-        >
-          <span class="nav-item__accent" aria-hidden="true" />
-          <n-icon :component="item.icon" class="nav-item__icon" />
-          <span v-if="!sidebarCollapsed" class="nav-item__label">{{ item.label }}</span>
-        </component>
-      </nav>
-
-      <n-button quaternary circle class="sidebar__collapse" @click="toggleSidebar">
-        <span class="sidebar__chev" aria-hidden="true">«</span>
-      </n-button>
-    </aside>
+    <PlexSidebar v-model:collapsed="sidebarCollapsed" :active-key="activeNav" />
 
     <div class="main">
-      <header class="topbar">
-        <div class="topbar__left">
-          <button type="button" class="icon-btn" aria-label="返回" @click="goBack">
-            <n-icon :component="ChevronBackOutline" :size="22" />
-          </button>
-          <h1 class="topbar__title">{{ pageTitle }}</h1>
-        </div>
+      <PlexTopbar
+        v-model:search="searchText"
+        :title="pageTitle"
+        :subtitle="pageSubtitle"
+        :placeholder="searchPlaceholder"
+      />
 
-        <div class="topbar__search">
-          <n-input
-            v-model:value="searchText"
-            round
-            :placeholder="searchPlaceholder"
-            clearable
-            class="topbar__input"
-          >
-            <template #prefix>
-              <n-icon :component="SearchOutline" class="topbar__search-icon" />
-            </template>
-          </n-input>
-        </div>
-
-        <div class="topbar__right">
-          <n-badge dot type="success" :offset="[-2, 4]">
-            <button type="button" class="icon-btn" aria-label="通知">
-              <n-icon :component="NotificationsOutline" :size="22" />
-            </button>
-          </n-badge>
-
-          <button type="button" class="user-chip">
-            <n-avatar round :size="36" class="user-chip__avatar">★</n-avatar>
-            <div class="user-chip__text">
-              <span class="user-chip__name">张子轩</span>
-              <span class="user-chip__lv">Lv.18</span>
-            </div>
-            <n-icon :component="ChevronDownOutline" :size="18" class="user-chip__arrow" />
-          </button>
-
-          <n-dropdown
-            v-if="showViewSwitcher"
-            trigger="click"
-            :options="viewOptions"
-            @select="onViewSelect"
-          >
-            <n-button secondary round size="small" class="view-switch">
-              <n-icon :component="MapOutline" :size="18" />
-              <span class="view-switch__text">切换视图</span>
-              <n-icon :component="ChevronDownOutline" :size="16" />
-            </n-button>
-          </n-dropdown>
-        </div>
-      </header>
+      <div v-if="showViewSwitcher" class="topbar-actions">
+        <n-dropdown trigger="click" :options="viewOptions" @select="onViewSelect">
+          <n-button secondary round size="small" class="view-switch">
+            <n-icon :component="MapOutline" :size="18" />
+            <span class="view-switch__text">切换视图</span>
+            <n-icon :component="ChevronDownOutline" :size="16" />
+          </n-button>
+        </n-dropdown>
+      </div>
 
       <div v-if="$slots.toolbar" class="toolbar-slot">
         <slot name="toolbar" />

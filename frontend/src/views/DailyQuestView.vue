@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, markRaw, ref, type Component } from 'vue'
+import { computed, markRaw, onMounted, ref, type Component } from 'vue'
 import { NIcon } from 'naive-ui'
 import {
   ArrowForwardOutline,
@@ -15,6 +15,12 @@ import {
 } from '@vicons/ionicons5'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
+import {
+  advanceDailyQuest,
+  claimDailyQuestBonus,
+  fetchTodayDailyQuests,
+  type DailyQuestTodayResult,
+} from '../api/studentOverview'
 import { DAILY_BONUS_STAR_KEYS, DAILY_BONUS_XP, DAILY_QUESTS, type QuestAccent } from '../data/dailyQuests'
 
 type Quest = {
@@ -28,9 +34,15 @@ type Quest = {
   current: number
   total: number
   rewardXp: number
+  completed: boolean
+  rewardClaimed: boolean
 }
 
 const sidebarCollapsed = ref(false)
+const dailyData = ref<DailyQuestTodayResult | null>(null)
+const loading = ref(true)
+const errorMessage = ref('')
+const savingKey = ref('')
 
 
 const iconMap: Record<string, Component> = {
@@ -40,21 +52,46 @@ const iconMap: Record<string, Component> = {
   'night-summary': markRaw(DocumentTextOutline),
 }
 
-const quests = ref<Quest[]>(
-  DAILY_QUESTS.map((quest) => ({
+const fallbackQuests = DAILY_QUESTS.map((quest) => ({
     ...quest,
     icon: iconMap[quest.key] ?? markRaw(SparklesOutline),
     current: 0,
-  })),
-)
+    completed: false,
+    rewardClaimed: false,
+  }))
+
+const fallbackByKey = new Map(DAILY_QUESTS.map((quest) => [quest.key, quest]))
+
+const quests = computed<Quest[]>(() => {
+  if (!dailyData.value) return fallbackQuests
+  return dailyData.value.quests.map((quest, index) => {
+    const fallback = fallbackByKey.get(quest.key)
+    return {
+      key: quest.key,
+      period: quest.period || fallback?.period || '',
+      time: quest.time || fallback?.time || '',
+      title: quest.title || fallback?.title || '',
+      description: quest.description || fallback?.description || '',
+      icon: iconMap[quest.key] ?? markRaw(SparklesOutline),
+      accent: fallback?.accent ?? (['teal', 'amber', 'blue', 'purple'][index % 4] as QuestAccent),
+      current: quest.current,
+      total: quest.total,
+      rewardXp: quest.reward_xp,
+      completed: quest.completed,
+      rewardClaimed: quest.reward_claimed,
+    }
+  })
+})
+
+const isPersisted = computed(() => Boolean(dailyData.value))
 
 const completedCount = computed(() =>
-  quests.value.filter((quest) => quest.current >= quest.total).length,
+  dailyData.value?.completed_count ?? quests.value.filter((quest) => quest.current >= quest.total).length,
 )
 
-const totalRequired = computed(() => quests.value.reduce((sum, quest) => sum + quest.total, 0))
+const totalRequired = computed(() => dailyData.value?.total_required ?? quests.value.reduce((sum, quest) => sum + quest.total, 0))
 const totalCurrent = computed(() =>
-  quests.value.reduce((sum, quest) => sum + Math.min(quest.current, quest.total), 0),
+  dailyData.value?.total_current ?? quests.value.reduce((sum, quest) => sum + Math.min(quest.current, quest.total), 0),
 )
 const explorationIndex = computed(() =>
   totalCurrent.value === 2
@@ -66,18 +103,58 @@ const repairedFragments = computed(() => {
   return repairQuest?.current ?? 0
 })
 const earnedXp = computed(() =>
-  quests.value.reduce((sum, quest) => (quest.current >= quest.total ? sum + quest.rewardXp : sum), 0),
+  dailyData.value?.earned_xp ?? quests.value.reduce((sum, quest) => (quest.current >= quest.total ? sum + quest.rewardXp : sum), 0),
 )
-const allCompleted = computed(() => completedCount.value === quests.value.length)
+const allCompleted = computed(() => dailyData.value?.all_completed ?? completedCount.value === quests.value.length)
+const bonusClaimed = computed(() => Boolean(dailyData.value?.bonus_claimed))
+const bonusXp = computed(() => dailyData.value?.bonus_xp ?? DAILY_BONUS_XP)
 const pendingQuest = computed(() => quests.value.find((quest) => quest.current < quest.total))
 
 
-function advanceQuest(key: string) {
-  const quest = quests.value.find((item) => item.key === key)
-  if (!quest) return
-  if (quest.current >= quest.total) return
-  quest.current += 1
+async function loadTodayQuests() {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    dailyData.value = await fetchTodayDailyQuests()
+  } catch (error) {
+    dailyData.value = null
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to load daily quests'
+  } finally {
+    loading.value = false
+  }
 }
+
+async function claimBonus() {
+  if (!isPersisted.value || !allCompleted.value || bonusClaimed.value || savingKey.value) return
+  savingKey.value = 'bonus'
+  errorMessage.value = ''
+  try {
+    dailyData.value = await claimDailyQuestBonus()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to claim daily quest bonus'
+  } finally {
+    savingKey.value = ''
+  }
+}
+
+async function advanceQuest(key: string) {
+  const quest = quests.value.find((item) => item.key === key)
+  if (!quest || quest.current >= quest.total || !isPersisted.value || savingKey.value) return
+  savingKey.value = key
+  errorMessage.value = ''
+  try {
+    dailyData.value = await advanceDailyQuest(key)
+    if (dailyData.value.all_completed && !dailyData.value.bonus_claimed) {
+      dailyData.value = await claimDailyQuestBonus()
+    }
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to update daily quest'
+  } finally {
+    savingKey.value = ''
+  }
+}
+
+onMounted(loadTodayQuests)
 </script>
 
 <template>
@@ -95,9 +172,14 @@ function advanceQuest(key: string) {
           <span class="space-scene__star space-scene__star--three" />
         </div>
 
+        <div v-if="loading || errorMessage" class="quest-state" :class="{ 'quest-state--error': errorMessage }">
+          <span>{{ loading ? 'Loading daily quests...' : `${errorMessage}. Showing fallback only.` }}</span>
+          <button v-if="errorMessage" type="button" @click="loadTodayQuests">Retry</button>
+        </div>
+
         <section class="quest-board" aria-labelledby="quest-board-title">
-          <h2 id="quest-board-title">今日探索航线</h2>
           <div class="quest-board__panel">
+            <h2 id="quest-board-title">今日探索航线</h2>
             <div class="quest-timeline">
               <article
                 v-for="quest in quests"
@@ -114,14 +196,19 @@ function advanceQuest(key: string) {
                 <button
                   type="button"
                   class="quest-node"
-                  :disabled="quest.current >= quest.total"
+                  :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total"
                   :aria-label="`${quest.title} 进度 ${quest.current}/${quest.total}`"
                   @click="advanceQuest(quest.key)"
                 >
                   <n-icon :component="quest.icon" />
                 </button>
 
-                <button type="button" class="quest-card" :disabled="quest.current >= quest.total" @click="advanceQuest(quest.key)">
+                <button
+                  type="button"
+                  class="quest-card"
+                  :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total"
+                  @click="advanceQuest(quest.key)"
+                >
                   <span class="quest-card__text">
                     <strong>{{ quest.title }}</strong>
                     <span>{{ quest.description }}</span>
@@ -138,7 +225,7 @@ function advanceQuest(key: string) {
               <span>{{ allCompleted ? '今日委托已全部完成，奖励反馈已解锁' : '完成全部委托可获得额外奖励' }}</span>
               <strong class="reward-chip reward-chip--xp">
                 <span>XP</span>
-                <em>+{{ DAILY_BONUS_XP }}</em>
+                <em>+{{ bonusXp }}</em>
               </strong>
               <strong class="reward-chip reward-chip--star">
                 <span>钥</span>
@@ -204,16 +291,28 @@ function advanceQuest(key: string) {
             <div class="reward-preview__items">
               <span class="reward-preview__item reward-preview__item--xp">
                 <strong>XP</strong>
-                <em>{{ DAILY_BONUS_XP }}</em>
+                <em>{{ bonusXp }}</em>
               </span>
               <span class="reward-preview__item reward-preview__item--gem">
                 <strong>钥</strong>
                 <em>{{ DAILY_BONUS_STAR_KEYS }}</em>
               </span>
             </div>
+            <button
+              v-if="allCompleted && !bonusClaimed"
+              type="button"
+              class="bonus-claim"
+              :disabled="!isPersisted || savingKey === 'bonus'"
+              @click="claimBonus"
+            >
+              {{ savingKey === 'bonus' ? 'Claiming...' : 'Claim bonus' }}
+            </button>
+            <span v-else-if="bonusClaimed" class="bonus-claimed">Bonus saved</span>
           </section>
 
-          <p class="reset-note">每日 00:00 重置委托任务</p>
+          <section class="daily-panel reset-note" aria-label="委托重置说明">
+            <p>每日 00:00 重置委托任务</p>
+          </section>
         </aside>
       </section>
     </main>
@@ -513,16 +612,20 @@ function advanceQuest(key: string) {
 
 .daily-content {
   position: relative;
-  z-index: 2;
+  z-index: 1;
   display: grid;
-  grid-template-columns: minmax(640px, 1fr) minmax(360px, 560px);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 560px);
+  grid-template-rows: 1fr;
+  align-items: stretch;
   gap: 3rem;
   height: calc(100dvh - 122px);
-  padding: 2.2rem 3rem 2.4rem 3.7rem;
+  min-height: 0;
+  padding: 0 var(--plex-page-gutter-x) var(--plex-page-gutter-bottom);
 }
 
 .space-scene {
   position: absolute;
+  z-index: 0;
   inset: auto auto 0 0;
   width: min(56vw, 740px);
   height: min(48vh, 520px);
@@ -582,7 +685,52 @@ function advanceQuest(key: string) {
 
 .quest-board {
   position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.quest-state {
+  position: absolute;
+  z-index: 5;
+  top: 0.9rem;
+  left: var(--plex-page-gutter-x);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(680px, calc(100% - (var(--plex-page-gutter-x) * 2)));
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(90, 208, 255, 0.22);
+  border-radius: 0.65rem;
+  background: rgba(4, 14, 24, 0.9);
+  color: rgba(237, 247, 255, 0.86);
+  font-size: 0.86rem;
+}
+
+.quest-state--error {
+  border-color: rgba(251, 191, 36, 0.32);
+  color: #fde68a;
+}
+
+.quest-state button,
+.bonus-claim {
+  min-height: 34px;
+  border: 1px solid rgba(46, 255, 241, 0.34);
+  border-radius: 999px;
+  padding: 0 0.85rem;
+  background: rgba(46, 255, 241, 0.12);
+  color: #eaffff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.quest-state button:disabled,
+.bonus-claim:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .quest-board h2,
@@ -594,11 +742,20 @@ function advanceQuest(key: string) {
   letter-spacing: 0.01em;
 }
 
+.quest-board__panel > h2 {
+  flex-shrink: 0;
+  margin-bottom: 1.45rem;
+}
+
 .quest-board__panel {
   position: relative;
-  min-height: 100%;
-  margin-top: 0.85rem;
-  padding: 2.2rem 2rem 1.65rem;
+  z-index: 2;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1.65rem 2rem 1.65rem;
   border: 1px solid rgba(90, 208, 255, 0.11);
   border-radius: 0.85rem;
   background:
@@ -610,8 +767,12 @@ function advanceQuest(key: string) {
 .quest-timeline {
   position: relative;
   display: grid;
-  gap: 2rem;
+  flex: 1;
+  gap: clamp(1.15rem, 2.2vh, 2rem);
+  min-height: 0;
   max-width: 930px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
 }
 
 .quest-timeline::before {
@@ -619,7 +780,7 @@ function advanceQuest(key: string) {
   position: absolute;
   left: 16.2rem;
   top: 0;
-  bottom: 5.4rem;
+  bottom: 0;
   width: 2px;
   background: linear-gradient(180deg, rgba(37, 245, 238, 0.65), rgba(71, 149, 255, 0.74), rgba(183, 83, 255, 0.7));
   box-shadow: 0 0 16px rgba(37, 245, 238, 0.2);
@@ -790,10 +951,13 @@ function advanceQuest(key: string) {
 
 .quest-reward {
   display: flex;
+  flex-shrink: 0;
   justify-content: center;
   align-items: center;
-  gap: 1.6rem;
-  margin-top: 2.3rem;
+  flex-wrap: wrap;
+  gap: 1rem 1.6rem;
+  margin-top: auto;
+  padding-top: 1.35rem;
   color: rgba(220, 231, 241, 0.65);
   font-size: 0.88rem;
 }
@@ -832,10 +996,16 @@ function advanceQuest(key: string) {
 }
 
 .daily-aside {
-  display: grid;
-  align-content: start;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
   gap: 1.35rem;
   min-width: 0;
+  overflow-y: auto;
 }
 
 .daily-panel {
@@ -1026,10 +1196,29 @@ function advanceQuest(key: string) {
   font-size: 0.88rem;
 }
 
+.bonus-claim,
+.bonus-claimed {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 1.3rem;
+}
+
+.bonus-claimed {
+  color: #52fff1;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .reset-note {
-  margin: 0.4rem 0 0;
-  color: rgba(221, 232, 241, 0.58);
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: 1rem 1.25rem;
   text-align: center;
+}
+
+.reset-note p {
+  margin: 0;
+  color: rgba(221, 232, 241, 0.58);
   font-size: 0.9rem;
 }
 
@@ -1050,12 +1239,23 @@ function advanceQuest(key: string) {
     overflow-y: auto;
   }
 
+  .quest-board {
+    height: auto;
+  }
+
+  .quest-board__panel {
+    flex: none;
+  }
+
   .daily-aside {
+    display: grid;
+    height: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .reset-note {
     grid-column: 1 / -1;
+    margin-top: 0;
   }
 }
 
@@ -1098,7 +1298,7 @@ function advanceQuest(key: string) {
 
   .daily-topbar,
   .daily-content {
-    padding-inline: 1rem;
+    padding-inline: var(--plex-page-gutter-x);
   }
 
   .daily-content {
@@ -1111,7 +1311,7 @@ function advanceQuest(key: string) {
   }
 
   .quest-timeline::before {
-    left: 2.8rem;
+    left: var(--plex-page-gutter-x);
   }
 
   .quest-row {

@@ -1,57 +1,21 @@
-"""Flask应用程序入口"""
+"""Flask application factory."""
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from app.models import db
-from app.config import Config, DevelopmentConfig, TestingConfig, ProductionConfig
-from app.routes import register_routes
+
+from app.config import Config, DevelopmentConfig, ProductionConfig, TestingConfig
 from app.middleware.error_handler import register_error_handlers
-
-
-def create_app(config_name='development'):
-    """应用程序工厂函数"""
-    
-    # 选择配置
-    config_map = {
-        'development': DevelopmentConfig,
-        'testing': TestingConfig,
-        'production': ProductionConfig,
-    }
-    
-    config = config_map.get(config_name, DevelopmentConfig)
-    
-    # 创建Flask应用
-    app = Flask(__name__)
-    app.config.from_object(config)
-    
-    # 初始化扩展
-    db.init_app(app)
-    jwt = JWTManager(app)
-    CORS(app)
-    
-    # 注册路由
-    register_routes(app)
-    
-    # 注册错误处理器
-    register_error_handlers(app, jwt)
-    
-    # 创建数据库表
-    with app.app_context():
-        db.create_all()
-        init_seed_data()
-    
-    return app
+from app.models import db
+from app.routes import register_routes
 
 
 def init_seed_data():
-    """初始化种子数据"""
-    from app.models import Role, Permission, role_permissions
+    """Create baseline roles and permissions when the database is empty."""
+    from app.models import Permission, Role, role_permissions
 
-    # 检查是否已经初始化
     if Role.query.first():
         return
 
-    # 创建角色
     student_role = Role(name='student', description='学生', color='green')
     teacher_role = Role(name='teacher', description='教师', color='orange')
     admin_role = Role(name='admin', description='管理员', color='purple')
@@ -59,7 +23,6 @@ def init_seed_data():
     db.session.add_all([student_role, teacher_role, admin_role])
     db.session.flush()
 
-    # 创建权限
     permissions_data = [
         {'name': 'view_users', 'description': '查看用户', 'resource': 'users', 'action': 'read'},
         {'name': 'create_user', 'description': '创建用户', 'resource': 'users', 'action': 'create'},
@@ -81,28 +44,101 @@ def init_seed_data():
 
     db.session.flush()
 
-    # 分配权限
-    student_permissions = [0, 8, 6, 9]
-    for idx in student_permissions:
-        db.session.execute(role_permissions.insert().values(
-            role_id=student_role.id,
-            permission_id=permission_objs[idx].id
-        ))
+    for idx in [0, 8, 6, 9]:
+        db.session.execute(
+            role_permissions.insert().values(role_id=student_role.id, permission_id=permission_objs[idx].id)
+        )
 
-    teacher_permissions = [0, 1, 4, 6, 7, 9]
-    for idx in teacher_permissions:
-        db.session.execute(role_permissions.insert().values(
-            role_id=teacher_role.id,
-            permission_id=permission_objs[idx].id
-        ))
+    for idx in [0, 1, 4, 6, 7, 9]:
+        db.session.execute(
+            role_permissions.insert().values(role_id=teacher_role.id, permission_id=permission_objs[idx].id)
+        )
 
     for perm in permission_objs:
-        db.session.execute(role_permissions.insert().values(
-            role_id=admin_role.id,
-            permission_id=perm.id
-        ))
+        db.session.execute(role_permissions.insert().values(role_id=admin_role.id, permission_id=perm.id))
 
     db.session.commit()
+
+
+def ensure_dev_login_users():
+    """Upsert default development login accounts used by QUICKSTART and tests."""
+    from werkzeug.security import generate_password_hash
+
+    from app.models import Role, User
+
+    admin_role = Role.query.filter_by(name='admin').first()
+    teacher_role = Role.query.filter_by(name='teacher').first()
+    student_role = Role.query.filter_by(name='student').first()
+    if not admin_role or not teacher_role or not student_role:
+        return
+
+    defaults = [
+        {
+            'username': 'admin',
+            'email': 'admin@example.com',
+            'password': 'admin123',
+            'real_name': '管理员',
+            'role_id': admin_role.id,
+        },
+        {
+            'username': 'teacher001',
+            'email': 'teacher@example.com',
+            'password': 'teacher123',
+            'real_name': '李老师',
+            'role_id': teacher_role.id,
+        },
+        {
+            'username': 'student001',
+            'email': 'student001@example.com',
+            'password': 'student123',
+            'real_name': '学生1',
+            'role_id': student_role.id,
+        },
+    ]
+
+    for item in defaults:
+        user = User.query.filter_by(username=item['username']).first()
+        if not user:
+            user = User(username=item['username'])
+            db.session.add(user)
+        user.email = item['email']
+        user.password_hash = generate_password_hash(item['password'])
+        user.real_name = item['real_name']
+        user.role_id = item['role_id']
+        if user.status == 'deleted':
+            user.status = 'active'
+
+    db.session.commit()
+
+
+def create_app(config_name='development'):
+    """Create and configure a Flask application."""
+    config_map = {
+        'development': DevelopmentConfig,
+        'testing': TestingConfig,
+        'production': ProductionConfig,
+    }
+    config = config_map.get(config_name, DevelopmentConfig)
+
+    app = Flask(__name__)
+    app.config.from_object(config)
+
+    db.init_app(app)
+    jwt = JWTManager(app)
+    CORS(app)
+
+    register_routes(app)
+    register_error_handlers(app, jwt)
+
+    with app.app_context():
+        db.create_all()
+        init_seed_data()
+        ensure_dev_login_users()
+        from app.services.daily_quest import DailyQuestService
+
+        DailyQuestService.ensure_default_quests()
+
+    return app
 
 
 if __name__ == '__main__':

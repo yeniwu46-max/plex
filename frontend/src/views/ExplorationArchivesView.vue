@@ -250,11 +250,16 @@ onMounted(loadArchive)
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-inline: var(--plex-page-gutter-x);
   position: relative;
   background:
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(16, 240, 192, 0.07), transparent),
     radial-gradient(ellipse 60% 40% at 90% 60%, rgba(139, 92, 246, 0.06), transparent),
     linear-gradient(180deg, #030712 0%, #020617 100%);
+}
+
+.main :deep(.plex-topbar) {
+  padding-inline: 0;
 }
 
 .topbar {
@@ -394,7 +399,7 @@ onMounted(loadArchive)
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0.85rem 1rem 1rem;
+  padding: 1.15rem 0 var(--plex-page-gutter-bottom);
 }
 
 .archive-state {
@@ -445,6 +450,8 @@ onMounted(loadArchive)
 
 .archives-grid__timeline {
   grid-area: timeline;
+  align-self: stretch;
+  min-height: 0;
 }
 
 .archives-grid__skills {

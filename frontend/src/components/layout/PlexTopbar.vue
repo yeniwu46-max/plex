@@ -73,7 +73,7 @@ const userLevel = computed(() => auth.profile?.level ?? 18)
   grid-template-columns: minmax(260px, 1fr) minmax(320px, 540px) minmax(260px, 1fr);
   align-items: start;
   gap: 1.5rem;
-  padding: 2.15rem 2.8rem 1.15rem 3.7rem;
+  padding: 1.35rem var(--plex-page-gutter-x) 0;
 }
 
 .plex-topbar__heading h1 {

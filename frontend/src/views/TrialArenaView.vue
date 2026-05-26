@@ -9,9 +9,15 @@ import {
 } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 import {
+  ChevronForwardOutline,
+  DiamondOutline,
+  ExtensionPuzzleOutline,
   FlashOutline,
-  TimeOutline,
+  KeyOutline,
   RibbonOutline,
+  SparklesOutline,
+  TimeOutline,
+  TrophyOutline,
 } from '@vicons/ionicons5'
 import TrialArenaMap from '../components/discovery/TrialArenaMap.vue'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
@@ -62,12 +68,12 @@ const mascotHint = computed(() => {
 const resources = computed(() => {
   const pts = xpCurrent.value
   return [
-    { key: 'xp', label: 'XP 能量', value: String(pts), color: '#22d3ee' },
-    { key: 'dust', label: '星尘', value: String(Math.floor(pts * 0.4)), color: '#a78bfa' },
-    { key: 'key', label: '星钥', value: String(Math.max(1, Math.floor(userLevel.value / 2))), color: '#fbbf24' },
-    { key: 'frag', label: '修复碎片', value: '2', color: '#fb923c' },
-    { key: 'core', label: '修复核心', value: '1', color: '#f472b6' },
-    { key: 'crystal', label: '试炼结晶', value: String(Math.floor(pts / 90) + 12), color: '#34d399' },
+    { key: 'xp', label: '能量', value: String(pts), icon: 'XP' as const, color: '#2efff1' },
+    { key: 'dust', label: '星尘', value: String(Math.floor(pts * 0.4)), icon: SparklesOutline, color: '#61f7ff' },
+    { key: 'key', label: '星钥', value: String(Math.max(1, Math.floor(userLevel.value / 2))), icon: KeyOutline, color: '#58d7ff' },
+    { key: 'frag', label: '修复碎片', value: '2', icon: ExtensionPuzzleOutline, color: '#ffc86b' },
+    { key: 'core', label: '修复核心', value: '1', icon: DiamondOutline, color: '#ffd47a' },
+    { key: 'crystal', label: '试炼结晶', value: String(Math.floor(pts / 90) + 12), icon: TrophyOutline, color: '#c765ff' },
   ]
 })
 
@@ -123,8 +129,7 @@ function onRecommendTrial() {
         subtitle="选择适合你的挑战，验证并巩固知识掌握"
       />
 
-      <div class="content">
-        <div class="arena-wrap">
+      <div class="arena-wrap">
           <div class="arena-toolbar glass">
             <div class="arena-toolbar__stats">
               <span class="arena-stat">
@@ -197,17 +202,31 @@ function onRecommendTrial() {
           </div>
 
           <div class="info-bubble glass">
-            <p class="info-bubble__title">驿站使者 · 小E</p>
-            <p class="info-bubble__text">{{ mascotHint }}</p>
+            <header class="info-bubble__head">
+              <p class="info-bubble__title">驿站使者 · 小E</p>
+              <span class="info-bubble__role">试炼向导</span>
+            </header>
 
-            <div v-if="selectedTrial" class="trial-detail">
-              <p class="trial-detail__name">{{ selectedTrial.title }}</p>
-              <p class="trial-detail__en">{{ selectedTrial.titleEn }}</p>
-              <div class="trial-detail__meta">
-                <span><n-icon :component="TimeOutline" :size="14" /> {{ selectedTrial.durationMin }} 分钟</span>
-                <span><n-icon :component="RibbonOutline" :size="14" /> +{{ selectedTrial.rewardCrystal }} 结晶</span>
+            <blockquote class="info-bubble__quote">
+              <p class="info-bubble__text">{{ mascotHint }}</p>
+            </blockquote>
+
+            <section v-if="selectedTrial" class="trial-detail" aria-label="当前试炼">
+              <div class="trial-detail__head">
+                <h3 class="trial-detail__name">{{ selectedTrial.title }}</h3>
+                <p class="trial-detail__en">{{ selectedTrial.titleEn }}</p>
               </div>
-              <div class="trial-detail__tags">
+              <div class="trial-detail__meta">
+                <span class="trial-detail__chip">
+                  <n-icon :component="TimeOutline" :size="14" />
+                  {{ selectedTrial.durationMin }} 分钟
+                </span>
+                <span class="trial-detail__chip">
+                  <n-icon :component="RibbonOutline" :size="14" />
+                  +{{ selectedTrial.rewardCrystal }} 结晶
+                </span>
+              </div>
+              <div v-if="selectedTrial.tags?.length" class="trial-detail__tags">
                 <n-tag
                   v-for="tag in selectedTrial.tags"
                   :key="tag"
@@ -218,79 +237,65 @@ function onRecommendTrial() {
                   {{ tag }}
                 </n-tag>
               </div>
-            </div>
+            </section>
 
-            <div class="info-bubble__items">
-              <button
-                v-for="item in panelItems"
-                :key="item.key"
-                type="button"
-                class="info-item"
-                @click="onPanelAction(item.key)"
-              >
-                <span class="info-item__icon">{{ item.icon }}</span>
-                <div class="info-item__text">
-                  <span class="info-item__title">{{ item.title }}</span>
-                  <span class="info-item__desc">{{ item.desc }}</span>
-                </div>
-                <span class="info-item__arrow"></span>
-              </button>
-            </div>
-            <p class="info-bubble__footer">更多功能，敬请期</p>
+            <section class="info-bubble__tools" aria-label="快捷入口">
+              <h3 class="info-bubble__section-title">快捷入口</h3>
+              <div class="info-bubble__items">
+                <button
+                  v-for="item in panelItems"
+                  :key="item.key"
+                  type="button"
+                  class="info-item"
+                  @click="onPanelAction(item.key)"
+                >
+                  <span class="info-item__icon" aria-hidden="true">{{ item.icon }}</span>
+                  <div class="info-item__text">
+                    <span class="info-item__title">{{ item.title }}</span>
+                    <span class="info-item__desc">{{ item.desc }}</span>
+                  </div>
+                  <span class="info-item__arrow" aria-hidden="true">›</span>
+                </button>
+              </div>
+            </section>
+
+            <p class="info-bubble__footer">更多功能，敬请期待</p>
           </div>
         </aside>
-      </div>
 
-      <footer class="status glass">
-        <div class="status__user">
-          <div class="xp-ring" aria-hidden="true">
-            <svg viewBox="0 0 64 64" class="xp-ring__svg">
-              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="5" />
-              <circle
-                cx="32"
-                cy="32"
-                r="26"
-                fill="none"
-                stroke="url(#xpGrad)"
-                stroke-width="5"
-                stroke-linecap="round"
-                :stroke-dasharray="`${xpRatio * 163.36} 163.36`"
-                transform="rotate(-90 32 32)"
-              />
-              <defs>
-                <linearGradient id="xpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#00f5d4" />
-                  <stop offset="100%" stop-color="#06b6d4" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <span class="xp-ring__lv">Lv.{{ userLevel }}</span>
+      <footer class="status" aria-label="探索者资源">
+        <section class="status__user">
+          <div class="level-ring" :style="{ '--level-progress': xpRatio }">
+            <span>Lv.{{ userLevel }}</span>
           </div>
-          <div class="status__meta">
-            <div class="status__row">
-              <span class="status__explorer">Explorer · {{ displayName }}</span>
-            </div>
+          <div class="status-profile__copy">
+            <strong>Explorer · {{ displayName }}</strong>
             <div class="status__xpbar-wrap">
               <div class="status__xpbar">
                 <div class="status__xpbar-fill" :style="{ width: `${xpRatio * 100}%` }" />
               </div>
               <span class="status__xpnums">{{ xpCurrent }} / {{ xpTarget }} XP</span>
             </div>
-            <p class="status__reward">下一等级奖励 <span class="status__star"></span> x1</p>
+            <p class="status__reward">下一等级奖励 <span>星钥</span> x1</p>
           </div>
-        </div>
+        </section>
 
-        <div class="status__res">
+        <section class="status__res">
           <span class="status__res-title">| 我的资源</span>
           <div class="status__res-list">
-            <div v-for="r in resources" :key="r.key" class="res-item">
-              <span class="res-item__dot" :style="{ background: r.color, boxShadow: `0 0 12px ${r.color}66` }" />
+            <div
+              v-for="r in resources"
+              :key="r.key"
+              class="res-item"
+              :style="{ '--res-color': r.color }"
+            >
+              <span class="res-item__dot" />
               <span class="res-item__label">{{ r.label }}</span>
               <span class="res-item__val">{{ r.value }}</span>
             </div>
           </div>
           <a href="#" class="status__more" @click.prevent>更多 &gt;</a>
-        </div>
+        </section>
       </footer>
     </div>
 
@@ -324,11 +329,14 @@ function onRecommendTrial() {
 .shell {
   display: flex;
   min-height: 100%;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--plex-bg);
   color: var(--plex-text);
   font-family:
     'Outfit',
     'Noto Sans SC',
+    'Microsoft YaHei',
     system-ui,
     sans-serif;
 }
@@ -437,13 +445,27 @@ function onRecommendTrial() {
 .main {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
+  min-height: 0;
+  display: grid;
+  grid-template-areas:
+    'topbar topbar'
+    'arena panel'
+    'footer panel';
+  grid-template-columns: minmax(0, 1fr) min(280px, 28vw);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  column-gap: 0.75rem;
+  padding: 0 var(--plex-page-gutter-x);
+  overflow: hidden;
   position: relative;
   background:
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 245, 212, 0.07), transparent),
     radial-gradient(ellipse 60% 40% at 90% 60%, rgba(139, 92, 246, 0.06), transparent),
     linear-gradient(180deg, #030712 0%, #020617 50%, #020617 100%);
+}
+
+.main :deep(.plex-topbar) {
+  grid-area: topbar;
+  padding-inline: 0;
 }
 
 .main::before {
@@ -588,24 +610,16 @@ function onRecommendTrial() {
   margin-left: 0.15rem;
 }
 
-.content {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  min-height: 0;
-  padding: 0.5rem 1rem 1rem;
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  gap: 0.75rem;
-}
 
 .arena-wrap {
+  grid-area: arena;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  padding-top: 0.5rem;
 }
 
 .arena-toolbar {
@@ -629,7 +643,7 @@ function onRecommendTrial() {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.78rem;
+  font-size: 0.94rem;
   font-weight: 600;
   color: #e2e8f0;
 }
@@ -645,51 +659,63 @@ function onRecommendTrial() {
   gap: 0.5rem;
 }
 
-.arena-enter-btn {
-  box-shadow: 0 0 18px rgba(0, 245, 212, 0.25);
+.arena-wrap :deep(.arena) {
+  flex: 1;
+  min-height: 0;
 }
 
 .trial-detail {
-  margin: 0.75rem 0;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
   background: rgba(0, 245, 212, 0.06);
   border: 1px solid rgba(0, 245, 212, 0.15);
 }
 
+.trial-detail__head {
+  margin-bottom: 0.55rem;
+}
+
 .trial-detail__name {
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.35;
   color: #f8fafc;
 }
 
 .trial-detail__en {
-  margin: 0.15rem 0 0.5rem;
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
-  color: rgba(148, 163, 184, 0.8);
+  margin: 0.2rem 0 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.85);
 }
 
 .trial-detail__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem 1rem;
-  font-size: 0.72rem;
-  color: rgba(226, 232, 240, 0.85);
+  gap: 0.45rem;
 }
 
-.trial-detail__meta span {
+.trial-detail__chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  color: rgba(226, 232, 240, 0.92);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .trial-detail__tags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  margin-top: 0.5rem;
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(0, 245, 212, 0.12);
 }
 
 .enter-modal__desc {
@@ -714,16 +740,22 @@ function onRecommendTrial() {
 }
 
 .info-panel {
+  grid-area: panel;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: min(280px, 28vw);
-  flex-shrink: 0;
-  padding-top: 1rem;
+  align-items: stretch;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 0.5rem;
+  padding-bottom: var(--plex-page-gutter-bottom);
   gap: 0.75rem;
+  align-self: stretch;
 }
 
 .mascot {
+  flex-shrink: 0;
+  align-self: center;
   filter: drop-shadow(0 8px 24px rgba(0, 245, 212, 0.2));
   animation: float 5s ease-in-out infinite;
 }
@@ -746,43 +778,94 @@ function onRecommendTrial() {
 }
 
 .info-bubble {
-  padding: 1rem 1.1rem;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow-y: auto;
+  padding: 1.05rem 1.15rem 1rem;
   border-radius: 1rem;
   max-width: 100%;
 }
 
+.info-bubble__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .info-bubble__title {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #94a3b8;
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 740;
+  color: #31ffef;
+}
+
+.info-bubble__role {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(148, 163, 184, 0.75);
+  letter-spacing: 0.04em;
+}
+
+.info-bubble__quote {
+  margin: 0;
+  padding: 0.65rem 0 0.65rem 0.75rem;
+  border-left: 3px solid rgba(0, 245, 212, 0.45);
+  background: rgba(0, 245, 212, 0.04);
+  border-radius: 0 0.5rem 0.5rem 0;
 }
 
 .info-bubble__text {
-  margin: 0 0 0.75rem;
+  margin: 0;
   font-size: 0.88rem;
   font-weight: 500;
-  color: #f1f5f9;
+  line-height: 1.6;
+  color: rgba(241, 245, 249, 0.92);
+}
+
+.info-bubble__tools {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-bubble__section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.8);
 }
 
 .info-bubble__items {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  margin: 0.75rem 0;
+  gap: 0.45rem;
+  margin: 0;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 0.8rem;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.6rem;
   cursor: pointer;
   color: inherit;
   font: inherit;
+  text-align: left;
   transition:
     background 0.25s ease,
     border-color 0.25s ease;
@@ -808,53 +891,103 @@ function onRecommendTrial() {
 
 .info-item__title {
   display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.3;
   color: #f1f5f9;
 }
 
 .info-item__desc {
   display: block;
-  font-size: 0.65rem;
-  color: rgba(148, 163, 184, 0.7);
+  margin-top: 0.12rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(148, 163, 184, 0.78);
 }
 
 .info-item__arrow {
-  font-size: 0.7rem;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1;
   color: var(--plex-accent);
-  opacity: 0.6;
+  opacity: 0.65;
 }
 
 .info-bubble__footer {
-  margin: 0.75rem 0 0;
-  font-size: 0.7rem;
-  color: rgba(148, 163, 184, 0.6);
+  margin: 0;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: rgba(148, 163, 184, 0.65);
   text-align: center;
 }
 
 .status {
+  grid-area: footer;
   position: relative;
   z-index: 2;
-  margin: 0 1rem 1rem;
-  padding: 0.85rem 1.25rem;
-  border-radius: 1rem;
-  display: flex;
-  flex-wrap: wrap;
+  margin: 0.65rem 0 var(--plex-page-gutter-bottom);
+  padding: 1.25rem 1.6rem;
+  border-radius: 1.2rem;
+  display: grid;
+  grid-template-columns: 430px minmax(0, 1fr);
+  gap: 1.6rem;
   align-items: center;
-  gap: 1.25rem 2rem;
-  justify-content: space-between;
+  min-height: 150px;
+  border: 1px solid rgba(90, 208, 255, 0.13);
+  background: rgba(5, 17, 29, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 -16px 60px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .status__user {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.45rem;
+  border-right: 1px solid rgba(220, 236, 248, 0.08);
+  padding-right: 1.45rem;
+}
+
+.level-ring {
+  --ring-deg: calc(var(--level-progress) * 360deg);
+  display: grid;
+  width: 98px;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #071625 57%, transparent 58%),
+    conic-gradient(#7bf8ff var(--ring-deg), rgba(75, 128, 160, 0.24) 0);
+  color: #ffffff;
+  box-shadow: 0 0 22px rgba(46, 255, 241, 0.12);
+}
+
+.level-ring span {
+  font-size: 1.28rem;
+  font-weight: 720;
+}
+
+.status-profile__copy {
+  min-width: 0;
+}
+
+.status-profile__copy strong {
+  display: block;
+  color: #37fff1;
+  font-size: 1.26rem;
+  font-weight: 660;
 }
 
 .xp-ring {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 98px;
+  height: 98px;
+  flex-shrink: 0;
 }
 
 .xp-ring__svg {
@@ -868,117 +1001,133 @@ function onRecommendTrial() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--plex-accent);
+  font-size: 1.28rem;
+  font-weight: 720;
+  color: #ffffff;
 }
 
 .status__meta {
-  min-width: 200px;
-}
-
-.status__row {
-  display: flex;
-  align-items: center;
+  min-width: 0;
 }
 
 .status__explorer {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #f1f5f9;
+  font-size: 1.26rem;
+  font-weight: 660;
+  color: #37fff1;
 }
 
 .status__xpbar-wrap {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  margin-top: 0.35rem;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
 }
 
 .status__xpbar {
   flex: 1;
-  height: 6px;
+  height: 8px;
   border-radius: 99px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(207, 228, 242, 0.1);
   overflow: hidden;
-  min-width: 120px;
+  min-width: 146px;
 }
 
 .status__xpbar-fill {
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(90deg, #00f5d4, #06b6d4);
-  box-shadow: 0 0 12px rgba(0, 245, 212, 0.4);
+  background: linear-gradient(90deg, #19f0c9, #54f9ef);
+  box-shadow: 0 0 14px rgba(46, 255, 241, 0.32);
 }
 
 .status__xpnums {
-  font-size: 0.72rem;
-  color: rgba(148, 163, 184, 0.95);
+  font-size: 0.82rem;
+  font-style: normal;
+  color: rgba(225, 238, 247, 0.72);
   white-space: nowrap;
 }
 
 .status__reward {
-  margin: 0.35rem 0 0;
-  font-size: 0.72rem;
-  color: rgba(148, 163, 184, 0.85);
+  margin: 0.8rem 0 0;
+  font-size: 0.82rem;
+  color: rgba(225, 238, 247, 0.72);
 }
 
+.status__reward span,
 .status__star {
-  color: #fbbf24;
+  color: #55f9ff;
 }
 
 .status__res {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.75rem;
-  flex: 1;
+  gap: 1rem;
   min-width: 0;
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
 
 .status__res-title {
-  font-size: 0.78rem;
-  color: rgba(148, 163, 184, 0.75);
+  align-self: start;
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 740;
+  color: #31ffef;
   white-space: nowrap;
 }
 
 .status__res-list {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem 1.1rem;
-  flex-wrap: wrap;
-  overflow-x: auto;
-  padding-bottom: 0.15rem;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(72px, 1fr));
+  gap: 0.85rem;
+  min-width: 0;
 }
 
 .res-item {
-  display: flex;
-  align-items: center;
+  display: grid;
+  min-width: 0;
+  justify-items: center;
   gap: 0.35rem;
-  font-size: 0.75rem;
+  text-align: center;
   white-space: nowrap;
 }
 
 .res-item__dot {
-  width: 7px;
-  height: 7px;
+  display: grid;
+  width: 62px;
+  aspect-ratio: 1;
+  place-items: center;
+  clip-path: polygon(50% 0, 92% 25%, 92% 75%, 50% 100%, 8% 75%, 8% 25%);
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--res-color, #2efff1) 40%, transparent), transparent 68%),
+    rgba(10, 31, 46, 0.8);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--res-color, #2efff1) 18%, transparent);
+}
+
+.res-item__dot::after {
+  content: '';
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  flex-shrink: 0;
+  background: var(--res-color, #2efff1);
+  box-shadow: 0 0 12px var(--res-color, #2efff1);
 }
 
 .res-item__label {
-  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.78rem;
+  color: rgba(225, 238, 247, 0.68);
 }
 
 .res-item__val {
-  font-weight: 600;
-  color: #f1f5f9;
+  font-size: 1.2rem;
+  font-weight: 610;
+  color: #ffffff;
 }
 
 .status__more {
-  font-size: 0.78rem;
-  color: var(--plex-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  color: rgba(163, 191, 208, 0.72);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -988,6 +1137,14 @@ function onRecommendTrial() {
 }
 
 @media (max-width: 1100px) {
+  .main {
+    grid-template-areas:
+      'topbar'
+      'arena'
+      'footer';
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .info-panel {
     display: none;
   }

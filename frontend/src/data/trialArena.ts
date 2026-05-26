@@ -9,6 +9,14 @@ import {
 export type TrialPosition = 'tl' | 'tr' | 'bl' | 'br'
 export type TrialTheme = 'teal' | 'purple' | 'orange' | 'pink'
 
+/** 卡片中心锚点（百分比），与 TrialArenaMap 连线 SVG 一致 */
+export const TRIAL_ANCHORS: Record<TrialPosition, { x: number; y: number }> = {
+  tl: { x: 19, y: 28 },
+  tr: { x: 81, y: 28 },
+  bl: { x: 19, y: 72 },
+  br: { x: 81, y: 72 },
+}
+
 export interface TrialMode {
   key: string
   number: string

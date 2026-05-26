@@ -455,15 +455,23 @@ const actions = [
 
 .messenger-stage {
   position: relative;
-  z-index: 2;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'hero analysis'
+    'prompt prompt';
+  gap: 1rem 1.35rem;
   height: calc(100dvh - 124px);
   min-height: 0;
   overflow: hidden;
-  padding: 0 2.8rem 2rem 3.7rem;
+  padding: 0 var(--plex-page-gutter-x) var(--plex-page-gutter-bottom);
 }
 
 .station-bg {
   position: absolute;
+  z-index: 0;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
@@ -562,15 +570,24 @@ const actions = [
 }
 
 .hero-zone {
-  position: absolute;
-  left: 7%;
-  right: 25%;
-  top: 9%;
-  bottom: 18%;
+  grid-area: hero;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(220px, 36%) minmax(150px, 1fr);
+  grid-template-rows: minmax(0, 0.42fr) minmax(250px, 40%) minmax(0, 1fr);
+  grid-template-areas:
+    '. . .'
+    'greeting bot trial'
+    'fragment . growth';
+  gap: 0.5rem 0.85rem;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .float-card {
-  position: absolute;
+  position: relative;
+  z-index: 2;
   border: 1px solid rgba(105, 219, 255, 0.2);
   border-radius: 0.9rem;
   background:
@@ -582,17 +599,29 @@ const actions = [
   backdrop-filter: blur(14px);
 }
 
+/* 四角卡片统一尺寸，避免宽屏/断点下宽高不一致 */
+.float-card--greeting,
+.float-card--trial,
+.float-card--fragment,
+.float-card--growth {
+  width: 270px;
+  max-width: min(270px, 100%);
+  min-height: 176px;
+  padding: 1.3rem 1.45rem;
+  box-sizing: border-box;
+}
+
 .float-card h2,
 .float-card p {
   margin: 0;
 }
 
+/* 与中间行小 E 耳朵齐平：贴 bot 两侧，略偏上对齐耳部 */
 .float-card--greeting {
-  left: 3%;
-  top: 12%;
-  width: 310px;
-  min-height: 154px;
-  padding: 1.55rem 1.7rem;
+  grid-area: greeting;
+  justify-self: end;
+  align-self: start;
+  margin: 1.15rem 1.25rem 0 6.75rem;
 }
 
 .float-card--greeting h2 {
@@ -631,11 +660,10 @@ const actions = [
 }
 
 .float-card--fragment {
-  left: 7%;
-  bottom: 11%;
-  width: 258px;
-  min-height: 150px;
-  padding: 1.45rem 1.6rem;
+  grid-area: fragment;
+  justify-self: start;
+  align-self: start;
+  margin: 0.1rem 0 1.85rem 6.75rem;
 }
 
 .float-card--fragment p {
@@ -675,11 +703,10 @@ const actions = [
 }
 
 .float-card--trial {
-  right: 8%;
-  top: 13%;
-  width: 330px;
-  min-height: 162px;
-  padding: 1.5rem 1.6rem;
+  grid-area: trial;
+  justify-self: start;
+  align-self: start;
+  margin: 1.15rem 6.75rem 0 1.25rem;
 }
 
 .float-card--trial h2,
@@ -730,11 +757,10 @@ const actions = [
 }
 
 .float-card--growth {
-  right: 10%;
-  bottom: 9%;
-  width: 305px;
-  min-height: 160px;
-  padding: 1.45rem 1.6rem;
+  grid-area: growth;
+  justify-self: end;
+  align-self: start;
+  margin: 0.1rem 6.75rem 1.85rem 0;
 }
 
 .float-card--growth p {
@@ -757,13 +783,18 @@ const actions = [
 }
 
 .assistant-bot {
-  position: absolute;
-  left: 50%;
-  top: 44%;
+  grid-area: bot;
+  position: relative;
+  z-index: 3;
+  left: auto;
+  top: auto;
   width: 270px;
   height: 290px;
-  transform: translate(-50%, -50%);
+  justify-self: center;
+  align-self: center;
+  transform: none;
   filter: drop-shadow(0 24px 34px rgba(37, 245, 238, 0.16));
+  pointer-events: none;
 }
 
 .assistant-bot__crest {
@@ -887,12 +918,17 @@ const actions = [
 }
 
 .analysis-panel {
-  position: absolute;
-  right: 2.8rem;
-  top: 8.2%;
-  width: 360px;
-  min-height: 640px;
-  padding: 1.65rem 1.35rem 1.35rem;
+  grid-area: analysis;
+  position: relative;
+  z-index: 2;
+  align-self: start;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: calc(100% - 2.75rem);
+  margin-top: 2.75rem;
+  overflow-y: auto;
+  padding: 1.35rem 1.25rem 1.25rem;
   border: 1px solid rgba(90, 208, 255, 0.14);
   border-radius: 1.2rem;
   background:
@@ -960,7 +996,7 @@ const actions = [
   align-items: center;
   justify-content: center;
   gap: 1.2rem;
-  margin-top: 1.35rem;
+  margin-top: 1.75rem;
   border: 1px solid rgba(130, 212, 255, 0.12);
   border-radius: 0.8rem;
   background: linear-gradient(90deg, rgba(224, 237, 247, 0.08), rgba(224, 237, 247, 0.04));
@@ -975,11 +1011,11 @@ const actions = [
 }
 
 .prompt-dock {
-  position: absolute;
-  left: 16%;
-  bottom: 3.8%;
-  width: min(940px, 58vw);
-  padding: 1.05rem 1.35rem 1.35rem;
+  grid-area: prompt;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  padding: 1rem 1.25rem 1.15rem;
   border: 1px solid rgba(37, 245, 238, 0.28);
   border-radius: 1.1rem;
   background:
@@ -1054,25 +1090,73 @@ const actions = [
   }
 
   .messenger-stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(520px, auto) auto auto;
+    grid-template-areas:
+      'hero'
+      'analysis'
+      'prompt';
     height: auto;
-    min-height: 1120px;
+    min-height: calc(100dvh - 124px);
     overflow-y: auto;
   }
 
   .hero-zone {
-    right: 0;
-  }
-
-  .analysis-panel {
-    top: auto;
-    right: 2.8rem;
-    bottom: 15rem;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'bot bot'
+      'greeting trial'
+      'fragment growth';
     min-height: 520px;
   }
 
-  .prompt-dock {
-    left: 3.7rem;
-    width: calc(100% - 7.4rem);
+  .float-card--greeting,
+  .float-card--trial {
+    align-self: center;
+    margin: 0.65rem 0.5rem;
+  }
+
+  .float-card--greeting {
+    justify-self: end;
+    margin-left: 0.75rem;
+  }
+
+  .float-card--trial {
+    justify-self: start;
+    margin-right: 0.75rem;
+  }
+
+  .float-card--fragment,
+  .float-card--growth {
+    width: 270px;
+    max-width: min(270px, calc(100% - 1rem));
+    min-height: 176px;
+    align-self: start;
+    margin-top: 0.1rem;
+    margin-bottom: 1.35rem;
+  }
+
+  .float-card--fragment {
+    justify-self: end;
+    margin-left: 0.75rem;
+    margin-right: 0.35rem;
+  }
+
+  .float-card--growth {
+    justify-self: start;
+    margin-right: 0.75rem;
+    margin-left: 0.35rem;
+  }
+
+  .assistant-bot {
+    justify-self: center;
+    transform: scale(0.88);
+  }
+
+  .analysis-panel {
+    margin-top: 1.5rem;
+    max-height: none;
   }
 }
 
@@ -1115,55 +1199,57 @@ const actions = [
 
   .messenger-topbar,
   .messenger-stage {
-    padding-inline: 1rem;
+    padding-inline: var(--plex-page-gutter-x);
   }
 
   .messenger-stage {
-    min-height: 1580px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'hero'
+      'analysis'
+      'prompt';
+    min-height: auto;
+    padding-inline: var(--plex-page-gutter-x);
   }
 
   .hero-zone {
-    position: relative;
-    left: auto;
-    right: auto;
-    top: auto;
-    bottom: auto;
-    height: 840px;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto auto;
+    grid-template-areas:
+      'bot'
+      'greeting'
+      'trial'
+      'fragment'
+      'growth';
+    min-height: auto;
+    gap: 0.75rem;
   }
 
   .float-card--greeting,
   .float-card--fragment,
   .float-card--trial,
   .float-card--growth {
-    position: relative;
-    left: auto;
-    right: auto;
-    top: auto;
-    bottom: auto;
-    width: 100%;
-    margin-bottom: 1rem;
+    justify-self: center;
+    align-self: stretch;
+    width: min(270px, 100%);
+    max-width: min(270px, 100%);
+    min-height: 176px;
+    margin: 0;
   }
 
   .assistant-bot {
-    top: 390px;
-    transform: translate(-50%, -50%) scale(0.76);
+    transform: scale(0.76);
+    margin: 0.5rem auto;
   }
 
   .analysis-panel {
-    position: relative;
-    right: auto;
-    bottom: auto;
     width: 100%;
-    min-height: auto;
-    margin-top: 1rem;
+    margin-top: 0;
+    max-height: none;
   }
 
   .prompt-dock {
-    position: relative;
-    left: auto;
-    bottom: auto;
     width: 100%;
-    margin-top: 1rem;
   }
 
   .prompt-actions {

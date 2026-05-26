@@ -4,6 +4,7 @@ import { NIcon } from 'naive-ui'
 import { LockClosedOutline } from '@vicons/ionicons5'
 import {
   TRIAL_MODES,
+  TRIAL_ANCHORS,
   filterTrials,
   isTrialUnlocked,
   type TrialMode,
@@ -127,8 +128,8 @@ watch(
           :key="`line-${trial.key}`"
           x1="50"
           y1="50"
-          :x2="trial.position === 'tl' ? 22 : trial.position === 'tr' ? 78 : trial.position === 'bl' ? 22 : 78"
-          :y2="trial.position === 'tl' || trial.position === 'tr' ? 22 : 78"
+          :x2="TRIAL_ANCHORS[trial.position].x"
+          :y2="TRIAL_ANCHORS[trial.position].y"
           stroke="url(#arenaGradTeal)"
           :stroke-width="selectedKey === trial.key ? 0.55 : 0.35"
           :opacity="cardVisible(trial) ? 1 : 0.15"
@@ -159,7 +160,6 @@ watch(
       >
         <span v-if="trial.tags?.[0] && trialUnlocked(trial)" class="trial__tag">{{ trial.tags[0] }}</span>
         <span class="trial__number">{{ trial.number }}</span>
-        <span class="trial__ring" aria-hidden="true" />
 
         <span class="trial__icon-wrap">
           <n-icon v-if="trialUnlocked(trial)" :component="trial.icon" class="trial__icon" />
@@ -224,7 +224,7 @@ watch(
   flex: 1;
   width: 100%;
   height: 100%;
-  min-height: 320px;
+  min-height: 420px;
   min-width: 0;
   border-radius: 1rem;
   background:
@@ -390,17 +390,18 @@ watch(
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  width: 140px;
-  margin-left: -70px;
+  gap: 0.3rem;
+  width: 154px;
+  max-width: calc(50% - 5.5rem);
   background: rgba(15, 23, 42, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.85rem;
-  padding: 0.95rem 0.8rem 0.85rem;
+  padding: 0.8rem 0.85rem 0.75rem;
   cursor: pointer;
   color: inherit;
   font: inherit;
   z-index: 3;
+  transform: translate(-50%, -50%);
   transition:
     transform 0.25s ease,
     background 0.25s ease,
@@ -416,13 +417,15 @@ watch(
 }
 
 .trial__card:hover:not(.trial__card--locked):not(.trial__card--dimmed) {
-  transform: scale(1.06) translateY(-3px);
+  transform: translate(-50%, -50%) scale(1.04);
+  z-index: 4;
   background: rgba(15, 23, 42, 0.88);
   border-color: rgba(255, 255, 255, 0.18);
 }
 
 .trial__card--selected {
-  transform: scale(1.08) translateY(-4px);
+  transform: translate(-50%, -50%) scale(1.05);
+  z-index: 5;
   border-color: rgba(255, 255, 255, 0.22);
   box-shadow: 0 0 28px rgba(0, 245, 212, 0.2);
 }
@@ -492,17 +495,7 @@ watch(
   font-weight: 700;
   letter-spacing: 0.1em;
   opacity: 0.85;
-}
-
-.trial__ring {
-  position: absolute;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 1.5px solid currentColor;
-  opacity: 0.28;
-  top: -2px;
-  pointer-events: none;
+  line-height: 1;
 }
 
 .trial__icon-wrap {
@@ -560,11 +553,17 @@ watch(
 }
 
 .trial__desc {
-  font-size: 0.65rem;
-  line-height: 1.35;
-  text-align: center;
-  color: rgba(226, 232, 240, 0.72);
+  width: 100%;
   margin: 0.1rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  text-align: center;
+  color: rgba(224, 237, 247, 0.68);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: calc(0.88rem * 1.55 * 2);
 }
 
 .trial__lock-hint {
@@ -588,44 +587,64 @@ watch(
 }
 
 .trial__card--pos-tl {
-  left: 20%;
-  top: 16%;
+  left: 19%;
+  top: 28%;
 }
 
 .trial__card--pos-tr {
-  left: 80%;
-  top: 16%;
+  left: 81%;
+  top: 28%;
 }
 
 .trial__card--pos-bl {
-  left: 20%;
-  bottom: 16%;
-  top: auto;
+  left: 19%;
+  top: 72%;
 }
 
 .trial__card--pos-br {
-  left: 80%;
-  bottom: 16%;
-  top: auto;
+  left: 81%;
+  top: 72%;
 }
 
 @media (max-width: 900px) {
   .trial__card {
-    width: 120px;
-    margin-left: -60px;
-    padding: 0.8rem 0.65rem;
+    width: 140px;
+    padding: 0.75rem 0.65rem;
   }
 
   .trial__desc,
   .trial__cta {
     display: none;
   }
+
+  .trial__card--pos-tl {
+    left: 18%;
+    top: 27%;
+  }
+
+  .trial__card--pos-tr {
+    left: 82%;
+    top: 27%;
+  }
+
+  .trial__card--pos-bl {
+    left: 18%;
+    top: 73%;
+  }
+
+  .trial__card--pos-br {
+    left: 82%;
+    top: 73%;
+  }
 }
 
 @media (max-width: 640px) {
+  .arena {
+    min-height: 360px;
+  }
+
   .trial__card {
-    width: 108px;
-    margin-left: -54px;
+    width: 104px;
   }
 
   .trial__title {
@@ -633,23 +652,23 @@ watch(
   }
 
   .trial__card--pos-tl {
-    left: 14%;
-    top: 14%;
+    left: 17%;
+    top: 26%;
   }
 
   .trial__card--pos-tr {
-    left: 86%;
-    top: 14%;
+    left: 83%;
+    top: 26%;
   }
 
   .trial__card--pos-bl {
-    left: 14%;
-    bottom: 14%;
+    left: 17%;
+    top: 74%;
   }
 
   .trial__card--pos-br {
-    left: 86%;
-    bottom: 14%;
+    left: 83%;
+    top: 74%;
   }
 }
 </style>

@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@vueuse/core": "^14.3.0",
+    "echarts": "^6.0.0",
+    "vue-echarts": "^8.0.1"
+  }
+}

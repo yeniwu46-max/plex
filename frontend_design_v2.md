@@ -322,9 +322,10 @@ active: 颜色更深 + 按下感
 
 ## 九、动画库选择
 
-使用 **Animate.css** 或 **AOS (Animate On Scroll)**
+- **页面 / 滚动入场类**：**Animate.css** 或 **AOS (Animate On Scroll)**（类名或指令驱动，适合大面积列表、首屏）。
+- **组件级位移、弹簧过渡、手势与交互动效**：在 Vue 工程内优先 **motion-v**（`import { motion } from 'motion-v'`，模板中用 `<motion.div :animate="{ x: 100 }" />` 等；勿在 SFC 里用 JSX 的 `{{ }}` 当对象绑定）。定案与安装说明见 [技术选型与约定.md](技术选型与约定.md) **第 1.2 节**。
 
-关键动画：
+关键动画（可与上述库组合）：
 - fadeIn: 页面元素进入
 - slideUp: 卡片滑上
 - pulse: 限时任务脉冲

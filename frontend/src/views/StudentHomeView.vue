@@ -27,8 +27,36 @@ const level = computed(() => profile.value?.level ?? auth.profile?.level ?? 1)
 const totalPoints = computed(() => profile.value?.total_points ?? auth.profile?.total_points ?? 0)
 const xpTarget = computed(() => Math.max(500, level.value * 500))
 const xpRatio = computed(() => Math.min(100, Math.round((totalPoints.value / xpTarget.value) * 100)))
-const completedQuests = computed(() => 1)
-const totalQuestReward = computed(() => DAILY_QUESTS.reduce((sum, quest) => sum + quest.rewardXp, 0))
+const daily = computed(() => overview.value?.daily)
+const completedQuests = computed(() => daily.value?.completed_count ?? 0)
+const totalQuests = computed(() => daily.value?.total_count ?? DAILY_QUESTS.length)
+const totalQuestReward = computed(
+  () => daily.value?.quests.reduce((sum, quest) => sum + quest.reward_xp, 0) ?? DAILY_QUESTS.reduce((sum, quest) => sum + quest.rewardXp, 0),
+)
+const dailyQuestItems = computed(() => {
+  if (!daily.value) {
+    return DAILY_QUESTS.map((quest) => ({
+      key: quest.key,
+      time: quest.time,
+      title: quest.title,
+      description: quest.description,
+      rewardXp: quest.rewardXp,
+      current: 0,
+      total: quest.total,
+      completed: false,
+    }))
+  }
+  return daily.value.quests.map((quest) => ({
+    key: quest.key,
+    time: quest.time,
+    title: quest.title,
+    description: quest.description ?? '',
+    rewardXp: quest.reward_xp,
+    current: quest.current,
+    total: quest.total,
+    completed: quest.completed,
+  }))
+})
 const classRankLabel = computed(() => {
   if (!profile.value?.class) return '暂未加入班级'
   return profile.value.class_rank ? `第 ${profile.value.class_rank} 名` : '暂无排名'
@@ -39,6 +67,7 @@ const statCards = computed(() => [
   { key: 'points', label: '累计 XP', value: String(totalPoints.value), icon: FlameOutline, tone: 'amber' },
   { key: 'streak', label: '连续探索', value: `${profile.value?.consecutive_days ?? 0} 天`, icon: CalendarOutline, tone: 'blue' },
   { key: 'rank', label: '班级排名', value: classRankLabel.value, icon: TrophyOutline, tone: 'purple' },
+  { key: 'quests', label: '今日委托', value: `${completedQuests.value}/${totalQuests.value}`, icon: CalendarOutline, tone: 'blue' },
 ])
 
 const quickLinks = [
@@ -124,13 +153,13 @@ onMounted(loadOverview)
               <RouterLink to="/daily">查看全部</RouterLink>
             </div>
             <div class="quest-mini-list">
-              <article v-for="quest in DAILY_QUESTS" :key="quest.key" class="quest-mini">
+              <article v-for="quest in dailyQuestItems" :key="quest.key" class="quest-mini">
                 <span class="quest-mini__time">{{ quest.time }}</span>
                 <div>
                   <strong>{{ quest.title }}</strong>
                   <p>{{ quest.description }}</p>
                 </div>
-                <em>+{{ quest.rewardXp }} XP</em>
+                <em>+{{ quest.rewardXp }} XP {{ quest.current }}/{{ quest.total }}</em>
               </article>
             </div>
           </div>

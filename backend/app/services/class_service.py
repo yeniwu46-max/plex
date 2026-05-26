@@ -105,8 +105,13 @@ class ClassService(BaseService):
         if user.class_id == class_id:
             raise Exception('学生已在该班级中')
         
+        if user.class_id:
+            old_class = Class.query.get(user.class_id)
+            if old_class:
+                old_class.student_count = max(0, (old_class.student_count or 0) - 1)
+
         user.class_id = class_id
-        class_obj.student_count += 1
+        class_obj.student_count = (class_obj.student_count or 0) + 1
         db.session.commit()
 
     @staticmethod

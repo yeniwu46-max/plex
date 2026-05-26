@@ -75,27 +75,6 @@ onMounted(loadProfile)
 
       <section class="cabin-map-wrap" aria-label="探索舱">
         <StarFieldMap />
-
-        <aside class="messenger-card" aria-label="驿站使者提示">
-          <div class="messenger-bot" aria-hidden="true">
-            <div class="messenger-bot__antenna" />
-            <div class="messenger-bot__head">
-              <span class="messenger-bot__face"></span>
-            </div>
-            <div class="messenger-bot__body">
-              <span>✦</span>
-            </div>
-            <div class="messenger-bot__cape" />
-          </div>
-          <div class="messenger-bubble">
-            <h2>驿站使者 · 小E <span aria-hidden="true">▮▮</span></h2>
-            <p>建议前往「边界条件补给站」<br />那里有你需要的学习资源和能量补给哦。</p>
-            <button type="button">
-              查看路线
-              <n-icon :component="ChevronForwardOutline" />
-            </button>
-          </div>
-        </aside>
       </section>
 
       <footer class="cabin-status" aria-label="探索者资源">
@@ -346,7 +325,7 @@ onMounted(loadProfile)
   align-items: center;
   gap: 1.4rem;
   min-height: 76px;
-  margin: 1.35rem 2.75rem 0;
+  margin: 1.35rem var(--plex-page-gutter-x) 0;
   padding: 0 1.55rem;
   border: 1px solid rgba(117, 207, 255, 0.13);
   border-radius: 1.3rem;
@@ -507,193 +486,7 @@ onMounted(loadProfile)
   z-index: 2;
   height: calc(100dvh - 282px);
   min-height: 440px;
-  margin: 0 2.75rem;
-}
-
-.messenger-card {
-  position: absolute;
-  right: 0.2rem;
-  bottom: -0.1rem;
-  width: 520px;
-  height: 290px;
-  pointer-events: none;
-}
-
-.messenger-bot {
-  position: absolute;
-  right: 2.6rem;
-  top: 0;
-  width: 190px;
-  height: 180px;
-  filter: drop-shadow(0 16px 34px rgba(37, 245, 238, 0.22));
-}
-
-.messenger-bot__antenna {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 38px;
-  height: 18px;
-  border: 4px solid #eef7fb;
-  border-bottom: 0;
-  border-radius: 18px 18px 0 0;
-  transform: translateX(-50%);
-}
-
-.messenger-bot__antenna::after {
-  content: '';
-  position: absolute;
-  right: -7px;
-  top: -6px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #2efff1;
-  box-shadow: 0 0 12px rgba(46, 255, 241, 0.9);
-}
-
-.messenger-bot__head {
-  position: absolute;
-  left: 30px;
-  top: 18px;
-  width: 124px;
-  height: 92px;
-  border: 8px solid #eaf3f7;
-  border-radius: 38px;
-  background: #101824;
-  box-shadow:
-    inset 0 0 0 3px rgba(77, 255, 238, 0.08),
-    0 0 0 7px rgba(141, 210, 230, 0.12);
-}
-
-.messenger-bot__head::before,
-.messenger-bot__head::after {
-  content: '';
-  position: absolute;
-  top: 32px;
-  width: 22px;
-  height: 12px;
-  border-radius: 999px;
-  background: #35fff1;
-  box-shadow: 0 0 12px rgba(53, 255, 241, 0.9);
-}
-
-.messenger-bot__head::before {
-  left: 26px;
-  transform: rotate(32deg);
-}
-
-.messenger-bot__head::after {
-  right: 26px;
-  transform: rotate(-32deg);
-}
-
-.messenger-bot__face {
-  display: none;
-}
-
-.messenger-bot__body {
-  position: absolute;
-  left: 55px;
-  top: 102px;
-  display: grid;
-  width: 76px;
-  height: 72px;
-  place-items: center;
-  border-radius: 28px 28px 22px 22px;
-  background: #edf6f8;
-  color: #2efff1;
-  font-size: 1.6rem;
-}
-
-.messenger-bot__body::before,
-.messenger-bot__body::after {
-  content: '';
-  position: absolute;
-  top: 26px;
-  width: 42px;
-  height: 15px;
-  border-radius: 999px;
-  background: #edf6f8;
-}
-
-.messenger-bot__body::before {
-  left: -32px;
-  transform: rotate(-32deg);
-}
-
-.messenger-bot__body::after {
-  right: -32px;
-  transform: rotate(32deg);
-}
-
-.messenger-bot__cape {
-  position: absolute;
-  right: 5px;
-  bottom: 4px;
-  width: 145px;
-  height: 78px;
-  border-radius: 70% 12% 70% 15%;
-  background: linear-gradient(135deg, rgba(37, 245, 238, 0.48), rgba(13, 64, 83, 0.12));
-  transform: rotate(-8deg);
-  z-index: -1;
-}
-
-.messenger-bubble {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 490px;
-  min-height: 168px;
-  padding: 1.5rem 1.55rem 1.35rem;
-  border: 1px solid rgba(39, 255, 238, 0.48);
-  border-radius: 1.25rem;
-  background: rgba(5, 22, 34, 0.82);
-  box-shadow:
-    0 0 34px rgba(39, 255, 238, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  pointer-events: auto;
-}
-
-.messenger-bubble h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  margin: 0;
-  color: #27ffee;
-  font-size: 1.08rem;
-}
-
-.messenger-bubble h2 span {
-  color: rgba(39, 255, 238, 0.65);
-  font-size: 0.9rem;
-  letter-spacing: 0.08em;
-}
-
-.messenger-bubble p {
-  margin: 1rem 0 0;
-  color: rgba(225, 238, 247, 0.75);
-  font-size: 0.95rem;
-  line-height: 1.6;
-}
-
-.messenger-bubble button {
-  position: absolute;
-  right: 1.55rem;
-  bottom: 1rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-height: 44px;
-  padding: 0 1.15rem;
-  border: 1px solid rgba(39, 255, 238, 0.36);
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(16, 240, 192, 0.42), rgba(6, 182, 212, 0.22));
-  color: #eaffff;
-  cursor: pointer;
-  font-size: 0.94rem;
-  font-weight: 720;
-  box-shadow: 0 0 20px rgba(39, 255, 238, 0.16);
+  margin: 0 var(--plex-page-gutter-x);
 }
 
 .cabin-status {
@@ -703,7 +496,7 @@ onMounted(loadProfile)
   grid-template-columns: 430px minmax(0, 1fr);
   gap: 1.6rem;
   min-height: 150px;
-  margin: 0 2.75rem 1.45rem;
+  margin: 0 var(--plex-page-gutter-x) var(--plex-page-gutter-bottom);
   padding: 1.25rem 1.6rem;
   border: 1px solid rgba(90, 208, 255, 0.13);
   border-radius: 1.2rem;
@@ -880,12 +673,6 @@ onMounted(loadProfile)
     min-height: 620px;
   }
 
-  .messenger-card {
-    right: 0;
-    transform: scale(0.86);
-    transform-origin: right bottom;
-  }
-
   .cabin-status {
     grid-template-columns: 1fr;
   }
@@ -938,34 +725,11 @@ onMounted(loadProfile)
   .cabin-topbar,
   .cabin-map-wrap,
   .cabin-status {
-    margin-inline: 1rem;
+    margin-inline: var(--plex-page-gutter-x);
   }
 
   .cabin-map-wrap {
     min-height: 900px;
-  }
-
-  .messenger-card {
-    position: relative;
-    right: auto;
-    bottom: auto;
-    width: 100%;
-    height: 230px;
-    margin-top: 1rem;
-    transform: none;
-  }
-
-  .messenger-bot {
-    right: 0;
-    transform: scale(0.78);
-    transform-origin: right top;
-  }
-
-  .messenger-bubble {
-    left: 0;
-    right: auto;
-    bottom: 0;
-    width: min(100%, 430px);
   }
 
   .cabin-status {

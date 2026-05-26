@@ -64,6 +64,7 @@ class TestingConfig(Config):
     特点: 使用内存SQLite数据库，快速测试
     """
     TESTING = True
+    SQLALCHEMY_ENGINE_OPTIONS = {}
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # 内存数据库
     SQLALCHEMY_ECHO = True
 

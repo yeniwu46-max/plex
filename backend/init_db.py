@@ -1,6 +1,7 @@
 """数据库初始化脚本"""
 from app import create_app, db
-from app.models import User, Role, Permission, RolePermission, Class, Achievement, UserAchievement, PointsLog, RankingCache
+from app.models import User, Role, Permission, RolePermission, Class, Achievement, UserAchievement, PointsLog, RankingCache, DailyQuest
+from app.services.daily_quest import DEFAULT_DAILY_QUESTS
 
 def init_db():
     """初始化数据库"""
@@ -127,6 +128,7 @@ def init_db():
         ]
         
         db.session.add_all(achievements)
+        db.session.add_all([DailyQuest(**quest) for quest in DEFAULT_DAILY_QUESTS])
         db.session.commit()
         
         print("数据库初始化完成！")

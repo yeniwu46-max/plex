@@ -80,11 +80,46 @@ export interface ClassRankingResult {
   rankings: RankingRecord[]
 }
 
+export interface DailyQuestRecord {
+  id: number
+  user_id?: number
+  quest_id?: number
+  quest_date?: string | null
+  key: string
+  title: string
+  description: string | null
+  period: string
+  time: string
+  total: number
+  reward_xp: number
+  bonus_eligible: boolean
+  sort_order?: number
+  current: number
+  completed: boolean
+  completed_at: string | null
+  reward_claimed: boolean
+  reward_claimed_at: string | null
+}
+
+export interface DailyQuestTodayResult {
+  date: string
+  quests: DailyQuestRecord[]
+  completed_count: number
+  total_count: number
+  total_required: number
+  total_current: number
+  earned_xp: number
+  bonus_xp: number
+  bonus_claimed: boolean
+  all_completed: boolean
+}
+
 export interface StudentOverview {
   profile: CurrentStudent
   achievements: UserAchievementsResult | null
   pointsLog: PointsLogResult | null
   ranking: ClassRankingResult | null
+  daily: DailyQuestTodayResult | null
 }
 
 function resolvedOrNull<T>(result: PromiseSettledResult<T>) {
@@ -125,12 +160,39 @@ export async function fetchClassRanking(classId: number) {
   return data.data
 }
 
+export async function fetchTodayDailyQuests() {
+  const { data } = await http.get<ApiEnvelope<DailyQuestTodayResult>>('/v1/daily-quests/today')
+  if (data.code !== 0) {
+    throw new Error(data.message || 'Failed to load daily quests')
+  }
+  return data.data
+}
+
+export async function advanceDailyQuest(key: string) {
+  const { data } = await http.post<ApiEnvelope<DailyQuestTodayResult>>(
+    `/v1/daily-quests/${encodeURIComponent(key)}/progress`,
+  )
+  if (data.code !== 0) {
+    throw new Error(data.message || 'Failed to update daily quest')
+  }
+  return data.data
+}
+
+export async function claimDailyQuestBonus() {
+  const { data } = await http.post<ApiEnvelope<DailyQuestTodayResult>>('/v1/daily-quests/claim-bonus')
+  if (data.code !== 0) {
+    throw new Error(data.message || 'Failed to claim daily quest bonus')
+  }
+  return data.data
+}
+
 export async function fetchStudentOverview(): Promise<StudentOverview> {
   const profile = await fetchCurrentStudent()
-  const [achievements, pointsLog, ranking] = await Promise.allSettled([
+  const [achievements, pointsLog, ranking, daily] = await Promise.allSettled([
     fetchUserAchievements(profile.id),
     fetchPointsLog(profile.id),
     profile.class?.id ? fetchClassRanking(profile.class.id) : Promise.resolve(null),
+    fetchTodayDailyQuests(),
   ])
 
   return {
@@ -138,5 +200,6 @@ export async function fetchStudentOverview(): Promise<StudentOverview> {
     achievements: resolvedOrNull(achievements),
     pointsLog: resolvedOrNull(pointsLog),
     ranking: resolvedOrNull(ranking),
+    daily: resolvedOrNull(daily),
   }
 }

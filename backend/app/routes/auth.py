@@ -17,7 +17,7 @@ def register():
         required_fields = ['username', 'email', 'password', 'real_name']
         for field in required_fields:
             if not data.get(field):
-                return error_response(40001, f'缺少必需字段: {field}')
+                return error_response(f'缺少必需字段: {field}', 40001)
         
         result = AuthService.register(
             username=data['username'],
@@ -27,10 +27,10 @@ def register():
             role=data.get('role', 'student')
         )
         
-        return success_response(result, '注册成功'), 201
-    
+        return success_response(result, '注册成功', 0, 201)
+
     except Exception as e:
-        return error_response(40001, str(e))
+        return error_response(str(e), 40001)
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -40,7 +40,7 @@ def login():
         data = request.get_json()
         
         if not data.get('username') or not data.get('password'):
-            return error_response(40001, '用户名或密码不能为空')
+            return error_response('用户名或密码不能为空', 40001)
         
         result = AuthService.login(
             username=data['username'],
@@ -50,7 +50,7 @@ def login():
         return success_response(result, '登录成功')
     
     except Exception as e:
-        return error_response(40001, str(e))
+        return error_response(str(e), 40001)
 
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -79,4 +79,4 @@ def refresh():
         }, '刷新成功')
     
     except Exception as e:
-        return error_response(50001, str(e))
+        return error_response(str(e), 50001)

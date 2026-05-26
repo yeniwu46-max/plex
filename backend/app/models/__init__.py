@@ -10,6 +10,7 @@ from .achievement import Achievement
 from .user_achievement import UserAchievement
 from .points_log import PointsLog
 from .ranking_cache import RankingCache
+from .daily_quest import DailyQuest, UserDailyQuest
 
 __all__ = [
     'db',
@@ -23,4 +24,6 @@ __all__ = [
     'UserAchievement',
     'PointsLog',
     'RankingCache',
+    'DailyQuest',
+    'UserDailyQuest',
 ]

@@ -18,6 +18,8 @@
   --plex-node-blue: #06b6d4;
   --plex-node-orange: #f59e0b;
   --plex-node-gray: #64748b;
+  --plex-page-gutter-x: 2.75rem;
+  --plex-page-gutter-bottom: 1.45rem;
 }
 
 html,
@@ -57,4 +59,11 @@ body {
   background:
     linear-gradient(180deg, rgba(2, 8, 14, 0.24), rgba(1, 7, 13, 0.42)),
     var(--plex-space-bg-image) center top / cover no-repeat !important;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --plex-page-gutter-x: 1rem;
+    --plex-page-gutter-bottom: 1rem;
+  }
 }

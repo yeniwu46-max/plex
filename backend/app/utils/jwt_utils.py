@@ -18,12 +18,12 @@ def create_tokens(identity, additional_claims=None):
         additional_claims = {}
 
     access_token = create_access_token(
-        identity=identity,
+        identity=str(identity),
         additional_claims=additional_claims
     )
 
     refresh_token = create_refresh_token(
-        identity=identity,
+        identity=str(identity),
         additional_claims=additional_claims
     )
 

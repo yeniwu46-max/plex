@@ -4,6 +4,7 @@ from .user import UserService
 from .class_service import ClassService
 from .permission import PermissionService
 from .achievement import AchievementService
+from .daily_quest import DailyQuestService
 
 __all__ = [
     'AuthService',
@@ -11,4 +12,5 @@ __all__ = [
     'ClassService',
     'PermissionService',
     'AchievementService',
+    'DailyQuestService',
 ]

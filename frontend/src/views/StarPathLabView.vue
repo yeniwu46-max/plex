@@ -2,15 +2,12 @@
 import { ref } from 'vue'
 import { NIcon } from 'naive-ui'
 import {
-  AddOutline,
   ChevronDownOutline,
   ChevronForwardOutline,
   CodeSlashOutline,
   LockClosedOutline,
   MapOutline,
-  RemoveOutline,
   ServerOutline,
-  SettingsOutline,
 } from '@vicons/ionicons5'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
@@ -93,6 +90,7 @@ const domains: Domain[] = [
             </div>
 
             <div class="path-canvas" aria-label="星轨节点图">
+              <div class="path-track">
               <div class="path-orbits" aria-hidden="true">
                 <span class="orbit orbit--outer" />
                 <span class="orbit orbit--middle" />
@@ -108,14 +106,14 @@ const domains: Domain[] = [
                     </feMerge>
                   </filter>
                 </defs>
+                <!-- 路径起止点在节点圆环边缘，控制点绕开圆心，避免线条穿过圆形组件 -->
                 <g fill="none" filter="url(#trackGlow)">
-                  <path class="path-line path-line--done" d="M36 58 C45 53 48 48 56 46" />
-                  <path class="path-line path-line--active" d="M56 46 C68 44 72 34 82 32" />
-                  <path class="path-line path-line--active" d="M56 46 C50 55 48 64 45 76" />
-                  <path class="path-line path-line--active" d="M45 76 C60 83 73 72 82 63" />
-                  <path class="path-line path-line--locked" d="M28 69 C34 62 33 58 36 58" />
-                  <path class="path-line path-line--locked" d="M43 32 C49 27 55 25 61 23" />
-                  <path class="path-line path-line--locked" d="M43 32 C48 38 53 42 56 46" />
+                  <path class="path-line path-line--locked" d="M8.5 75.2 C9.5 66 12 56 17.5 48.5" />
+                  <path class="path-line path-line--done" d="M19.5 46.2 C28 41 38 38 50.5 35.5" />
+                  <path class="path-line path-line--active" d="M56.2 34.5 C66 27 78 18 89.5 12.2" />
+                  <path class="path-line path-line--active" d="M50.2 40.2 C42 54 34 70 30.2 82.8" />
+                  <path class="path-line path-line--active" d="M32.2 84.4 C52 78 72 68 90.8 58.2" />
+                  <path class="path-line path-line--locked" d="M7.2 12.5 C16 17 32 26 49.2 35.2" />
                 </g>
               </svg>
 
@@ -129,7 +127,7 @@ const domains: Domain[] = [
                 <em>◆ ◆ ◆ ◆</em>
               </div>
 
-              <div class="track-node track-node--done track-node--n2">
+              <div class="track-node track-node--done track-node--n2 track-node--anchor-left">
                 <span class="track-node__orb">
                   <n-icon :component="CodeSlashOutline" />
                 </span>
@@ -138,7 +136,7 @@ const domains: Domain[] = [
                 <em>◆ ◆ ◆ ◆</em>
               </div>
 
-              <div class="track-node track-node--done track-node--n5">
+              <div class="track-node track-node--done track-node--n5 track-node--anchor-right">
                 <span class="track-node__orb">
                   <n-icon :component="ServerOutline" />
                 </span>
@@ -147,7 +145,7 @@ const domains: Domain[] = [
                 <em>◆ ◆ ◆ ◇</em>
               </div>
 
-              <div class="track-node track-node--locked track-node--n3">
+              <div class="track-node track-node--locked track-node--n3 track-node--anchor-left">
                 <span class="track-node__orb">
                   <n-icon :component="LockClosedOutline" />
                 </span>
@@ -156,16 +154,16 @@ const domains: Domain[] = [
                 <em>◆ ◆ ◆ ◇</em>
               </div>
 
-              <div class="track-node track-node--locked track-node--n4">
+              <div class="track-node track-node--locked track-node--n4 track-node--anchor-right">
                 <span class="track-node__orb">
                   <n-icon :component="LockClosedOutline" />
                 </span>
                 <strong>04</strong>
-                <p>动态规划基础</p>
+                <p>动态规划<br />基础</p>
                 <em>◆ ◆ ◇ ◇</em>
               </div>
 
-              <div class="track-node track-node--locked track-node--n6">
+              <div class="track-node track-node--locked track-node--n6 track-node--anchor-left">
                 <span class="track-node__orb">
                   <n-icon :component="LockClosedOutline" />
                 </span>
@@ -174,28 +172,14 @@ const domains: Domain[] = [
                 <em>◇ ◇ ◇ ◇</em>
               </div>
 
-              <div class="track-node track-node--locked track-node--n7">
+              <div class="track-node track-node--locked track-node--n7 track-node--anchor-left">
                 <span class="track-node__orb">
                   <n-icon :component="LockClosedOutline" />
                 </span>
                 <strong>07</strong>
-                <p>高级数据结构</p>
+                <p>算法综合<br />应用</p>
                 <em>◇ ◇ ◇ ◇</em>
               </div>
-
-              <div class="track-node track-node--locked track-node--n8">
-                <span class="track-node__orb">
-                  <n-icon :component="LockClosedOutline" />
-                </span>
-                <strong>08</strong>
-                <p>算法综合应用</p>
-                <em>◇ ◇ ◇ ◇</em>
-              </div>
-
-              <div class="zoom-tools" aria-label="地图控制">
-                <button type="button" aria-label="放大"><n-icon :component="AddOutline" /></button>
-                <button type="button" aria-label="缩小"><n-icon :component="RemoveOutline" /></button>
-                <button type="button" aria-label="定位"><n-icon :component="SettingsOutline" /></button>
               </div>
 
               <div class="legend">
@@ -229,10 +213,11 @@ const domains: Domain[] = [
         </div>
 
         <aside class="detail-panel" aria-label="当前节点详情">
-          <div class="detail-panel__head">
-            <h2>01 算法思维入门</h2>
-            <span>当前所在</span>
-          </div>
+          <div class="detail-panel__body">
+            <div class="detail-panel__head">
+              <h2>01 算法思维入门</h2>
+              <span>当前所在</span>
+            </div>
 
           <div class="tags">
             <strong>核心知识</strong>
@@ -267,12 +252,13 @@ const domains: Domain[] = [
             <a href="#" @click.prevent>前往驿站使者 <n-icon :component="ChevronForwardOutline" /></a>
           </div>
 
-          <div class="rewards">
-            <strong>星点奖励</strong>
-            <div class="reward-row">
-              <span>XP <em>+80</em></span>
-              <span>结晶 <em>+1</em></span>
-              <span>星尘 <em>+10</em></span>
+            <div class="rewards">
+              <strong>星点奖励</strong>
+              <div class="reward-row">
+                <span>XP <em>+80</em></span>
+                <span>结晶 <em>+1</em></span>
+                <span>星尘 <em>+10</em></span>
+              </div>
             </div>
           </div>
 
@@ -390,8 +376,11 @@ const domains: Domain[] = [
 
 .starpath-main {
   position: relative;
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at 54% 48%, rgba(16, 240, 192, 0.09), transparent 34%),
@@ -566,7 +555,7 @@ const domains: Domain[] = [
   display: flex;
   align-items: center;
   gap: 2rem;
-  padding: 0.6rem 2.25rem 1.05rem;
+  padding: 0.6rem var(--plex-page-gutter-x) 1.05rem;
   border-bottom: 1px solid rgba(126, 188, 220, 0.08);
 }
 
@@ -636,18 +625,22 @@ const domains: Domain[] = [
   z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
   gap: 1rem;
-  height: calc(100dvh - 178px);
+  flex: 1;
   min-height: 0;
-  padding: 0 2.25rem 1.25rem;
+  overflow-y: auto;
+  padding: 0 var(--plex-page-gutter-x) var(--plex-page-gutter-bottom);
 }
 
 .content-left {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 172px;
-  gap: 1rem;
+  grid-template-rows: minmax(360px, 1fr) auto;
+  gap: 0.85rem;
   min-width: 0;
   min-height: 0;
+  align-content: start;
 }
 
 .path-board,
@@ -750,44 +743,54 @@ const domains: Domain[] = [
 .path-canvas {
   position: relative;
   min-width: 0;
-  min-height: 0;
+  min-height: 460px;
+  height: 100%;
   overflow: hidden;
+}
+
+.path-track {
+  position: absolute;
+  inset: 1.75rem 0.35rem 3rem 0.15rem;
+  transform: none;
+  transform-origin: center center;
 }
 
 .path-orbits {
   position: absolute;
+  z-index: 0;
   inset: 0;
   pointer-events: none;
 }
 
 .orbit {
   position: absolute;
-  left: 52%;
-  top: 52%;
+  left: 50%;
+  top: 44%;
   border: 1px solid rgba(40, 238, 219, 0.12);
   border-radius: 50%;
   transform: translate(-50%, -50%) rotate(-14deg);
 }
 
 .orbit--outer {
-  width: 780px;
-  height: 420px;
+  width: min(100%, 920px);
+  height: 460px;
   border-color: rgba(143, 190, 221, 0.08);
 }
 
 .orbit--middle {
-  width: 600px;
-  height: 320px;
+  width: min(82%, 700px);
+  height: 340px;
   border-style: dashed;
 }
 
 .orbit--inner {
-  width: 385px;
-  height: 205px;
+  width: min(56%, 440px);
+  height: 220px;
 }
 
 .path-lines {
   position: absolute;
+  z-index: 0;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -813,73 +816,101 @@ const domains: Domain[] = [
 
 .track-node {
   --node-color: #26ffee;
+  --node-orb: 52px;
   position: absolute;
   display: grid;
-  width: 142px;
-  justify-items: start;
+  width: max-content;
+  max-width: 92px;
+  justify-items: center;
+  align-items: center;
+  text-align: center;
   color: #ffffff;
+  transform: translate(-50%, -50%);
 }
 
 .track-node__orb {
+  position: relative;
+  z-index: 1;
   display: grid;
-  width: 66px;
+  width: var(--node-orb);
   aspect-ratio: 1;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--node-color) 62%, transparent);
   border-radius: 50%;
   background:
     radial-gradient(circle, color-mix(in srgb, var(--node-color) 28%, transparent), transparent 66%),
-    rgba(5, 17, 29, 0.9);
+    rgba(5, 17, 29, 0.96);
   color: #eaffff;
   box-shadow:
-    0 0 0 8px color-mix(in srgb, var(--node-color) 9%, transparent),
-    0 0 28px color-mix(in srgb, var(--node-color) 28%, transparent);
+    0 0 0 5px color-mix(in srgb, var(--node-color) 9%, transparent),
+    0 0 20px color-mix(in srgb, var(--node-color) 24%, transparent);
 }
 
 .track-node__orb .n-icon {
-  font-size: 1.75rem;
+  font-size: 1.35rem;
 }
 
 .track-node strong {
-  margin-top: 0.55rem;
+  margin-top: 0.4rem;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.92rem;
+  font-size: 0.82rem;
 }
 
 .track-node p {
-  margin: 0.1rem 0 0;
+  margin: 0.06rem 0 0;
   color: rgba(240, 247, 255, 0.88);
-  font-size: 0.9rem;
-  line-height: 1.35;
+  font-size: 0.78rem;
+  line-height: 1.3;
 }
 
 .track-node em {
-  margin-top: 0.25rem;
+  margin-top: 0.18rem;
   color: #23ffde;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-style: normal;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
+}
+
+.track-node--anchor-left {
+  max-width: 88px;
+  transform: translate(0, -50%);
+  justify-items: start;
+  text-align: left;
+}
+
+.track-node--anchor-right {
+  max-width: 88px;
+  transform: translate(-100%, -50%);
+  justify-items: end;
+  text-align: right;
 }
 
 .track-node--current {
   --node-color: #23ffde;
-  left: 47%;
-  top: 37%;
-  align-items: center;
-  justify-items: center;
-  text-align: center;
-  transform: translate(-50%, -50%);
+  --node-orb: 68px;
+  left: 52%;
+  top: 36%;
+  z-index: 3;
+  max-width: 96px;
 }
 
 .track-node--current .track-node__orb {
-  width: 96px;
   box-shadow:
-    0 0 0 12px rgba(35, 255, 222, 0.12),
-    0 0 40px rgba(35, 255, 222, 0.52);
+    0 0 0 8px rgba(35, 255, 222, 0.12),
+    0 0 32px rgba(35, 255, 222, 0.48);
+}
+
+.track-node--current .track-node__orb .n-icon {
+  font-size: 1.55rem;
 }
 
 .track-node__badge {
-  margin-bottom: 0.45rem;
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  margin-bottom: 0;
   padding: 0.25rem 0.5rem;
   border-radius: 0.35rem;
   background: rgba(16, 240, 192, 0.16);
@@ -904,75 +935,56 @@ const domains: Domain[] = [
   color: rgba(230, 240, 247, 0.58);
 }
 
+/* 圆心对齐 path-lines；左侧三节点阶梯错落，避免挤成一条竖线 */
 .track-node--n2 {
-  left: 21%;
-  top: 53%;
+  left: 19%;
+  top: 47%;
+  z-index: 2;
 }
 
 .track-node--n3 {
-  left: 39%;
-  top: 75%;
+  left: 30%;
+  top: 86%;
+  z-index: 1;
 }
 
 .track-node--n4 {
-  left: 75%;
-  top: 61%;
+  left: 92%;
+  top: 60%;
+  z-index: 1;
 }
 
 .track-node--n5 {
-  left: 78%;
-  top: 26%;
+  left: 92%;
+  top: 11%;
+  z-index: 2;
 }
 
 .track-node--n6 {
-  left: 36%;
-  top: 18%;
+  left: 5%;
+  top: 10%;
+  z-index: 1;
 }
 
 .track-node--n7 {
-  left: 58%;
-  top: 8%;
-}
-
-.track-node--n8 {
-  left: 5%;
-  top: 63%;
-}
-
-.zoom-tools {
-  position: absolute;
-  left: 1.75rem;
-  bottom: 1.5rem;
-  display: grid;
-  overflow: hidden;
-  border: 1px solid rgba(130, 212, 255, 0.12);
-  border-radius: 0.45rem;
-}
-
-.zoom-tools button {
-  display: grid;
-  width: 44px;
-  height: 42px;
-  place-items: center;
-  border: 0;
-  border-bottom: 1px solid rgba(130, 212, 255, 0.12);
-  background: rgba(6, 18, 31, 0.72);
-  color: #e8f9ff;
-  cursor: pointer;
-}
-
-.zoom-tools button:last-child {
-  border-bottom: 0;
+  left: 3%;
+  top: 77%;
+  z-index: 1;
 }
 
 .legend {
   position: absolute;
+  z-index: 5;
   right: 1.45rem;
   bottom: 1.25rem;
   display: flex;
   gap: 1.3rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  background: rgba(4, 14, 24, 0.72);
   color: rgba(224, 237, 247, 0.68);
   font-size: 0.78rem;
+  pointer-events: none;
 }
 
 .legend span {
@@ -1001,8 +1013,9 @@ const domains: Domain[] = [
 }
 
 .domain-overview {
-  padding: 0.95rem 1.2rem;
-  overflow: hidden;
+  flex-shrink: 0;
+  padding: 0.85rem 1.2rem 1rem;
+  overflow: visible;
 }
 
 .domain-overview h2 {
@@ -1023,8 +1036,8 @@ const domains: Domain[] = [
 
 .overview-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(5, minmax(108px, 1fr));
+  gap: 0.75rem;
 }
 
 .overview-card {
@@ -1032,7 +1045,7 @@ const domains: Domain[] = [
   display: grid;
   grid-template-columns: 1fr 82px;
   align-items: center;
-  min-height: 112px;
+  min-height: 100px;
   overflow: hidden;
   border: 1px solid rgba(130, 212, 255, 0.11);
   border-radius: 0.55rem;
@@ -1091,8 +1104,18 @@ const domains: Domain[] = [
 
 .detail-panel {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
-  padding: 1.65rem 1.55rem 1.25rem;
+  padding: 1.65rem 1.55rem 1rem;
+}
+
+.detail-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .detail-panel__head {
@@ -1148,8 +1171,8 @@ const domains: Domain[] = [
 
 .panel-bot {
   position: relative;
-  height: 190px;
-  margin: 0.7rem 0 0;
+  height: 165px;
+  margin: 0.55rem 0 0;
 }
 
 .panel-bot__head {
@@ -1250,8 +1273,8 @@ const domains: Domain[] = [
 }
 
 .advice {
-  margin-top: 1.45rem;
-  padding-top: 1.35rem;
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
   border-top: 1px solid rgba(224, 237, 247, 0.08);
 }
 
@@ -1274,8 +1297,8 @@ const domains: Domain[] = [
 }
 
 .rewards {
-  margin-top: 1.2rem;
-  padding-top: 1.1rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
   border-top: 1px solid rgba(224, 237, 247, 0.08);
 }
 
@@ -1299,9 +1322,10 @@ const domains: Domain[] = [
 }
 
 .continue-btn {
+  flex-shrink: 0;
   width: 100%;
   min-height: 48px;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
   border: 0;
   border-radius: 0.38rem;
   background: linear-gradient(90deg, rgba(16, 240, 192, 0.8), rgba(18, 150, 130, 0.88));
@@ -1322,12 +1346,10 @@ const domains: Domain[] = [
 
   .starpath-content {
     grid-template-columns: 1fr;
-    height: auto;
-    overflow-y: auto;
   }
 
   .content-left {
-    grid-template-rows: 620px auto;
+    grid-template-rows: minmax(480px, 1fr) auto;
   }
 
   .detail-panel {
@@ -1367,7 +1389,7 @@ const domains: Domain[] = [
   .starpath-top,
   .starpath-tabs,
   .starpath-content {
-    padding-inline: 1rem;
+    padding-inline: var(--plex-page-gutter-x);
   }
 
   .starpath-tabs {
@@ -1389,11 +1411,11 @@ const domains: Domain[] = [
   }
 
   .content-left {
-    grid-template-rows: 880px auto;
+    grid-template-rows: minmax(520px, 1fr) auto;
   }
 
   .path-canvas {
-    min-height: 650px;
+    min-height: 520px;
   }
 
   .overview-list {

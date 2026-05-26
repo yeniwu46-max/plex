@@ -180,6 +180,35 @@ python seed_li_class_students.py
 
 账号：`explorer01` … `explorer10`，密码均为 `student123`。可重复执行，已存在用户名会跳过。
 
+### 激励与排名（可选）
+
+扩展成就目录并刷新班级周排名缓存：
+
+```bash
+cd backend
+python seed_incentive_achievements.py
+```
+
+### 试炼演示数据（可选）
+
+在已有李老师班级与学生后，插入进行中/已结束试炼及参与记录：
+
+```bash
+cd backend
+python seed_trials_demo.py
+```
+
+教师 `teacher001` 打开 `/trial-arena` 可见列表与统计；学生 `explorer01` 打开同一路由可参与并完成试炼。
+
+### API 测试
+
+```bash
+cd backend
+python -m unittest tests.test_trials tests.test_admin_settings tests.test_teacher_student_trials tests.test_student_progress -v
+```
+
+本地若已有旧库，需重启后端或执行 `db.create_all()` 以创建 `system_settings` 表。
+
 ---
 
 ## ⚙️ 环境配置

@@ -1,0 +1,293 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { NButton, NSwitch, useMessage } from 'naive-ui'
+import DashboardShell from '../components/layout/DashboardShell.vue'
+import { useAuthStore } from '../stores/auth'
+import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
+
+const router = useRouter()
+const message = useMessage()
+const auth = useAuthStore()
+const overview = ref<StudentOverview | null>(null)
+const loading = ref(true)
+
+const profile = computed(() => overview.value?.profile)
+const displayName = computed(
+  () => profile.value?.real_name || profile.value?.username || auth.profile?.real_name || 'Explorer',
+)
+const classLabel = computed(() => {
+  const cls = profile.value?.class
+  if (!cls) return '暂未加入班级'
+  return cls.name || `班级 #${cls.id}`
+})
+
+const notifyTrial = ref(true)
+const notifyQuest = ref(true)
+const notifyRank = ref(false)
+const focusMode = ref(false)
+
+async function loadProfile() {
+  loading.value = true
+  try {
+    overview.value = await fetchStudentOverview()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '资料加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+function savePreferences() {
+  message.success('个人偏好已保存（本地演示）')
+}
+
+async function logout() {
+  await auth.logout()
+  void router.replace('/login')
+}
+
+onMounted(() => {
+  void loadProfile()
+})
+</script>
+
+<template>
+  <DashboardShell
+    active-nav="control"
+    page-title="控制中枢"
+    page-subtitle="管理你的探索偏好与账号信息"
+    search-placeholder="搜索设置项…"
+    hide-search
+  >
+    <section class="student-control" aria-label="学生控制中枢">
+      <div class="student-control__hero">
+        <div>
+          <p class="student-control__eyebrow">EXPLORER CONTROL</p>
+          <h2>{{ displayName }}</h2>
+          <p class="student-control__meta">
+            <span>@{{ profile?.username || auth.profile?.username }}</span>
+            <span>{{ classLabel }}</span>
+            <span>Lv.{{ profile?.level ?? auth.profile?.level ?? 1 }}</span>
+          </p>
+        </div>
+        <n-button quaternary class="logout-btn" @click="logout">退出登录</n-button>
+      </div>
+
+      <div class="student-control__grid">
+        <article class="panel">
+          <header>
+            <h3>账号概览</h3>
+            <p>学生端个人资料（只读）</p>
+          </header>
+          <dl class="info-list">
+            <div>
+              <dt>邮箱</dt>
+              <dd>{{ profile?.email || auth.profile?.email || '—' }}</dd>
+            </div>
+            <div>
+              <dt>累计 XP</dt>
+              <dd>{{ profile?.total_points ?? auth.profile?.total_points ?? 0 }}</dd>
+            </div>
+            <div>
+              <dt>连续探索</dt>
+              <dd>{{ profile?.consecutive_days ?? 0 }} 天</dd>
+            </div>
+            <div>
+              <dt>班级排名</dt>
+              <dd>{{ profile?.class_rank ? `第 ${profile.class_rank} 名` : '暂无' }}</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="panel">
+          <header>
+            <h3>探索偏好</h3>
+            <p>通知与专注模式（本地保存演示）</p>
+          </header>
+          <ul class="pref-list">
+            <li>
+              <div>
+                <strong>试炼提醒</strong>
+                <span>班级试炼开放或即将结束时通知</span>
+              </div>
+              <n-switch v-model:value="notifyTrial" />
+            </li>
+            <li>
+              <div>
+                <strong>委托提醒</strong>
+                <span>今日委托进度与奖励可领取时提醒</span>
+              </div>
+              <n-switch v-model:value="notifyQuest" />
+            </li>
+            <li>
+              <div>
+                <strong>排名变动</strong>
+                <span>班级周榜名次变化时推送</span>
+              </div>
+              <n-switch v-model:value="notifyRank" />
+            </li>
+            <li>
+              <div>
+                <strong>专注模式</strong>
+                <span>隐藏非必要动效，保持探索舱简洁</span>
+              </div>
+              <n-switch v-model:value="focusMode" />
+            </li>
+          </ul>
+          <n-button type="primary" class="save-btn" :loading="loading" @click="savePreferences">保存偏好</n-button>
+        </article>
+      </div>
+
+      <p class="student-control__hint">
+        班级规则、AI 策略与系统配置由教师在「教师端 · 控制中枢」管理；此处仅包含你的个人 Explorer 设置。
+      </p>
+    </section>
+  </DashboardShell>
+</template>
+
+<style scoped>
+.student-control {
+  padding: 0 var(--plex-page-gutter-x) 2.5rem;
+}
+
+.student-control__hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.35rem 1.5rem;
+  border: 1px solid rgba(37, 245, 238, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(37, 245, 238, 0.12), transparent 42%),
+    linear-gradient(135deg, rgba(8, 32, 48, 0.92), rgba(4, 14, 24, 0.96));
+}
+
+.student-control__eyebrow {
+  margin: 0 0 0.35rem;
+  color: #52fff1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.student-control__hero h2 {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 760;
+  color: #f4fbff;
+}
+
+.student-control__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  margin: 0.55rem 0 0;
+  color: rgba(214, 230, 244, 0.72);
+  font-size: 0.9rem;
+}
+
+.logout-btn {
+  color: rgba(255, 196, 160, 0.92);
+}
+
+.student-control__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.panel {
+  padding: 1.25rem 1.35rem 1.4rem;
+  border: 1px solid rgba(110, 228, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(3, 16, 28, 0.78);
+}
+
+.panel header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #eef8ff;
+}
+
+.panel header p {
+  margin: 0.35rem 0 1rem;
+  color: rgba(205, 220, 235, 0.62);
+  font-size: 0.85rem;
+}
+
+.info-list {
+  margin: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.info-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.info-list dt {
+  margin: 0;
+  color: rgba(198, 214, 230, 0.68);
+  font-size: 0.86rem;
+}
+
+.info-list dd {
+  margin: 0;
+  color: #e8f7ff;
+  font-weight: 650;
+}
+
+.pref-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.95rem;
+}
+
+.pref-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pref-list strong {
+  display: block;
+  color: #edf7ff;
+  font-size: 0.95rem;
+}
+
+.pref-list span {
+  display: block;
+  margin-top: 0.2rem;
+  color: rgba(198, 214, 230, 0.62);
+  font-size: 0.8rem;
+}
+
+.save-btn {
+  margin-top: 1rem;
+}
+
+.student-control__hint {
+  margin: 1.25rem 0 0;
+  color: rgba(190, 208, 224, 0.58);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 900px) {
+  .student-control__grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

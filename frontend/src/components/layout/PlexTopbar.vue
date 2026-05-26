@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { NAvatar, NBadge, NIcon, NInput } from 'naive-ui'
-import { ChevronDownOutline, NotificationsOutline, SearchOutline } from '@vicons/ionicons5'
+import { computed, h } from 'vue'
+import { useRouter } from 'vue-router'
+import { NAvatar, NBadge, NDropdown, NIcon, NInput, type DropdownOption } from 'naive-ui'
+import { ChevronDownOutline, ExitOutline, NotificationsOutline, SearchOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../../stores/auth'
 
 withDefaults(
@@ -22,8 +23,22 @@ withDefaults(
 const search = defineModel<string>('search', { default: '' })
 
 const auth = useAuthStore()
+const router = useRouter()
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || '张子轩')
 const userLevel = computed(() => auth.profile?.level ?? 18)
+const userOptions: DropdownOption[] = [
+  {
+    label: '退出登录',
+    key: 'logout',
+    icon: () => h(ExitOutline),
+  },
+]
+
+async function handleUserSelect(key: string) {
+  if (key !== 'logout') return
+  await auth.logout()
+  await router.replace({ name: 'login' })
+}
 </script>
 
 <template>
@@ -44,25 +59,27 @@ const userLevel = computed(() => auth.profile?.level ?? 18)
       </n-input>
     </div>
 
-    <div v-if="!hideSearch" class="plex-topbar__userbar">
+    <div class="plex-topbar__userbar">
       <n-badge dot type="success" :offset="[-1, 5]">
         <button type="button" class="plex-topbar__icon-btn" aria-label="通知">
           <n-icon :component="NotificationsOutline" :size="25" />
         </button>
       </n-badge>
       <span class="plex-topbar__divider" />
-      <button type="button" class="plex-topbar__user">
-        <n-avatar round :size="52" class="plex-topbar__avatar">
-          <span class="plex-avatar-bot" aria-hidden="true">
-            <span class="plex-avatar-bot__head" />
+      <n-dropdown trigger="click" :options="userOptions" @select="handleUserSelect">
+        <button type="button" class="plex-topbar__user" aria-label="打开用户菜单">
+          <n-avatar round :size="52" class="plex-topbar__avatar">
+            <span class="plex-avatar-bot" aria-hidden="true">
+              <span class="plex-avatar-bot__head" />
+            </span>
+          </n-avatar>
+          <span class="plex-topbar__copy">
+            <strong>{{ displayName }}</strong>
+            <em>Lv.{{ userLevel }}</em>
           </span>
-        </n-avatar>
-        <span class="plex-topbar__copy">
-          <strong>{{ displayName }}</strong>
-          <em>Lv.{{ userLevel }}</em>
-        </span>
-        <n-icon :component="ChevronDownOutline" :size="20" />
-      </button>
+          <n-icon :component="ChevronDownOutline" :size="20" />
+        </button>
+      </n-dropdown>
     </div>
   </header>
 </template>

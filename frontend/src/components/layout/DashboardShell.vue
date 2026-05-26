@@ -15,7 +15,7 @@ import PlexTopbar from './PlexTopbar.vue'
 
 const props = withDefaults(
   defineProps<{
-    activeNav: 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'admin'
+    activeNav: 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'control'
     pageTitle: string
     pageSubtitle?: string
     searchPlaceholder: string

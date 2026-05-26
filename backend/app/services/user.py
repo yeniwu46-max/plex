@@ -4,7 +4,7 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash
 
 from .base import BaseService
-from app.models import User, Role, db
+from app.models import RankingCache, User, Role, db
 
 
 class UserService(BaseService):
@@ -57,15 +57,20 @@ class UserService(BaseService):
         if not user:
             raise Exception('用户不存在')
 
-        class_rank = None
-        achievements_count = len(user.achievements)
+        from .incentive import IncentiveService
 
+        IncentiveService.sync_user_level(user)
         if user.class_id:
-            rank_result = db.session.query(db.func.count(User.id)).filter(
-                User.class_id == user.class_id,
-                User.total_points > user.total_points,
-            ).scalar()
-            class_rank = (rank_result or 0) + 1
+            if not RankingCache.query.filter_by(
+                class_id=user.class_id, week=IncentiveService.current_week_key()
+            ).count():
+                IncentiveService.refresh_class_ranking(user.class_id)
+            db.session.commit()
+
+        class_rank = IncentiveService.class_rank_for_user(user)
+        achievements_count = len(user.achievements)
+        level_profile = IncentiveService.level_profile(user)
+        incentive_summary = IncentiveService.incentive_summary(user.id)
 
         return {
             'id': user.id,
@@ -79,8 +84,10 @@ class UserService(BaseService):
             'role': user.role.name if user.role else None,
             'status': user.status,
             'level': user.level,
-            'title': f'Lv{user.level}',
+            'title': level_profile['title'],
             'total_points': user.total_points,
+            'level_profile': level_profile,
+            'incentive': incentive_summary,
             'consecutive_days': user.consecutive_days,
             'achievements_count': achievements_count,
             'class_rank': class_rank,

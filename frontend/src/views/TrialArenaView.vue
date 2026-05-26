@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { NButton, NIcon, NSelect, NSlider, useMessage, type SelectOption } from 'naive-ui'
 import {
   AnalyticsOutline,
@@ -14,22 +14,34 @@ import {
   TimeOutline,
 } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
+import {
+  createTeacherTrial,
+  fetchTeacherTrials,
+  publishTeacherTrial,
+  updateTeacherTrial,
+  type TeacherTrial,
+  type TeacherTrialSummary,
+} from '../api/teacherTrials'
+import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 
-type TrialStatus = 'running' | 'soon' | 'ended'
+type TrialStatus = 'running' | 'soon' | 'ended' | 'draft'
 type TrialTone = 'orange' | 'blue' | 'purple' | 'amber'
 type TemplateTone = 'orange' | 'teal' | 'purple' | 'red' | 'gold'
 
 interface TrialCard {
-  id: string
+  id: number
   title: string
   status: TrialStatus
   statusText: string
+  effectiveStatus: string
   tone: TrialTone
   scene: string
   tags: string[]
   students: string
   timeText: string
   progress: number
+  canPublish: boolean
+  canEnd: boolean
 }
 
 interface TemplateItem {
@@ -41,11 +53,35 @@ interface TemplateItem {
 }
 
 const message = useMessage()
+const { selectedClassId, hasSelectedClass } = useTeacherOverviewInjected()
+
 const activeTab = ref<'manage' | 'templates'>('manage')
 const trialType = ref('solo')
 const knowledge = ref<string | null>(null)
 const duration = ref('60')
 const difficulty = ref(78)
+const loading = ref(false)
+const creating = ref(false)
+const actingTrialId = ref<number | null>(null)
+const publishMode = ref<'now' | 'draft' | 'scheduled'>('now')
+const scheduleDelay = ref('30')
+const errorMessage = ref('')
+const summary = ref<TeacherTrialSummary | null>(null)
+const trials = ref<TrialCard[]>([])
+
+const typeLabels: Record<string, string> = {
+  solo: '个人挑战',
+  team: '小组协作',
+  timed: '限时竞赛',
+  abyss: '深渊试炼',
+}
+
+const knowledgeLabels: Record<string, string> = {
+  dp: '动态规划',
+  graph: '图论基础',
+  ds: '数据结构',
+  frontend: '前端工程化',
+}
 
 const trialTypeOptions: SelectOption[] = [
   { label: '个人挑战', value: 'solo' },
@@ -68,56 +104,17 @@ const durationOptions: SelectOption[] = [
   { label: '120 分钟', value: '120' },
 ]
 
-const trials = ref<TrialCard[]>([
-  {
-    id: 'dp-challenge',
-    title: '动态规划挑战赛',
-    status: 'running',
-    statusText: '进行中',
-    tone: 'orange',
-    scene: 'canyon',
-    tags: ['算法进阶', '个人挑战'],
-    students: '38/40',
-    timeText: '剩余 2 天 14 小时',
-    progress: 72,
-  },
-  {
-    id: 'graph-explore',
-    title: '图论探索任务',
-    status: 'running',
-    statusText: '进行中',
-    tone: 'blue',
-    scene: 'crystal',
-    tags: ['路径结构', '小组协作'],
-    students: '4/6',
-    timeText: '剩余 1 天 8 小时',
-    progress: 45,
-  },
-  {
-    id: 'abyss-maze',
-    title: '深渊试炼：递归迷宫',
-    status: 'soon',
-    statusText: '即将开始',
-    tone: 'purple',
-    scene: 'nebula',
-    tags: ['算法进阶', '全班挑战'],
-    students: '--/--',
-    timeText: '开始时间：明天 10:00',
-    progress: 0,
-  },
-  {
-    id: 'syntax-week',
-    title: '基础语法巩固赛',
-    status: 'ended',
-    statusText: '已结束',
-    tone: 'amber',
-    scene: 'planet',
-    tags: ['编程基础', '个人挑战'],
-    students: '40/40',
-    timeText: '已结束：2025.05.10',
-    progress: 100,
-  },
-])
+const publishModeOptions: SelectOption[] = [
+  { label: '立即发布', value: 'now' },
+  { label: '保存草稿', value: 'draft' },
+  { label: '定时发布', value: 'scheduled' },
+]
+
+const scheduleDelayOptions: SelectOption[] = [
+  { label: '30 分钟后', value: '30' },
+  { label: '1 小时后', value: '60' },
+  { label: '明天此时', value: '1440' },
+]
 
 const templates: TemplateItem[] = [
   { id: 'solo', title: '个人挑战', desc: '单人提升能力', tone: 'orange', icon: CubeOutline },
@@ -127,23 +124,164 @@ const templates: TemplateItem[] = [
   { id: 'custom', title: '自定义试炼', desc: '自由创建任务', tone: 'gold', icon: GiftOutline },
 ]
 
-const stats = computed(() => [
-  { label: '进行中试炼', value: trials.value.filter((trial) => trial.status === 'running').length + 6, icon: ShieldCheckmarkOutline, tone: 'orange' },
-  { label: '参与 Explorer', value: 126, icon: PeopleOutline, tone: 'teal' },
-  { label: '平均完成率', value: '78%', icon: AnalyticsOutline, tone: 'purple' },
-  { label: '挑战成功率', value: '23%', icon: RadioButtonOnOutline, tone: 'red' },
-  { label: '试炼模板', value: templates.length, icon: StarOutline, tone: 'gold' },
-])
+const stats = computed(() => {
+  const s = summary.value
+  return [
+    { label: '进行中试炼', value: s?.running_count ?? 0, icon: ShieldCheckmarkOutline, tone: 'orange' },
+    { label: '即将开始', value: s?.scheduled_count ?? 0, icon: TimeOutline, tone: 'blue' },
+    { label: '草稿', value: s?.draft_count ?? 0, icon: CubeOutline, tone: 'amber' },
+    { label: '参与 Explorer', value: s?.participant_count ?? 0, icon: PeopleOutline, tone: 'teal' },
+    { label: '平均完成率', value: `${s?.avg_completion_rate ?? 0}%`, icon: AnalyticsOutline, tone: 'purple' },
+    {
+      label: '班级人数',
+      value: s?.class_student_count ?? 0,
+      icon: RadioButtonOnOutline,
+      tone: 'red',
+    },
+    { label: '试炼模板', value: s?.template_count ?? templates.length, icon: StarOutline, tone: 'gold' },
+  ]
+})
 
-function createTrial() {
+function mapTrial(item: TeacherTrial): TrialCard {
+  const effective = item.effective_status ?? item.status
+  const status: TrialStatus =
+    effective === 'ended'
+      ? 'ended'
+      : effective === 'draft'
+        ? 'draft'
+        : effective === 'scheduled'
+          ? 'soon'
+          : 'running'
+  const statusText =
+    effective === 'ended'
+      ? '已结束'
+      : effective === 'draft'
+        ? '草稿'
+        : effective === 'scheduled'
+          ? '即将开始'
+          : '进行中'
+  const toneMap: Record<string, TrialTone> = {
+    solo: 'orange',
+    team: 'blue',
+    timed: 'purple',
+    abyss: 'amber',
+  }
+  const sceneMap: Record<string, string> = {
+    dp: 'canyon',
+    graph: 'crystal',
+    ds: 'nebula',
+    frontend: 'planet',
+  }
+  const typeLabel = typeLabels[item.trial_type] ?? item.trial_type
+  const knowLabel = item.knowledge_key ? knowledgeLabels[item.knowledge_key] ?? item.knowledge_key : ''
+  return {
+    id: item.id,
+    title: item.title,
+    status,
+    statusText,
+    tone: toneMap[item.trial_type] ?? 'orange',
+    scene: sceneMap[item.knowledge_key ?? ''] ?? 'canyon',
+    tags: [typeLabel, knowLabel].filter(Boolean),
+    students: `${item.completed_count ?? 0}/${item.participant_count ?? 0}`,
+    timeText: `约 ${item.duration_minutes} 分钟 · 奖励 ${item.reward_points} XP`,
+    progress: item.progress ?? item.completion_rate ?? 0,
+    effectiveStatus: effective,
+    canPublish: effective === 'draft' || effective === 'scheduled',
+    canEnd: effective === 'running' || effective === 'scheduled',
+  }
+}
+
+async function loadTrials() {
+  if (!selectedClassId.value) {
+    trials.value = []
+    summary.value = null
+    return
+  }
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const data = await fetchTeacherTrials(selectedClassId.value)
+    trials.value = data.trials.map(mapTrial)
+    summary.value = data.summary
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '试炼数据加载失败'
+    trials.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+async function createTrial() {
+  if (!selectedClassId.value) {
+    message.warning('请先选择班级')
+    return
+  }
+  if (!knowledge.value) {
+    message.warning('请选择知识星域')
+    return
+  }
   const typeLabel = trialTypeOptions.find((item) => item.value === trialType.value)?.label ?? '个人挑战'
-  message.success(`已创建 ${typeLabel} 草稿，等待接入发布流程`)
+  const knowLabel = knowledgeOptions.find((item) => item.value === knowledge.value)?.label ?? ''
+  const title = `${knowLabel}${typeLabel}`.replace(/^$/, '未命名试炼')
+
+  creating.value = true
+  try {
+    await createTeacherTrial({
+      class_id: selectedClassId.value,
+      title,
+      trial_type: trialType.value,
+      knowledge_key: knowledge.value,
+      difficulty: difficulty.value,
+      duration_minutes: Number(duration.value),
+      reward_points: Math.max(15, Math.round(difficulty.value / 2)),
+      publish_mode: publishMode.value,
+      start_delay_minutes: publishMode.value === 'scheduled' ? Number(scheduleDelay.value) : undefined,
+    })
+    const modeLabel =
+      publishMode.value === 'draft' ? '已保存草稿' : publishMode.value === 'scheduled' ? '已创建定时试炼' : '已发布试炼'
+    message.success(`${modeLabel}「${title}」`)
+    await loadTrials()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '创建失败')
+  } finally {
+    creating.value = false
+  }
+}
+
+async function onPublishTrial(trialId: number) {
+  actingTrialId.value = trialId
+  try {
+    await publishTeacherTrial(trialId)
+    message.success('试炼已发布')
+    await loadTrials()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '发布失败')
+  } finally {
+    actingTrialId.value = null
+  }
+}
+
+async function onEndTrial(trialId: number) {
+  actingTrialId.value = trialId
+  try {
+    await updateTeacherTrial(trialId, { status: 'ended' })
+    message.success('试炼已结束')
+    await loadTrials()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '结束失败')
+  } finally {
+    actingTrialId.value = null
+  }
 }
 
 function switchTemplate(template: TemplateItem) {
   trialType.value = template.id === 'custom' ? 'solo' : template.id
   message.info(`已选用「${template.title}」模板`)
 }
+
+watch(selectedClassId, () => {
+  void loadTrials()
+}, { immediate: true })
 </script>
 
 <template>
@@ -172,10 +310,18 @@ function switchTemplate(template: TemplateItem) {
           <div class="panel-section">
             <div class="section-head">
               <h2>进行中的试炼</h2>
-              <button type="button">查看全部 <span>›</span></button>
+              <button type="button" @click="loadTrials()">刷新 <span>›</span></button>
             </div>
 
-            <div class="trial-grid">
+            <div v-if="!hasSelectedClass" class="teacher-state-panel trial-command__state">请先在顶部选择班级。</div>
+            <div v-else-if="loading" class="teacher-state-panel trial-command__state">正在加载试炼列表…</div>
+            <div v-else-if="errorMessage" class="teacher-state-panel teacher-state-panel--error trial-command__state">
+              <span>{{ errorMessage }}</span>
+              <n-button secondary size="small" @click="loadTrials()">重试</n-button>
+            </div>
+            <div v-else-if="!trials.length" class="teacher-state-panel trial-command__state">暂无试炼，使用右侧表单快速创建。</div>
+
+            <div v-else class="trial-grid">
               <article v-for="trial in trials" :key="trial.id" class="trial-card" :class="[`trial-card--${trial.tone}`, `trial-card--${trial.scene}`]">
                 <div class="trial-art" aria-hidden="true">
                   <span class="trial-art__sun" />
@@ -196,6 +342,26 @@ function switchTemplate(template: TemplateItem) {
                   </div>
                   <strong v-if="trial.status === 'running'">{{ trial.progress }}%</strong>
                   <span v-if="trial.status === 'ended'" class="complete-mark">✓</span>
+                  <div v-if="trial.canPublish || trial.canEnd" class="trial-card__actions">
+                    <n-button
+                      v-if="trial.canPublish"
+                      size="tiny"
+                      secondary
+                      :loading="actingTrialId === trial.id"
+                      @click.stop="onPublishTrial(trial.id)"
+                    >
+                      发布
+                    </n-button>
+                    <n-button
+                      v-if="trial.canEnd"
+                      size="tiny"
+                      quaternary
+                      :loading="actingTrialId === trial.id"
+                      @click.stop="onEndTrial(trial.id)"
+                    >
+                      结束
+                    </n-button>
+                  </div>
                 </div>
               </article>
             </div>
@@ -268,8 +434,18 @@ function switchTemplate(template: TemplateItem) {
           <n-select v-model:value="duration" :options="durationOptions" class="field-select" />
         </label>
 
-        <n-button type="primary" size="large" block class="create-btn" @click="createTrial">
-          创建试炼
+        <label class="field">
+          <span>发布方式</span>
+          <n-select v-model:value="publishMode" :options="publishModeOptions" class="field-select" />
+        </label>
+
+        <label v-if="publishMode === 'scheduled'" class="field">
+          <span>开始时间</span>
+          <n-select v-model:value="scheduleDelay" :options="scheduleDelayOptions" class="field-select" />
+        </label>
+
+        <n-button type="primary" size="large" block class="create-btn" :loading="creating" @click="createTrial">
+          {{ publishMode === 'draft' ? '保存草稿' : publishMode === 'scheduled' ? '创建定时试炼' : '创建并发布' }}
         </n-button>
       </aside>
     </section>
@@ -410,6 +586,11 @@ function switchTemplate(template: TemplateItem) {
   min-height: 0;
   overflow: auto;
   padding: 0 var(--plex-page-gutter-x) 2rem;
+}
+
+.trial-command__state {
+  min-height: 180px;
+  margin-bottom: 1rem;
 }
 
 .command-main {
@@ -591,6 +772,18 @@ function switchTemplate(template: TemplateItem) {
   padding: 0.28rem 0.55rem;
   border: 1px solid rgba(251, 146, 60, 0.45);
   color: var(--orange);
+}
+
+.status-pill--draft {
+  color: #fcd34d;
+  border-color: rgba(252, 211, 77, 0.45);
+  background: rgba(252, 211, 77, 0.12);
+}
+
+.trial-card__actions {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
 }
 
 .status-pill--soon {

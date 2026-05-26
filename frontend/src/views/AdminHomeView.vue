@@ -1,964 +1,1595 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { NButton, NIcon, NSelect, NSlider, NSwitch, useMessage, type SelectOption } from 'naive-ui'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { NIcon, NInput, NSelect, type SelectOption } from 'naive-ui'
 import {
-  AlarmOutline,
-  ArchiveOutline,
-  CloudUploadOutline,
-  DownloadOutline,
-  FingerPrintOutline,
-  LockClosedOutline,
+  AlertCircleOutline,
+  AnalyticsOutline,
+  AppsOutline,
+  BookOutline,
+  ChevronDownOutline,
+  ExitOutline,
+  GitNetworkOutline,
+  HardwareChipOutline,
+  HelpCircleOutline,
   NotificationsOutline,
   PeopleOutline,
-  PersonOutline,
-  RefreshOutline,
-  SchoolOutline,
+  PersonCircleOutline,
+  PlanetOutline,
+  SearchOutline,
   SettingsOutline,
   ShieldCheckmarkOutline,
   SparklesOutline,
 } from '@vicons/ionicons5'
-import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
+import { useAuthStore } from '../stores/auth'
 
-interface SideItem {
-  key: string
+type NavKey = 'nexus' | 'agents' | 'knowledge' | 'observer' | 'governance'
+type Tone = 'purple' | 'amber' | 'green' | 'red'
+
+interface MetricCard {
   label: string
+  value: string
+  sub: string
   icon: typeof PeopleOutline
+  tone: Tone
 }
 
-interface StrategyItem {
-  key: string
+interface ProgressMetric {
+  label: string
+  value: number
+  delta: string
+  icon: typeof AnalyticsOutline
+}
+
+interface AgentRow {
+  name: string
+  status: string
+}
+
+interface FeedItem {
   title: string
   desc: string
-  icon: typeof SettingsOutline
-  enabled: boolean
+  time: string
+  tone: Tone
+  icon: typeof SparklesOutline
 }
 
-interface NoticeItem {
-  key: string
+interface AlertItem {
   title: string
   desc: string
-  icon: typeof NotificationsOutline
-  enabled: boolean
+  time: string
+  level: '高' | '中' | '低'
+  tone: Tone
 }
 
-const message = useMessage()
-const systemTab = ref('class')
-const ruleTab = ref('trial')
-const openTime = ref('08-22')
-const dailyLimit = ref('3')
-const punish = ref('none')
-const dataScope = ref('teacher')
-const difficulty = ref(48)
+const searchText = ref('')
+const activeNav = ref<NavKey>('nexus')
+const period = ref('today')
+const auth = useAuthStore()
+const router = useRouter()
 
-const timeOptions: SelectOption[] = [
-  { label: '每日 08:00 - 22:00', value: '08-22' },
-  { label: '每日 09:00 - 21:00', value: '09-21' },
-  { label: '全天开放', value: 'all-day' },
+const navItems = [
+  { key: 'nexus' as const, label: '中央总控', sub: 'Central Nexus', icon: SettingsOutline },
+  { key: 'agents' as const, label: '智能体编排', sub: 'Agent Orchestration', icon: PeopleOutline },
+  { key: 'knowledge' as const, label: '知识图谱', sub: 'Knowledge Nexus', icon: GitNetworkOutline },
+  { key: 'observer' as const, label: '系统观测', sub: 'System Observatory', icon: AppsOutline },
+  { key: 'governance' as const, label: '权限与控制', sub: 'Governance Center', icon: ShieldCheckmarkOutline },
 ]
 
-const limitOptions: SelectOption[] = [
-  { label: '1 次', value: '1' },
-  { label: '3 次', value: '3' },
-  { label: '5 次', value: '5' },
-  { label: '不限', value: 'unlimited' },
+const periodOptions: SelectOption[] = [
+  { label: '今日', value: 'today' },
+  { label: '本周', value: 'week' },
+  { label: '本月', value: 'month' },
 ]
 
-const punishOptions: SelectOption[] = [
-  { label: '无惩罚', value: 'none' },
-  { label: '扣除少量积分', value: 'points' },
-  { label: '冷却 30 分钟', value: 'cooldown' },
+const metricCards: MetricCard[] = [
+  { label: '活跃学习者', value: '32,681', sub: '较昨日 ↑ 12.4%', icon: PeopleOutline, tone: 'purple' },
+  { label: '活跃教师', value: '2,153', sub: '较昨日 ↑ 8.7%', icon: BookOutline, tone: 'amber' },
+  { label: '运行智能体', value: '24', sub: '全部正常运行', icon: HardwareChipOutline, tone: 'purple' },
+  { label: '知识节点总数', value: '156,782', sub: '较昨日 ↑ 3.6%', icon: PlanetOutline, tone: 'purple' },
+  { label: '系统健康度', value: '98.7%', sub: '状态良好', icon: ShieldCheckmarkOutline, tone: 'purple' },
 ]
 
-const dataScopeOptions: SelectOption[] = [
-  { label: '仅教师可见', value: 'teacher' },
-  { label: '班级成员可见', value: 'class' },
-  { label: '管理员可见', value: 'admin' },
+const observerMetricCards: MetricCard[] = [
+  { label: '平台活跃度', value: '78.6%', sub: '较昨日 ↑ 8.6%', icon: AnalyticsOutline, tone: 'purple' },
+  { label: '系统健康度', value: '96.2%', sub: '较昨日 ↑ 1.3%', icon: ShieldCheckmarkOutline, tone: 'purple' },
+  { label: '实时风险信号', value: '7', sub: '较昨日 ↓ 1', icon: AlertCircleOutline, tone: 'purple' },
+  { label: '在线智能体数量', value: '2,456', sub: '较昨日 ↑ 128', icon: HardwareChipOutline, tone: 'purple' },
 ]
 
-const systemItems: SideItem[] = [
-  { key: 'class', label: '班级信息', icon: PeopleOutline },
-  { key: 'members', label: '成员管理', icon: PersonOutline },
-  { key: 'roles', label: '角色权限', icon: LockClosedOutline },
-  { key: 'notice', label: '通知设置', icon: NotificationsOutline },
-  { key: 'preference', label: '系统偏好', icon: SettingsOutline },
+const progressMetrics: ProgressMetric[] = [
+  { label: '学习任务完成率', value: 78.6, delta: '↑ 6.2%', icon: SettingsOutline },
+  { label: '试炼参与率', value: 65.3, delta: '↑ 4.8%', icon: BookOutline },
+  { label: '知识掌握率', value: 72.1, delta: '↑ 5.3%', icon: ShieldCheckmarkOutline },
+  { label: '学习活跃度', value: 83.7, delta: '↑ 7.1%', icon: SparklesOutline },
 ]
 
-const ruleItems: SideItem[] = [
-  { key: 'trial', label: '试炼规则', icon: PeopleOutline },
-  { key: 'reward', label: '奖励规则', icon: SettingsOutline },
-  { key: 'abyss', label: '深渊规则', icon: FingerPrintOutline },
-  { key: 'quest', label: '委托规则', icon: SparklesOutline },
+const agentRows: AgentRow[] = [
+  { name: '学习画像智能体', status: '运行中' },
+  { name: '知识图谱智能体', status: '运行中' },
+  { name: '路径规划智能体', status: '运行中' },
+  { name: '认知诊断智能体', status: '运行中' },
+  { name: '试炼生成智能体', status: '运行中' },
+  { name: '反馈评估智能体', status: '运行中' },
 ]
 
-const strategies = ref<StrategyItem[]>([
-  { key: 'recommend', title: '个性化推荐', desc: '根据 Explorer 表现智能推荐任务', icon: SettingsOutline, enabled: true },
-  { key: 'difficulty', title: '动态难度调整', desc: '根据整体表现动态调整试炼难度', icon: ShieldCheckmarkOutline, enabled: true },
-  { key: 'risk', title: '知识断层检测', desc: '识别知识薄弱点与潜在风险', icon: FingerPrintOutline, enabled: true },
-  { key: 'rhythm', title: '学习节奏分析', desc: '分析班级整体学习节奏与疲劳度', icon: RefreshOutline, enabled: true },
-])
-
-const notices = ref<NoticeItem[]>([
-  { key: 'done', title: '试炼完成通知', desc: '当 Explorer 完成试炼时通知', icon: SettingsOutline, enabled: true },
-  { key: 'abyss', title: '深渊挑战预警', desc: '当深渊试炼风险升高时通知', icon: FingerPrintOutline, enabled: true },
-  { key: 'ai', title: 'AI 洞察推送', desc: 'AI 发现重要洞察时推送', icon: ShieldCheckmarkOutline, enabled: true },
-  { key: 'system', title: '系统公告', desc: '接收系统更新与重要公告', icon: ArchiveOutline, enabled: false },
-])
-
-const channels = [
-  { label: '站内信', icon: ArchiveOutline, active: true },
-  { label: '邮箱', icon: NotificationsOutline, active: false },
-  { label: '微信', icon: PeopleOutline, active: false },
-  { label: '短信', icon: AlarmOutline, active: false },
+const feedItems: FeedItem[] = [
+  { title: '知识图谱新增节点', desc: '新增节点「递归算法优化」已完成人图', time: '14:32', tone: 'purple', icon: GitNetworkOutline },
+  { title: '学习路径生成完成', desc: '为用户「星航者-0421」生成个性化路径', time: '14:32', tone: 'purple', icon: BookOutline },
+  { title: '智能体任务调度', desc: '路径规划智能体已完成任务调度', time: '14:32', tone: 'purple', icon: SparklesOutline },
+  { title: '异常行为预警', desc: '检测到 3 起异常刷题行为', time: '14:32', tone: 'red', icon: AlertCircleOutline },
 ]
 
-function saveClassInfo() {
-  message.success('班级设置已保存')
+const alertItems: AlertItem[] = [
+  { title: '数据库负载过高', desc: '主数据库负载已超过 85%', time: '14:28', level: '高', tone: 'red' },
+  { title: '知识图谱更新延迟', desc: '部分领域知识更新延迟 15 分钟', time: '14:15', level: '中', tone: 'amber' },
+  { title: '存储空间预警', desc: '试炼资源存储使用率超过 80%', time: '13:42', level: '低', tone: 'purple' },
+]
+
+const trendPoints = [12, 31, 22, 36, 28, 42, 35, 39]
+const trendPolyline = computed(() => trendPoints.map((point, index) => `${index * 54},${128 - point * 2.2}`).join(' '))
+const wavePoints = [48, 55, 66, 54, 49, 72, 86, 68, 51, 50, 74, 84, 72, 64, 70, 79]
+const wavePolyline = computed(() => wavePoints.map((point, index) => `${index * 26},${130 - point}`).join(' '))
+
+const currentNav = computed(() => navItems.find((item) => item.key === activeNav.value) ?? navItems[0])
+const pageSubtitle = computed(() =>
+  activeNav.value === 'observer'
+    ? '监测平台运行态势、活跃波动与全域风险信号'
+    : '实时掌控 PLEX 宇宙的运行状态与关键指标',
+)
+const visibleMetrics = computed(() => (activeNav.value === 'observer' ? observerMetricCards : metricCards))
+
+const anomalyItems = [
+  { title: '某星域活跃度下降', desc: '「北极星域」活跃度较昨日下降 12.4%', level: '中等', progress: 42, icon: GitNetworkOutline },
+  { title: '某智能体响应延迟升高', desc: '路径规划智能体平均延迟升至 0.82s', level: '偏高', progress: 48, icon: NotificationsOutline },
+  { title: '晚间访问峰值增强', desc: '20:00–22:00 访问量较昨日增长 18.7%', level: '提示', progress: 44, icon: AnalyticsOutline },
+  { title: '某模块同步状态正常', desc: '知识图谱同步任务运行正常', level: '正常', progress: 92, icon: ShieldCheckmarkOutline },
+]
+
+const moduleCards = [
+  { label: '学生端', icon: BookOutline },
+  { label: '教师端', icon: PersonCircleOutline },
+  { label: '管理端', icon: AppsOutline },
+  { label: '知识图谱', icon: GitNetworkOutline },
+  { label: 'Agent 链路', icon: PlanetOutline },
+]
+
+const observerAlerts = [
+  { label: '紧急', value: 2, tone: 'red', icon: AlertCircleOutline },
+  { label: '重要', value: 7, tone: 'amber', icon: AlertCircleOutline },
+  { label: '提示', value: 23, tone: 'purple', icon: NotificationsOutline },
+]
+
+function setActiveNav(key: NavKey) {
+  activeNav.value = key
 }
 
-function clearCache() {
-  message.success('缓存已清理')
+async function handleLogout() {
+  await auth.logout()
+  await router.replace({ name: 'login' })
 }
 </script>
 
 <template>
-  <TeacherDashboardShell
-    active-nav="admin"
-    page-title="控制中枢"
-    page-subtitle="管理班级系统设置，配置教学参数与 AI 策略"
-    search-placeholder="搜索系统设置"
-    hide-search
-    toolbar-label="控制中枢筛选与状态"
-  >
-    <template #toolbar-trailing>
-      <button type="button" class="teacher-toolbar__notify" aria-label="通知"><span /></button>
-    </template>
+  <div class="admin-shell">
+    <aside class="admin-sidebar" aria-label="管理员导航">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><n-icon :component="SparklesOutline" /></span>
+        <strong>PLEX</strong>
+      </div>
 
-    <section class="control-center" aria-label="控制中枢">
-      <section class="control-panel system-panel">
-        <h2>系统设置</h2>
-        <div class="system-layout">
-          <nav class="settings-nav" aria-label="系统设置分类">
-            <button
-              v-for="item in systemItems"
-              :key="item.key"
-              type="button"
-              :class="{ active: systemTab === item.key }"
-              @click="systemTab = item.key"
-            >
-              <n-icon :component="item.icon" />
-              <span>{{ item.label }}</span>
-            </button>
-          </nav>
+      <nav class="admin-nav">
+        <button
+          v-for="item in navItems"
+          :key="item.key"
+          type="button"
+          class="nav-item"
+          :class="{ active: activeNav === item.key }"
+          @click="setActiveNav(item.key)"
+        >
+          <span class="nav-icon"><n-icon :component="item.icon" /></span>
+          <span>
+            <strong>{{ item.label }}</strong>
+            <small>{{ item.sub }}</small>
+          </span>
+        </button>
+      </nav>
 
-          <div class="class-orbit" aria-hidden="true">
-            <span v-for="ring in 7" :key="ring" :style="{ '--ring': ring }" />
-            <i />
-            <n-icon :component="SchoolOutline" />
-          </div>
-
-          <div class="class-info">
-            <header>
-              <h3>计算机科学 2025</h3>
-              <button type="button" aria-label="编辑班级信息">✎</button>
-            </header>
-            <dl>
-              <div><dt>班级 ID:</dt><dd>CS2025-NAV-01</dd></div>
-              <div><dt>创建时间:</dt><dd>2025.02.18</dd></div>
-              <div><dt>班级人数:</dt><dd>40</dd></div>
-              <div><dt>年级:</dt><dd>大二</dd></div>
-              <div><dt>学期:</dt><dd>2024-2025 春季学期</dd></div>
-            </dl>
-            <n-button secondary class="outline-orange" @click="saveClassInfo">编辑班级信息</n-button>
-          </div>
+      <section class="overseer-card">
+        <span class="overseer-orbit" aria-hidden="true"><n-icon :component="SparklesOutline" /></span>
+        <div>
+          <strong>Overseer</strong>
+          <small>系统治理者</small>
         </div>
+        <em>Lv.99</em>
       </section>
 
-      <section class="control-panel ai-panel">
-        <header class="panel-head">
-          <h2>AI 教学策略</h2>
-          <span class="enabled-pill">已启用</span>
-        </header>
-        <div class="ai-layout">
-          <div class="bot-orbit" aria-hidden="true">
-            <span v-for="ring in 6" :key="ring" :style="{ '--ring': ring }" />
-            <i />
-            <b><span /></b>
-          </div>
-          <div class="strategy-list">
-            <article v-for="item in strategies" :key="item.key">
-              <span><n-icon :component="item.icon" /></span>
-              <div>
-                <strong>{{ item.title }}</strong>
-                <small>{{ item.desc }}</small>
-              </div>
-              <n-switch v-model:value="item.enabled" class="orange-switch" />
-            </article>
-            <label class="select-line">
-              <span>数据更新频率</span>
-              <n-select :value="'2h'" :options="[{ label: '每 2 小时', value: '2h' }, { label: '每 6 小时', value: '6h' }]" class="field-select" />
-            </label>
-          </div>
-        </div>
-      </section>
+      <footer class="sidebar-actions">
+        <button type="button" aria-label="设置"><n-icon :component="SettingsOutline" /></button>
+        <button type="button" aria-label="帮助"><n-icon :component="HelpCircleOutline" /></button>
+        <button type="button" aria-label="退出登录" @click="handleLogout"><n-icon :component="ExitOutline" /></button>
+      </footer>
+    </aside>
 
-      <section class="control-panel notice-panel">
-        <h2>通知设置</h2>
-        <div class="notice-layout">
-          <div class="bell-orbit" aria-hidden="true">
-            <span v-for="ring in 5" :key="ring" :style="{ '--ring': ring }" />
-            <n-icon :component="NotificationsOutline" />
-          </div>
-          <div class="notice-list">
-            <article v-for="item in notices" :key="item.key">
-              <span><n-icon :component="item.icon" /></span>
-              <div>
-                <strong>{{ item.title }}</strong>
-                <small>{{ item.desc }}</small>
-              </div>
-              <n-switch v-model:value="item.enabled" class="orange-switch" />
-            </article>
-          </div>
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="title-block">
+          <h1>{{ currentNav.label }} <span>{{ currentNav.sub }}</span><i /></h1>
+          <p>{{ pageSubtitle }}</p>
         </div>
-        <footer class="channel-row">
-          <span>通知接收渠道</span>
-          <button v-for="item in channels" :key="item.label" type="button" :class="{ active: item.active }">
-            <n-icon :component="item.icon" />
-            {{ item.label }}
+
+        <div class="topbar-tools">
+          <n-input v-model:value="searchText" round clearable placeholder="搜索用户、智能体、资源或事件..." class="search-input">
+            <template #prefix>
+              <n-icon :component="SearchOutline" />
+            </template>
+          </n-input>
+          <button type="button" class="icon-button" aria-label="通知"><n-icon :component="NotificationsOutline" /><i /></button>
+          <span class="nexus-globe" aria-hidden="true"><n-icon :component="SparklesOutline" /></span>
+          <button type="button" class="profile-button">
+            <n-icon :component="PersonCircleOutline" />
+            <span><strong>Overseer</strong><small>系统治理者</small></span>
+            <n-icon :component="ChevronDownOutline" />
           </button>
-        </footer>
+        </div>
+
+        <div class="current-time">当前时间 2024-05-20 14:32:18</div>
+      </header>
+
+      <section class="metric-row" :class="{ 'metric-row--observer': activeNav === 'observer' }" aria-label="核心指标">
+        <article v-for="item in visibleMetrics" :key="item.label" class="metric-card" :class="`tone-${item.tone}`">
+          <span class="metric-icon"><n-icon :component="item.icon" /></span>
+          <div>
+            <small>{{ item.label }}</small>
+            <strong>{{ item.value }}</strong>
+            <em>{{ item.sub }}</em>
+          </div>
+        </article>
       </section>
 
-      <section class="control-panel rules-panel">
-        <h2>探索规则配置</h2>
-        <div class="rules-layout">
-          <nav class="settings-nav settings-nav--compact" aria-label="探索规则分类">
-            <button
-              v-for="item in ruleItems"
-              :key="item.key"
-              type="button"
-              :class="{ active: ruleTab === item.key }"
-              @click="ruleTab = item.key"
-            >
-              <n-icon :component="item.icon" />
-              <span>{{ item.label }}</span>
-            </button>
-          </nav>
-          <div class="rules-form">
-            <label>
-              <span>试炼开放时间</span>
-              <n-select v-model:value="openTime" :options="timeOptions" class="field-select" />
-            </label>
-            <label>
-              <span>每日可挑战次数</span>
-              <n-select v-model:value="dailyLimit" :options="limitOptions" class="field-select" />
-            </label>
-            <div class="difficulty-field">
-              <span>试炼难度范围</span>
-              <n-slider v-model:value="difficulty" :min="0" :max="100" class="orange-slider" />
-              <div><small>简单</small><small>中等</small><small>困难</small><small>噩梦</small></div>
+      <section v-if="activeNav === 'nexus'" class="dashboard-grid" aria-label="中央总控面板">
+        <article class="panel operations-panel">
+          <header class="panel-head">
+            <h2>平台运行概览</h2>
+            <n-select v-model:value="period" :options="periodOptions" size="small" class="period-select" />
+          </header>
+          <div class="progress-list">
+            <article v-for="item in progressMetrics" :key="item.label">
+              <span><n-icon :component="item.icon" /></span>
+              <div>
+                <div class="progress-copy">
+                  <strong>{{ item.label }}</strong>
+                  <em>{{ item.value }}%</em>
+                  <small>{{ item.delta }}</small>
+                </div>
+                <i><b :style="{ width: `${item.value}%` }" /></i>
+              </div>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel agents-panel">
+          <header class="panel-head">
+            <h2>智能体运行状态</h2>
+            <button type="button">全部智能体 ›</button>
+          </header>
+          <div class="agent-layout">
+            <div class="nexus-orbit" aria-hidden="true">
+              <span v-for="ring in 5" :key="ring" :style="{ '--ring': ring }" />
+              <i v-for="dot in 12" :key="dot" :style="{ '--dot': dot }" />
+              <b><n-icon :component="SparklesOutline" /></b>
             </div>
-            <label>
-              <span>失败惩罚设置</span>
-              <n-select v-model:value="punish" :options="punishOptions" class="field-select" />
-            </label>
+            <div class="agent-list">
+              <div v-for="agent in agentRows" :key="agent.name">
+                <span>{{ agent.name }}</span>
+                <em>{{ agent.status }}</em>
+              </div>
+              <button type="button">更多智能体 ›</button>
+            </div>
           </div>
-        </div>
+        </article>
+
+        <article class="panel feed-panel">
+          <header class="panel-head">
+            <h2>实时系统动态</h2>
+            <button type="button">全部动态 ›</button>
+          </header>
+          <div class="feed-list">
+            <article v-for="item in feedItems" :key="item.title" :class="`tone-${item.tone}`">
+              <span><n-icon :component="item.icon" /></span>
+              <div>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.desc }}</small>
+              </div>
+              <time>{{ item.time }}</time>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel trend-panel">
+          <header class="panel-head">
+            <h2>用户活跃趋势</h2>
+            <div class="segmented"><button class="active">7日</button><button>30日</button><button>90日</button></div>
+          </header>
+          <svg class="trend-chart" viewBox="0 0 390 150" role="img" aria-label="用户活跃趋势">
+            <defs>
+              <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="rgba(139, 92, 246, .55)" />
+                <stop offset="100%" stop-color="rgba(139, 92, 246, 0)" />
+              </linearGradient>
+            </defs>
+            <path :d="`M0,150 L${trendPolyline} L378,150 Z`" fill="url(#trendFill)" opacity=".6" />
+            <polyline :points="trendPolyline" />
+            <circle v-for="point in trendPoints" :key="point" :cx="trendPoints.indexOf(point) * 54" :cy="128 - point * 2.2" r="4" />
+          </svg>
+          <div class="chart-axis"><span>05-14</span><span>05-15</span><span>05-16</span><span>05-17</span><span>05-18</span><span>05-19</span><span>05-20</span></div>
+        </article>
+
+        <article class="panel storage-panel">
+          <header class="panel-head">
+            <h2>资源与存储</h2>
+            <button type="button">查看详情 ›</button>
+          </header>
+          <div class="storage-layout">
+            <div class="storage-ring"><span><n-icon :component="SparklesOutline" /></span></div>
+            <dl>
+              <div><dt>总存储空间</dt><dd>100 TB</dd></div>
+              <div><dt>已使用</dt><dd>72 TB</dd></div>
+              <div><dt>可用空间</dt><dd>28 TB</dd></div>
+            </dl>
+            <ul>
+              <li><span>知识资源</span><strong>48.2 TB</strong></li>
+              <li><span>试炼资源</span><strong>14.6 TB</strong></li>
+              <li><span>用户数据</span><strong>7.8 TB</strong></li>
+              <li><span>系统日志</span><strong>1.4 TB</strong></li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="panel alerts-panel">
+          <header class="panel-head">
+            <h2>系统告警</h2>
+            <button type="button">全部告警 ›</button>
+          </header>
+          <div class="alert-list">
+            <article v-for="item in alertItems" :key="item.title" :class="`tone-${item.tone}`">
+              <span><n-icon :component="AlertCircleOutline" /></span>
+              <em>{{ item.level }}</em>
+              <div>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.desc }}</small>
+              </div>
+              <time>{{ item.time }}</time>
+            </article>
+          </div>
+        </article>
       </section>
 
-      <section class="control-panel security-panel">
-        <h2>数据与安全</h2>
-        <div class="security-layout">
-          <div class="shield-orbit" aria-hidden="true">
-            <span v-for="ring in 5" :key="ring" :style="{ '--ring': ring }" />
-            <n-icon :component="LockClosedOutline" />
+      <section v-else-if="activeNav === 'observer'" class="observer-grid" aria-label="系统观测面板">
+        <article class="panel observatory-panel">
+          <header class="panel-head">
+            <h2>平台运行态势 <span class="info-dot">i</span></h2>
+            <n-select :value="'realtime'" :options="[{ label: '实时监测', value: 'realtime' }, { label: '近 1 小时', value: 'hour' }]" size="small" class="observe-select" />
+          </header>
+          <div class="observatory-map">
+            <div class="pulse-field" aria-hidden="true">
+              <span v-for="ring in 9" :key="ring" :style="{ '--ring': ring }" />
+              <i v-for="bar in 34" :key="bar" :style="{ '--bar': bar }" />
+              <b><n-icon :component="SparklesOutline" /></b>
+            </div>
+            <div class="map-node map-node--user"><n-icon :component="PersonCircleOutline" /><span>用户交互</span></div>
+            <div class="map-node map-node--agent"><n-icon :component="HardwareChipOutline" /><span>智能体响应</span></div>
+            <div class="map-node map-node--resource"><n-icon :component="AppsOutline" /><span>资源调度</span></div>
+            <div class="map-node map-node--knowledge"><n-icon :component="BookOutline" /><span>知识服务</span></div>
+            <div class="map-node map-node--task"><n-icon :component="AppsOutline" /><span>任务处理</span></div>
           </div>
-          <div class="security-list">
-            <label>
-              <span>数据可见范围</span>
-              <n-select v-model:value="dataScope" :options="dataScopeOptions" class="field-select small-select" />
-            </label>
-            <button type="button">
-              <div><strong>数据导出</strong><small>导出班级数据报告</small></div>
-              <n-icon :component="DownloadOutline" />
-            </button>
-            <button type="button">
-              <div><strong>数据备份</strong><small>上次备份：2025.05.18 10:30</small></div>
-              <n-icon :component="CloudUploadOutline" />
-            </button>
-            <button type="button">
-              <div><strong>账户安全</strong><small>修改密码与安全设置</small></div>
-              <span>›</span>
-            </button>
+        </article>
+
+        <article class="panel anomaly-panel">
+          <header class="panel-head">
+            <h2>异常洞察</h2>
+            <button type="button">查看全部 ›</button>
+          </header>
+          <div class="anomaly-list">
+            <article v-for="item in anomalyItems" :key="item.title">
+              <span><n-icon :component="item.icon" /></span>
+              <div>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.desc }}</small>
+              </div>
+              <em>{{ item.level }}</em>
+              <i><b :style="{ width: `${item.progress}%` }" /></i>
+            </article>
           </div>
-        </div>
-        <footer class="security-footer">
-          <n-button secondary class="outline-orange" @click="clearCache">清除缓存</n-button>
-          <span>已使用 120MB / 2GB</span>
-        </footer>
+        </article>
+
+        <article class="panel wave-panel">
+          <header class="panel-head">
+            <h2>近7日平台波动 <span class="info-dot">i</span></h2>
+            <n-select :value="'activity'" :options="[{ label: '活跃度', value: 'activity' }, { label: '健康度', value: 'health' }]" size="small" class="observe-select" />
+          </header>
+          <svg class="wave-chart" viewBox="0 0 390 150" role="img" aria-label="近7日平台波动">
+            <defs>
+              <linearGradient id="waveFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="rgba(139, 92, 246, .62)" />
+                <stop offset="100%" stop-color="rgba(139, 92, 246, 0)" />
+              </linearGradient>
+            </defs>
+            <path :d="`M0,150 L${wavePolyline} L390,150 Z`" fill="url(#waveFill)" />
+            <polyline :points="wavePolyline" />
+            <circle v-for="(point, index) in wavePoints" :key="`${point}-${index}`" :cx="index * 26" :cy="130 - point" r="3" />
+          </svg>
+          <div class="chart-axis"><span>05-14</span><span>05-15</span><span>05-16</span><span>05-17</span><span>05-18</span><span>05-19</span><span>05-20</span></div>
+        </article>
+
+        <article class="panel module-panel">
+          <header class="panel-head">
+            <h2>模块运行状态 <span class="info-dot">i</span></h2>
+          </header>
+          <div class="module-row">
+            <article v-for="item in moduleCards" :key="item.label">
+              <n-icon :component="item.icon" />
+              <strong>{{ item.label }}</strong>
+              <small>正常</small>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel global-alert-panel">
+          <header class="panel-head">
+            <h2>全域告警 <span class="info-dot">i</span></h2>
+            <button type="button">查看全部 ›</button>
+          </header>
+          <div class="global-alert-row">
+            <article v-for="item in observerAlerts" :key="item.label" :class="`tone-${item.tone}`">
+              <div>
+                <small>{{ item.label }}</small>
+                <strong>{{ item.value }}</strong>
+              </div>
+              <span><n-icon :component="item.icon" /></span>
+            </article>
+          </div>
+          <p class="alert-delta">较昨日 ↓ 2</p>
+        </article>
       </section>
-    </section>
-  </TeacherDashboardShell>
+
+      <footer class="admin-footer">© 2024 PLEX Universe. All rights reserved.</footer>
+    </main>
+  </div>
 </template>
 
 <style scoped>
-.control-toolbar {
+.admin-shell {
+  --violet: #8b5cf6;
+  --violet-2: #a855f7;
+  --green: #34d399;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  display: flex;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: #050712;
+  color: #eef2ff;
+  font-family: 'Outfit', 'Noto Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+.admin-sidebar {
   position: relative;
-  z-index: 4;
+  z-index: 3;
   display: flex;
-  width: fit-content;
-  align-items: center;
-  gap: 1.35rem;
-  margin: -3.95rem var(--plex-page-gutter-x) 1.8rem auto;
-  color: rgba(255, 247, 237, 0.84);
+  width: 206px;
+  flex-shrink: 0;
+  flex-direction: column;
+  border-right: 1px solid rgba(167, 139, 250, 0.16);
+  background:
+    radial-gradient(circle at 12% 5%, rgba(139, 92, 246, 0.2), transparent 24%),
+    linear-gradient(180deg, rgba(7, 9, 22, 0.98), rgba(5, 7, 18, 0.99));
 }
 
-.class-select {
-  width: 210px;
-}
-
-.class-select :deep(.n-base-selection),
-.field-select :deep(.n-base-selection) {
-  --n-color: rgba(5, 18, 30, 0.72) !important;
-  --n-color-active: rgba(5, 18, 30, 0.92) !important;
-  --n-border: 1px solid rgba(130, 212, 255, 0.13) !important;
-  --n-border-active: 1px solid rgba(251, 146, 60, 0.46) !important;
-  --n-border-hover: 1px solid rgba(251, 146, 60, 0.34) !important;
-  --n-text-color: #fff7ed !important;
-  --n-placeholder-color: rgba(221, 230, 239, 0.5) !important;
-}
-
-.keeper-chip {
+.brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  min-width: 220px;
-  padding-left: 1.35rem;
-  border-left: 1px solid rgba(219, 235, 249, 0.1);
+  gap: 0.7rem;
+  height: 108px;
+  padding: 0 1.8rem;
 }
 
-.keeper-avatar {
+.brand-mark {
   display: grid;
-  width: 50px;
-  height: 50px;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: #a78bfa;
+  font-size: 2rem;
+  filter: drop-shadow(0 0 16px rgba(139, 92, 246, 0.8));
+}
+
+.brand strong {
+  color: #ffffff;
+  font-size: 1.62rem;
+  letter-spacing: 0.04em;
+}
+
+.admin-nav {
+  display: grid;
+  gap: 1rem;
+}
+
+.nav-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  min-height: 72px;
+  border: 0;
+  border-radius: 0 10px 10px 0;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.62);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.8rem 1.25rem 0.8rem 1.65rem;
+  text-align: left;
+}
+
+.nav-item.active {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.72), rgba(139, 92, 246, 0.16));
+  box-shadow: inset 0 0 26px rgba(139, 92, 246, 0.28), 0 0 30px rgba(139, 92, 246, 0.22);
+}
+
+.nav-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: currentColor;
+  font-size: 1.45rem;
+}
+
+.nav-item strong,
+.nav-item small {
+  display: block;
+  white-space: nowrap;
+}
+
+.nav-item strong {
+  font-size: 0.95rem;
+  font-weight: 720;
+}
+
+.nav-item small {
+  margin-top: 0.2rem;
+  color: rgba(221, 214, 254, 0.62);
+  font-size: 0.74rem;
+}
+
+.overseer-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  margin: auto 1.2rem 1.6rem;
+  padding: 1rem;
+  border: 1px solid rgba(167, 139, 250, 0.14);
+  border-radius: 10px;
+  background: rgba(24, 18, 48, 0.58);
+}
+
+.overseer-orbit {
+  display: grid;
+  width: 52px;
+  height: 52px;
   place-items: center;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 30%, rgba(251, 146, 60, 0.22), transparent 54%), #061827;
-  border: 1px solid rgba(255, 237, 213, 0.24);
-  box-shadow: 0 0 0 5px rgba(251, 146, 60, 0.06);
+  color: #c4b5fd;
+  font-size: 1.8rem;
+  border: 1px solid rgba(139, 92, 246, 0.65);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.4), rgba(17, 14, 36, 0.9));
 }
 
-.keeper-avatar span {
-  width: 29px;
-  height: 21px;
-  border-radius: 9px;
-  background: #e9f3fb;
-  box-shadow: inset 0 -8px #111926;
-}
-
-.keeper-chip strong {
+.overseer-card strong,
+.overseer-card small,
+.overseer-card em {
   display: block;
-  color: rgba(255, 247, 237, 0.92);
-  font-size: 0.9rem;
 }
 
-.keeper-chip small {
-  color: #34d399;
+.overseer-card strong {
+  color: white;
 }
 
-.notify-btn {
+.overseer-card small {
+  color: rgba(221, 214, 254, 0.6);
+  font-size: 0.72rem;
+}
+
+.overseer-card em {
+  grid-column: 1 / -1;
+  justify-self: center;
+  min-width: 120px;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 999px;
+  padding: 0.35rem 1rem;
+  color: #d8b4fe;
+  font-style: normal;
+  text-align: center;
+}
+
+.sidebar-actions {
+  display: flex;
+  justify-content: space-around;
+  padding: 0 1.5rem 1.6rem;
+}
+
+.sidebar-actions button,
+.icon-button,
+.profile-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.sidebar-actions button {
+  color: #a78bfa;
+  font-size: 1.2rem;
+}
+
+.admin-main {
   position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 1.6rem 2rem 1rem;
+  background:
+    radial-gradient(circle at 77% 6%, rgba(139, 92, 246, 0.16), transparent 24%),
+    radial-gradient(circle at 50% 48%, rgba(59, 130, 246, 0.06), transparent 35%),
+    linear-gradient(180deg, #070917 0%, #040711 100%);
+}
+
+.admin-main::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image:
+    radial-gradient(1px 1px at 18% 24%, rgba(255, 255, 255, 0.36), transparent),
+    radial-gradient(1px 1px at 76% 42%, rgba(167, 139, 250, 0.45), transparent),
+    radial-gradient(1px 1px at 44% 72%, rgba(139, 92, 246, 0.34), transparent);
+  background-size: 260px 260px;
+  content: '';
+}
+
+.admin-topbar,
+.metric-row,
+.dashboard-grid,
+.admin-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-topbar {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(620px, auto);
+  gap: 1rem;
+  align-items: start;
+}
+
+.title-block h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.85rem;
+  line-height: 1;
+}
+
+.title-block h1 span {
+  color: rgba(221, 214, 254, 0.74);
+  font-size: 0.98rem;
+  font-weight: 500;
+}
+
+.title-block h1 i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 14px #a855f7;
+}
+
+.title-block p {
+  margin: 0.75rem 0 0;
+  color: rgba(226, 232, 240, 0.66);
+}
+
+.topbar-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.search-input {
+  width: 376px;
+}
+
+.search-input :deep(.n-input) {
+  --n-height: 44px !important;
+  --n-color: rgba(8, 10, 24, 0.72) !important;
+  --n-color-focus: rgba(11, 13, 30, 0.92) !important;
+  --n-border: 1px solid rgba(167, 139, 250, 0.16) !important;
+  --n-border-hover: 1px solid rgba(167, 139, 250, 0.34) !important;
+  --n-text-color: #eef2ff !important;
+  --n-placeholder-color: rgba(221, 214, 254, 0.45) !important;
+}
+
+.icon-button {
+  position: relative;
+  color: #ddd6fe;
+  font-size: 1.4rem;
+}
+
+.icon-button i {
+  position: absolute;
+  right: -2px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 10px #a855f7;
+}
+
+.nexus-globe {
   display: grid;
   width: 46px;
   height: 46px;
   place-items: center;
-  border: 1px solid rgba(219, 235, 249, 0.1);
-  border-radius: 13px;
-  background: rgba(5, 18, 30, 0.62);
-  cursor: pointer;
-}
-
-.notify-btn span {
-  width: 14px;
-  height: 16px;
-  border: 2px solid rgba(255, 247, 237, 0.8);
-  border-radius: 8px 8px 5px 5px;
-}
-
-.notify-btn::after {
-  position: absolute;
-  top: 13px;
-  right: 14px;
-  width: 6px;
-  height: 6px;
   border-radius: 50%;
-  background: #fb923c;
-  content: '';
+  border: 1px solid rgba(139, 92, 246, 0.55);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.48), rgba(14, 12, 32, 0.86));
+  color: #c4b5fd;
+  font-size: 1.6rem;
 }
 
-:deep(.plex-topbar__heading h1)::after {
-  content: 'CONTROL CENTER';
-  color: rgba(221, 230, 239, 0.62);
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-:deep(.plex-topbar__heading h1 span) {
-  background: #fb923c;
-  box-shadow: 0 0 12px rgba(251, 146, 60, 0.85);
-}
-
-:deep(.plex-nav--active) {
-  color: #fb923c !important;
-  background: linear-gradient(90deg, rgba(251, 146, 60, 0.23), rgba(251, 146, 60, 0.08) 72%, transparent) !important;
-  box-shadow: inset 0 0 24px rgba(251, 146, 60, 0.12), 0 0 22px rgba(251, 146, 60, 0.12) !important;
-}
-
-:deep(.plex-nav--active .plex-nav__bar) {
-  background: linear-gradient(180deg, #fb923c, #f59e0b);
-  box-shadow: 0 0 12px rgba(251, 146, 60, 0.65);
-}
-
-:deep(.plex-nav--active .plex-nav__label),
-:deep(.plex-nav--active .plex-nav__sub),
-:deep(.plex-nav--active .plex-nav__icon) {
-  color: #fb923c !important;
-  text-shadow: 0 0 14px rgba(251, 146, 60, 0.46);
-}
-
-.control-center {
-  --orange: #fb923c;
-  --gold: #fbbf24;
-  --teal: #34d399;
-  display: grid;
-  grid-template-columns: minmax(430px, 1fr) minmax(320px, 0.72fr) minmax(420px, 0.88fr);
-  grid-template-rows: 356px 374px;
-  gap: 1rem;
-  min-height: 0;
-  overflow: auto;
-  padding: 0 var(--plex-page-gutter-x) 2rem;
-}
-
-.system-panel {
-  grid-column: 1 / span 2;
-  grid-row: 1;
-}
-
-.ai-panel {
-  grid-column: 3;
-  grid-row: 1;
-  padding: 1.15rem 1.3rem;
-}
-
-.notice-panel {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.rules-panel {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.security-panel {
-  grid-column: 3;
-  grid-row: 2;
-}
-
-.control-panel {
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid rgba(130, 212, 255, 0.12);
-  border-radius: 16px;
-  background: radial-gradient(circle at 48% 0%, rgba(251, 146, 60, 0.08), transparent 34%),
-    linear-gradient(145deg, rgba(5, 18, 30, 0.91), rgba(3, 12, 20, 0.78));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04), 0 22px 70px rgba(0, 0, 0, 0.2);
-  padding: 1.4rem;
-}
-
-.control-panel h2 {
-  margin: 0;
-  color: #fff7ed;
-  font-size: 1.18rem;
-  font-weight: 740;
-}
-
-.system-layout {
-  display: grid;
-  grid-template-columns: 180px minmax(220px, 1fr) 230px;
-  gap: 1.25rem;
-  height: calc(100% - 1.8rem);
-  align-items: center;
-  margin-top: 0.55rem;
-}
-
-.settings-nav {
-  display: grid;
-  gap: 0.62rem;
-  align-content: center;
-  height: 100%;
-  padding-right: 1rem;
-  border-right: 1px solid rgba(219, 235, 249, 0.08);
-}
-
-.settings-nav button {
+.profile-button {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  min-height: 48px;
-  padding: 0 0.85rem;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: rgba(221, 230, 239, 0.64);
-  cursor: pointer;
-  font: inherit;
+  gap: 0.7rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 999px;
+  background: rgba(8, 10, 24, 0.62);
+}
+
+.profile-button > .n-icon:first-child {
+  color: #ddd6fe;
+  font-size: 1.8rem;
+}
+
+.profile-button strong,
+.profile-button small {
+  display: block;
   text-align: left;
 }
 
-.settings-nav button.active {
-  border-color: rgba(251, 146, 60, 0.48);
-  background: rgba(251, 146, 60, 0.13);
-  color: var(--orange);
-  box-shadow: 0 0 22px rgba(251, 146, 60, 0.15);
+.profile-button small,
+.current-time {
+  color: rgba(221, 214, 254, 0.62);
+  font-size: 0.75rem;
 }
 
-.settings-nav .n-icon {
-  font-size: 1.35rem;
+.current-time {
+  grid-column: 1 / -1;
+  justify-self: end;
+  margin-top: -0.2rem;
 }
 
-.class-orbit,
-.bot-orbit,
-.bell-orbit,
-.shield-orbit {
-  position: relative;
+.metric-row {
   display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.metric-row--observer {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.metric-card,
+.panel {
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.11), transparent 42%),
+    linear-gradient(145deg, rgba(19, 20, 43, 0.88), rgba(8, 11, 26, 0.82));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04), 0 18px 50px rgba(0, 0, 0, 0.22);
+}
+
+.metric-card {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  align-items: center;
+  min-height: 128px;
+  padding: 1.2rem 1.45rem;
+}
+
+.metric-icon {
+  display: grid;
+  width: 80px;
+  height: 80px;
   place-items: center;
-}
-
-.class-orbit {
-  height: 250px;
-}
-
-.class-orbit span,
-.bot-orbit span,
-.bell-orbit span,
-.shield-orbit span {
-  position: absolute;
-  width: calc(var(--ring) * 31px);
-  height: calc(var(--ring) * 31px);
-  border: 1px solid rgba(251, 146, 60, 0.16);
   border-radius: 50%;
-}
-
-.class-orbit i {
-  position: absolute;
-  width: 78px;
-  height: 78px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 247, 237, 0.92), rgba(251, 146, 60, 0.82) 28%, transparent 64%);
-  box-shadow: 0 0 38px rgba(251, 146, 60, 0.7);
-}
-
-.class-orbit > .n-icon {
-  position: relative;
-  z-index: 1;
-  color: #fff7ed;
+  border: 1px solid rgba(139, 92, 246, 0.7);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.36), rgba(8, 11, 26, 0.8));
+  color: #c4b5fd;
   font-size: 2.4rem;
 }
 
-.class-info header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
+.tone-amber .metric-icon {
+  border-color: rgba(245, 158, 11, 0.72);
+  color: #fbbf24;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.32), rgba(8, 11, 26, 0.8));
 }
 
-.class-info h3 {
-  margin: 0;
-  color: #fff7ed;
-  font-size: 1.08rem;
+.metric-card small,
+.metric-card em {
+  color: rgba(226, 232, 240, 0.68);
 }
 
-.class-info header button {
+.metric-card strong {
+  display: block;
+  margin: 0.45rem 0;
+  color: #ffffff;
+  font-size: 1.9rem;
+  font-weight: 600;
+}
+
+.metric-card em {
+  font-style: normal;
+}
+
+.tone-green em,
+.metric-card em {
+  color: #34d399;
+}
+
+.dashboard-grid {
   display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 1px solid rgba(221, 230, 239, 0.16);
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(221, 230, 239, 0.7);
-  cursor: pointer;
+  grid-template-columns: minmax(390px, 1fr) minmax(390px, 1.02fr) minmax(390px, 1fr);
+  grid-template-rows: 334px 240px;
+  gap: 1rem;
+  margin-top: 1.05rem;
 }
 
-.class-info dl {
-  display: grid;
-  gap: 0.75rem;
-  margin: 1.2rem 0 1.6rem;
-}
-
-.class-info dl div {
-  display: flex;
-  gap: 0.75rem;
-  color: rgba(221, 230, 239, 0.66);
-  font-size: 0.88rem;
-}
-
-.class-info dt,
-.class-info dd {
-  margin: 0;
-}
-
-.class-info dd {
-  color: rgba(255, 247, 237, 0.72);
-}
-
-.outline-orange {
-  --n-color: rgba(251, 146, 60, 0.08) !important;
-  --n-color-hover: rgba(251, 146, 60, 0.14) !important;
-  --n-border: 1px solid rgba(251, 146, 60, 0.58) !important;
-  --n-border-hover: 1px solid rgba(251, 146, 60, 0.8) !important;
-  --n-text-color: #fb923c !important;
-  --n-text-color-hover: #fdba74 !important;
-  font-weight: 760 !important;
+.panel {
+  min-width: 0;
+  overflow: hidden;
+  padding: 1.15rem 1.25rem;
 }
 
 .panel-head {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
-.enabled-pill {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(52, 211, 153, 0.34);
-  border-radius: 999px;
-  padding: 0.15rem 0.52rem;
-  color: #34d399;
-  background: rgba(52, 211, 153, 0.08);
-  font-size: 0.76rem;
-  font-weight: 800;
+.panel-head h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.08rem;
 }
 
-.ai-layout {
+.panel-head button {
+  border: 0;
+  background: transparent;
+  color: #a78bfa;
+  cursor: pointer;
+}
+
+.period-select {
+  width: 80px;
+}
+
+.period-select :deep(.n-base-selection) {
+  --n-color: rgba(8, 10, 24, 0.62) !important;
+  --n-border: 1px solid rgba(167, 139, 250, 0.14) !important;
+  --n-text-color: #ddd6fe !important;
+}
+
+.progress-list {
   display: grid;
-  grid-template-columns: 136px minmax(0, 1fr);
-  gap: 0.8rem;
-  height: calc(100% - 1.55rem);
+  gap: 1.25rem;
+}
+
+.progress-list article {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 0.75rem;
   align-items: center;
 }
 
-.bot-orbit {
-  height: 184px;
-  border-right: 1px solid rgba(219, 235, 249, 0.08);
-}
-
-.bot-orbit i {
-  position: absolute;
-  width: 114px;
-  height: 114px;
+.progress-list article > span,
+.feed-list article > span,
+.alert-list article > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(251, 146, 60, 0.26), transparent 66%);
+  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.16);
 }
 
-.bot-orbit b {
+.progress-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 1rem;
+  align-items: center;
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.progress-copy em {
+  color: #fff;
+  font-style: normal;
+}
+
+.progress-copy small,
+.agent-list em {
+  color: #34d399;
+}
+
+.progress-list i {
+  display: block;
+  height: 7px;
+  margin-top: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(167, 139, 250, 0.13);
+}
+
+.progress-list b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7c3aed, #8b5cf6, #a855f7);
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.65);
+}
+
+.agent-layout,
+.storage-layout {
+  display: grid;
+  grid-template-columns: 205px minmax(0, 1fr);
+  gap: 1.15rem;
+  align-items: center;
+}
+
+.nexus-orbit {
   position: relative;
   display: grid;
-  width: 68px;
-  height: 68px;
+  height: 230px;
   place-items: center;
+}
+
+.nexus-orbit span {
+  position: absolute;
+  width: calc(var(--ring) * 38px);
+  height: calc(var(--ring) * 38px);
+  border: 1px solid rgba(139, 92, 246, 0.22);
   border-radius: 50%;
-  background: #e9f3fb;
-  box-shadow: inset 0 -20px #111926, 0 0 26px rgba(251, 146, 60, 0.38);
 }
 
-.bot-orbit b span {
-  width: 42px;
-  height: 24px;
-  border-radius: 12px;
-  background: #07111d;
-  box-shadow: inset 13px 10px #111926;
+.nexus-orbit i {
+  position: absolute;
+  left: calc(50% + cos(var(--dot) * 30deg) * 90px);
+  top: calc(50% + sin(var(--dot) * 30deg) * 90px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a78bfa;
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.8);
 }
 
-.strategy-list,
-.notice-list {
+.nexus-orbit b {
   display: grid;
+  width: 82px;
+  height: 82px;
+  place-items: center;
+  color: #ddd6fe;
+  font-size: 2.9rem;
+  filter: drop-shadow(0 0 22px rgba(139, 92, 246, 0.76));
 }
 
-.strategy-list article,
-.notice-list article {
+.agent-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.agent-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.agent-list em::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.agent-list button {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: #a78bfa;
+  cursor: pointer;
+}
+
+.feed-list,
+.alert-list {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.feed-list article,
+.alert-list article {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) auto;
-  gap: 0.8rem;
+  gap: 0.75rem;
   align-items: center;
-  padding: 0.42rem 0;
-  border-bottom: 1px solid rgba(219, 235, 249, 0.08);
 }
 
-.ai-panel .strategy-list article {
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  gap: 0.55rem;
-}
-
-.ai-panel .strategy-list small {
-  line-height: 1.35;
-}
-
-.strategy-list article > span,
-.notice-list article > span {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid rgba(221, 230, 239, 0.16);
-  border-radius: 8px;
-  color: rgba(221, 230, 239, 0.74);
-}
-
-.strategy-list strong,
-.notice-list strong,
-.security-list strong {
+.feed-list strong,
+.alert-list strong {
   display: block;
-  color: rgba(255, 247, 237, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.feed-list small,
+.alert-list small,
+.feed-list time,
+.alert-list time {
+  color: rgba(226, 232, 240, 0.52);
+  font-size: 0.78rem;
+}
+
+.tone-red > span,
+.tone-red .metric-icon {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.42);
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.trend-panel,
+.storage-panel,
+.alerts-panel {
+  min-height: 0;
+}
+
+.segmented {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.segmented button {
+  min-width: 42px;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  color: rgba(221, 214, 254, 0.65);
+}
+
+.segmented button.active {
+  background: rgba(139, 92, 246, 0.42);
+  color: #fff;
+}
+
+.trend-chart {
+  width: 100%;
+  height: 145px;
+}
+
+.trend-chart polyline {
+  fill: none;
+  stroke: #8b5cf6;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.65));
+}
+
+.trend-chart circle {
+  fill: #a78bfa;
+  stroke: #ddd6fe;
+  stroke-width: 1;
+}
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(226, 232, 240, 0.52);
+  font-size: 0.78rem;
+}
+
+.storage-layout {
+  grid-template-columns: 118px 94px minmax(0, 1fr);
+}
+
+.storage-ring {
+  display: grid;
+  width: 104px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #0a0d1f 54%, transparent 55%),
+    conic-gradient(#a855f7 72%, #4f46e5 0 82%, rgba(167, 139, 250, 0.16) 0);
+}
+
+.storage-ring span {
+  color: #ddd6fe;
+  font-size: 2.5rem;
+}
+
+.storage-layout dl,
+.storage-layout ul {
+  margin: 0;
+}
+
+.storage-layout dl div,
+.storage-layout li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: rgba(226, 232, 240, 0.65);
+}
+
+.storage-layout dl div {
+  display: block;
+  margin-bottom: 0.55rem;
+}
+
+.storage-layout dd {
+  margin: 0.1rem 0 0;
+  color: #fff;
+}
+
+.storage-layout ul {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0;
+  list-style: none;
+}
+
+.storage-layout strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.alert-list article {
+  grid-template-columns: 34px 32px minmax(0, 1fr) auto;
+}
+
+.alert-list em {
+  display: grid;
+  width: 28px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.16);
+  color: #c4b5fd;
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+.tone-amber em,
+.tone-amber > span {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.tone-red em {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.admin-footer {
+  margin-top: 0.85rem;
+  color: rgba(226, 232, 240, 0.36);
+  text-align: center;
+}
+
+.observer-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(520px, 1.35fr) minmax(360px, 0.78fr) minmax(360px, 0.78fr);
+  grid-template-rows: 402px 222px;
+  gap: 1rem;
+  margin-top: 1.05rem;
+}
+
+.observatory-panel {
+  grid-column: 1 / span 2;
+  grid-row: 1;
+}
+
+.anomaly-panel {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.wave-panel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.module-panel {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.global-alert-panel {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.info-dot {
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  margin-left: 0.35rem;
+  place-items: center;
+  border: 1px solid rgba(221, 214, 254, 0.32);
+  border-radius: 50%;
+  color: rgba(221, 214, 254, 0.72);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.observe-select {
+  width: 118px;
+}
+
+.observe-select :deep(.n-base-selection) {
+  --n-color: rgba(8, 10, 24, 0.62) !important;
+  --n-border: 1px solid rgba(167, 139, 250, 0.14) !important;
+  --n-text-color: #ddd6fe !important;
+}
+
+.observatory-map {
+  position: relative;
+  height: calc(100% - 2.5rem);
+  overflow: hidden;
+  border-top: 1px solid rgba(167, 139, 250, 0.08);
+}
+
+.pulse-field {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.pulse-field span {
+  position: absolute;
+  width: calc(var(--ring) * 88px);
+  height: calc(var(--ring) * 28px);
+  transform: rotate(-5deg);
+  border: 1px solid rgba(139, 92, 246, 0.24);
+  border-radius: 50%;
+}
+
+.pulse-field i {
+  position: absolute;
+  left: calc(50% + (var(--bar) - 17) * 10px);
+  top: calc(50% - ((var(--bar) % 9) * 8px));
+  width: 3px;
+  height: calc(22px + (var(--bar) % 7) * 9px);
+  transform-origin: bottom;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.9), rgba(139, 92, 246, 0.05));
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.75);
+}
+
+.pulse-field b {
+  position: relative;
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  color: #ddd6fe;
+  font-size: 3.2rem;
+  filter: drop-shadow(0 0 24px rgba(139, 92, 246, 0.9));
+}
+
+.map-node {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  color: rgba(226, 232, 240, 0.76);
   font-size: 0.86rem;
 }
 
-.strategy-list small,
-.notice-list small,
-.security-list small {
+.map-node .n-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(139, 92, 246, 0.55);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.36), rgba(8, 11, 26, 0.78));
+  color: #a78bfa;
+  font-size: 1.45rem;
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.35);
+}
+
+.map-node--user {
+  left: 22%;
+  top: 12%;
+}
+
+.map-node--agent {
+  right: 18%;
+  top: 12%;
+}
+
+.map-node--resource {
+  right: 9%;
+  top: 58%;
+}
+
+.map-node--knowledge {
+  left: 48%;
+  bottom: 6%;
+}
+
+.map-node--task {
+  left: 11%;
+  top: 58%;
+}
+
+.anomaly-list {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.anomaly-list article {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 3.2rem;
+  gap: 0.75rem;
+  align-items: center;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.08);
+}
+
+.anomaly-list article > span {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(139, 92, 246, 0.44);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.3), rgba(8, 11, 26, 0.8));
+  color: #a78bfa;
+  font-size: 1.35rem;
+}
+
+.anomaly-list strong {
   display: block;
-  margin-top: 0.18rem;
-  color: rgba(221, 230, 239, 0.5);
-  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.92rem;
 }
 
-.orange-switch :deep(.n-switch__rail) {
-  background-color: rgba(255, 255, 255, 0.18) !important;
-}
-
-.orange-switch :deep(.n-switch--active .n-switch__rail),
-.orange-switch :deep(.n-switch__rail[aria-checked='true']) {
-  background-color: #fb923c !important;
-}
-
-.select-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px;
-  gap: 1rem;
-  align-items: center;
+.anomaly-list small {
+  display: block;
   margin-top: 0.35rem;
-  color: rgba(221, 230, 239, 0.58);
-  font-size: 0.84rem;
+  color: rgba(226, 232, 240, 0.52);
+  font-size: 0.78rem;
 }
 
-.notice-layout,
-.rules-layout,
-.security-layout {
-  display: grid;
-  gap: 1.1rem;
-  align-items: center;
+.anomaly-list em {
+  color: rgba(221, 214, 254, 0.8);
+  font-size: 0.78rem;
+  font-style: normal;
 }
 
-.notice-layout {
-  grid-template-columns: 170px minmax(0, 1fr);
-  margin-top: 1rem;
+.anomaly-list i {
+  grid-column: 2 / span 2;
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(167, 139, 250, 0.13);
 }
 
-.bell-orbit,
-.shield-orbit {
-  height: 170px;
+.anomaly-list b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8b5cf6, #a855f7);
 }
 
-.bell-orbit .n-icon,
-.shield-orbit .n-icon {
-  position: relative;
-  z-index: 1;
-  color: #fff7ed;
-  font-size: 3rem;
-  filter: drop-shadow(0 0 20px rgba(251, 146, 60, 0.8));
-}
-
-.channel-row {
-  display: flex;
-  align-items: center;
-  gap: 1.35rem;
-  margin-top: 1.05rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(219, 235, 249, 0.08);
-  color: rgba(221, 230, 239, 0.58);
-  font-size: 0.84rem;
-}
-
-.channel-row button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  border: 0;
-  background: transparent;
-  color: rgba(221, 230, 239, 0.66);
-  cursor: pointer;
-}
-
-.channel-row button.active {
-  color: var(--orange);
-}
-
-.rules-layout {
-  grid-template-columns: 150px minmax(0, 1fr);
-  height: calc(100% - 2rem);
-}
-
-.settings-nav--compact {
-  gap: 0.55rem;
-  padding-right: 0.85rem;
-}
-
-.rules-form {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.rules-form label,
-.difficulty-field {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.rules-form label > span,
-.difficulty-field > span,
-.security-list label > span {
-  color: rgba(255, 237, 213, 0.72);
-  font-size: 0.84rem;
-}
-
-.orange-slider :deep(.n-slider-rail__fill) {
-  background: var(--orange) !important;
-}
-
-.orange-slider :deep(.n-slider-handle) {
-  background: var(--orange) !important;
-  border-color: var(--orange) !important;
-}
-
-.difficulty-field div {
-  display: flex;
-  justify-content: space-between;
-  color: rgba(221, 230, 239, 0.48);
-}
-
-.security-layout {
-  grid-template-columns: 180px minmax(0, 1fr);
-  margin-top: 0.8rem;
-}
-
-.shield-orbit .n-icon {
-  padding: 1rem;
-  border: 2px solid rgba(251, 146, 60, 0.55);
-  border-radius: 30% 30% 46% 46%;
-}
-
-.security-list {
-  display: grid;
-  gap: 0.72rem;
-}
-
-.security-list label,
-.security-list button {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.8rem;
-  align-items: center;
-}
-
-.security-list label {
-  grid-template-columns: 5.5rem minmax(0, 1fr);
-}
-
-.security-list button {
+.wave-chart {
   width: 100%;
-  border: 0;
-  background: transparent;
-  color: rgba(221, 230, 239, 0.74);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
+  height: 130px;
 }
 
-.security-list button > .n-icon,
-.security-list button > span {
-  color: rgba(221, 230, 239, 0.72);
-  font-size: 1.2rem;
+.wave-chart polyline {
+  fill: none;
+  stroke: #8b5cf6;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.7));
 }
 
-.small-select {
-  width: 150px;
+.wave-chart circle {
+  fill: #a78bfa;
+  stroke: #ddd6fe;
+  stroke-width: 1;
 }
 
-.security-footer {
-  display: flex;
+.module-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.module-row article {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 14, 32, 0.66);
+  text-align: center;
+}
+
+.module-row .n-icon {
+  color: #a78bfa;
+  font-size: 2rem;
+}
+
+.module-row strong {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.86rem;
+}
+
+.module-row small {
+  color: #34d399;
+}
+
+.module-row small::before {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.global-alert-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.global-alert-row article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1.1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(219, 235, 249, 0.08);
-  color: rgba(221, 230, 239, 0.58);
+  min-height: 94px;
+  padding: 0.9rem;
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  border-radius: 9px;
+  background: rgba(12, 14, 32, 0.66);
+}
+
+.global-alert-row small {
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.global-alert-row strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #ffffff;
+  font-size: 1.8rem;
+  font-weight: 560;
+}
+
+.global-alert-row span {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border-radius: 50%;
+  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.16);
+  font-size: 1.55rem;
+}
+
+.global-alert-row .tone-red span {
+  color: #f472b6;
+  background: rgba(236, 72, 153, 0.16);
+}
+
+.global-alert-row .tone-amber span {
+  color: #f472b6;
+  background: rgba(236, 72, 153, 0.14);
+}
+
+.alert-delta {
+  margin: 0.8rem 0 0;
+  color: #34d399;
 }
 
 @media (max-width: 1280px) {
-  .control-toolbar {
-    margin: 1rem var(--plex-page-gutter-x);
+  .admin-shell {
+    max-height: none;
+    overflow: auto;
   }
 
-  .control-center {
-    grid-template-columns: 1fr;
+  .metric-row,
+  .dashboard-grid,
+  .observer-grid {
+    grid-template-columns: 1fr 1fr;
     grid-template-rows: auto;
   }
 
-  .system-panel,
-  .ai-panel,
-  .notice-panel,
-  .rules-panel,
-  .security-panel {
-    min-height: 340px;
+  .observatory-panel,
+  .anomaly-panel,
+  .wave-panel,
+  .module-panel,
+  .global-alert-panel {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .admin-topbar {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
-  .control-toolbar {
+  .admin-shell {
     flex-direction: column;
-    align-items: stretch;
-    margin-inline: 1rem;
   }
 
-  .class-select {
+  .admin-sidebar {
     width: 100%;
   }
 
-  .keeper-chip {
-    min-width: 0;
-    padding-left: 0;
-    border-left: 0;
+  .admin-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .control-center {
-    padding-inline: 1rem;
-  }
-
-  .system-layout,
-  .ai-layout,
-  .notice-layout,
-  .rules-layout,
-  .security-layout {
+  .metric-row,
+  .dashboard-grid,
+  .observer-grid {
     grid-template-columns: 1fr;
-    height: auto;
   }
 
-  .settings-nav,
-  .bot-orbit {
-    border-right: 0;
+  .topbar-tools,
+  .admin-topbar {
+    align-items: stretch;
+  }
+
+  .topbar-tools {
+    flex-direction: column;
+  }
+
+  .search-input {
+    width: 100%;
   }
 }
 </style>

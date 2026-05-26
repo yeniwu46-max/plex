@@ -17,13 +17,26 @@ const props = withDefaults(
     searchQuery?: string
     userLevel?: number
     modelValue?: string | null
+    /** 传入空数组且 allowDemoFallback=false 时显示空态，不传则使用内置演示数据 */
+    trials?: TrialMode[]
+    allowDemoFallback?: boolean
   }>(),
   {
     searchQuery: '',
     userLevel: 1,
     modelValue: null,
+    trials: undefined,
+    allowDemoFallback: true,
   },
 )
+
+const displayTrials = computed(() => {
+  if (props.trials !== undefined) {
+    if (props.trials.length) return props.trials
+    return props.allowDemoFallback ? TRIAL_MODES : []
+  }
+  return TRIAL_MODES
+})
 
 const emit = defineEmits<{
   'update:modelValue': [key: string | null]
@@ -31,16 +44,14 @@ const emit = defineEmits<{
   enter: [trial: TrialMode]
 }>()
 
-const visibleTrials = computed(() => filterTrials(props.searchQuery))
+const visibleTrials = computed(() => filterTrials(props.searchQuery, displayTrials.value))
 
 const selectedKey = computed({
   get: () => props.modelValue,
   set: (key) => emit('update:modelValue', key),
 })
 
-const selectedTrial = computed(() =>
-  TRIAL_MODES.find((t) => t.key === selectedKey.value) ?? null,
-)
+const selectedTrial = computed(() => displayTrials.value.find((t) => t.key === selectedKey.value) ?? null)
 
 const positionClass: Record<TrialPosition, string> = {
   tl: 'trial__card--pos-tl',
@@ -124,7 +135,7 @@ watch(
       </defs>
       <g filter="url(#arenaLineGlow)">
         <line
-          v-for="trial in TRIAL_MODES"
+          v-for="trial in displayTrials"
           :key="`line-${trial.key}`"
           x1="50"
           y1="50"
@@ -139,7 +150,7 @@ watch(
 
     <div class="trials">
       <button
-        v-for="trial in TRIAL_MODES"
+        v-for="trial in displayTrials"
         :key="trial.key"
         type="button"
         class="trial__card"
@@ -170,7 +181,8 @@ watch(
         <span class="trial__subtitle">{{ trial.titleEn }}</span>
         <span class="trial__desc">{{ trial.description }}</span>
 
-        <span v-if="!trialUnlocked(trial)" class="trial__lock-hint">Lv.{{ trial.requiredLevel }} 解锁</span>
+        <span v-if="trial.effectiveStatus === 'scheduled'" class="trial__lock-hint">即将开始</span>
+        <span v-else-if="!trialUnlocked(trial)" class="trial__lock-hint">Lv.{{ trial.requiredLevel }} 解锁</span>
         <span v-else-if="selectedKey === trial.key" class="trial__cta">再次点击进入</span>
         <span v-else class="trial__arrow" aria-hidden="true">→</span>
       </button>

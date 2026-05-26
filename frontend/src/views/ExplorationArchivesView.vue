@@ -18,10 +18,14 @@ import {
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
+import { fetchArchiveInsights } from '../api/studentProgress'
 
 const auth = useAuthStore()
 const sidebarCollapsed = ref(false)
 const overview = ref<StudentOverview | null>(null)
+const tendencyLabel = ref(explorationTendency.label)
+const tendencyDescription = ref(explorationTendency.description)
+const skillItemsFromApi = ref<typeof skillDistribution | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -55,6 +59,11 @@ const achievementItems = computed<AchievementItem[]>(() => {
   return mapped
 })
 
+const skillItems = computed(() => {
+  if (skillItemsFromApi.value?.length) return skillItemsFromApi.value
+  return skillDistribution
+})
+
 const growthEvents = computed<GrowthEvent[]>(() => {
   const logs = overview.value?.pointsLog?.logs ?? []
   if (!logs.length) return growthTimeline
@@ -72,7 +81,20 @@ async function loadArchive() {
   loading.value = true
   errorMessage.value = ''
   try {
-    overview.value = await fetchStudentOverview()
+    const [overviewResult, insights] = await Promise.all([
+      fetchStudentOverview(),
+      fetchArchiveInsights().catch(() => null),
+    ])
+    overview.value = overviewResult
+    if (insights) {
+      tendencyLabel.value = insights.tendency.label
+      tendencyDescription.value = insights.tendency.description
+      skillItemsFromApi.value = insights.skills.map((skill) => ({
+        key: skill.key,
+        label: skill.label,
+        percent: skill.percent,
+      }))
+    }
     auth.syncProfile({
       id: overview.value.profile.id,
       username: overview.value.profile.username,
@@ -110,11 +132,11 @@ onMounted(loadArchive)
           <archive-profile-card class="archives-grid__profile" :profile="profile" />
           <exploration-tendency-card
             class="archives-grid__tendency"
-            :label="explorationTendency.label"
-            :description="explorationTendency.description"
+            :label="tendencyLabel"
+            :description="tendencyDescription"
           />
           <growth-trajectory class="archives-grid__timeline" :events="growthEvents" />
-          <skill-distribution class="archives-grid__skills" :skills="skillDistribution" />
+          <skill-distribution class="archives-grid__skills" :skills="skillItems" />
           <achievement-collection class="archives-grid__achievements" :items="achievementItems" />
         </div>
       </div>

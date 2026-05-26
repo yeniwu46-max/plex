@@ -10,11 +10,21 @@
 - `/admin` 按“控制中枢”参考图重构为教师端配置页，包含系统设置、AI 教学策略、通知设置、探索规则、数据与安全；当前为前端本地交互。
 - `DashboardShell`/`PlexTopbar` 增加 `hideSearch` 紧凑模式，支持教师端自定义顶部状态栏。
 - `PlexSidebar` 补齐“控制中枢 / CONTROL CENTER”入口，教师端三张页面统一使用深色 PLEX 框架与橙色强调。
+- 三端路由边界补强：
+  - 学生端页面统一收敛到 `/student/...`，包含探索舱、星轨路径、试炼、驿站、今日委托、探索档案、学生控制页。
+  - 教师端试炼入口迁移为 `/teacher/trials`，旧 `/trial-arena` 按登录角色重定向到教师或学生试炼页。
+  - 管理端 `/admin` 调整为仅 `admin` 可访问；教师端侧栏仅管理员显示“控制中枢”入口。
+  - 旧学生端入口 `/discovery`、`/star-path`、`/daily`、`/archives`、`/messenger` 保留为兼容重定向，不再作为跨端真实入口。
+- 三端退出登录补齐：
+  - 学生端与教师端共用 `PlexTopbar` 用户菜单，新增“退出登录”，调用 `auth.logout()` 后返回 `/login`。
+  - 管理端侧栏退出按钮接入同一套退出逻辑。
+  - 401 刷新失败时同步清除 access token、refresh token 与本地用户 profile，避免残留角色导致误跳。
 
 ## 验证记录
 
 - 后端：`python -m unittest discover -s tests` 通过。
 - 前端：`npm run build` 通过。
+- 路由与退出登录改动后再次执行 `npm run build` 通过。
 - 本地视觉验证：使用 Playwright CLI 截图对照参考图。
   - `output/playwright/teacher-navigator.png`
   - `output/playwright/trial-command.png`
@@ -26,6 +36,7 @@
 - `/trial-arena` 的试炼创建、模板选择、数据概览目前是前端 UI 状态，尚未接真实试炼发布/结算表。
 - `/admin` 的规则保存、数据导出、数据备份、缓存清理目前是前端交互提示，尚未接真实配置/审计/导出接口。
 - 今日委托仍未持久化；学生端奖励结算仍需后端权限策略与记录表。
+- 当前三端分离主要在前端路由守卫与入口层完成；后端接口权限仍需继续以角色装饰器和资源归属校验兜底。
 
 ## 后续建议
 

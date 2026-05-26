@@ -9,6 +9,7 @@ import {
   PlanetOutline,
   SettingsOutline,
 } from '@vicons/ionicons5'
+import { useAuthStore } from '../../stores/auth'
 
 export type TeacherNavKey = 'navigator' | 'starfield' | 'trial' | 'explorers' | 'admin'
 
@@ -26,13 +27,19 @@ const emit = defineEmits<{
   'update:collapsed': [value: boolean]
 }>()
 
-const navItems = computed(() => [
+const auth = useAuthStore()
+
+const allNavItems = [
   { key: 'navigator' as const, label: '领航总览', sub: 'NAVIGATOR HUB', icon: CompassOutline, to: '/teacher' },
   { key: 'starfield' as const, label: '星域观测', sub: 'STARFIELD ANALYTICS', icon: PlanetOutline, to: '/teacher/starfield' },
-  { key: 'trial' as const, label: '试炼中枢', sub: 'TRIAL COMMAND', icon: BarbellOutline, to: '/trial-arena' },
+  { key: 'trial' as const, label: '试炼中枢', sub: 'TRIAL COMMAND', icon: BarbellOutline, to: '/teacher/trials' },
   { key: 'explorers' as const, label: 'Explorer 档案', sub: 'EXPLORER ARCHIVES', icon: ArchiveOutline, to: '/teacher/explorers' },
   { key: 'admin' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/admin' },
-])
+]
+
+const navItems = computed(() =>
+  auth.profile?.role === 'admin' ? allNavItems : allNavItems.filter((item) => item.key !== 'admin'),
+)
 
 function toggleCollapsed() {
   emit('update:collapsed', !props.collapsed)

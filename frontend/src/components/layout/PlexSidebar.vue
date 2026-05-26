@@ -12,7 +12,7 @@ import {
   SettingsOutline,
 } from '@vicons/ionicons5'
 
-type NavKey = 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'admin'
+type NavKey = 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'control'
 
 const props = withDefaults(
   defineProps<{
@@ -29,13 +29,13 @@ const emit = defineEmits<{
 }>()
 
 const navItems = computed(() => [
-  { key: 'cabin' as const, label: '探索舱', sub: 'EXPLORER', icon: RocketOutline, to: '/discovery' },
-  { key: 'track' as const, label: '星轨路径', sub: 'STARPATH', icon: GitNetworkOutline, to: '/star-path' },
-  { key: 'trial' as const, label: '试炼关卡', sub: 'TRIAL ARENA', icon: BarbellOutline, to: '/trial-arena' },
-  { key: 'messenger' as const, label: '驿站使者', sub: 'MESSENGER', icon: MailOutline, to: '/messenger' },
-  { key: 'daily' as const, label: '今日委托', sub: 'DAILY QUEST', icon: CalendarOutline, to: '/daily' },
-  { key: 'archive' as const, label: '探索档案', sub: 'ARCHIVES', icon: ArchiveOutline, to: '/archives' },
-  { key: 'admin' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/admin' },
+  { key: 'cabin' as const, label: '探索舱', sub: 'EXPLORER', icon: RocketOutline, to: '/student/discovery' },
+  { key: 'track' as const, label: '星轨路径', sub: 'STARPATH', icon: GitNetworkOutline, to: '/student/star-path' },
+  { key: 'trial' as const, label: '试炼关卡', sub: 'TRIAL ARENA', icon: BarbellOutline, to: '/student/trials' },
+  { key: 'messenger' as const, label: '驿站使者', sub: 'MESSENGER', icon: MailOutline, to: '/student/messenger' },
+  { key: 'daily' as const, label: '今日委托', sub: 'DAILY QUEST', icon: CalendarOutline, to: '/student/daily' },
+  { key: 'archive' as const, label: '探索档案', sub: 'ARCHIVES', icon: ArchiveOutline, to: '/student/archives' },
+  { key: 'control' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/student/control' },
 ])
 
 function toggleCollapsed() {

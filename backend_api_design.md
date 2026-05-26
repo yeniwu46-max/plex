@@ -956,6 +956,130 @@ GET /api/v1/teacher/overview
 说明: 前端教师端 `/teacher`、`/teacher/starfield`、`/teacher/explorers` 共享该接口；切换班级或周期时重新请求。
 ```
 
+#### 6.3 试炼中枢（已实现）
+
+**数据表**
+
+- `trials`：教师按班级发布试炼（`status`: `draft` | `running` | `ended`）
+- `trial_participations`：学生参与记录（`status`: `joined` | `completed` | `abandoned`），`(trial_id, user_id)` 唯一
+
+**教师端**
+
+```
+GET /api/v1/teacher/trials?class_id={id}
+权限: teacher | admin
+
+响应 data:
+{
+  "trials": [{ "id", "title", "trial_type", "status", "participant_count", "completion_rate", ... }],
+  "summary": { "running_count", "total_participants", "avg_completion_rate", "total_reward_points" }
+}
+```
+
+```
+POST /api/v1/teacher/trials
+权限: teacher | admin
+
+请求体（JSON）:
+{
+  "class_id": 1,
+  "title": "动态规划挑战赛",
+  "trial_type": "solo",
+  "knowledge_key": "dp",
+  "difficulty": 78,
+  "duration_minutes": 60,
+  "reward_points": 40,
+  "status": "running"   // 可选，默认 running
+}
+```
+
+```
+PATCH /api/v1/teacher/trials/{id}
+权限: teacher | admin（仅能修改本人班级/本人创建的试炼）
+
+请求体: { "status": "ended", "title": "...", "starts_at": "...", "ends_at": "..." }
+```
+
+```
+POST /api/v1/teacher/trials/{id}/publish
+权限: teacher | admin
+
+将 draft / scheduled 试炼发布；若 starts_at 在未来则保持 scheduled，否则进入 running。
+```
+
+创建试炼 `publish_mode`：`now` | `draft` | `scheduled`；可选 `start_delay_minutes`、`starts_at`。
+状态流转：draft → scheduled/running → ended（到期自动结束）。
+
+**学生端**
+
+```
+GET /api/v1/student/trials
+权限: student
+
+响应 data.trials: 本班 status=running 的试炼，含 my_status、my_score
+```
+
+```
+POST /api/v1/student/trials/{id}/join
+GET /api/v1/student/trials/arena
+权限: student
+
+响应: 本班 running + scheduled 试炼（探索舱地图用）
+
+POST /api/v1/student/trials/{id}/complete
+权限: student（须本班且试炼为 running）
+
+complete 请求体: { "score": 88 }  // 可选
+完成时写入 trial_participations 并记 PointsLog（source=trial）
+```
+
+说明: 前端 `/trial-arena` 经 `TrialArenaEntry` 按角色分流 — 教师见 `TrialArenaView`，学生见 `StudentTrialView`。本地演示数据：`python seed_trials_demo.py`（需先 `seed_li_class_students.py`）。
+
+```
+GET /api/v1/teacher/students/{student_id}/trials
+权限: teacher | admin（仅本人班级学生）
+
+响应 data: { student_id, participations: [{ ...part, trial: {...} }], summary }
+```
+
+#### 6.4 控制中枢配置（已实现）
+
+表 `system_settings`：`class_id` 为空为全局默认，否则为班级覆盖。
+
+```
+GET /api/v1/admin/settings?class_id=
+PUT /api/v1/admin/settings
+权限: admin | teacher（教师仅本人班级）
+
+请求体: { "class_id": 1, "settings": { "rules": {...}, "ai_strategies": [...], "notices": [...] } }
+```
+
+#### 6.5 学生星轨与档案洞察（已实现）
+
+```
+GET /api/v1/student/learning-path
+GET /api/v1/student/archive-insights
+GET /api/v1/student/dashboard-extras
+权限: student
+
+说明: 由试炼完成记录、每日委托进度、积分等推导星域进度与技能分布；供 `/star-path`、`/archives`、学生首页试炼入口使用。
+
+#### 6.6 激励与排名闭环（已实现）
+
+核心服务 `IncentiveService.record_points` / `process_user_incentive`：
+
+1. 写入 `points_log` 并累加 `users.total_points`
+2. 按阈值推算 `users.level`（Lv1–Lv5）
+3. 扫描 `achievements` 条件并写入 `user_achievements`
+4. 刷新 `ranking_cache`（按 ISO 周汇总本周 XP）
+
+`GET /api/v1/users/me` 返回 `level_profile`、`incentive`（班级排名、本周 XP、下一批成就进度）。
+
+完成试炼、每日委托领奖等接口在响应中带 `incentive` 字段（升级、新成就、排名变化）。
+
+种子：`python seed_incentive_achievements.py`
+```
+
 ---
 
 ## 四、认证授权流程

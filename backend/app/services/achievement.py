@@ -76,27 +76,13 @@ class AchievementService(BaseService):
 
     @staticmethod
     def add_points(user_id, points, reason, related_id=None):
-        """添加积分"""
-        from app.models import PointsLog
-        
-        user = User.query.get(user_id)
-        if not user:
-            raise Exception('用户不存在')
-        
-        # 添加积分日志
-        log = PointsLog(
-            user_id=user_id,
-            points=points,
-            reason=reason,
-            related_id=related_id
-        )
-        db.session.add(log)
-        
-        # 更新用户总积分
-        user.total_points += points
-        
+        """添加积分（走激励闭环）"""
+        from .incentive import IncentiveService
+
+        feedback = IncentiveService.record_points(user_id, points, reason, related_id=related_id)
         db.session.commit()
-        
+        user = User.query.get(user_id)
+        user.incentive_feedback = feedback
         return user
 
     @staticmethod

@@ -14,10 +14,12 @@ import {
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import { useAuthStore } from '../stores/auth'
 import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
+import { fetchDashboardExtras } from '../api/studentProgress'
 import { DAILY_QUESTS } from '../data/dailyQuests'
 
 const auth = useAuthStore()
 const overview = ref<StudentOverview | null>(null)
+const runningTrials = ref(0)
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -25,8 +27,16 @@ const profile = computed(() => overview.value?.profile)
 const displayName = computed(() => profile.value?.real_name || profile.value?.username || auth.profile?.real_name || '同学')
 const level = computed(() => profile.value?.level ?? auth.profile?.level ?? 1)
 const totalPoints = computed(() => profile.value?.total_points ?? auth.profile?.total_points ?? 0)
-const xpTarget = computed(() => Math.max(500, level.value * 500))
-const xpRatio = computed(() => Math.min(100, Math.round((totalPoints.value / xpTarget.value) * 100)))
+const levelProfile = computed(() => profile.value?.level_profile ?? profile.value?.incentive?.level_profile)
+const xpTarget = computed(
+  () => levelProfile.value?.next_threshold ?? Math.max(500, level.value * 500),
+)
+const xpRatio = computed(
+  () => levelProfile.value?.progress_percent ?? Math.min(100, Math.round((totalPoints.value / xpTarget.value) * 100)),
+)
+const rankTitle = computed(() => profile.value?.title || profile.value?.level_profile?.title || `Lv.${level.value}`)
+const weekPoints = computed(() => profile.value?.incentive?.week_points ?? 0)
+const nextAchievement = computed(() => profile.value?.incentive?.next_achievements?.[0])
 const daily = computed(() => overview.value?.daily)
 const completedQuests = computed(() => daily.value?.completed_count ?? 0)
 const totalQuests = computed(() => daily.value?.total_count ?? DAILY_QUESTS.length)
@@ -70,18 +80,31 @@ const statCards = computed(() => [
   { key: 'quests', label: '今日委托', value: `${completedQuests.value}/${totalQuests.value}`, icon: CalendarOutline, tone: 'blue' },
 ])
 
-const quickLinks = [
-  { title: '探索舱', desc: '查看学习星域与资源状态', to: '/discovery', icon: RocketOutline },
-  { title: '今日委托', desc: '完成今日任务并领取反馈', to: '/daily', icon: CalendarOutline },
-  { title: '探索档案', desc: '查看成长轨迹与成就收藏', to: '/archives', icon: ArchiveOutline },
-  { title: '试炼关卡', desc: '选择适合你的挑战入口', to: '/trial-arena', icon: BarbellOutline },
-]
+const quickLinks = computed(() => [
+  { title: '探索舱', desc: '查看学习星域与资源状态', to: '/student/discovery', icon: RocketOutline },
+  { title: '今日委托', desc: '完成今日任务并领取反馈', to: '/student/daily', icon: CalendarOutline },
+  { title: '探索档案', desc: '查看成长轨迹与成就收藏', to: '/student/archives', icon: ArchiveOutline },
+  {
+    title: '试炼关卡',
+    desc:
+      runningTrials.value > 0
+        ? `班级有 ${runningTrials.value} 场试炼进行中，点击参与`
+        : '选择适合你的挑战入口',
+    to: '/student/trials',
+    icon: BarbellOutline,
+  },
+])
 
 async function loadOverview() {
   loading.value = true
   errorMessage.value = ''
   try {
-    overview.value = await fetchStudentOverview()
+    const [overviewResult, extras] = await Promise.all([
+      fetchStudentOverview(),
+      fetchDashboardExtras().catch(() => ({ running_trials: 0 })),
+    ])
+    overview.value = overviewResult
+    runningTrials.value = extras.running_trials
     auth.syncProfile({
       id: overview.value.profile.id,
       username: overview.value.profile.username,
@@ -124,8 +147,8 @@ onMounted(loadOverview)
               完成全部可获得 {{ totalQuestReward }} XP 反馈。
             </p>
             <div class="hero-band__actions">
-              <RouterLink to="/daily" class="primary-link">继续今日委托</RouterLink>
-              <RouterLink to="/discovery" class="ghost-link">进入探索舱</RouterLink>
+              <RouterLink to="/student/daily" class="primary-link">继续今日委托</RouterLink>
+              <RouterLink to="/student/discovery" class="ghost-link">进入探索舱</RouterLink>
             </div>
           </div>
           <div class="hero-band__meter" aria-label="等级进度">
@@ -133,9 +156,17 @@ onMounted(loadOverview)
               <strong>{{ xpRatio }}</strong>
               <em>%</em>
             </span>
-            <p>Lv.{{ level }} 进度</p>
-            <small>{{ totalPoints }} / {{ xpTarget }} XP</small>
+            <p>{{ rankTitle }}</p>
+            <small>{{ totalPoints }} / {{ xpTarget }} XP · 本周 +{{ weekPoints }}</small>
           </div>
+        </section>
+
+        <section v-if="nextAchievement" class="achievement-hint" aria-label="下一成就">
+          <span>下一成就 · {{ nextAchievement.name }}</span>
+          <div class="achievement-hint__bar">
+            <i :style="{ width: `${nextAchievement.progress_percent}%` }" />
+          </div>
+          <small>{{ nextAchievement.current_value }} / {{ nextAchievement.target_value }}</small>
         </section>
 
         <section class="stat-grid" aria-label="学习状态">
@@ -150,7 +181,7 @@ onMounted(loadOverview)
           <div class="mission-panel">
             <div class="section-head">
               <h2>今日委托</h2>
-              <RouterLink to="/daily">查看全部</RouterLink>
+              <RouterLink to="/student/daily">查看全部</RouterLink>
             </div>
             <div class="quest-mini-list">
               <article v-for="quest in dailyQuestItems" :key="quest.key" class="quest-mini">
@@ -167,7 +198,7 @@ onMounted(loadOverview)
           <div class="mission-panel">
             <div class="section-head">
               <h2>成长摘要</h2>
-              <RouterLink to="/archives">打开档案</RouterLink>
+              <RouterLink to="/student/archives">打开档案</RouterLink>
             </div>
             <dl class="summary-list">
               <div>
@@ -325,6 +356,28 @@ onMounted(loadOverview)
   margin-top: -2.8rem;
   color: rgba(226, 232, 240, 0.68);
   font-style: normal;
+}
+
+.achievement-hint {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(130, 212, 255, 0.14);
+  background: rgba(5, 17, 29, 0.72);
+}
+
+.achievement-hint__bar {
+  height: 6px;
+  margin: 0.55rem 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.achievement-hint__bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2efff1, #ffc86b);
 }
 
 .hero-band__meter p,

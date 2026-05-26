@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, markRaw, onMounted, ref, type Component } from 'vue'
-import { NIcon } from 'naive-ui'
+import { NIcon, useMessage } from 'naive-ui'
+import { showIncentiveFeedback } from '../utils/incentiveFeedback'
 import {
   ArrowForwardOutline,
   BarbellOutline,
@@ -38,6 +39,7 @@ type Quest = {
   rewardClaimed: boolean
 }
 
+const message = useMessage()
 const sidebarCollapsed = ref(false)
 const dailyData = ref<DailyQuestTodayResult | null>(null)
 const loading = ref(true)
@@ -130,6 +132,7 @@ async function claimBonus() {
   errorMessage.value = ''
   try {
     dailyData.value = await claimDailyQuestBonus()
+    showIncentiveFeedback(message, dailyData.value?.incentive)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Failed to claim daily quest bonus'
   } finally {
@@ -144,8 +147,10 @@ async function advanceQuest(key: string) {
   errorMessage.value = ''
   try {
     dailyData.value = await advanceDailyQuest(key)
+    showIncentiveFeedback(message, dailyData.value?.incentive)
     if (dailyData.value.all_completed && !dailyData.value.bonus_claimed) {
       dailyData.value = await claimDailyQuestBonus()
+      showIncentiveFeedback(message, dailyData.value?.incentive)
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Failed to update daily quest'

@@ -20,10 +20,54 @@ const router = createRouter({
     {
       path: '/student',
       name: 'student-home',
+      meta: { roles: ['student'] },
       component: () => import('../views/StudentHomeView.vue'),
     },
     {
+      path: '/student/control',
+      name: 'student-control',
+      meta: { roles: ['student'] },
+      component: () => import('../views/StudentControlView.vue'),
+    },
+    {
+      path: '/student/discovery',
+      name: 'student-discovery',
+      meta: { roles: ['student'] },
+      component: () => import('../views/DiscoveryCabinView.vue'),
+    },
+    {
+      path: '/student/star-path',
+      name: 'student-star-path-lab',
+      meta: { roles: ['student'] },
+      component: () => import('../views/StarPathLabView.vue'),
+    },
+    {
+      path: '/student/trials',
+      name: 'student-trials',
+      meta: { roles: ['student'] },
+      component: () => import('../views/StudentTrialView.vue'),
+    },
+    {
+      path: '/student/messenger',
+      name: 'student-messenger',
+      meta: { roles: ['student'] },
+      component: () => import('../views/MessengerView.vue'),
+    },
+    {
+      path: '/student/daily',
+      name: 'student-daily-quest',
+      meta: { roles: ['student'] },
+      component: () => import('../views/DailyQuestView.vue'),
+    },
+    {
+      path: '/student/archives',
+      name: 'student-archives',
+      meta: { roles: ['student'] },
+      component: () => import('../views/ExplorationArchivesView.vue'),
+    },
+    {
       path: '/teacher',
+      meta: { roles: ['teacher', 'admin'] },
       component: () => import('../layouts/TeacherOverviewLayout.vue'),
       children: [
         {
@@ -41,45 +85,57 @@ const router = createRouter({
           name: 'teacher-explorers',
           component: () => import('../views/TeacherExplorersView.vue'),
         },
+        {
+          path: 'trials',
+          name: 'teacher-trials',
+          component: () => import('../views/TrialArenaView.vue'),
+        },
       ],
     },
     {
       path: '/admin',
       name: 'admin-home',
+      meta: { roles: ['admin'] },
       component: () => import('../views/AdminHomeView.vue'),
     },
     {
       path: '/discovery',
-      name: 'discovery',
-      component: () => import('../views/DiscoveryCabinView.vue'),
+      redirect: '/student/discovery',
     },
     {
       path: '/star-path',
-      name: 'star-path-lab',
-      component: () => import('../views/StarPathLabView.vue'),
+      redirect: '/student/star-path',
     },
     {
       path: '/trial-arena',
-      name: 'trial-arena',
-      component: () => import('../views/TrialArenaView.vue'),
+      redirect: () => {
+        const auth = useAuthStore()
+        const role = auth.profile?.role
+        return role === 'teacher' || role === 'admin' ? '/teacher/trials' : '/student/trials'
+      },
     },
     {
       path: '/messenger',
-      name: 'messenger',
-      component: () => import('../views/MessengerView.vue'),
+      redirect: '/student/messenger',
     },
     {
       path: '/daily',
-      name: 'daily-quest',
-      component: () => import('../views/DailyQuestView.vue'),
+      redirect: '/student/daily',
     },
     {
       path: '/archives',
-      name: 'archives',
-      component: () => import('../views/ExplorationArchivesView.vue'),
+      redirect: '/student/archives',
     },
   ],
 })
+
+function roleAllowed(required: string[] | undefined, role?: string) {
+  if (!required?.length) return true
+  if (!role) return false
+  if (required.includes(role)) return true
+  if (role === 'admin' && required.includes('teacher')) return true
+  return false
+}
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
@@ -92,6 +148,17 @@ router.beforeEach((to) => {
   if (!auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
+
+  const required = to.matched
+    .map((record) => record.meta.roles as string[] | undefined)
+    .filter(Boolean)
+    .flat() as string[] | undefined
+  const uniqueRequired = required?.length ? [...new Set(required)] : undefined
+
+  if (!roleAllowed(uniqueRequired, auth.profile?.role)) {
+    return auth.homePathForRole(auth.profile?.role)
+  }
+
   return true
 })
 

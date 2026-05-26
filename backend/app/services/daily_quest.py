@@ -79,12 +79,13 @@ class DailyQuestService(BaseService):
             raise Exception('今日委托不存在或未启用')
 
         quest = record.quest
+        incentive_feedback = None
         if record.current < quest.total:
             record.current += 1
             if record.current >= quest.total and not record.completed_at:
                 record.completed_at = datetime.utcnow()
                 if not record.reward_claimed_at:
-                    DailyQuestService._add_points(
+                    incentive_feedback = DailyQuestService._add_points(
                         user_id=user_id,
                         points=quest.reward_xp,
                         reason=f'daily_quest:{quest.key}',
@@ -93,8 +94,16 @@ class DailyQuestService(BaseService):
                     record.reward_claimed_at = datetime.utcnow()
             db.session.commit()
 
+        if not incentive_feedback:
+            from .incentive import IncentiveService
+
+            incentive_feedback = IncentiveService.process_user_incentive(user_id)
+            db.session.commit()
+
         refreshed = DailyQuestService._ensure_today_records(user_id, today)
-        return DailyQuestService._build_today_payload(user_id, today, refreshed)
+        payload = DailyQuestService._build_today_payload(user_id, today, refreshed)
+        payload['incentive'] = incentive_feedback
+        return payload
 
     @staticmethod
     def claim_bonus(user_id):
@@ -103,15 +112,19 @@ class DailyQuestService(BaseService):
         payload = DailyQuestService._build_today_payload(user_id, today, records)
         if not payload['all_completed']:
             raise Exception('今日委托尚未全部完成')
+        incentive_feedback = None
         if not payload['bonus_claimed']:
-            DailyQuestService._add_points(
+            incentive_feedback = DailyQuestService._add_points(
                 user_id=user_id,
                 points=DAILY_BONUS_XP,
                 reason=DAILY_BONUS_REASON,
             )
             db.session.commit()
         refreshed = DailyQuestService._ensure_today_records(user_id, today)
-        return DailyQuestService._build_today_payload(user_id, today, refreshed)
+        result = DailyQuestService._build_today_payload(user_id, today, refreshed)
+        if incentive_feedback:
+            result['incentive'] = incentive_feedback
+        return result
 
     @staticmethod
     def _ensure_today_records(user_id, target_date):
@@ -161,11 +174,9 @@ class DailyQuestService(BaseService):
 
     @staticmethod
     def _add_points(user_id, points, reason, related_id=None):
-        user = User.query.get(user_id)
-        if not user:
-            raise Exception('用户不存在')
-        db.session.add(PointsLog(user_id=user_id, points=points, reason=reason, related_id=related_id))
-        user.total_points = (user.total_points or 0) + points
+        from .incentive import IncentiveService
+
+        return IncentiveService.record_points(user_id, points, reason, related_id=related_id)
 
     @staticmethod
     def _bonus_claimed(user_id, target_date):

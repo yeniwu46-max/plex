@@ -4,10 +4,16 @@ import {
   TrophyOutline,
   TimerOutline,
   DiamondOutline,
+  PeopleOutline,
+  SparklesOutline,
 } from '@vicons/ionicons5'
+import type { StudentTrial } from '../api/studentTrials'
 
 export type TrialPosition = 'tl' | 'tr' | 'bl' | 'br'
 export type TrialTheme = 'teal' | 'purple' | 'orange' | 'pink'
+
+const POSITIONS: TrialPosition[] = ['tl', 'tr', 'bl', 'br']
+const THEMES: TrialTheme[] = ['teal', 'purple', 'orange', 'pink']
 
 /** 卡片中心锚点（百分比），与 TrialArenaMap 连线 SVG 一致 */
 export const TRIAL_ANCHORS: Record<TrialPosition, { x: number; y: number }> = {
@@ -27,13 +33,27 @@ export interface TrialMode {
   theme: TrialTheme
   position: TrialPosition
   requiredLevel: number
-  /** 占位：预估时长（分钟） */
   durationMin: number
-  /** 占位：难度 1–5 */
   difficulty: number
-  /** 占位：奖励结晶 */
   rewardCrystal: number
   tags?: string[]
+  /** 后端试炼 ID（API 数据时有值） */
+  trialId?: number
+  effectiveStatus?: string
+}
+
+const TYPE_ICONS: Record<string, Component> = {
+  solo: TimerOutline,
+  team: PeopleOutline,
+  timed: SparklesOutline,
+  abyss: DiamondOutline,
+}
+
+const TYPE_EN: Record<string, string> = {
+  solo: 'SOLO RUN',
+  team: 'TEAM TRIAL',
+  timed: 'TIMED RUSH',
+  abyss: 'ABYSS GATE',
 }
 
 export const TRIAL_MODES: TrialMode[] = [
@@ -99,7 +119,41 @@ export const TRIAL_MODES: TrialMode[] = [
   },
 ]
 
+export function mapApiTrialsToArenaModes(trials: StudentTrial[], userLevel = 1): TrialMode[] {
+  if (!trials.length) return []
+
+  return trials.slice(0, 4).map((trial, index) => {
+    const position = POSITIONS[index % POSITIONS.length]
+    const theme = THEMES[index % THEMES.length]
+    const icon = TYPE_ICONS[trial.trial_type] ?? HardwareChipOutline
+    const effective = (trial as StudentTrial & { effective_status?: string }).effective_status ?? trial.status
+    const statusTag =
+      effective === 'scheduled' ? '即将开始' : trial.my_status === 'completed' ? '已完成' : '可参与'
+
+    return {
+      key: `trial-${trial.id}`,
+      trialId: trial.id,
+      effectiveStatus: effective,
+      number: String(index + 1).padStart(2, '0'),
+      title: trial.title,
+      titleEn: TYPE_EN[trial.trial_type] ?? 'CLASS TRIAL',
+      description: `班级试炼 · 难度 ${trial.difficulty} · 奖励 ${trial.reward_points} XP`,
+      icon,
+      theme,
+      position,
+      requiredLevel: effective === 'running' ? 1 : Math.max(userLevel, 1),
+      durationMin: trial.duration_minutes,
+      difficulty: Math.min(5, Math.max(1, Math.round(trial.difficulty / 20))),
+      rewardCrystal: trial.reward_points,
+      tags: [statusTag],
+    }
+  })
+}
+
 export function isTrialUnlocked(trial: TrialMode, userLevel: number) {
+  if (trial.trialId) {
+    return trial.effectiveStatus === 'running'
+  }
   return userLevel >= trial.requiredLevel
 }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { NIcon } from 'naive-ui'
+import { computed, onMounted, ref } from 'vue'
+import { NButton, NIcon } from 'naive-ui'
+import { fetchLearningPath, type LearningDomain } from '../api/studentProgress'
 import {
   ChevronDownOutline,
   ChevronForwardOutline,
@@ -23,16 +24,44 @@ type Domain = {
 
 
 const sidebarCollapsed = ref(false)
+const loading = ref(true)
+const errorMessage = ref('')
+const domains = ref<Domain[]>([])
+const activeDomainKey = ref('algo')
 
 const tabs = ['全部星域', '算法基础', '数据结构', '前端开发', '后端开发', '数据库', '计算机基础']
 
-const domains: Domain[] = [
-  { key: 'algo', title: '算法基础', progress: 62, state: '进行中', active: true },
-  { key: 'data', title: '数据结构', progress: 41, state: '进行中', locked: true },
-  { key: 'front', title: '前端开发', progress: 28, state: '待解锁', locked: true },
-  { key: 'back', title: '后端开发', progress: 15, state: '待解锁', locked: true },
-  { key: 'db', title: '数据库', progress: 8, state: '待解锁', locked: true },
-]
+const activeDomain = computed(() => domains.value.find((item) => item.key === activeDomainKey.value) ?? domains.value[0])
+
+function mapDomain(item: LearningDomain): Domain {
+  return {
+    key: item.key,
+    title: item.title,
+    progress: item.progress,
+    state: item.state,
+    active: item.active,
+    locked: item.locked,
+  }
+}
+
+async function loadPath() {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const data = await fetchLearningPath()
+    domains.value = data.domains.map(mapDomain)
+    activeDomainKey.value = data.active_domain_key
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '星轨数据加载失败'
+    domains.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  void loadPath()
+})
 </script>
 
 <template>
@@ -68,16 +97,22 @@ const domains: Domain[] = [
         </div>
       </section>
 
-      <section class="starpath-content" aria-label="算法基础星域">
+      <div v-if="loading" class="starpath-state">正在同步星轨路径…</div>
+      <div v-else-if="errorMessage" class="starpath-state starpath-state--error">
+        <span>{{ errorMessage }}</span>
+        <n-button secondary size="small" @click="loadPath()">重试</n-button>
+      </div>
+
+      <section v-else class="starpath-content" :aria-label="`${activeDomain?.title ?? '星域'}星轨`">
         <div class="content-left">
           <section class="path-board">
             <div class="domain-copy">
               <div class="domain-copy__head">
-                <h2>算法基础星域</h2>
-                <span>进行</span>
+                <h2>{{ activeDomain?.title ?? '星域' }}星域</h2>
+                <span>{{ activeDomain?.state ?? '探索中' }}</span>
               </div>
               <p>星域探索进度</p>
-              <strong>62%</strong>
+              <strong>{{ activeDomain?.progress ?? 0 }}%</strong>
               <div class="progress-line"><span /></div>
               <p class="domain-copy__desc">
                 掌握算法思维的核心原理，<br />

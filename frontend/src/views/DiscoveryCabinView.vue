@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { NIcon } from 'naive-ui'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { NButton, NIcon } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 import {
   ChevronForwardOutline,
@@ -11,13 +12,22 @@ import {
   TrophyOutline,
 } from '@vicons/ionicons5'
 import StarFieldMap from '../components/discovery/StarFieldMap.vue'
+import TrialArenaMap from '../components/discovery/TrialArenaMap.vue'
+import { fetchStudentArenaTrials } from '../api/studentTrials'
+import { mapApiTrialsToArenaModes, type TrialMode } from '../data/trialArena'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 import { fetchCurrentStudent, type CurrentStudent } from '../api/studentOverview'
 
 const auth = useAuthStore()
+const router = useRouter()
 const sidebarCollapsed = ref(false)
 const profile = ref<CurrentStudent | null>(null)
+const mapMode = ref<'starfield' | 'trial'>('starfield')
+const arenaTrials = ref<TrialMode[]>([])
+const arenaLoading = ref(false)
+const arenaError = ref('')
+const selectedArenaKey = ref<string | null>(null)
 
 const displayName = computed(
   () => profile.value?.real_name || auth.profile?.real_name || auth.profile?.username || 'Explorer',
@@ -55,7 +65,40 @@ async function loadProfile() {
   }
 }
 
-onMounted(loadProfile)
+async function loadArenaTrials() {
+  arenaLoading.value = true
+  arenaError.value = ''
+  try {
+    const data = await fetchStudentArenaTrials()
+    arenaTrials.value = mapApiTrialsToArenaModes(data.trials, userLevel.value)
+    if (arenaTrials.value.length && !selectedArenaKey.value) {
+      selectedArenaKey.value = arenaTrials.value[0].key
+    }
+  } catch (error) {
+    arenaError.value = error instanceof Error ? error.message : '试炼场加载失败'
+    arenaTrials.value = []
+  } finally {
+    arenaLoading.value = false
+  }
+}
+
+function onArenaEnter(trial: TrialMode) {
+  if (!trial.trialId) {
+    void router.push('/student/trials')
+    return
+  }
+  void router.push({ path: '/student/trials', query: { trialId: String(trial.trialId) } })
+}
+
+watch(mapMode, (mode) => {
+  if (mode === 'trial' && !arenaTrials.value.length && !arenaLoading.value) {
+    void loadArenaTrials()
+  }
+})
+
+onMounted(() => {
+  void loadProfile()
+})
 
 </script>
 
@@ -74,7 +117,35 @@ onMounted(loadProfile)
       <PlexTopbar title="探索舱" subtitle="你的探索起点，连接知识星域与成长路线" />
 
       <section class="cabin-map-wrap" aria-label="探索舱">
-        <StarFieldMap />
+        <div class="cabin-map-tabs" role="tablist" aria-label="地图模式">
+          <button type="button" role="tab" :aria-selected="mapMode === 'starfield'" :class="{ 'is-active': mapMode === 'starfield' }" @click="mapMode = 'starfield'">
+            星域探索
+          </button>
+          <button type="button" role="tab" :aria-selected="mapMode === 'trial'" :class="{ 'is-active': mapMode === 'trial' }" @click="mapMode = 'trial'">
+            班级试炼场
+          </button>
+        </div>
+
+        <StarFieldMap v-if="mapMode === 'starfield'" />
+
+        <div v-else class="cabin-trial-wrap">
+          <div v-if="arenaLoading" class="cabin-trial-state">正在同步班级试炼…</div>
+          <div v-else-if="arenaError" class="cabin-trial-state cabin-trial-state--error">
+            <span>{{ arenaError }}</span>
+            <n-button secondary size="small" @click="loadArenaTrials()">重试</n-button>
+          </div>
+          <p v-else-if="!arenaTrials.length" class="cabin-trial-state">
+            暂无进行中的班级试炼，请等待教师发布或稍后再来。
+          </p>
+          <TrialArenaMap
+            v-else
+            v-model="selectedArenaKey"
+            :trials="arenaTrials"
+            :allow-demo-fallback="false"
+            :user-level="userLevel"
+            @enter="onArenaEnter"
+          />
+        </div>
       </section>
 
       <footer class="cabin-status" aria-label="探索者资源">
@@ -479,6 +550,45 @@ onMounted(loadProfile)
 
 .cabin-user__chev {
   color: rgba(230, 242, 250, 0.82);
+}
+
+.cabin-map-tabs {
+  display: flex;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.cabin-map-tabs button {
+  padding: 0.45rem 1rem;
+  border: 1px solid rgba(130, 212, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(4, 12, 20, 0.55);
+  color: rgba(220, 230, 241, 0.72);
+  cursor: pointer;
+  font-size: 0.86rem;
+}
+
+.cabin-map-tabs button.is-active {
+  border-color: rgba(37, 245, 238, 0.45);
+  background: rgba(37, 245, 238, 0.12);
+  color: #e6fffb;
+}
+
+.cabin-trial-wrap {
+  height: calc(100% - 2.5rem);
+  min-height: 380px;
+}
+
+.cabin-trial-state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  color: rgba(220, 230, 241, 0.82);
+}
+
+.cabin-trial-state--error {
+  color: #fecaca;
 }
 
 .cabin-map-wrap {

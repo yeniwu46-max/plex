@@ -16,11 +16,9 @@ export interface LoginPayload {
   expiresIn?: number
 }
 
-const LS_USER = 'a3_user_profile'
-
 function readProfile(): Omit<LoginPayload, 'access_token' | 'refresh_token' | 'expiresIn'> | null {
   try {
-    const raw = localStorage.getItem(LS_USER)
+    const raw = localStorage.getItem(storageKeys.profile)
     if (!raw) return null
     return JSON.parse(raw) as Omit<LoginPayload, 'access_token' | 'refresh_token' | 'expiresIn'>
   } catch {
@@ -42,7 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value = rest
     localStorage.setItem(storageKeys.access, access_token)
     localStorage.setItem(storageKeys.refresh, refresh_token)
-    localStorage.setItem(LS_USER, JSON.stringify(rest))
+    localStorage.setItem(storageKeys.profile, JSON.stringify(rest))
   }
 
   function clearSession() {
@@ -51,13 +49,13 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value = null
     localStorage.removeItem(storageKeys.access)
     localStorage.removeItem(storageKeys.refresh)
-    localStorage.removeItem(LS_USER)
+    localStorage.removeItem(storageKeys.profile)
   }
 
   function syncProfile(nextProfile: Partial<Omit<LoginPayload, 'access_token' | 'refresh_token' | 'expiresIn'>>) {
     if (!profile.value) return
     profile.value = { ...profile.value, ...nextProfile }
-    localStorage.setItem(LS_USER, JSON.stringify(profile.value))
+    localStorage.setItem(storageKeys.profile, JSON.stringify(profile.value))
   }
 
   async function login(username: string, password: string) {

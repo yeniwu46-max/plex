@@ -353,14 +353,16 @@ coding/
 - [x] API 文档：`backend_api_design.md` 增补 `GET /api/v1/teacher/overview` 响应说明
 
 **进行中/待完成**:
+- [x] **试炼中枢 MVP** — 见 [docs/工作计划-2026-05-27-试炼中枢.md](docs/工作计划-2026-05-27-试炼中枢.md)（`trials` / `trial_participations`、教师/学生 API、`TrialArenaView` + `StudentTrialView` 联调）
 - [ ] 今日委托持久化与每日重置 - 需要新增任务/完成记录设计
 - [ ] 试炼关卡真实流程 - 需要新增试炼记录、完成结算、奖励发放与战绩接口
-- [ ] 激励系统完整闭环（等级、积分、勋章自动解锁） - 需要后端规则与权限设计
-- [ ] 排名系统完整数据生成 - 需要后端排名缓存刷新/实时计算策略
-- [ ] 班级管理页面完整 - 控制中枢目前为前端配置面板，具体保存/导出/备份接口待补
+- [x] 激励系统闭环：`IncentiveService` 统一记分 → 等级推算 → 成就自动解锁 → 班级周排名缓存刷新
+- [x] 排名缓存：`ranking_cache` 按 ISO 周汇总 `PointsLog`，教师看板与学生 `/users/me` 使用同一套排名
+- [x] 控制中枢配置落库（`/admin/settings` + `AdminHomeView` 读写试炼规则 / AI 策略 / 通知开关）
+- [ ] 班级管理页面完整 - 数据导出/备份接口待补
 - [ ] 前后端完整联调（教师端演示数据已可通过种子脚本补齐）
 
-> 说明：学生端当前优先完成“登录后可演示主线”。教师端已完成「观察工作台」可演示闭环：三页（领航总览 / 星域观测 / Explorer 档案）+ 统一工具栏 + `teacher/overview` 聚合；`/trial-arena` 与 `/admin` 仍为前端 UI + 本地状态，试炼发布、控制中枢配置落库待后端业务表。
+> 说明：学生端「登录后可演示主线」已扩展：`/daily` 委托 API、`/trial-arena` 试炼参与、`/star-path` 星轨聚合、`/archives` 档案洞察（试炼/积分推导）。教师端试炼发布与 Explorer 试炼 Tab、控制中枢配置均已落库联调。
 
 ### 6.2.1 教师端前端结构（2026-05-26）
 
@@ -370,7 +372,8 @@ coding/
 | `/teacher/starfield` | `TeacherStarfieldView` | 同上 + 星域 mock 维度配置 `teacherStarfield.ts` |
 | `/teacher/explorers` | `TeacherExplorersView` | overview + `GET /api/v1/achievements/user/:id` |
 | `/trial-arena` | `TrialArenaView` | 本地 mock（待试炼 API） |
-| `/admin` | `AdminHomeView` | 本地 mock（待设置 API） |
+| `/admin` | `AdminHomeView` | `GET/PUT /admin/settings` |
+| `/star-path` | `StarPathLabView` | `GET /student/learning-path` |
 
 共享：`TeacherOverviewLayout` → `provide(TEACHER_OVERVIEW_KEY)` → 各页 `useTeacherOverviewInjected()`；页面内包 `TeacherDashboardShell`（工具栏 + 侧栏）。
 

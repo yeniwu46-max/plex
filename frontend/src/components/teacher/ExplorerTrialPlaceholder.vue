@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 function goTrialArena() {
-  void router.push('/trial-arena')
+  void router.push('/teacher/trials')
 }
 </script>
 

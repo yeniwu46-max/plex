@@ -11,7 +11,7 @@ import ExplorerMemberManage from '../components/teacher/ExplorerMemberManage.vue
 import ExplorerProfileHero from '../components/teacher/ExplorerProfileHero.vue'
 import ExplorerQuestPanel from '../components/teacher/ExplorerQuestPanel.vue'
 import ExplorerStatusAside from '../components/teacher/ExplorerStatusAside.vue'
-import ExplorerTrialPlaceholder from '../components/teacher/ExplorerTrialPlaceholder.vue'
+import ExplorerTrialPanel from '../components/teacher/ExplorerTrialPanel.vue'
 import GrowthLineChart from '../components/teacher/GrowthLineChart.vue'
 import { fetchStudentAchievements } from '../api/teacherStudentDetail'
 import type { UserAchievementRecord } from '../api/studentOverview'
@@ -234,7 +234,7 @@ if (shellSearch) {
             :error="achievementsError"
             :achievements="achievements"
           />
-          <explorer-trial-placeholder v-else-if="detailTab === 'trial'" />
+          <explorer-trial-panel v-else-if="detailTab === 'trial' && selectedStudent" :student-id="selectedStudent.id" />
         </section>
 
         <explorer-status-aside

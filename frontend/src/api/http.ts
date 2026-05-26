@@ -2,8 +2,9 @@ import axios, { AxiosHeaders, type AxiosError, type InternalAxiosRequestConfig }
 
 const LS_ACCESS = 'a3_access_token'
 const LS_REFRESH = 'a3_refresh_token'
+const LS_USER = 'a3_user_profile'
 
-export const storageKeys = { access: LS_ACCESS, refresh: LS_REFRESH }
+export const storageKeys = { access: LS_ACCESS, refresh: LS_REFRESH, profile: LS_USER }
 
 export interface ApiEnvelope<T = unknown> {
   code: number
@@ -58,6 +59,7 @@ http.interceptors.response.use(
       }
       localStorage.removeItem(LS_ACCESS)
       localStorage.removeItem(LS_REFRESH)
+      localStorage.removeItem(LS_USER)
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         window.location.assign('/login')
       }

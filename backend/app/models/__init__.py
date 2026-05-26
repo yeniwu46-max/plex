@@ -11,6 +11,8 @@ from .user_achievement import UserAchievement
 from .points_log import PointsLog
 from .ranking_cache import RankingCache
 from .daily_quest import DailyQuest, UserDailyQuest
+from .trial import Trial, TrialParticipation
+from .system_setting import SystemSetting
 
 __all__ = [
     'db',
@@ -26,4 +28,7 @@ __all__ = [
     'RankingCache',
     'DailyQuest',
     'UserDailyQuest',
+    'Trial',
+    'TrialParticipation',
+    'SystemSetting',
 ]

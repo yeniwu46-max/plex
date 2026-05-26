@@ -147,9 +147,21 @@ class ClassService(BaseService):
             query = query.filter_by(week=current_week)
         
         rankings = query.order_by(RankingCache.rank.asc()).all()
-        
+
+        if not rankings:
+            from .incentive import IncentiveService
+
+            week_key = week or f"{datetime.now().year}-w{datetime.now().isocalendar()[1]:02d}"
+            IncentiveService.refresh_class_ranking(class_id, week_key)
+            db.session.commit()
+            rankings = (
+                RankingCache.query.filter_by(class_id=class_id, week=week_key)
+                .order_by(RankingCache.rank.asc())
+                .all()
+            )
+
         return {
             'class_id': class_id,
-            'week': week,
-            'rankings': [r.to_dict() for r in rankings]
+            'week': week or f"{datetime.now().year}-w{datetime.now().isocalendar()[1]:02d}",
+            'rankings': [r.to_dict() for r in rankings],
         }

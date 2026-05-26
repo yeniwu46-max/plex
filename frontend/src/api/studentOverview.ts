@@ -1,5 +1,34 @@
 import { http, type ApiEnvelope } from './http'
 
+export interface LevelProfile {
+  level: number
+  title: string
+  total_points: number
+  current_threshold: number
+  next_threshold: number | null
+  points_to_next_level: number
+  progress_percent: number
+  max_level: number
+}
+
+export interface IncentiveSummary {
+  level_profile: LevelProfile
+  class_rank: number | null
+  achievements_unlocked: number
+  achievements_total: number
+  week_key: string
+  week_points: number
+  next_achievements: Array<{
+    id: number
+    name: string
+    description: string | null
+    rarity: string
+    current_value: number
+    target_value: number
+    progress_percent: number
+  }>
+}
+
 export interface CurrentStudent {
   id: number
   username: string
@@ -17,6 +46,8 @@ export interface CurrentStudent {
   consecutive_days: number
   achievements_count: number
   class_rank: number | null
+  level_profile?: LevelProfile
+  incentive?: IncentiveSummary
   class: {
     id: number
     name: string
@@ -101,6 +132,15 @@ export interface DailyQuestRecord {
   reward_claimed_at: string | null
 }
 
+export interface IncentiveFeedbackPayload {
+  level_up?: boolean
+  level?: number
+  title?: string
+  points_gained?: number
+  class_rank?: number | null
+  unlocked_achievements?: Array<{ name: string; rarity?: string }>
+}
+
 export interface DailyQuestTodayResult {
   date: string
   quests: DailyQuestRecord[]
@@ -112,6 +152,7 @@ export interface DailyQuestTodayResult {
   bonus_xp: number
   bonus_claimed: boolean
   all_completed: boolean
+  incentive?: IncentiveFeedbackPayload
 }
 
 export interface StudentOverview {

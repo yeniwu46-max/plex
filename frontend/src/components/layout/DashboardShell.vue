@@ -20,8 +20,9 @@ const props = withDefaults(
     pageSubtitle?: string
     searchPlaceholder: string
     showViewSwitcher?: boolean
+    hideSearch?: boolean
   }>(),
-  { pageSubtitle: '每一步探索，都是成长的轨迹', showViewSwitcher: false },
+  { pageSubtitle: '每一步探索，都是成长的轨迹', showViewSwitcher: false, hideSearch: false },
 )
 
 const emit = defineEmits<{
@@ -52,6 +53,7 @@ function onViewSelect(key: string) {
         :title="pageTitle"
         :subtitle="pageSubtitle"
         :placeholder="searchPlaceholder"
+        :hide-search="hideSearch"
       />
 
       <div v-if="showViewSwitcher" class="topbar-actions">

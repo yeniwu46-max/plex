@@ -9,6 +9,7 @@ import {
   GitNetworkOutline,
   MailOutline,
   RocketOutline,
+  SettingsOutline,
 } from '@vicons/ionicons5'
 
 type NavKey = 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'admin'
@@ -34,6 +35,7 @@ const navItems = computed(() => [
   { key: 'messenger' as const, label: '驿站使者', sub: 'MESSENGER', icon: MailOutline, to: '/messenger' },
   { key: 'daily' as const, label: '今日委托', sub: 'DAILY QUEST', icon: CalendarOutline, to: '/daily' },
   { key: 'archive' as const, label: '探索档案', sub: 'ARCHIVES', icon: ArchiveOutline, to: '/archives' },
+  { key: 'admin' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/admin' },
 ])
 
 function toggleCollapsed() {

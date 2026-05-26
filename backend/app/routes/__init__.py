@@ -6,6 +6,7 @@ from .classes import classes_bp
 from .permissions import permissions_bp
 from .achievements import achievements_bp
 from .daily_quests import daily_quests_bp
+from .teacher import teacher_bp
 
 def register_routes(app):
     """注册所有路由"""
@@ -15,3 +16,4 @@ def register_routes(app):
     app.register_blueprint(permissions_bp)
     app.register_blueprint(achievements_bp)
     app.register_blueprint(daily_quests_bp)
+    app.register_blueprint(teacher_bp)

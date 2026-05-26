@@ -10,10 +10,12 @@ withDefaults(
     subtitle: string
     placeholder?: string
     keyboardHint?: string
+    hideSearch?: boolean
   }>(),
   {
     placeholder: '搜索知识点、试炼或星域',
     keyboardHint: '',
+    hideSearch: false,
   },
 )
 
@@ -25,13 +27,13 @@ const userLevel = computed(() => auth.profile?.level ?? 18)
 </script>
 
 <template>
-  <header class="plex-topbar">
+  <header class="plex-topbar" :class="{ 'plex-topbar--compact': hideSearch }">
     <div class="plex-topbar__heading">
       <h1>{{ title }}<span aria-hidden="true" /></h1>
       <p>{{ subtitle }}</p>
     </div>
 
-    <div class="plex-topbar__search">
+    <div v-if="!hideSearch" class="plex-topbar__search">
       <n-input v-model:value="search" round :placeholder="placeholder" clearable class="plex-topbar__input">
         <template #prefix>
           <n-icon :component="SearchOutline" class="plex-topbar__search-icon" />
@@ -42,7 +44,7 @@ const userLevel = computed(() => auth.profile?.level ?? 18)
       </n-input>
     </div>
 
-    <div class="plex-topbar__userbar">
+    <div v-if="!hideSearch" class="plex-topbar__userbar">
       <n-badge dot type="success" :offset="[-1, 5]">
         <button type="button" class="plex-topbar__icon-btn" aria-label="通知">
           <n-icon :component="NotificationsOutline" :size="25" />
@@ -74,6 +76,11 @@ const userLevel = computed(() => auth.profile?.level ?? 18)
   align-items: start;
   gap: 1.5rem;
   padding: 1.35rem var(--plex-page-gutter-x) 0;
+}
+
+.plex-topbar--compact {
+  grid-template-columns: minmax(260px, 1fr);
+  align-items: center;
 }
 
 .plex-topbar__heading h1 {

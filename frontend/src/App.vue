@@ -16,7 +16,7 @@ const themeOverrides = {
     :locale="zhCN"
     :date-locale="dateZhCN"
   >
-    <n-message-provider>
+    <n-message-provider class="app-root">
       <router-view />
     </n-message-provider>
   </n-config-provider>

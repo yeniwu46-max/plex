@@ -24,8 +24,24 @@ const router = createRouter({
     },
     {
       path: '/teacher',
-      name: 'teacher-home',
-      component: () => import('../views/TeacherHomeView.vue'),
+      component: () => import('../layouts/TeacherOverviewLayout.vue'),
+      children: [
+        {
+          path: '',
+          name: 'teacher-home',
+          component: () => import('../views/TeacherHomeView.vue'),
+        },
+        {
+          path: 'starfield',
+          name: 'teacher-starfield',
+          component: () => import('../views/TeacherStarfieldView.vue'),
+        },
+        {
+          path: 'explorers',
+          name: 'teacher-explorers',
+          component: () => import('../views/TeacherExplorersView.vue'),
+        },
+      ],
     },
     {
       path: '/admin',

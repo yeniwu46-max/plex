@@ -4,7 +4,6 @@ import { NButton, NIcon, NSelect, NSlider, NSwitch, useMessage, type SelectOptio
 import {
   AlarmOutline,
   ArchiveOutline,
-  ChevronDownOutline,
   CloudUploadOutline,
   DownloadOutline,
   FingerPrintOutline,
@@ -18,7 +17,7 @@ import {
   ShieldCheckmarkOutline,
   SparklesOutline,
 } from '@vicons/ionicons5'
-import DashboardShell from '../components/layout/DashboardShell.vue'
+import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
 
 interface SideItem {
   key: string
@@ -43,7 +42,6 @@ interface NoticeItem {
 }
 
 const message = useMessage()
-const classId = ref('cs-2025')
 const systemTab = ref('class')
 const ruleTab = ref('trial')
 const openTime = ref('08-22')
@@ -51,12 +49,6 @@ const dailyLimit = ref('3')
 const punish = ref('none')
 const dataScope = ref('teacher')
 const difficulty = ref(48)
-
-const classOptions: SelectOption[] = [
-  { label: '计算机科学 2025', value: 'cs-2025' },
-  { label: '软件工程 2025', value: 'se-2025' },
-  { label: 'AI 实验班 2025', value: 'ai-2025' },
-]
 
 const timeOptions: SelectOption[] = [
   { label: '每日 08:00 - 22:00', value: '08-22' },
@@ -129,29 +121,16 @@ function clearCache() {
 </script>
 
 <template>
-  <DashboardShell
+  <TeacherDashboardShell
     active-nav="admin"
     page-title="控制中枢"
     page-subtitle="管理班级系统设置，配置教学参数与 AI 策略"
     search-placeholder="搜索系统设置"
     hide-search
+    toolbar-label="控制中枢筛选与状态"
   >
-    <template #toolbar>
-      <section class="control-toolbar" aria-label="控制中枢状态">
-        <n-select v-model:value="classId" :options="classOptions" class="class-select">
-          <template #arrow>
-            <n-icon :component="ChevronDownOutline" />
-          </template>
-        </n-select>
-        <div class="keeper-chip">
-          <span class="keeper-avatar" aria-hidden="true"><span /></span>
-          <div>
-            <strong>Waystation Keeper</strong>
-            <small>在线</small>
-          </div>
-        </div>
-        <button type="button" class="notify-btn" aria-label="通知"><span /></button>
-      </section>
+    <template #toolbar-trailing>
+      <button type="button" class="teacher-toolbar__notify" aria-label="通知"><span /></button>
     </template>
 
     <section class="control-center" aria-label="控制中枢">
@@ -318,7 +297,7 @@ function clearCache() {
         </footer>
       </section>
     </section>
-  </DashboardShell>
+  </TeacherDashboardShell>
 </template>
 
 <style scoped>

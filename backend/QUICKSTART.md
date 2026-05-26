@@ -164,9 +164,21 @@ print(response.json())
 | 角色 | 用户名 | 密码 | 用途 |
 |------|--------|------|------|
 | 管理员 | `admin` | `admin123` | 系统管理 |
-| 教师 | `teacher001` | `teacher123` | 班级管理 |
+| 教师 | `teacher001` | `teacher123` | 班级管理、教师工作台 |
 | 学生 | `student001` | `student123` | 学生操作 |
-| 学生 | `student002-005` | `student123` | 学生操作 |
+| 学生 | `student002-005` | `student123` | 学生操作（`init_db` 种子） |
+| 学生 | `explorer01`–`explorer10` | `student123` | 李老师班级演示数据（见下方脚本） |
+
+### 批量创建教师班级测试学生
+
+不重置数据库，为 `teacher001` 所属班级创建 10 名 Explorer（含近 7 日委托进度、积分日志、周排名）：
+
+```bash
+cd backend
+python seed_li_class_students.py
+```
+
+账号：`explorer01` … `explorer10`，密码均为 `student123`。可重复执行，已存在用户名会跳过。
 
 ---
 

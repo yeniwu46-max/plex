@@ -930,6 +930,32 @@ GET /api/v1/classes/:id/heatmap?period=month
 }
 ```
 
+#### 6.2 教师工作台聚合（已实现）
+
+```
+GET /api/v1/teacher/overview
+
+权限: teacher | admin（JWT + role_required）
+
+查询参数:
+- class_id: number（可选，指定班级；教师仅能访问本人负责班级）
+- period: week | month（默认 week，影响热力图天数：7 或 30）
+
+响应 data 主要字段:
+- teacher: { id, username, real_name, role }
+- classes: 班级列表（教师仅返回本人班级，管理员返回全部）
+- selected_class: 当前选中班级
+- period: week | month
+- metrics: { student_count, active_count, frozen_count, avg_points, avg_today_completion, attention_count }
+- heatmap: { days: [{ date, label }], rows: [{ user_id, student_name, avg_rate, cells: [{ date, completed, total, rate }] }] }
+- ranking: Top 学生周排名（来自 ranking_cache 或积分排序）
+- attention_students: 需跟进学生（含 reasons 数组）
+- students: 班级学生行（等级、积分、今日委托完成率、排名等）
+- recent_activity: 近期积分日志摘要（班级内）
+
+说明: 前端教师端 `/teacher`、`/teacher/starfield`、`/teacher/explorers` 共享该接口；切换班级或周期时重新请求。
+```
+
 ---
 
 ## 四、认证授权流程

@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 import { NButton, NIcon, NSelect, NSlider, useMessage, type SelectOption } from 'naive-ui'
 import {
   AnalyticsOutline,
-  ChevronDownOutline,
   CubeOutline,
   GiftOutline,
   PeopleOutline,
@@ -14,7 +13,7 @@ import {
   StarOutline,
   TimeOutline,
 } from '@vicons/ionicons5'
-import DashboardShell from '../components/layout/DashboardShell.vue'
+import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
 
 type TrialStatus = 'running' | 'soon' | 'ended'
 type TrialTone = 'orange' | 'blue' | 'purple' | 'amber'
@@ -43,17 +42,10 @@ interface TemplateItem {
 
 const message = useMessage()
 const activeTab = ref<'manage' | 'templates'>('manage')
-const classId = ref('cs-2025')
 const trialType = ref('solo')
 const knowledge = ref<string | null>(null)
 const duration = ref('60')
 const difficulty = ref(78)
-
-const classOptions: SelectOption[] = [
-  { label: '计算机科学 2025', value: 'cs-2025' },
-  { label: '软件工程 2025', value: 'se-2025' },
-  { label: '算法提高班', value: 'algo-advanced' },
-]
 
 const trialTypeOptions: SelectOption[] = [
   { label: '个人挑战', value: 'solo' },
@@ -155,31 +147,18 @@ function switchTemplate(template: TemplateItem) {
 </script>
 
 <template>
-  <DashboardShell
+  <TeacherDashboardShell
     active-nav="trial"
     page-title="试炼中枢"
     page-subtitle="设计与调度试炼任务，激发探索者的潜能"
     search-placeholder="搜索试炼任务或模板"
     hide-search
+    toolbar-label="试炼中枢筛选与状态"
   >
-    <template #toolbar>
-      <section class="trial-toolbar" aria-label="试炼中枢筛选与状态">
-        <n-select v-model:value="classId" :options="classOptions" class="class-select">
-          <template #arrow>
-            <n-icon :component="ChevronDownOutline" />
-          </template>
-        </n-select>
-        <div class="keeper-chip">
-          <span class="keeper-avatar" aria-hidden="true"><span /></span>
-          <div>
-            <strong>Waystation Keeper</strong>
-            <small>在线</small>
-          </div>
-        </div>
-        <button type="button" class="notify-btn" aria-label="通知">
-          <span />
-        </button>
-      </section>
+    <template #toolbar-trailing>
+      <button type="button" class="teacher-toolbar__notify" aria-label="通知">
+        <span />
+      </button>
     </template>
 
     <section class="trial-command" aria-label="试炼中枢">
@@ -294,7 +273,7 @@ function switchTemplate(template: TemplateItem) {
         </n-button>
       </aside>
     </section>
-  </DashboardShell>
+  </TeacherDashboardShell>
 </template>
 
 <style scoped>

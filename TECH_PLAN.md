@@ -1,6 +1,6 @@
 # 个性化学习系统 - 技术方案总纲
 
-**项目代号**: A3 | **版本**: v1.1 | **最后更新**: 2026-05-19
+**项目代号**: A3 | **版本**: v1.2 | **最后更新**: 2026-05-26
 
 ---
 
@@ -345,6 +345,12 @@ coding/
 - [x] 教师端领航总览（`/teacher`）：对接真实聚合接口，完成班级切换、周期切换、加载/错误/空态，以及知识宇宙、探索概览、AI 洞察、关注学生、委托进度等模块
 - [x] 控制中枢页面（`/admin`）：从管理员学生 CRUD 页重构为教师端风格的班级系统设置、AI 教学策略、通知、规则配置、数据安全面板
 - [x] 教师端视觉沉淀：`DashboardShell`/`PlexTopbar` 支持隐藏搜索紧凑模式，侧栏补齐“控制中枢”入口，三张教师端参考图均按 PLEX 深色框架 + 橙色强调落地
+- [x] **教师工作台壳与路由**：`TeacherSidebar` + `TeacherDashboardShell` + `teacher-theme.css`；`/teacher` 子路由经 `TeacherOverviewLayout` 统一 `provide` 班级数据（修复 Shell 父级 `inject` 白屏）；`TeacherToolbar` 统一顶栏（班级/周期/活跃度/Keeper/刷新）
+- [x] **星域观测**（`/teacher/starfield`）：知识星域图、KPI、风险曲线；星域节点抽屉 `StarfieldDomainDrawer`；风险文案由热力图趋势驱动
+- [x] **Explorer 档案**（`/teacher/explorers`）：列表接 `overview.students`；档案/成员管理 Tab；成长曲线与雷达由真实字段 + 成就 API 驱动；委托/知识/试炼 Tab；`?studentId=` 深链与顶栏搜索联动
+- [x] **领航总览数据补齐**：热力图、排名看板、班级动态接 `overview.heatmap` / `ranking` / `recent_activity`；今日委托进度按班级真实完成率聚合
+- [x] **教师端测试数据**：`backend/seed_li_class_students.py` 为 `teacher001` 班级批量创建 `explorer01`–`explorer10`（含近 7 日委托与积分日志）
+- [x] API 文档：`backend_api_design.md` 增补 `GET /api/v1/teacher/overview` 响应说明
 
 **进行中/待完成**:
 - [ ] 今日委托持久化与每日重置 - 需要新增任务/完成记录设计
@@ -352,9 +358,21 @@ coding/
 - [ ] 激励系统完整闭环（等级、积分、勋章自动解锁） - 需要后端规则与权限设计
 - [ ] 排名系统完整数据生成 - 需要后端排名缓存刷新/实时计算策略
 - [ ] 班级管理页面完整 - 控制中枢目前为前端配置面板，具体保存/导出/备份接口待补
-- [ ] 前后端完整联调与真实种子数据补齐
+- [ ] 前后端完整联调（教师端演示数据已可通过种子脚本补齐）
 
-> 说明：学生端当前优先完成“登录后可演示主线”：首页总览、探索舱、今日委托、探索档案、试炼入口可串联展示。教师端当前完成“观察与配置工作台”主线：`/teacher` 已有真实聚合接口闭环；`/trial-arena` 与 `/admin` 先完成前端 UI 与本地交互状态，真实试炼发布、规则保存、数据导出/备份仍需后端业务表与接口补齐。
+> 说明：学生端当前优先完成“登录后可演示主线”。教师端已完成「观察工作台」可演示闭环：三页（领航总览 / 星域观测 / Explorer 档案）+ 统一工具栏 + `teacher/overview` 聚合；`/trial-arena` 与 `/admin` 仍为前端 UI + 本地状态，试炼发布、控制中枢配置落库待后端业务表。
+
+### 6.2.1 教师端前端结构（2026-05-26）
+
+| 路径 | 视图 | 数据 |
+|------|------|------|
+| `/teacher` | `TeacherHomeView` | `GET /api/v1/teacher/overview` |
+| `/teacher/starfield` | `TeacherStarfieldView` | 同上 + 星域 mock 维度配置 `teacherStarfield.ts` |
+| `/teacher/explorers` | `TeacherExplorersView` | overview + `GET /api/v1/achievements/user/:id` |
+| `/trial-arena` | `TrialArenaView` | 本地 mock（待试炼 API） |
+| `/admin` | `AdminHomeView` | 本地 mock（待设置 API） |
+
+共享：`TeacherOverviewLayout` → `provide(TEACHER_OVERVIEW_KEY)` → 各页 `useTeacherOverviewInjected()`；页面内包 `TeacherDashboardShell`（工具栏 + 侧栏）。
 
 ---
 

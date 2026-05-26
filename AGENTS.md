@@ -1,6 +1,6 @@
 # 仓库说明（给 AI 与新成员）
 
-**最后更新**：2026-05-19
+**最后更新**：2026-05-26
 
 本文档是**新会话入口**：用户只说「了解项目」时，请先按下方阅读顺序加载上下文，再回答或改代码，避免默认成 React；正式前端在 [`frontend/`](frontend/)（Vue 3 + Vite）。
 
@@ -29,6 +29,7 @@
 
 - **后端代码**：[`backend/`](backend/)，REST JSON；API 路径以 **`/api/v1`** 为前缀（细节以 [backend_api_design.md](backend_api_design.md) 为准）。本地默认 `http://127.0.0.1:5000`（见 [backend/QUICKSTART.md](backend/QUICKSTART.md)）。
 - **前端源码**：[`frontend/`](frontend/)（Vue 3 + Vite + Naive UI + Pinia + Axios）。开发时 `npm run dev`（默认 `http://localhost:5173`），经 Vite 代理访问 `/api` → 后端。UI/UX 与游戏化规范见 [frontend_design_v2.md](frontend_design_v2.md)。外部 React 原型仅作参考，正式功能以 Vue 实现，见《技术选型与约定》。
+- **教师端路由**：`/teacher`（领航总览）、`/teacher/starfield`（星域观测）、`/teacher/explorers`（Explorer 档案）；试炼/设置入口 `/trial-arena`、`/admin`。班级数据由 [`TeacherOverviewLayout.vue`](frontend/src/layouts/TeacherOverviewLayout.vue) 注入，勿在页面组件顶层对 Shell 使用 `inject`。
 
 ---
 

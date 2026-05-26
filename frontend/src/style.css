@@ -6,9 +6,23 @@
 
 html,
 body,
-#app {
+#app,
+#app .n-config-provider,
+#app .app-root {
   height: 100%;
   margin: 0;
+}
+
+#app .n-config-provider,
+#app .app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#app .app-root > * {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 body {

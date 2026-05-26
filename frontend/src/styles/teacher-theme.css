@@ -1,0 +1,75 @@
+/**
+ * Teacher workspace tokens — warm orange accent on dark space background.
+ */
+.teacher-shell {
+  --teacher-orange: #fb923c;
+  --teacher-orange-soft: rgba(251, 146, 60, 0.12);
+  --teacher-orange-glow: rgba(251, 146, 60, 0.52);
+  --teacher-gold: #fbbf24;
+  --teacher-teal: #2efff1;
+  --teacher-red: #ff554d;
+  --teacher-text: #fff7ed;
+  --teacher-muted: rgba(221, 230, 239, 0.62);
+  --teacher-border: rgba(130, 212, 255, 0.12);
+  --teacher-panel-bg: linear-gradient(145deg, rgba(5, 18, 30, 0.91), rgba(3, 12, 20, 0.78));
+}
+
+.teacher-panel {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--teacher-border);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(251, 146, 60, 0.09), transparent 32%),
+    var(--teacher-panel-bg);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04), 0 22px 70px rgba(0, 0, 0, 0.22);
+}
+
+.teacher-panel__title {
+  margin: 0;
+  color: var(--teacher-text);
+  font-size: 1.28rem;
+  font-weight: 720;
+}
+
+.teacher-panel__head {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.teacher-state-panel {
+  display: flex;
+  min-height: 320px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  border: 1px solid rgba(255, 145, 31, 0.18);
+  border-radius: 16px;
+  background: rgba(5, 17, 29, 0.72);
+  color: rgba(255, 237, 213, 0.86);
+}
+
+.teacher-state-panel--error {
+  color: #fecaca;
+}
+
+/* 与 TeacherToolbar 配套，供子页面 #toolbar-filters 插槽使用 */
+.teacher-toolbar__filter {
+  width: 132px;
+  flex-shrink: 0;
+}
+
+.teacher-toolbar__filter .n-base-selection {
+  --n-height: 52px !important;
+  --n-color: rgba(4, 15, 25, 0.72) !important;
+  --n-border: 1px solid rgba(130, 212, 255, 0.12) !important;
+  --n-border-hover: 1px solid rgba(255, 145, 31, 0.45) !important;
+  --n-text-color: #fff7ed !important;
+  border-radius: 14px !important;
+}
+

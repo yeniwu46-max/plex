@@ -96,8 +96,21 @@ async function handleUserSelect(key: string) {
 }
 
 .plex-topbar--compact {
-  grid-template-columns: minmax(260px, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.plex-topbar--compact .plex-topbar__heading {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.plex-topbar--compact .plex-topbar__userbar {
+  grid-column: 2;
+  grid-row: 1;
+  flex-shrink: 0;
 }
 
 .plex-topbar__heading h1 {

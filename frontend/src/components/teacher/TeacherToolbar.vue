@@ -92,7 +92,7 @@ const {
 <style scoped>
 .teacher-toolbar {
   position: relative;
-  z-index: 4;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -100,7 +100,7 @@ const {
   gap: 1rem 1.25rem;
   width: 100%;
   max-width: 100%;
-  margin: -3.95rem var(--plex-page-gutter-x) 1.35rem;
+  margin: 0;
   padding: 0.35rem 0;
   box-sizing: border-box;
 }
@@ -212,26 +212,6 @@ const {
 .teacher-toolbar__refresh {
   flex-shrink: 0;
   color: #fed7aa !important;
-}
-
-:deep(.teacher-toolbar__notify) {
-  position: relative;
-  display: grid;
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
-  place-items: center;
-  border: 1px solid rgba(219, 235, 249, 0.1);
-  border-radius: 13px;
-  background: rgba(5, 18, 30, 0.62);
-  cursor: pointer;
-}
-
-:deep(.teacher-toolbar__notify span) {
-  width: 14px;
-  height: 16px;
-  border: 2px solid rgba(255, 247, 237, 0.8);
-  border-radius: 4px 4px 2px 2px;
 }
 
 @media (max-width: 1280px) {

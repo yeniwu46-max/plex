@@ -160,7 +160,11 @@ if (shellSearch) {
     toolbar-label="Explorer 档案筛选"
     search-placeholder="搜索 Explorer 姓名或编号…"
   >
-    <section class="explorers-page" :class="{ 'explorers-page--manage': pageMode === 'manage' }" aria-label="Explorer 档案">
+    <section
+      class="explorers-page teacher-page"
+      :class="{ 'explorers-page--manage': pageMode === 'manage' }"
+      aria-label="Explorer 档案"
+    >
       <div class="explorers-page__mode-tabs" role="tablist" aria-label="档案视图切换">
         <button type="button" role="tab" :aria-selected="pageMode === 'archive'" :class="{ 'is-active': pageMode === 'archive' }" @click="pageMode = 'archive'">
           档案浏览
@@ -253,12 +257,10 @@ if (shellSearch) {
 .explorers-page {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(260px, 300px);
-  grid-template-rows: auto 1fr;
-  gap: 1.1rem;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  padding: 0 var(--plex-page-gutter-x) 1.5rem;
+  grid-template-rows: auto minmax(480px, 1fr);
+  gap: var(--teacher-quad-gap, 1.1rem);
+  align-content: start;
+  align-items: stretch;
 }
 
 .explorers-page--manage {
@@ -296,6 +298,14 @@ if (shellSearch) {
 
 .explorers-page__state {
   grid-column: 1 / -1;
+}
+
+.explorers-page__list,
+.explorers-page__detail,
+.explorers-page__aside {
+  grid-row: 2;
+  min-height: 520px;
+  align-self: stretch;
 }
 
 .explorers-page__list {
@@ -379,12 +389,21 @@ if (shellSearch) {
 
 .explorers-page__aside {
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 1200px) {
   .explorers-page {
     grid-template-columns: 1fr;
-    overflow: auto;
+    grid-template-rows: auto;
+  }
+
+  .explorers-page__list,
+  .explorers-page__detail,
+  .explorers-page__aside {
+    grid-row: auto;
+    min-height: 0;
   }
 
   .explorers-page__list {

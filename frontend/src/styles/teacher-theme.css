@@ -73,3 +73,89 @@
   border-radius: 14px !important;
 }
 
+/* 教师主内容区：底部留白与星域观测一致 */
+.teacher-page {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--plex-page-gutter-x) 2rem;
+}
+
+/**
+ * 四宫格主区（左大图跨两行 + 右上下两块），星域观测为基准。
+ * 扩展行通过 __full-row 子网格继续向下排。
+ */
+.teacher-quad-layout {
+  --teacher-quad-gap: 1.1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.85fr);
+  grid-template-rows: minmax(480px, 1fr) auto;
+  gap: var(--teacher-quad-gap);
+  align-content: start;
+}
+
+.teacher-quad-layout__primary {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: flex;
+  min-width: 0;
+  min-height: 520px;
+  flex-direction: column;
+}
+
+.teacher-quad-layout__side-top {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.teacher-quad-layout__side-bottom {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.teacher-quad-layout__full-row {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.teacher-quad-layout__cols-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--teacher-quad-gap);
+}
+
+.teacher-quad-layout__cols-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.85fr);
+  gap: var(--teacher-quad-gap);
+}
+
+@media (max-width: 1100px) {
+  .teacher-quad-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .teacher-quad-layout__primary,
+  .teacher-quad-layout__side-top,
+  .teacher-quad-layout__side-bottom {
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 560px;
+  }
+
+  .teacher-quad-layout__cols-3,
+  .teacher-quad-layout__cols-2 {
+    grid-template-columns: 1fr;
+  }
+}
+

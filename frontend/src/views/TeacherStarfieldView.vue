@@ -77,7 +77,7 @@ function onNodeSelect(node: OrbitNode) {
       />
     </template>
 
-    <section class="starfield-page" aria-label="星域观测">
+    <section class="starfield-page teacher-page teacher-quad-layout" aria-label="星域观测">
       <div v-if="loading" class="teacher-state-panel starfield-page__state">正在同步星域数据…</div>
       <div v-else-if="errorMessage" class="teacher-state-panel teacher-state-panel--error starfield-page__state">
         <span>{{ errorMessage }}</span>
@@ -88,7 +88,7 @@ function onNodeSelect(node: OrbitNode) {
         <span>当前教师账号还没有负责的班级。</span>
       </div>
       <template v-else>
-        <section class="starfield-page__map teacher-panel">
+        <section class="starfield-page__map teacher-panel teacher-quad-layout__primary">
           <header class="teacher-panel__head starfield-page__map-head">
             <h2 class="teacher-panel__title">知识星域全景</h2>
             <n-icon :component="InformationCircleOutline" />
@@ -97,14 +97,14 @@ function onNodeSelect(node: OrbitNode) {
         </section>
 
         <teacher-insight-card
-          class="starfield-page__insight"
+          class="starfield-page__insight teacher-quad-layout__side-top"
           title="AI 洞察"
           :rate="insight.rate"
           :subject="insight.subject"
           :copy="insight.copy"
         />
 
-        <section class="starfield-page__risk teacher-panel">
+        <section class="starfield-page__risk teacher-panel teacher-quad-layout__side-bottom">
           <header class="teacher-panel__head">
             <h2 class="teacher-panel__title">风险波动</h2>
           </header>
@@ -115,7 +115,7 @@ function onNodeSelect(node: OrbitNode) {
           </svg>
         </section>
 
-        <div class="starfield-page__kpis">
+        <div class="starfield-page__kpis teacher-quad-layout__full-row">
           <sparkline-card
             v-for="item in kpis"
             :key="item.key"
@@ -139,13 +139,7 @@ function onNodeSelect(node: OrbitNode) {
 
 <style scoped>
 .starfield-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.85fr);
   grid-template-rows: minmax(480px, 1fr) auto auto;
-  gap: 1.1rem;
-  height: 100%;
-  overflow: auto;
-  padding: 0 var(--plex-page-gutter-x) 2rem;
 }
 
 .starfield-page__state {
@@ -153,26 +147,15 @@ function onNodeSelect(node: OrbitNode) {
 }
 
 .starfield-page__map {
-  grid-row: span 2;
   padding: 1.25rem 1.5rem 1rem;
-  min-height: 520px;
 }
 
 .starfield-page__map-head {
   margin-bottom: 0.25rem;
 }
 
-.starfield-page__insight {
-  grid-column: 2;
-  grid-row: 1;
-}
-
 .starfield-page__risk {
-  grid-column: 2;
-  grid-row: 2;
   padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
 }
 
 .starfield-page__risk-copy {
@@ -199,31 +182,20 @@ function onNodeSelect(node: OrbitNode) {
 }
 
 .starfield-page__kpis {
-  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.1rem;
+  gap: var(--teacher-quad-gap, 1.1rem);
+  grid-row: 3;
 }
 
 @media (max-width: 1100px) {
   .starfield-page {
-    grid-template-columns: 1fr;
     grid-template-rows: auto;
-  }
-
-  .starfield-page__map {
-    grid-row: auto;
-    min-height: 560px;
-  }
-
-  .starfield-page__insight,
-  .starfield-page__risk {
-    grid-column: 1;
-    grid-row: auto;
   }
 
   .starfield-page__kpis {
     grid-template-columns: 1fr;
+    grid-row: auto;
   }
 }
 </style>

@@ -130,7 +130,7 @@ function activityDescription() {
     toolbar-label="教师端筛选与状态"
     hide-search
   >
-    <section class="navigator-home" aria-label="教师端领航总览">
+    <section class="navigator-home teacher-page teacher-quad-layout" aria-label="教师端领航总览">
       <div v-if="loading" class="teacher-state-panel navigator-home__state">正在同步领航数据…</div>
       <div v-else-if="errorMessage" class="teacher-state-panel teacher-state-panel--error navigator-home__state">
         <span>{{ errorMessage }}</span>
@@ -141,7 +141,7 @@ function activityDescription() {
         <span>当前教师账号还没有负责的班级，请先初始化或分配班级。</span>
       </div>
       <template v-else>
-        <section class="cosmos-panel teacher-panel">
+        <section class="cosmos-panel teacher-panel teacher-quad-layout__primary">
           <header class="teacher-panel__head">
             <h2 class="teacher-panel__title">知识宇宙全景</h2>
             <n-icon :component="InformationCircleOutline" />
@@ -149,7 +149,7 @@ function activityDescription() {
           <knowledge-orbit-map :nodes="orbitNodes" title="" />
         </section>
 
-        <aside class="overview-card stats-card teacher-panel">
+        <aside class="overview-card stats-card teacher-panel teacher-quad-layout__side-top">
           <header class="teacher-panel__head">
             <h2 class="teacher-panel__title">今日探索概览</h2>
           </header>
@@ -163,68 +163,73 @@ function activityDescription() {
         </aside>
 
         <teacher-insight-card
-          class="overview-card insight-card"
+          class="overview-card insight-card teacher-quad-layout__side-bottom"
           title="AI 教学洞察"
           :rate="aiInsight.rate"
           :subject="aiInsight.subject"
           :copy="`${aiInsight.copy} ${activityDescription()}`"
         />
 
-        <article class="overview-card trend-card teacher-panel">
-          <header class="teacher-panel__head">
-            <h2 class="teacher-panel__title">成长趋势</h2>
-            <n-select :value="period" :options="periodOptions" size="small" class="period-select" @update:value="changePeriod" />
-          </header>
-          <svg class="trend-chart" viewBox="0 0 290 120" role="img" aria-label="班级成长趋势">
-            <line v-for="line in 3" :key="line" x1="0" x2="288" :y1="line * 32" :y2="line * 32" />
-            <polyline :points="trendPolyline" />
-          </svg>
-          <div class="trend-legend">
-            <span><i />探索活跃度</span>
-            <span><i />知识修复率</span>
-            <span><i />试炼完成率</span>
-          </div>
-        </article>
-
-        <article class="overview-card focus-card teacher-panel">
-          <header class="teacher-panel__head">
-            <h2 class="teacher-panel__title">需要关注的 Explorer</h2>
-          </header>
-          <div class="explorer-row">
-            <article v-for="student in focusedExplorers" :key="student.id" class="explorer-chip">
-              <span class="student-avatar" :class="`student-avatar--${student.avatarTone}`">
-                {{ (student.real_name || student.username || '?').slice(0, 1) }}
-              </span>
-              <strong>{{ student.real_name || student.username }}</strong>
-              <small>{{ student.risk }}</small>
-            </article>
-            <span v-if="attentionStudents.length > 5" class="more-chip">+{{ attentionStudents.length - 5 }}</span>
-          </div>
-        </article>
-
-        <article class="overview-card mission-card teacher-panel">
-          <header class="teacher-panel__head">
-            <h2 class="teacher-panel__title">今日委托进度</h2>
-          </header>
-          <div class="mission-body">
-            <div class="progress-ring" :style="{ '--progress': `${Math.round((missionDone / Math.max(1, missionTotal)) * 100)}%` }">
-              <strong>{{ missionDone }}</strong>
-              <span>/{{ missionTotal }}</span>
-              <small>已完成</small>
+        <div class="navigator-home__row3 teacher-quad-layout__full-row teacher-quad-layout__cols-3">
+          <article class="overview-card trend-card teacher-panel">
+            <header class="teacher-panel__head">
+              <h2 class="teacher-panel__title">成长趋势</h2>
+              <n-select :value="period" :options="periodOptions" size="small" class="period-select" @update:value="changePeriod" />
+            </header>
+            <svg class="trend-chart" viewBox="0 0 290 120" role="img" aria-label="班级成长趋势">
+              <line v-for="line in 3" :key="line" x1="0" x2="288" :y1="line * 32" :y2="line * 32" />
+              <polyline :points="trendPolyline" />
+            </svg>
+            <div class="trend-legend">
+              <span><i />探索活跃度</span>
+              <span><i />知识修复率</span>
+              <span><i />试炼完成率</span>
             </div>
-            <div class="mission-list">
-              <article v-for="item in missionItems" :key="item.label">
-                <span>{{ item.label }}</span>
-                <i><b :style="{ width: `${item.progress}%` }" /></i>
-                <em>{{ item.status }}</em>
+          </article>
+
+          <article class="overview-card focus-card teacher-panel">
+            <header class="teacher-panel__head">
+              <h2 class="teacher-panel__title">需要关注的 Explorer</h2>
+            </header>
+            <div class="explorer-row">
+              <article v-for="student in focusedExplorers" :key="student.id" class="explorer-chip">
+                <span class="student-avatar" :class="`student-avatar--${student.avatarTone}`">
+                  {{ (student.real_name || student.username || '?').slice(0, 1) }}
+                </span>
+                <strong>{{ student.real_name || student.username }}</strong>
+                <small>{{ student.risk }}</small>
               </article>
+              <span v-if="attentionStudents.length > 5" class="more-chip">+{{ attentionStudents.length - 5 }}</span>
             </div>
-          </div>
-        </article>
+          </article>
 
-        <class-heatmap-panel class="overview-card heatmap-card" :heatmap="heatmap" />
-        <class-ranking-board class="overview-card ranking-card" :ranking="ranking" />
-        <class-activity-feed class="overview-card activity-card" :activities="recentActivity" />
+          <article class="overview-card mission-card teacher-panel">
+            <header class="teacher-panel__head">
+              <h2 class="teacher-panel__title">今日委托进度</h2>
+            </header>
+            <div class="mission-body">
+              <div class="progress-ring" :style="{ '--progress': `${Math.round((missionDone / Math.max(1, missionTotal)) * 100)}%` }">
+                <strong>{{ missionDone }}</strong>
+                <span>/{{ missionTotal }}</span>
+                <small>已完成</small>
+              </div>
+              <div class="mission-list">
+                <article v-for="item in missionItems" :key="item.label">
+                  <span>{{ item.label }}</span>
+                  <i><b :style="{ width: `${item.progress}%` }" /></i>
+                  <em>{{ item.status }}</em>
+                </article>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="navigator-home__row4 teacher-quad-layout__full-row teacher-quad-layout__cols-2">
+          <class-heatmap-panel class="overview-card heatmap-card" :heatmap="heatmap" />
+          <class-ranking-board class="overview-card ranking-card" :ranking="ranking" />
+        </div>
+
+        <class-activity-feed class="overview-card activity-card teacher-quad-layout__full-row" :activities="recentActivity" />
       </template>
     </section>
   </TeacherDashboardShell>
@@ -235,73 +240,44 @@ function activityDescription() {
   --orange: var(--teacher-orange, #fb923c);
   --gold: var(--teacher-gold, #fbbf24);
   --teal: var(--teacher-teal, #2efff1);
-  display: grid;
-  grid-template-columns: minmax(310px, 0.9fr) minmax(360px, 1fr) minmax(420px, 1.18fr);
-  grid-template-rows: 250px 280px 225px auto;
-  gap: 1.1rem;
-  height: 100%;
-  overflow: auto;
-  padding: 0 var(--plex-page-gutter-x) 2rem;
+  grid-template-rows: minmax(480px, 1fr) auto auto auto auto;
 }
 
 .navigator-home__state {
   grid-column: 1 / -1;
 }
 
+.navigator-home__row3 {
+  grid-row: 3;
+}
+
+.navigator-home__row4 {
+  grid-row: 4;
+}
+
+.navigator-home .activity-card {
+  grid-row: 5;
+}
+
 .cosmos-panel {
-  grid-column: 1 / span 2;
-  grid-row: span 2;
   padding: 1.5rem;
-  min-height: 480px;
 }
 
 .stats-card {
-  grid-column: 3;
-  grid-row: 1;
   padding: 1.45rem;
-}
-
-.insight-card {
-  grid-column: 3;
-  grid-row: 2;
+  height: 100%;
 }
 
 .trend-card,
 .focus-card,
 .mission-card {
   padding: 1.45rem;
-}
-
-.trend-card {
-  grid-column: 1;
-  grid-row: 3;
+  min-height: 225px;
 }
 
 .focus-card {
-  grid-column: 2;
-  grid-row: 3;
   display: flex;
   flex-direction: column;
-}
-
-.mission-card {
-  grid-column: 3;
-  grid-row: 3;
-}
-
-.heatmap-card {
-  grid-column: 1 / span 2;
-  grid-row: 4;
-}
-
-.ranking-card {
-  grid-column: 3;
-  grid-row: 4;
-}
-
-.activity-card {
-  grid-column: 1 / -1;
-  grid-row: 5;
 }
 
 .stat-row {
@@ -539,20 +515,20 @@ function activityDescription() {
   text-align: right;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1100px) {
   .navigator-home {
-    grid-template-columns: 1fr;
     grid-template-rows: auto;
   }
 
-  .cosmos-panel {
-    min-height: 560px;
+  .navigator-home__row3,
+  .navigator-home__row4,
+  .navigator-home .activity-card {
     grid-row: auto;
   }
 }
 
 @media (max-width: 760px) {
-  .navigator-home {
+  .navigator-home.teacher-page {
     padding-inline: 1rem;
   }
 

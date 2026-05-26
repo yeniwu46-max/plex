@@ -69,39 +69,41 @@ onMounted(() => {
     <TeacherSidebar v-model:collapsed="sidebarCollapsed" :active-key="activeNav" />
 
     <div class="main teacher-main">
-      <PlexTopbar
-        v-model:search="searchText"
-        :title="pageTitle"
-        :subtitle="pageSubtitle"
-        :placeholder="searchPlaceholder"
-        :hide-search="hideSearch"
-      />
+      <header class="teacher-header">
+        <PlexTopbar
+          v-model:search="searchText"
+          :title="pageTitle"
+          :subtitle="pageSubtitle"
+          :placeholder="searchPlaceholder"
+          :hide-search="hideSearch"
+        />
 
-      <div v-if="showViewSwitcher" class="topbar-actions">
-        <n-dropdown trigger="click" :options="viewOptions" @select="onViewSelect">
-          <n-button secondary round size="small" class="view-switch">
-            <n-icon :component="MapOutline" :size="18" />
-            <span class="view-switch__text">切换视图</span>
-            <n-icon :component="ChevronDownOutline" :size="16" />
-          </n-button>
-        </n-dropdown>
-      </div>
+        <div v-if="showViewSwitcher" class="topbar-actions">
+          <n-dropdown trigger="click" :options="viewOptions" @select="onViewSelect">
+            <n-button secondary round size="small" class="view-switch">
+              <n-icon :component="MapOutline" :size="18" />
+              <span class="view-switch__text">切换视图</span>
+              <n-icon :component="ChevronDownOutline" :size="16" />
+            </n-button>
+          </n-dropdown>
+        </div>
 
-      <div v-if="!hideToolbar" class="toolbar-slot">
-        <TeacherToolbar
-          :aria-label="toolbarLabel"
-          :show-period="showPeriod"
-          :show-activity="showActivity"
-          :show-refresh="showRefresh"
-        >
-          <template v-if="$slots['toolbar-filters']" #filters>
-            <slot name="toolbar-filters" />
-          </template>
-          <template v-if="$slots['toolbar-trailing']" #trailing>
-            <slot name="toolbar-trailing" />
-          </template>
-        </TeacherToolbar>
-      </div>
+        <div v-if="!hideToolbar" class="toolbar-slot">
+          <TeacherToolbar
+            :aria-label="toolbarLabel"
+            :show-period="showPeriod"
+            :show-activity="showActivity"
+            :show-refresh="showRefresh"
+          >
+            <template v-if="$slots['toolbar-filters']" #filters>
+              <slot name="toolbar-filters" />
+            </template>
+            <template v-if="$slots['toolbar-trailing']" #trailing>
+              <slot name="toolbar-trailing" />
+            </template>
+          </TeacherToolbar>
+        </div>
+      </header>
 
       <div class="main-body">
         <slot />
@@ -147,11 +149,24 @@ onMounted(() => {
   background-size: 320px 320px;
 }
 
-.toolbar-slot {
+.teacher-header {
   position: relative;
   z-index: 2;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding-bottom: 0.35rem;
+}
+
+.teacher-header :deep(.plex-topbar) {
+  padding-bottom: 0;
+}
+
+.toolbar-slot {
   width: 100%;
+  padding-inline: var(--plex-page-gutter-x);
+  box-sizing: border-box;
 }
 
 .main-body {
@@ -179,6 +194,19 @@ onMounted(() => {
   color: #fff7ed !important;
 }
 
+@media (max-width: 900px) {
+  .teacher-header :deep(.plex-topbar--compact) {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .teacher-header :deep(.plex-topbar--compact .plex-topbar__userbar) {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+  }
+}
+
 @media (max-width: 760px) {
   .shell {
     flex-direction: column;
@@ -187,6 +215,10 @@ onMounted(() => {
     min-height: 100dvh;
     max-height: none;
     overflow: visible;
+  }
+
+  .toolbar-slot {
+    padding-inline: 1rem;
   }
 }
 </style>

@@ -293,13 +293,7 @@ watch(selectedClassId, () => {
     hide-search
     toolbar-label="试炼中枢筛选与状态"
   >
-    <template #toolbar-trailing>
-      <button type="button" class="teacher-toolbar__notify" aria-label="通知">
-        <span />
-      </button>
-    </template>
-
-    <section class="trial-command" aria-label="试炼中枢">
+    <section class="trial-command teacher-page" aria-label="试炼中枢">
       <main class="command-main">
         <section class="command-panel mission-panel">
           <header class="tabbar">
@@ -546,46 +540,16 @@ watch(selectedClassId, () => {
   color: #34d399;
 }
 
-.notify-btn {
-  position: relative;
-  display: grid;
-  width: 46px;
-  height: 46px;
-  place-items: center;
-  border: 1px solid rgba(219, 235, 249, 0.1);
-  border-radius: 13px;
-  background: rgba(5, 18, 30, 0.62);
-  cursor: pointer;
-}
-
-.notify-btn span {
-  width: 14px;
-  height: 16px;
-  border: 2px solid rgba(255, 247, 237, 0.8);
-  border-radius: 8px 8px 5px 5px;
-}
-
-.notify-btn::after {
-  position: absolute;
-  top: 13px;
-  right: 14px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #fb923c;
-  content: '';
-}
-
 .trial-command {
   --orange: #fb923c;
   --gold: #fbbf24;
   --teal: #2efff1;
   display: grid;
-  grid-template-columns: minmax(720px, 1fr) 340px;
-  gap: 1.4rem;
-  min-height: 0;
-  overflow: auto;
-  padding: 0 var(--plex-page-gutter-x) 2rem;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: minmax(480px, 1fr);
+  gap: var(--teacher-quad-gap, 1.1rem);
+  align-items: stretch;
+  align-content: start;
 }
 
 .trial-command__state {
@@ -595,14 +559,30 @@ watch(selectedClassId, () => {
 
 .command-main {
   display: grid;
-  gap: 1.1rem;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--teacher-quad-gap, 1.1rem);
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.mission-panel {
+  display: flex;
+  min-height: 520px;
+  flex-direction: column;
+}
+
+.create-panel {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
 }
 
 .command-panel,
 .create-panel {
   position: relative;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid rgba(130, 212, 255, 0.12);
   border-radius: 18px;
@@ -1118,6 +1098,11 @@ watch(selectedClassId, () => {
 
   .trial-command {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .mission-panel {
+    min-height: 0;
   }
 
   .create-panel {

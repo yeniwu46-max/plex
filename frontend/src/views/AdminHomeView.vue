@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NIcon, NInput, NSelect, type SelectOption } from 'naive-ui'
 import {
@@ -63,6 +63,17 @@ interface AlertItem {
 }
 
 const searchText = ref('')
+const now = ref(new Date())
+let clockTimer: ReturnType<typeof setInterval> | undefined
+
+function formatDateTime(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+const currentTimeText = computed(() => `当前时间 ${formatDateTime(now.value)}`)
+const currentYear = computed(() => now.value.getFullYear())
+
 const activeNav = ref<NavKey>('nexus')
 const period = ref('today')
 const auth = useAuthStore()
@@ -168,6 +179,16 @@ async function handleLogout() {
   await auth.logout()
   await router.replace({ name: 'login' })
 }
+
+onMounted(() => {
+  clockTimer = setInterval(() => {
+    now.value = new Date()
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (clockTimer !== undefined) clearInterval(clockTimer)
+})
 </script>
 
 <template>
@@ -233,7 +254,7 @@ async function handleLogout() {
           </button>
         </div>
 
-        <div class="current-time">当前时间 2024-05-20 14:32:18</div>
+        <div class="current-time">{{ currentTimeText }}</div>
       </header>
 
       <section class="metric-row" :class="{ 'metric-row--observer': activeNav === 'observer' }" aria-label="核心指标">
@@ -453,7 +474,7 @@ async function handleLogout() {
         </article>
       </section>
 
-      <footer class="admin-footer">© 2024 PLEX Universe. All rights reserved.</footer>
+      <footer class="admin-footer">© {{ currentYear }} PLEX Universe. All rights reserved.</footer>
     </main>
   </div>
 </template>
@@ -641,6 +662,8 @@ async function handleLogout() {
   position: relative;
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   padding: 1.6rem 2rem 1rem;
   background:
@@ -665,9 +688,19 @@ async function handleLogout() {
 .admin-topbar,
 .metric-row,
 .dashboard-grid,
+.observer-grid,
 .admin-footer {
   position: relative;
   z-index: 1;
+  flex-shrink: 0;
+}
+
+.dashboard-grid,
+.observer-grid {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
 }
 
 .admin-topbar {
@@ -858,10 +891,17 @@ async function handleLogout() {
   color: #34d399;
 }
 
+.dashboard-grid,
+.observer-grid {
+  --admin-panel-row-top: 334px;
+  --admin-panel-row-bottom: 240px;
+  --admin-panel-stack-h: calc(var(--admin-panel-row-top) + 1rem + var(--admin-panel-row-bottom));
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(390px, 1fr) minmax(390px, 1.02fr) minmax(390px, 1fr);
-  grid-template-rows: 334px 240px;
+  grid-template-rows: var(--admin-panel-row-top) var(--admin-panel-row-bottom);
   gap: 1rem;
   margin-top: 1.05rem;
 }
@@ -1208,23 +1248,37 @@ async function handleLogout() {
 }
 
 .observer-grid {
-  position: relative;
-  z-index: 1;
   display: grid;
-  grid-template-columns: minmax(520px, 1.35fr) minmax(360px, 0.78fr) minmax(360px, 0.78fr);
-  grid-template-rows: 402px 222px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(300px, auto) minmax(220px, auto);
   gap: 1rem;
   margin-top: 1.05rem;
+  align-items: stretch;
+}
+
+.observatory-panel,
+.anomaly-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .observatory-panel {
-  grid-column: 1 / span 2;
+  grid-column: 1 / 3;
   grid-row: 1;
 }
 
 .anomaly-panel {
   grid-column: 3;
   grid-row: 1;
+}
+
+.anomaly-panel .anomaly-list {
+  flex: 1;
+  min-height: 0;
+  max-height: 280px;
+  align-content: start;
+  overflow: auto;
 }
 
 .wave-panel {
@@ -1268,7 +1322,9 @@ async function handleLogout() {
 
 .observatory-map {
   position: relative;
-  height: calc(100% - 2.5rem);
+  flex: 1;
+  min-height: 240px;
+  max-height: 280px;
   overflow: hidden;
   border-top: 1px solid rgba(167, 139, 250, 0.08);
 }
@@ -1335,28 +1391,29 @@ async function handleLogout() {
 }
 
 .map-node--user {
-  left: 22%;
-  top: 12%;
+  left: 18%;
+  top: 10%;
 }
 
 .map-node--agent {
-  right: 18%;
-  top: 12%;
+  right: 16%;
+  top: 10%;
 }
 
 .map-node--resource {
-  right: 9%;
-  top: 58%;
+  right: 12%;
+  bottom: 14%;
 }
 
 .map-node--knowledge {
-  left: 48%;
-  bottom: 6%;
+  left: 50%;
+  bottom: 10%;
+  transform: translateX(-50%);
 }
 
 .map-node--task {
-  left: 11%;
-  top: 58%;
+  left: 14%;
+  bottom: 14%;
 }
 
 .anomaly-list {
@@ -1546,13 +1603,24 @@ async function handleLogout() {
     grid-template-rows: auto;
   }
 
+  .observatory-panel {
+    grid-column: 1 / -1;
+  }
+
   .observatory-panel,
   .anomaly-panel,
   .wave-panel,
   .module-panel,
   .global-alert-panel {
-    grid-column: auto;
     grid-row: auto;
+  }
+
+  .anomaly-panel .anomaly-list {
+    max-height: none;
+  }
+
+  .observatory-map {
+    max-height: none;
   }
 
   .admin-topbar {

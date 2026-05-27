@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import {
   ExtensionPuzzleOutline,
@@ -8,6 +9,24 @@ import {
   StorefrontOutline,
   TrophyOutline,
 } from '@vicons/ionicons5'
+
+const router = useRouter()
+
+function openMessenger() {
+  void router.push('/student/messenger')
+}
+
+function openDailyQuest() {
+  void router.push('/student/daily')
+}
+
+function openTrials() {
+  void router.push('/student/trials')
+}
+
+function openStarPath() {
+  void router.push('/student/star-path')
+}
 </script>
 
 <template>
@@ -68,21 +87,36 @@ import {
       <span class="map-node__label">边界条件补给站</span>
     </button>
 
-    <button type="button" class="map-node map-node--amber map-node--left">
+    <button
+      type="button"
+      class="map-node map-node--amber map-node--left"
+      aria-label="待修复碎片，前往今日委托"
+      @click="openDailyQuest"
+    >
       <span class="map-node__orb">
         <n-icon :component="ExtensionPuzzleOutline" />
       </span>
       <span class="map-node__label">待修复碎片 x2</span>
     </button>
 
-    <button type="button" class="map-node map-node--purple map-node--right">
+    <button
+      type="button"
+      class="map-node map-node--purple map-node--right"
+      aria-label="路径优化试炼，前往星轨路径"
+      @click="openStarPath"
+    >
       <span class="map-node__orb">
         <n-icon :component="TrophyOutline" />
       </span>
       <span class="map-node__label">路径优化试炼</span>
     </button>
 
-    <button type="button" class="map-node map-node--blue map-node--bottom-left">
+    <button
+      type="button"
+      class="map-node map-node--blue map-node--bottom-left"
+      aria-label="AI驿站，前往驿站使者"
+      @click="openMessenger"
+    >
       <span class="map-node__orb">
         <n-icon :component="HardwareChipOutline" />
       </span>
@@ -103,14 +137,19 @@ import {
       <span class="map-node__label">未解锁</span>
     </div>
 
-    <div class="map-hub" aria-label="当前位置：算法星域 第二阶段">
+    <button
+      type="button"
+      class="map-hub"
+      aria-label="当前位置，前往试炼关卡"
+      @click="openTrials"
+    >
       <span class="map-hub__halo" aria-hidden="true" />
       <span class="map-hub__core">
         <n-icon :component="SparklesOutline" />
       </span>
       <strong>当前位置</strong>
       <span>算法星域 · 第二阶段</span>
-    </div>
+    </button>
   </div>
 </template>
 
@@ -319,9 +358,16 @@ import {
   display: grid;
   justify-items: center;
   transform: translate(-50%, -50%);
+  border: 0;
+  background: transparent;
   color: #27ffee;
   text-align: center;
-  pointer-events: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.map-hub:hover .map-hub__core {
+  transform: scale(1.04);
 }
 
 .map-hub__halo {
@@ -334,6 +380,7 @@ import {
     radial-gradient(circle, rgba(16, 240, 192, 0.5) 0 8%, rgba(16, 240, 192, 0.22) 18%, transparent 62%);
   filter: blur(3px);
   opacity: 0.88;
+  pointer-events: none;
 }
 
 .map-hub__core {
@@ -351,6 +398,7 @@ import {
     0 0 0 11px rgba(16, 240, 192, 0.1),
     0 0 38px rgba(16, 240, 192, 0.56);
   color: #eaffff;
+  transition: transform 0.18s ease;
 }
 
 .map-hub__core::before {

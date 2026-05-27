@@ -1,7 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain } from '../api/studentProgress'
+import { getPythonTrialQuestion } from '../data/pythonTrialQuestions'
+import {
+  STAR_PATH_ALGO_NODES,
+  formatStarPathGems,
+  getStarPathNode,
+  isStarPathNodeUnlocked,
+  starPathNodeTrackClass,
+  getPrimaryQuestionId,
+  type StarPathNode,
+} from '../data/starPathTrail'
 import {
   ChevronDownOutline,
   ChevronForwardOutline,
@@ -12,6 +23,8 @@ import {
 } from '@vicons/ionicons5'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
+
+const router = useRouter()
 
 type Domain = {
   key: string
@@ -32,6 +45,44 @@ const activeDomainKey = ref('algo')
 const tabs = ['全部星域', '算法基础', '数据结构', '前端开发', '后端开发', '数据库', '计算机基础']
 
 const activeDomain = computed(() => domains.value.find((item) => item.key === activeDomainKey.value) ?? domains.value[0])
+
+const starPathNodes = STAR_PATH_ALGO_NODES
+const selectedNodeId = ref('01')
+
+const selectedNode = computed(() => getStarPathNode(selectedNodeId.value) ?? starPathNodes[0])
+const selectedQuestion = computed(() => getPythonTrialQuestion(getPrimaryQuestionId(selectedNode.value)))
+
+function nodeIcon(node: StarPathNode) {
+  if (node.status === 'locked') return LockClosedOutline
+  if (node.icon === 'server') return ServerOutline
+  return CodeSlashOutline
+}
+
+function nodePositionClasses(node: StarPathNode) {
+  return [
+    `track-node--${starPathNodeTrackClass(node)}`,
+    node.position !== 'center' ? `track-node--${node.position}` : '',
+    node.anchor ? `track-node--anchor-${node.anchor}` : '',
+    { 'track-node--selected': selectedNodeId.value === node.id },
+  ]
+}
+
+function onNodeClick(node: StarPathNode) {
+  selectedNodeId.value = node.id
+  if (isStarPathNodeUnlocked(node)) {
+    void router.push(`/student/trials/practice/${getPrimaryQuestionId(node)}`)
+  }
+}
+
+function continueExplore() {
+  const node = selectedNode.value
+  if (!isStarPathNodeUnlocked(node)) return
+  void router.push(`/student/trials/practice/${getPrimaryQuestionId(node)}`)
+}
+
+function goToMessenger() {
+  void router.push('/student/messenger')
+}
 
 function mapDomain(item: LearningDomain): Domain {
   return {
@@ -152,68 +203,27 @@ onMounted(() => {
                 </g>
               </svg>
 
-              <div class="track-node track-node--current">
-                <span class="track-node__badge">当前所在</span>
+              <div
+                v-for="node in starPathNodes"
+                :key="node.id"
+                class="track-node"
+                :class="nodePositionClasses(node)"
+                role="button"
+                :tabindex="isStarPathNodeUnlocked(node) ? 0 : -1"
+                :aria-label="`${node.id} ${node.title}${node.status === 'locked' ? '，未解锁' : ''}`"
+                @click="onNodeClick(node)"
+                @keydown.enter.prevent="onNodeClick(node)"
+                @keydown.space.prevent="onNodeClick(node)"
+              >
+                <span v-if="node.status === 'current'" class="track-node__badge">当前所在</span>
                 <span class="track-node__orb">
-                  <n-icon :component="CodeSlashOutline" />
+                  <n-icon :component="nodeIcon(node)" />
                 </span>
-                <strong>01</strong>
-                <p>算法思维入门</p>
-                <em>◆ ◆ ◆ ◆</em>
-              </div>
-
-              <div class="track-node track-node--done track-node--n2 track-node--anchor-left">
-                <span class="track-node__orb">
-                  <n-icon :component="CodeSlashOutline" />
-                </span>
-                <strong>02</strong>
-                <p>时间复杂<br />分析</p>
-                <em>◆ ◆ ◆ ◆</em>
-              </div>
-
-              <div class="track-node track-node--done track-node--n5 track-node--anchor-right">
-                <span class="track-node__orb">
-                  <n-icon :component="ServerOutline" />
-                </span>
-                <strong>05</strong>
-                <p>贪心算法</p>
-                <em>◆ ◆ ◆ ◇</em>
-              </div>
-
-              <div class="track-node track-node--locked track-node--n3 track-node--anchor-left">
-                <span class="track-node__orb">
-                  <n-icon :component="LockClosedOutline" />
-                </span>
-                <strong>03</strong>
-                <p>递归与分治</p>
-                <em>◆ ◆ ◆ ◇</em>
-              </div>
-
-              <div class="track-node track-node--locked track-node--n4 track-node--anchor-right">
-                <span class="track-node__orb">
-                  <n-icon :component="LockClosedOutline" />
-                </span>
-                <strong>04</strong>
-                <p>动态规划<br />基础</p>
-                <em>◆ ◆ ◇ ◇</em>
-              </div>
-
-              <div class="track-node track-node--locked track-node--n6 track-node--anchor-left">
-                <span class="track-node__orb">
-                  <n-icon :component="LockClosedOutline" />
-                </span>
-                <strong>06</strong>
-                <p>图论基础</p>
-                <em>◇ ◇ ◇ ◇</em>
-              </div>
-
-              <div class="track-node track-node--locked track-node--n7 track-node--anchor-left">
-                <span class="track-node__orb">
-                  <n-icon :component="LockClosedOutline" />
-                </span>
-                <strong>07</strong>
-                <p>算法综合<br />应用</p>
-                <em>◇ ◇ ◇ ◇</em>
+                <strong>{{ node.id }}</strong>
+                <p>
+                  {{ node.title }}<template v-if="node.titleLine2"><br />{{ node.titleLine2 }}</template>
+                </p>
+                <em>{{ formatStarPathGems(node.gems) }}</em>
               </div>
               </div>
 
@@ -250,17 +260,22 @@ onMounted(() => {
         <aside class="detail-panel" aria-label="当前节点详情">
           <div class="detail-panel__body">
             <div class="detail-panel__head">
-              <h2>01 算法思维入门</h2>
-              <span>当前所在</span>
+              <h2>{{ selectedNode.id }} {{ selectedNode.title }}</h2>
+              <span v-if="selectedNode.status === 'current'">当前所在</span>
+              <span v-else-if="selectedNode.status === 'done'">已完成</span>
+              <span v-else-if="selectedNode.status === 'progress'">进行中</span>
+              <span v-else>未解锁</span>
             </div>
+
+            <p v-if="selectedQuestion" class="detail-panel__trial">
+              对应试炼：<strong>{{ selectedQuestion.title }}</strong>
+              <small>{{ selectedQuestion.topic }}</small>
+            </p>
 
           <div class="tags">
             <strong>核心知识</strong>
             <div>
-              <span>抽象</span>
-              <span>建模</span>
-              <span>算法流程</span>
-              <span>伪代码</span>
+              <span v-for="tag in selectedNode.knowledgeTags" :key="tag">{{ tag }}</span>
             </div>
           </div>
 
@@ -274,30 +289,35 @@ onMounted(() => {
           <div class="mastery">
             <div>
               <strong>掌握进度</strong>
-              <span>85%</span>
+              <span>{{ selectedNode.mastery }}%</span>
             </div>
-            <p><span /></p>
+            <p><span :style="{ width: `${selectedNode.mastery}%` }" /></p>
           </div>
 
           <div class="advice">
             <strong>驿站使者建议</strong>
-            <p>
-              你已掌握算法基本流程，建议继续学习时间复杂度分析，为后续学习打下基础。
-            </p>
-            <a href="#" @click.prevent>前往驿站使者 <n-icon :component="ChevronForwardOutline" /></a>
+            <p>{{ selectedNode.advice }}</p>
+            <a href="#" @click.prevent="goToMessenger">前往驿站使者 <n-icon :component="ChevronForwardOutline" /></a>
           </div>
 
             <div class="rewards">
               <strong>星点奖励</strong>
               <div class="reward-row">
-                <span>XP <em>+80</em></span>
-                <span>结晶 <em>+1</em></span>
-                <span>星尘 <em>+10</em></span>
+                <span v-if="selectedQuestion">XP <em>+{{ selectedQuestion.rewardXp }}</em></span>
+                <span>结晶 <em>+{{ selectedNode.rewardCrystal }}</em></span>
+                <span>星尘 <em>+{{ selectedNode.rewardStardust }}</em></span>
               </div>
             </div>
           </div>
 
-          <button type="button" class="continue-btn">继续探索</button>
+          <button
+            type="button"
+            class="continue-btn"
+            :disabled="!isStarPathNodeUnlocked(selectedNode)"
+            @click="continueExplore"
+          >
+            {{ isStarPathNodeUnlocked(selectedNode) ? '进入试炼' : '节点未解锁' }}
+          </button>
         </aside>
       </section>
     </main>
@@ -954,8 +974,20 @@ onMounted(() => {
   font-weight: 720;
 }
 
+.track-node {
+  cursor: pointer;
+}
+
 .track-node--done {
   --node-color: #23ffde;
+}
+
+.track-node--progress {
+  --node-color: #23ffde;
+}
+
+.track-node--selected {
+  filter: drop-shadow(0 0 14px rgba(37, 245, 238, 0.45));
 }
 
 .track-node--locked {
@@ -1176,6 +1208,25 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+.detail-panel__trial {
+  margin: 0.85rem 0 0;
+  color: rgba(221, 230, 239, 0.72);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.detail-panel__trial strong {
+  color: #5fffe8;
+  font-weight: 700;
+}
+
+.detail-panel__trial small {
+  display: block;
+  margin-top: 0.2rem;
+  color: rgba(221, 230, 239, 0.52);
+  font-size: 0.78rem;
+}
+
 .tags {
   margin-top: 1.55rem;
 }
@@ -1368,6 +1419,12 @@ onMounted(() => {
   cursor: pointer;
   font-size: 0.96rem;
   font-weight: 760;
+}
+
+.continue-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  background: rgba(80, 100, 110, 0.5);
 }
 
 @media (max-width: 1280px) {

@@ -48,6 +48,12 @@ const router = createRouter({
       component: () => import('../views/StudentTrialView.vue'),
     },
     {
+      path: '/student/trials/practice/:questionId',
+      name: 'student-trial-practice',
+      meta: { roles: ['student'] },
+      component: () => import('../views/StudentTrialPracticeView.vue'),
+    },
+    {
       path: '/student/messenger',
       name: 'student-messenger',
       meta: { roles: ['student'] },

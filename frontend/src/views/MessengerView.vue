@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { NIcon, NInput } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
+import { getStarPathNodeByQuestionId } from '../data/starPathTrail'
+import {
+  analyzeMessengerWeakPoints,
+  type MessengerSuggestion,
+} from '../utils/messengerWeakPointAnalysis'
 import {
   AnalyticsOutline,
   BarbellOutline,
@@ -17,25 +23,86 @@ import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 
 const auth = useAuthStore()
+const router = useRouter()
 const sidebarCollapsed = ref(false)
 const prompt = ref('')
+const analyzing = ref(false)
 
-const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || '张子轩')
+const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Explorer')
 
+const userId = computed(() => auth.profile?.id ?? 'guest')
 
-const suggestions = [
-  { title: '学习分析', desc: '你在「动态规划」停留时间较长，建议优先修复「边界条件碎片」。', icon: AnalyticsOutline },
-  { title: '知识修复路线', desc: '已为你生成修复路线', icon: PulseOutline },
-  { title: '今日建议', desc: '适当休息有助于提升效率，明天再继续挑战吧。', icon: SparklesOutline },
-] as const
+const analysis = ref(analyzeMessengerWeakPoints(userId.value))
+
+const suggestionIcons = [AnalyticsOutline, BarbellOutline, PulseOutline, SparklesOutline] as const
+
+const suggestions = computed(() =>
+  analysis.value.suggestions.map((item: MessengerSuggestion, index: number) => ({
+    ...item,
+    icon: suggestionIcons[index] ?? AnalyticsOutline,
+  })),
+)
+
+const fragmentCount = computed(() => analysis.value.fragmentCount)
+const recommended = computed(() => analysis.value.recommended)
+const showDecisionDetail = ref(false)
+
+const analysisHeadline = computed(() =>
+  analyzing.value
+    ? '小E 正在根据你的错题分析'
+    : analysis.value.hasMistakeData
+      ? '小E 已根据错题更新分析'
+      : '小E 等待你的试炼数据',
+)
+
+function refreshAnalysis() {
+  analyzing.value = true
+  window.setTimeout(() => {
+    analysis.value = analyzeMessengerWeakPoints(userId.value)
+    analyzing.value = false
+  }, 420)
+}
+
+function onAnalyzeWeakPoints() {
+  refreshAnalysis()
+}
+
+function goToRecommendedTrial() {
+  const rec = analysis.value.recommended
+  const node = rec?.questionId ? getStarPathNodeByQuestionId(rec.questionId) : null
+  if (node) {
+    void router.push({ path: '/student/trials', query: { node: node.id } })
+  } else {
+    void router.push('/student/trials')
+  }
+}
+
+function goToTrialList() {
+  void router.push('/student/trials')
+}
+
+function goToRepairRoute() {
+  void router.push('/student/star-path')
+}
+
+function goToArchives() {
+  void router.push('/student/archives')
+}
 
 const actions = [
-  { label: '分析我的薄弱点', icon: TelescopeOutline },
-  { label: '推荐下一试炼', icon: BarbellOutline },
-  { label: '生成修复路线', icon: GitNetworkOutline },
-  { label: '查看最近成长', icon: TrendingUpOutline },
+  { label: '分析我的薄弱点', icon: TelescopeOutline, handler: onAnalyzeWeakPoints },
+  { label: '推荐下一试炼', icon: BarbellOutline, handler: goToRecommendedTrial },
+  { label: '生成修复路线', icon: GitNetworkOutline, handler: goToRepairRoute },
+  { label: '查看最近成长', icon: TrendingUpOutline, handler: goToArchives },
 ] as const
 
+onMounted(() => {
+  refreshAnalysis()
+})
+
+watch(userId, (id) => {
+  analysis.value = analyzeMessengerWeakPoints(id)
+})
 </script>
 
 <template>
@@ -64,9 +131,9 @@ const actions = [
           </article>
 
           <article class="float-card float-card--fragment">
-            <p>待修复知识碎</p>
-            <strong>2 <span></span></strong>
-            <a href="#" @click.prevent>去修复 <n-icon :component="NavigateOutline" /></a>
+            <p>待修复知识碎片</p>
+            <strong>{{ fragmentCount }} <span>题</span></strong>
+            <a href="#" @click.prevent="goToTrialList">去修复 <n-icon :component="NavigateOutline" /></a>
             <n-icon :component="GitNetworkOutline" class="float-card__watermark" />
           </article>
 
@@ -82,11 +149,37 @@ const actions = [
             <span class="assistant-bot__cape" />
           </div>
 
-          <article class="float-card float-card--trial">
+          <article
+            class="float-card float-card--trial"
+            :class="{ 'float-card--trial-expanded': showDecisionDetail && recommended }"
+          >
             <h2>推荐下一试炼</h2>
-            <strong>路径优化 · 进阶</strong>
-            <p>匹配度 92%</p>
-            <a href="#" @click.prevent>开始试炼 <n-icon :component="NavigateOutline" /></a>
+            <strong>{{ recommended?.label ?? '暂无推荐 · 先去试炼' }}</strong>
+            <p v-if="recommended" class="trial-match">匹配度 {{ recommended.matchPercent }}%</p>
+            <p v-else class="trial-match">完成代码试炼后，根据错题为你推荐</p>
+
+            <p v-if="recommended" class="trial-summary">{{ recommended.summary }}</p>
+
+            <button
+              v-if="recommended?.decisionSteps.length"
+              type="button"
+              class="trial-logic-toggle"
+              @click="showDecisionDetail = !showDecisionDetail"
+            >
+              {{ showDecisionDetail ? '收起推荐逻辑' : '查看推荐逻辑' }}
+              <n-icon :component="NavigateOutline" />
+            </button>
+
+            <ol v-if="showDecisionDetail && recommended" class="trial-decision-list">
+              <li v-for="step in recommended.decisionSteps" :key="step.label">
+                <strong>{{ step.label }}</strong>
+                <span>{{ step.detail }}</span>
+              </li>
+            </ol>
+
+            <a href="#" class="trial-start-link" @click.prevent="goToRecommendedTrial">
+              查看试炼推荐 <n-icon :component="NavigateOutline" />
+            </a>
             <span class="radar" aria-hidden="true" />
           </article>
 
@@ -102,7 +195,7 @@ const actions = [
 
         <aside class="analysis-panel" aria-label="学习分析建议">
           <header>
-            <h2>小E 正在为你分析 <span aria-hidden="true">▮▮</span></h2>
+            <h2>{{ analysisHeadline }} <span aria-hidden="true">▮▮</span></h2>
           </header>
           <div class="analysis-list">
             <article v-for="item in suggestions" :key="item.title" class="analysis-card">
@@ -115,8 +208,8 @@ const actions = [
               </div>
             </article>
           </div>
-          <button type="button" class="all-advice">
-            查看全部建议
+          <button type="button" class="all-advice" @click="onAnalyzeWeakPoints">
+            根据错题刷新分析
             <n-icon :component="NavigateOutline" />
           </button>
         </aside>
@@ -134,7 +227,7 @@ const actions = [
             </button>
           </div>
           <div class="prompt-actions">
-            <button v-for="item in actions" :key="item.label" type="button">
+            <button v-for="item in actions" :key="item.label" type="button" @click="item.handler">
               <n-icon :component="item.icon" />
               {{ item.label }}
             </button>
@@ -726,6 +819,79 @@ const actions = [
 .float-card--trial p {
   margin-top: 0.5rem;
   color: rgba(230, 240, 247, 0.78);
+}
+
+.float-card--trial-expanded {
+  min-height: auto;
+  max-height: min(420px, 52vh);
+  overflow-y: auto;
+  z-index: 5;
+}
+
+.trial-match {
+  margin-top: 0.45rem !important;
+  font-size: 0.86rem;
+}
+
+.trial-summary {
+  margin-top: 0.55rem !important;
+  color: rgba(221, 230, 239, 0.62) !important;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.trial-logic-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #25f5ee;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.trial-logic-toggle .n-icon {
+  font-size: 0.9rem;
+  transform: rotate(90deg);
+}
+
+.trial-decision-list {
+  margin: 0.65rem 0 0;
+  padding: 0.65rem 0 0 1.1rem;
+  border-top: 1px solid rgba(130, 212, 255, 0.1);
+  list-style: none;
+}
+
+.trial-decision-list li {
+  margin-bottom: 0.55rem;
+}
+
+.trial-decision-list li:last-child {
+  margin-bottom: 0;
+}
+
+.trial-decision-list strong {
+  display: block;
+  color: #5fffe8;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.trial-decision-list span {
+  display: block;
+  margin-top: 0.15rem;
+  color: rgba(221, 230, 239, 0.62);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.trial-start-link {
+  display: inline-flex;
+  margin-top: 0.75rem;
 }
 
 .radar {

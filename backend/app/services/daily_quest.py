@@ -159,7 +159,7 @@ class DailyQuestService(BaseService):
         earned_xp = sum(item.quest.reward_xp for item in records if item.quest and item.reward_claimed_at)
         bonus_claimed = DailyQuestService._bonus_claimed(user_id, target_date)
 
-        return {
+        payload = {
             'date': target_date.isoformat(),
             'quests': [item.to_dict() for item in records],
             'completed_count': completed_count,
@@ -171,6 +171,13 @@ class DailyQuestService(BaseService):
             'bonus_claimed': bonus_claimed,
             'all_completed': bool(records) and completed_count == len(records),
         }
+        try:
+            from app.services.assignment import AssignmentService
+
+            payload['teacher_assignments'] = AssignmentService.list_for_student(user_id)
+        except Exception:
+            payload['teacher_assignments'] = {'pending_count': 0, 'total_count': 0, 'items': []}
+        return payload
 
     @staticmethod
     def _add_points(user_id, points, reason, related_id=None):

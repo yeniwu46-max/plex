@@ -141,6 +141,26 @@ export interface IncentiveFeedbackPayload {
   unlocked_achievements?: Array<{ name: string; rarity?: string }>
 }
 
+export interface TeacherAssignmentsResult {
+  pending_count: number
+  total_count: number
+  items: Array<{
+    id: number
+    trial_id: number
+    trial_title: string
+    teacher_name: string
+    knowledge_key: string | null
+    knowledge_label: string
+    stem: string
+    options: string[]
+    status: string
+    is_correct: boolean | null
+    selected_index: number | null
+    sort_order: number
+    published_at: string | null
+  }>
+}
+
 export interface DailyQuestTodayResult {
   date: string
   quests: DailyQuestRecord[]
@@ -152,6 +172,7 @@ export interface DailyQuestTodayResult {
   bonus_xp: number
   bonus_claimed: boolean
   all_completed: boolean
+  teacher_assignments?: TeacherAssignmentsResult
   incentive?: IncentiveFeedbackPayload
 }
 

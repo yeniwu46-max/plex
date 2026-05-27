@@ -12,6 +12,8 @@ from .points_log import PointsLog
 from .ranking_cache import RankingCache
 from .daily_quest import DailyQuest, UserDailyQuest
 from .trial import Trial, TrialParticipation
+from .trial_question import TrialQuestion, TrialQuestionProgress
+from .emergency_mission import EmergencyMissionSession, EmergencyMissionQuestion
 from .system_setting import SystemSetting
 
 __all__ = [
@@ -30,5 +32,9 @@ __all__ = [
     'UserDailyQuest',
     'Trial',
     'TrialParticipation',
+    'TrialQuestion',
+    'TrialQuestionProgress',
+    'EmergencyMissionSession',
+    'EmergencyMissionQuestion',
     'SystemSetting',
 ]

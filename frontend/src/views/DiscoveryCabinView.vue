@@ -18,6 +18,7 @@ import { mapApiTrialsToArenaModes, type TrialMode } from '../data/trialArena'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 import { fetchCurrentStudent, type CurrentStudent } from '../api/studentOverview'
+import { fetchStudentAssignments } from '../api/studentAssignments'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -28,6 +29,7 @@ const arenaTrials = ref<TrialMode[]>([])
 const arenaLoading = ref(false)
 const arenaError = ref('')
 const selectedArenaKey = ref<string | null>(null)
+const pendingFragmentCount = ref(0)
 
 const displayName = computed(
   () => profile.value?.real_name || auth.profile?.real_name || auth.profile?.username || 'Explorer',
@@ -43,10 +45,25 @@ const resources = computed(() => [
   { key: 'xp', label: '能量', value: String(xpCurrent.value), icon: 'XP', color: '#2efff1' },
   { key: 'dust', label: '星尘', value: String(Math.floor(xpCurrent.value * 0.4)), icon: SparklesOutline, color: '#61f7ff' },
   { key: 'key', label: '星钥', value: String(Math.max(1, Math.floor(userLevel.value / 2))), icon: KeyOutline, color: '#58d7ff' },
-  { key: 'fragment', label: '修复碎片', value: String(Math.max(1, streakDays.value % 5)), icon: ExtensionPuzzleOutline, color: '#ffc86b' },
+  {
+    key: 'fragment',
+    label: '修复碎片',
+    value: String(pendingFragmentCount.value > 0 ? pendingFragmentCount.value : Math.max(1, streakDays.value % 5)),
+    icon: ExtensionPuzzleOutline,
+    color: '#ffc86b',
+  },
   { key: 'core', label: '修复核心', value: String(Math.max(1, Math.floor(userLevel.value / 5))), icon: DiamondOutline, color: '#ffd47a' },
   { key: 'crystal', label: '试炼结晶', value: String(Math.floor(xpCurrent.value / 90) + 12), icon: TrophyOutline, color: '#c765ff' },
 ])
+
+async function loadAssignments() {
+  try {
+    const data = await fetchStudentAssignments()
+    pendingFragmentCount.value = data.pending_count
+  } catch {
+    pendingFragmentCount.value = 0
+  }
+}
 
 async function loadProfile() {
   try {
@@ -98,6 +115,7 @@ watch(mapMode, (mode) => {
 
 onMounted(() => {
   void loadProfile()
+  void loadAssignments()
 })
 
 </script>
@@ -126,7 +144,7 @@ onMounted(() => {
           </button>
         </div>
 
-        <StarFieldMap v-if="mapMode === 'starfield'" />
+        <StarFieldMap v-if="mapMode === 'starfield'" :pending-fragment-count="pendingFragmentCount" />
 
         <div v-else class="cabin-trial-wrap">
           <div v-if="arenaLoading" class="cabin-trial-state">正在同步班级试炼…</div>

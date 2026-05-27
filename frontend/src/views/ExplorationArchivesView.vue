@@ -6,6 +6,7 @@ import ExplorationTendencyCard from '../components/archives/ExplorationTendencyC
 import GrowthTrajectory from '../components/archives/GrowthTrajectory.vue'
 import SkillDistribution from '../components/archives/SkillDistribution.vue'
 import AchievementCollection from '../components/archives/AchievementCollection.vue'
+import EmergencyMissionRecords from '../components/archives/EmergencyMissionRecords.vue'
 import {
   archiveProfile as mockProfile,
   explorationTendency,
@@ -18,7 +19,7 @@ import {
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
-import { fetchArchiveInsights } from '../api/studentProgress'
+import { fetchArchiveInsights, type EmergencyMissionArchiveRecord } from '../api/studentProgress'
 
 const auth = useAuthStore()
 const sidebarCollapsed = ref(false)
@@ -26,6 +27,7 @@ const overview = ref<StudentOverview | null>(null)
 const tendencyLabel = ref(explorationTendency.label)
 const tendencyDescription = ref(explorationTendency.description)
 const skillItemsFromApi = ref<typeof skillDistribution | null>(null)
+const emergencyRecords = ref<EmergencyMissionArchiveRecord[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -65,15 +67,42 @@ const skillItems = computed(() => {
 })
 
 const growthEvents = computed<GrowthEvent[]>(() => {
-  const logs = overview.value?.pointsLog?.logs ?? []
-  if (!logs.length) return growthTimeline
   const tones: GrowthEvent['tone'][] = ['teal', 'gold', 'blue', 'purple']
-  return logs.slice(0, 4).map((log, index) => ({
+  const fromEmergency = emergencyRecords.value.slice(0, 2).map((record, index) => ({
+    id: `em-${record.id}`,
+    title: record.title,
+    date: record.date?.slice(0, 10) || '近期',
+    description: record.all_correct
+      ? `全对 ${record.total_count}/${record.total_count}，获得 +${record.reward_points} XP（${record.focus_label}）`
+      : `答对 ${record.correct_count}/${record.total_count}，未获奖励（${record.focus_label}）`,
+    tone: (record.all_correct ? 'gold' : 'purple') as GrowthEvent['tone'],
+    _sort: record.date || '',
+    _prio: index,
+  }))
+
+  const logs = overview.value?.pointsLog?.logs ?? []
+  const fromLogs = logs.slice(0, 4).map((log, index) => ({
     id: String(log.id),
     title: log.reason || '学习反馈',
     date: log.created_at?.slice(0, 10) || '今日',
     description: `获得 ${log.points} XP，累计推进个人成长进度。`,
     tone: tones[index % tones.length],
+    _sort: log.created_at || '',
+    _prio: 10 + index,
+  }))
+
+  const merged = [...fromEmergency, ...fromLogs].sort((a, b) => {
+    if (a._sort !== b._sort) return b._sort.localeCompare(a._sort)
+    return a._prio - b._prio
+  })
+
+  if (!merged.length) return growthTimeline
+  return merged.slice(0, 5).map(({ id, title, date, description, tone }) => ({
+    id,
+    title,
+    date,
+    description,
+    tone,
   }))
 })
 
@@ -94,6 +123,7 @@ async function loadArchive() {
         label: skill.label,
         percent: skill.percent,
       }))
+      emergencyRecords.value = insights.emergency_missions ?? []
     }
     auth.syncProfile({
       id: overview.value.profile.id,
@@ -138,6 +168,10 @@ onMounted(loadArchive)
           <growth-trajectory class="archives-grid__timeline" :events="growthEvents" />
           <skill-distribution class="archives-grid__skills" :skills="skillItems" />
           <achievement-collection class="archives-grid__achievements" :items="achievementItems" />
+          <emergency-mission-records
+            class="archives-grid__emergency"
+            :records="emergencyRecords"
+          />
         </div>
       </div>
     </div>
@@ -453,13 +487,14 @@ onMounted(loadArchive)
 .archives-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto 1fr auto;
   gap: 0.85rem;
   min-height: min(100%, 720px);
   grid-template-areas:
     'profile tendency'
     'timeline skills'
-    'timeline achievements';
+    'timeline achievements'
+    'emergency emergency';
 }
 
 .archives-grid__profile {
@@ -484,6 +519,10 @@ onMounted(loadArchive)
   grid-area: achievements;
 }
 
+.archives-grid__emergency {
+  grid-area: emergency;
+}
+
 @media (max-width: 1100px) {
   .archives-grid {
     grid-template-columns: 1fr;
@@ -492,7 +531,8 @@ onMounted(loadArchive)
       'tendency'
       'timeline'
       'skills'
-      'achievements';
+      'achievements'
+      'emergency';
   }
 }
 

@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain } from '../api/studentProgress'
 import { getPythonTrialQuestion } from '../data/pythonTrialQuestions'
+import {
+  STAR_PATH_DOMAINS,
+  STAR_PATH_TAB_ALL,
+  STAR_PATH_TABS,
+  getKnowledgePointsForDomain,
+  getStarPathDomain,
+  getStarPathKnowledgePoint,
+  type StarPathKnowledgePoint,
+} from '../data/starPathDomains'
 import {
   STAR_PATH_ALGO_NODES,
   formatStarPathGems,
@@ -25,6 +34,7 @@ import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 
 const router = useRouter()
+const route = useRoute()
 
 type Domain = {
   key: string
@@ -35,22 +45,44 @@ type Domain = {
   locked?: boolean
 }
 
-
 const sidebarCollapsed = ref(false)
 const loading = ref(true)
 const errorMessage = ref('')
 const domains = ref<Domain[]>([])
+const activeTabKey = ref<string>(STAR_PATH_TAB_ALL)
 const activeDomainKey = ref('algo')
-
-const tabs = ['全部星域', '算法基础', '数据结构', '前端开发', '后端开发', '数据库', '计算机基础']
+const selectedKnowledgeId = ref<string | null>(null)
+const knowledgePanelRef = ref<HTMLElement | null>(null)
 
 const activeDomain = computed(() => domains.value.find((item) => item.key === activeDomainKey.value) ?? domains.value[0])
+const activeDomainMeta = computed(() => getStarPathDomain(activeDomainKey.value))
 
 const starPathNodes = STAR_PATH_ALGO_NODES
 const selectedNodeId = ref('01')
+const showAlgoTrack = computed(() => activeTabKey.value !== STAR_PATH_TAB_ALL && activeDomainKey.value === 'algo')
+
+const visibleKnowledgePoints = computed<StarPathKnowledgePoint[]>(() => {
+  if (activeTabKey.value === STAR_PATH_TAB_ALL) {
+    return STAR_PATH_DOMAINS.flatMap((d) => d.knowledgePoints)
+  }
+  return getKnowledgePointsForDomain(activeDomainKey.value)
+})
+
+const selectedKnowledge = computed(() => {
+  if (!selectedKnowledgeId.value) return null
+  return getStarPathKnowledgePoint(selectedKnowledgeId.value)
+})
 
 const selectedNode = computed(() => getStarPathNode(selectedNodeId.value) ?? starPathNodes[0])
-const selectedQuestion = computed(() => getPythonTrialQuestion(getPrimaryQuestionId(selectedNode.value)))
+const selectedQuestion = computed(() => {
+  const kp = selectedKnowledge.value?.point
+  if (kp?.questionId) return getPythonTrialQuestion(kp.questionId)
+  return getPythonTrialQuestion(getPrimaryQuestionId(selectedNode.value))
+})
+
+const detailMode = computed<'knowledge' | 'node'>(() =>
+  selectedKnowledge.value ? 'knowledge' : 'node',
+)
 
 function nodeIcon(node: StarPathNode) {
   if (node.status === 'locked') return LockClosedOutline
@@ -68,6 +100,7 @@ function nodePositionClasses(node: StarPathNode) {
 }
 
 function onNodeClick(node: StarPathNode) {
+  selectedKnowledgeId.value = null
   selectedNodeId.value = node.id
   if (isStarPathNodeUnlocked(node)) {
     void router.push(`/student/trials/practice/${getPrimaryQuestionId(node)}`)
@@ -82,6 +115,72 @@ function continueExplore() {
 
 function goToMessenger() {
   void router.push('/student/messenger')
+}
+
+function isTabActive(tabKey: string) {
+  return activeTabKey.value === tabKey
+}
+
+function selectTab(tabKey: string) {
+  activeTabKey.value = tabKey
+  if (tabKey === STAR_PATH_TAB_ALL) {
+    const first = STAR_PATH_DOMAINS[0]?.knowledgePoints[0]
+    selectedKnowledgeId.value = first?.id ?? null
+    void router.replace({ path: '/student/star-path', query: {} })
+    return
+  }
+  activeDomainKey.value = tabKey
+  const points = getKnowledgePointsForDomain(tabKey)
+  selectedKnowledgeId.value = points[0]?.id ?? null
+  void router.replace({
+    path: '/student/star-path',
+    query: { domain: tabKey, kp: points[0]?.id ?? undefined },
+  })
+  void scrollToKnowledge()
+}
+
+function selectDomainCard(domain: Domain) {
+  if (domain.locked) return
+  selectTab(domain.key)
+}
+
+function jumpToKnowledge(kp: StarPathKnowledgePoint) {
+  activeTabKey.value = kp.domainKey
+  activeDomainKey.value = kp.domainKey
+  selectedKnowledgeId.value = kp.id
+  void router.replace({ path: '/student/star-path', query: { domain: kp.domainKey, kp: kp.id } })
+  void scrollToKnowledge()
+}
+
+async function scrollToKnowledge() {
+  await nextTick()
+  knowledgePanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
+function applyRouteQuery() {
+  const domain = typeof route.query.domain === 'string' ? route.query.domain : null
+  const kp = typeof route.query.kp === 'string' ? route.query.kp : null
+  if (domain && getStarPathDomain(domain)) {
+    activeTabKey.value = domain
+    activeDomainKey.value = domain
+    if (kp && getStarPathKnowledgePoint(kp)) {
+      selectedKnowledgeId.value = kp
+    } else {
+      const points = getKnowledgePointsForDomain(domain)
+      selectedKnowledgeId.value = points[0]?.id ?? null
+    }
+    return
+  }
+  activeTabKey.value = STAR_PATH_TAB_ALL
+}
+
+function continueKnowledgeTrial() {
+  const qid = selectedKnowledge.value?.point.questionId
+  if (qid) {
+    void router.push(`/student/trials/practice/${qid}`)
+    return
+  }
+  continueExplore()
 }
 
 function mapDomain(item: LearningDomain): Domain {
@@ -101,7 +200,10 @@ async function loadPath() {
   try {
     const data = await fetchLearningPath()
     domains.value = data.domains.map(mapDomain)
-    activeDomainKey.value = data.active_domain_key
+    if (!route.query.domain) {
+      activeDomainKey.value = data.active_domain_key
+    }
+    applyRouteQuery()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '星轨数据加载失败'
     domains.value = []
@@ -109,6 +211,11 @@ async function loadPath() {
     loading.value = false
   }
 }
+
+watch(
+  () => route.query.domain,
+  () => applyRouteQuery(),
+)
 
 onMounted(() => {
   void loadPath()
@@ -129,13 +236,14 @@ onMounted(() => {
 
       <section class="starpath-tabs" aria-label="星域分类">
         <button
-          v-for="tab in tabs"
-          :key="tab"
+          v-for="tab in STAR_PATH_TABS"
+          :key="tab.key"
           type="button"
           class="domain-tab"
-          :class="{ 'domain-tab--active': tab === '算法基础' }"
+          :class="{ 'domain-tab--active': isTabActive(tab.key) }"
+          @click="selectTab(tab.key)"
         >
-          {{ tab }}
+          {{ tab.label }}
         </button>
         <div class="view-actions">
           <button type="button" class="view-select">
@@ -166,17 +274,17 @@ onMounted(() => {
               <strong>{{ activeDomain?.progress ?? 0 }}%</strong>
               <div class="progress-line"><span /></div>
               <p class="domain-copy__desc">
-                掌握算法思维的核心原理，<br />
-                为解决复杂问题打下坚实基础。
+                <template v-if="activeDomainMeta">
+                  {{ activeDomainMeta.description }}
+                  <br />
+                  <span class="domain-copy__focus">重点：{{ activeDomainMeta.focus }}</span>
+                </template>
+                <template v-else>浏览全部学域，点击标签或下方卡片进入对应知识点。</template>
               </p>
-              <button type="button">
-                星域详情
-                <n-icon :component="ChevronForwardOutline" />
-              </button>
             </div>
 
             <div class="path-canvas" aria-label="星轨节点图">
-              <div class="path-track">
+              <div v-if="showAlgoTrack" class="path-track">
               <div class="path-orbits" aria-hidden="true">
                 <span class="orbit orbit--outer" />
                 <span class="orbit orbit--middle" />
@@ -227,12 +335,48 @@ onMounted(() => {
               </div>
               </div>
 
-              <div class="legend">
+              <div v-else class="knowledge-map" aria-label="知识点星图">
+                <button
+                  v-for="kp in visibleKnowledgePoints"
+                  :key="kp.id"
+                  type="button"
+                  class="knowledge-node"
+                  :class="{ 'knowledge-node--active': selectedKnowledgeId === kp.id }"
+                  @click="jumpToKnowledge(kp)"
+                >
+                  <span class="knowledge-node__level">{{ kp.level }}</span>
+                  <strong>{{ kp.title }}</strong>
+                  <p>{{ kp.summary }}</p>
+                </button>
+              </div>
+
+              <div v-if="showAlgoTrack" class="legend">
                 <span><i class="legend__dot legend__dot--done" /> 已完成</span>
                 <span><i class="legend__dot legend__dot--active" /> 进行中</span>
                 <span><i class="legend__dot legend__dot--locked" /> 未解锁</span>
               </div>
             </div>
+
+            <section
+              ref="knowledgePanelRef"
+              class="knowledge-strip"
+              :aria-label="`${activeDomainMeta?.title ?? '全部'}知识点列表`"
+            >
+              <h3>知识点导航</h3>
+              <div class="knowledge-strip__list">
+                <button
+                  v-for="kp in visibleKnowledgePoints"
+                  :key="`strip-${kp.id}`"
+                  type="button"
+                  class="knowledge-chip"
+                  :class="{ 'knowledge-chip--active': selectedKnowledgeId === kp.id }"
+                  @click="jumpToKnowledge(kp)"
+                >
+                  <span>{{ kp.title }}</span>
+                  <em>{{ getStarPathDomain(kp.domainKey)?.title }}</em>
+                </button>
+              </div>
+            </section>
           </section>
 
           <section class="domain-overview">
@@ -242,7 +386,14 @@ onMounted(() => {
                 v-for="domain in domains"
                 :key="domain.key"
                 class="overview-card"
-                :class="{ 'overview-card--active': domain.active }"
+                :class="{
+                  'overview-card--active': domain.active || activeDomainKey === domain.key,
+                  'overview-card--clickable': !domain.locked,
+                }"
+                role="button"
+                :tabindex="domain.locked ? -1 : 0"
+                @click="selectDomainCard(domain)"
+                @keydown.enter.prevent="selectDomainCard(domain)"
               >
                 <div>
                   <strong>{{ domain.title }}</strong>
@@ -257,27 +408,46 @@ onMounted(() => {
           </section>
         </div>
 
-        <aside class="detail-panel" aria-label="当前节点详情">
+        <aside class="detail-panel" aria-label="知识点详情">
           <div class="detail-panel__body">
-            <div class="detail-panel__head">
-              <h2>{{ selectedNode.id }} {{ selectedNode.title }}</h2>
-              <span v-if="selectedNode.status === 'current'">当前所在</span>
-              <span v-else-if="selectedNode.status === 'done'">已完成</span>
-              <span v-else-if="selectedNode.status === 'progress'">进行中</span>
-              <span v-else>未解锁</span>
-            </div>
+            <template v-if="detailMode === 'knowledge' && selectedKnowledge">
+              <div class="detail-panel__head">
+                <h2>{{ selectedKnowledge.point.title }}</h2>
+                <span>{{ selectedKnowledge.domain.title }}</span>
+              </div>
+              <p class="detail-panel__trial">
+                <strong>{{ selectedKnowledge.point.summary }}</strong>
+              </p>
+              <div class="tags">
+                <strong>知识详解</strong>
+                <p class="detail-panel__detail">{{ selectedKnowledge.point.detail }}</p>
+                <div>
+                  <span v-for="tag in selectedKnowledge.point.tags" :key="tag">{{ tag }}</span>
+                  <span class="detail-panel__level">{{ selectedKnowledge.point.level }}</span>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div class="detail-panel__head">
+                <h2>{{ selectedNode.id }} {{ selectedNode.title }}</h2>
+                <span v-if="selectedNode.status === 'current'">当前所在</span>
+                <span v-else-if="selectedNode.status === 'done'">已完成</span>
+                <span v-else-if="selectedNode.status === 'progress'">进行中</span>
+                <span v-else>未解锁</span>
+              </div>
 
-            <p v-if="selectedQuestion" class="detail-panel__trial">
-              对应试炼：<strong>{{ selectedQuestion.title }}</strong>
-              <small>{{ selectedQuestion.topic }}</small>
-            </p>
+              <p v-if="selectedQuestion" class="detail-panel__trial">
+                对应试炼：<strong>{{ selectedQuestion.title }}</strong>
+                <small>{{ selectedQuestion.topic }}</small>
+              </p>
 
-          <div class="tags">
-            <strong>核心知识</strong>
-            <div>
-              <span v-for="tag in selectedNode.knowledgeTags" :key="tag">{{ tag }}</span>
-            </div>
-          </div>
+              <div class="tags">
+                <strong>核心知识</strong>
+                <div>
+                  <span v-for="tag in selectedNode.knowledgeTags" :key="tag">{{ tag }}</span>
+                </div>
+              </div>
+            </template>
 
           <div class="panel-bot" aria-hidden="true">
             <span class="panel-bot__head" />
@@ -286,7 +456,7 @@ onMounted(() => {
             <span class="panel-bot__card panel-bot__card--right" />
           </div>
 
-          <div class="mastery">
+          <div v-if="detailMode === 'node'" class="mastery">
             <div>
               <strong>掌握进度</strong>
               <span>{{ selectedNode.mastery }}%</span>
@@ -296,11 +466,14 @@ onMounted(() => {
 
           <div class="advice">
             <strong>驿站使者建议</strong>
-            <p>{{ selectedNode.advice }}</p>
+            <p v-if="detailMode === 'knowledge' && selectedKnowledge">
+              建议先通读「{{ selectedKnowledge.point.title }}」要点，再在试炼中验证理解。
+            </p>
+            <p v-else>{{ selectedNode.advice }}</p>
             <a href="#" @click.prevent="goToMessenger">前往驿站使者 <n-icon :component="ChevronForwardOutline" /></a>
           </div>
 
-            <div class="rewards">
+            <div v-if="detailMode === 'node'" class="rewards">
               <strong>星点奖励</strong>
               <div class="reward-row">
                 <span v-if="selectedQuestion">XP <em>+{{ selectedQuestion.rewardXp }}</em></span>
@@ -313,10 +486,15 @@ onMounted(() => {
           <button
             type="button"
             class="continue-btn"
-            :disabled="!isStarPathNodeUnlocked(selectedNode)"
-            @click="continueExplore"
+            :disabled="detailMode === 'node' && !isStarPathNodeUnlocked(selectedNode)"
+            @click="detailMode === 'knowledge' ? continueKnowledgeTrial() : continueExplore()"
           >
-            {{ isStarPathNodeUnlocked(selectedNode) ? '进入试炼' : '节点未解锁' }}
+            <template v-if="detailMode === 'knowledge'">
+              {{ selectedKnowledge?.point.questionId ? '进入关联试炼' : '返回算法星轨试炼' }}
+            </template>
+            <template v-else>
+              {{ isStarPathNodeUnlocked(selectedNode) ? '进入试炼' : '节点未解锁' }}
+            </template>
           </button>
         </aside>
       </section>
@@ -780,6 +958,129 @@ onMounted(() => {
   line-height: 1.65;
 }
 
+.domain-copy__focus {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: rgba(35, 255, 222, 0.85);
+  font-size: 0.82rem;
+}
+
+.knowledge-map {
+  position: absolute;
+  inset: 1.25rem 1rem 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  align-content: start;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.knowledge-node {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(130, 212, 255, 0.14);
+  border-radius: 0.55rem;
+  background: rgba(6, 18, 31, 0.82);
+  color: #edf7ff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.knowledge-node:hover,
+.knowledge-node--active {
+  border-color: rgba(35, 255, 222, 0.55);
+  box-shadow: 0 0 18px rgba(35, 255, 222, 0.12);
+}
+
+.knowledge-node__level {
+  width: fit-content;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.3rem;
+  background: rgba(16, 240, 192, 0.14);
+  color: #22ffde;
+  font-size: 0.68rem;
+  font-style: normal;
+}
+
+.knowledge-node strong {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.knowledge-node p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(224, 237, 247, 0.68);
+  line-height: 1.45;
+}
+
+.knowledge-strip {
+  grid-column: 1 / -1;
+  padding: 0.85rem 1.25rem 1rem;
+  border-top: 1px solid rgba(126, 188, 220, 0.1);
+}
+
+.knowledge-strip h3 {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  color: rgba(35, 255, 222, 0.9);
+  font-weight: 650;
+}
+
+.knowledge-strip__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.knowledge-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(130, 212, 255, 0.12);
+  border-radius: 0.45rem;
+  background: rgba(7, 22, 36, 0.75);
+  color: #edf7ff;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.knowledge-chip em {
+  font-size: 0.68rem;
+  font-style: normal;
+  color: rgba(142, 163, 184, 0.9);
+}
+
+.knowledge-chip--active {
+  border-color: rgba(35, 255, 222, 0.55);
+  background: rgba(16, 240, 192, 0.1);
+}
+
+.detail-panel__detail {
+  margin: 0.5rem 0 0.75rem;
+  color: rgba(224, 237, 247, 0.78);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.detail-panel__level {
+  background: rgba(35, 255, 222, 0.12) !important;
+  color: #23ffde !important;
+}
+
+.overview-card--clickable {
+  cursor: pointer;
+}
+
+.overview-card--clickable:hover {
+  border-color: rgba(35, 255, 222, 0.35);
+}
+
 .domain-copy button {
   display: inline-flex;
   align-items: center;
@@ -1103,7 +1404,7 @@ onMounted(() => {
 
 .overview-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(108px, 1fr));
+  grid-template-columns: repeat(6, minmax(100px, 1fr));
   gap: 0.75rem;
 }
 

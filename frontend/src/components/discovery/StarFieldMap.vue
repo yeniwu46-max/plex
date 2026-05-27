@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import {
@@ -9,8 +10,37 @@ import {
   StorefrontOutline,
   TrophyOutline,
 } from '@vicons/ionicons5'
+import EmergencyMissionModal from './EmergencyMissionModal.vue'
+
+const props = withDefaults(
+  defineProps<{
+    pendingFragmentCount?: number
+  }>(),
+  {
+    pendingFragmentCount: 0,
+  },
+)
+
+const emit = defineEmits<{
+  emergencyCompleted: []
+}>()
+
+const fragmentLabel = computed(() => {
+  const count = props.pendingFragmentCount
+  if (count <= 0) return '待修复碎片'
+  return `待修复碎片 x${count}`
+})
 
 const router = useRouter()
+const emergencyOpen = ref(false)
+
+function openEmergencyMission() {
+  emergencyOpen.value = true
+}
+
+function onEmergencyCompleted() {
+  emit('emergencyCompleted')
+}
 
 function openMessenger() {
   void router.push('/student/messenger')
@@ -79,13 +109,20 @@ function openStarPath() {
       </g>
     </svg>
 
-    <button type="button" class="map-node map-node--teal map-node--top">
+    <button
+      type="button"
+      class="map-node map-node--teal map-node--top"
+      aria-label="边界条件补给站，开启紧急任务"
+      @click="openEmergencyMission"
+    >
       <span class="map-node__tag">推荐</span>
       <span class="map-node__orb">
         <n-icon :component="StorefrontOutline" />
       </span>
       <span class="map-node__label">边界条件补给站</span>
     </button>
+
+    <EmergencyMissionModal v-model:show="emergencyOpen" @completed="onEmergencyCompleted" />
 
     <button
       type="button"
@@ -96,7 +133,7 @@ function openStarPath() {
       <span class="map-node__orb">
         <n-icon :component="ExtensionPuzzleOutline" />
       </span>
-      <span class="map-node__label">待修复碎片 x2</span>
+      <span class="map-node__label">{{ fragmentLabel }}</span>
     </button>
 
     <button

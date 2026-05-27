@@ -23,6 +23,8 @@ import {
   type DailyQuestTodayResult,
 } from '../api/studentOverview'
 import { DAILY_BONUS_STAR_KEYS, DAILY_BONUS_XP, DAILY_QUESTS, type QuestAccent } from '../data/dailyQuests'
+import TeacherAssignmentPanel from '../components/student/TeacherAssignmentPanel.vue'
+import type { TeacherAssignmentsResult } from '../api/studentAssignments'
 
 type Quest = {
   key: string
@@ -45,6 +47,7 @@ const dailyData = ref<DailyQuestTodayResult | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 const savingKey = ref('')
+const teacherAssignments = ref<TeacherAssignmentsResult>({ pending_count: 0, total_count: 0, items: [] })
 
 
 const iconMap: Record<string, Component> = {
@@ -118,6 +121,11 @@ async function loadTodayQuests() {
   errorMessage.value = ''
   try {
     dailyData.value = await fetchTodayDailyQuests()
+    teacherAssignments.value = dailyData.value.teacher_assignments ?? {
+      pending_count: 0,
+      total_count: 0,
+      items: [],
+    }
   } catch (error) {
     dailyData.value = null
     errorMessage.value = error instanceof Error ? error.message : 'Failed to load daily quests'
@@ -159,6 +167,16 @@ async function advanceQuest(key: string) {
   }
 }
 
+function onAssignmentsUpdated(payload: {
+  assignments: TeacherAssignmentsResult
+  daily: DailyQuestTodayResult | null
+}) {
+  teacherAssignments.value = payload.assignments
+  if (payload.daily) {
+    dailyData.value = payload.daily
+  }
+}
+
 onMounted(loadTodayQuests)
 </script>
 
@@ -181,6 +199,12 @@ onMounted(loadTodayQuests)
           <span>{{ loading ? 'Loading daily quests...' : `${errorMessage}. Showing fallback only.` }}</span>
           <button v-if="errorMessage" type="button" @click="loadTodayQuests">Retry</button>
         </div>
+
+        <TeacherAssignmentPanel
+          :assignments="teacherAssignments"
+          :loading="loading"
+          @updated="onAssignmentsUpdated"
+        />
 
         <section class="quest-board" aria-labelledby="quest-board-title">
           <div class="quest-board__panel">

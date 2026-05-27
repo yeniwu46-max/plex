@@ -4,22 +4,28 @@ from collections import defaultdict
 from app.models import Trial, TrialParticipation, User, UserDailyQuest, db
 
 DOMAIN_CATALOG = [
-    {'key': 'algo', 'title': '算法基础', 'knowledge_keys': ['dp', 'algo', 'greedy', 'sort']},
-    {'key': 'data', 'title': '数据结构', 'knowledge_keys': ['graph', 'tree', 'data', 'stack']},
-    {'key': 'front', 'title': '前端开发', 'knowledge_keys': ['front', 'css', 'react']},
-    {'key': 'back', 'title': '后端开发', 'knowledge_keys': ['back', 'api', 'flask']},
-    {'key': 'db', 'title': '数据库', 'knowledge_keys': ['db', 'sql']},
+    {'key': 'lang', 'title': '语言基础', 'knowledge_keys': ['lang', 'python', 'syntax', 'basic']},
+    {'key': 'algo', 'title': '算法基础', 'knowledge_keys': ['algo', 'greedy', 'sort', 'complexity']},
+    {'key': 'dp', 'title': '动态规划', 'knowledge_keys': ['dp']},
+    {'key': 'geom', 'title': '计算几何', 'knowledge_keys': ['geom', 'geometry']},
+    {'key': 'graph', 'title': '图论', 'knowledge_keys': ['graph', 'tree']},
+    {'key': 'ds', 'title': '数据结构', 'knowledge_keys': ['data', 'ds', 'stack', 'heap']},
 ]
 
 KNOWLEDGE_LABELS = {
+    'lang': '语言基础',
+    'python': 'Python',
     'dp': '动态规划',
     'graph': '图论',
+    'geom': '计算几何',
+    'geometry': '计算几何',
     'algo': '算法综合',
     'greedy': '贪心',
     'tree': '树结构',
     'data': '数据结构',
-    'db': '数据库',
-    'sql': 'SQL',
+    'ds': '数据结构',
+    'stack': '栈',
+    'heap': '堆',
 }
 
 
@@ -54,7 +60,7 @@ class StudentProgressService:
                     domain_scores[domain['key']].append(score)
                     break
             else:
-                domain_scores['algo'].append(score)
+                domain_scores['lang'].append(score)
             skill_scores[key].append(score)
 
         level_boost = min(30, (user.level or 1) * 4)
@@ -84,7 +90,7 @@ class StudentProgressService:
                     item['active'] = True
                     break
 
-        return {'domains': domains, 'active_domain_key': next((d['key'] for d in domains if d.get('active')), 'algo')}
+        return {'domains': domains, 'active_domain_key': next((d['key'] for d in domains if d.get('active')), 'lang')}
 
     @staticmethod
     def get_archive_insights(user_id):
@@ -131,6 +137,8 @@ class StudentProgressService:
             label = '探索起步型'
             desc = '你正在建立个人探索节奏，可从今日委托与班级试炼开始积累星轨进度。'
 
+        from app.services.emergency_mission import EmergencyMissionService
+
         return {
             'tendency': {'label': label, 'description': desc},
             'skills': skills[:6],
@@ -139,6 +147,7 @@ class StudentProgressService:
                 'completed_daily_quests': completed_q,
                 'total_points': user.total_points or 0,
             },
+            'emergency_missions': EmergencyMissionService.list_archive_records(user_id),
         }
 
     @staticmethod

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from app.models import Class, PointsLog, Trial, TrialParticipation, User, db
 
 from .base import BaseService
+from .question_generator import QuestionGenerator
 
 
 class TrialService(BaseService):
@@ -142,6 +143,8 @@ class TrialService(BaseService):
         )
         db.session.add(trial)
         db.session.commit()
+        if trial.status in ('running', 'scheduled'):
+            QuestionGenerator.ensure_for_trial(trial)
         return trial.to_dict(
             include_stats=True,
             effective_status=TrialService.effective_status(trial),
@@ -168,6 +171,8 @@ class TrialService(BaseService):
             if not trial.ends_at:
                 trial.ends_at = trial.starts_at + timedelta(minutes=trial.duration_minutes or 60)
         db.session.commit()
+        if trial.status in ('running', 'scheduled'):
+            QuestionGenerator.ensure_for_trial(trial)
         return trial.to_dict(
             include_stats=True,
             effective_status=TrialService.effective_status(trial),

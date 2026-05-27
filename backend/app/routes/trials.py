@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import User
+from app.services.assignment import AssignmentService
 from app.services.trial import TrialService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -143,6 +144,38 @@ def list_student_trials_for_teacher(student_id):
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/student/assignments', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def list_student_assignments():
+    try:
+        current_user_id = int(get_jwt_identity())
+        return success_response(AssignmentService.list_for_student(current_user_id))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/student/assignments/<int:question_id>/answer', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def submit_student_assignment(question_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        payload = request.get_json() or {}
+        if payload.get('selected_index') is None:
+            return error_response('selected_index 不能为空', 40001, None, 400)
+        return success_response(
+            AssignmentService.submit_answer(current_user_id, question_id, payload['selected_index']),
+            '已提交作答',
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 

@@ -4,6 +4,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+INSTANCE_DIR = os.path.join(BACKEND_ROOT, 'instance')
+os.makedirs(INSTANCE_DIR, exist_ok=True)
+DEFAULT_SQLITE_URI = 'sqlite:///' + os.path.join(INSTANCE_DIR, 'learning_system.db').replace('\\', '/')
+
+
+def _resolve_database_uri(raw: str | None) -> str:
+    uri = raw or DEFAULT_SQLITE_URI
+    if not uri.startswith('sqlite:///') or uri.startswith('sqlite:////'):
+        return uri
+    relative = uri[len('sqlite:///'):]
+    if relative in (':memory:', '') or os.path.isabs(relative):
+        return uri
+    absolute = os.path.join(BACKEND_ROOT, relative).replace('\\', '/')
+    return f'sqlite:///{absolute}'
+
 
 class Config:
     """
@@ -16,10 +32,7 @@ class Config:
 
     # ============ 数据库配置 ============
     # MySQL 连接字符串格式: mysql+pymysql://user:password@host:port/database
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        'mysql+pymysql://root:password@localhost:3306/learning_system'
-    )
+    SQLALCHEMY_DATABASE_URI = _resolve_database_uri(os.getenv('DATABASE_URL'))
 
     # SQLAlchemy配置
     SQLALCHEMY_TRACK_MODIFICATIONS = False  # 不跟踪模型修改，节省内存

@@ -1,4 +1,5 @@
 """试炼业务模型"""
+import json
 from datetime import datetime
 
 from . import db
@@ -15,6 +16,7 @@ class Trial(db.Model):
     title = db.Column(db.String(120), nullable=False)
     trial_type = db.Column(db.String(32), nullable=False, default='solo')
     knowledge_key = db.Column(db.String(32))
+    knowledge_keys_json = db.Column(db.Text)
     difficulty = db.Column(db.Integer, default=50)
     duration_minutes = db.Column(db.Integer, default=60)
     status = db.Column(db.String(20), nullable=False, default='running')  # draft | scheduled | running | ended
@@ -28,6 +30,24 @@ class Trial(db.Model):
     teacher = db.relationship('User', backref='created_trials', foreign_keys=[teacher_id])
     participations = db.relationship('TrialParticipation', backref='trial', cascade='all, delete-orphan')
 
+    def knowledge_keys(self) -> list[str]:
+        if self.knowledge_keys_json:
+            try:
+                parsed = json.loads(self.knowledge_keys_json)
+                keys = [str(k) for k in parsed if k]
+                if keys:
+                    return keys
+            except (TypeError, json.JSONDecodeError):
+                pass
+        if self.knowledge_key:
+            return [self.knowledge_key]
+        return []
+
+    def set_knowledge_keys(self, keys: list[str]) -> None:
+        cleaned = [str(k).strip() for k in keys if k]
+        self.knowledge_keys_json = json.dumps(cleaned, ensure_ascii=False) if cleaned else None
+        self.knowledge_key = cleaned[0] if cleaned else None
+
     def to_dict(self, include_stats=False, effective_status=None):
         display_status = effective_status or self.status
         payload = {
@@ -37,6 +57,7 @@ class Trial(db.Model):
             'title': self.title,
             'trial_type': self.trial_type,
             'knowledge_key': self.knowledge_key,
+            'knowledge_keys': self.knowledge_keys(),
             'difficulty': self.difficulty,
             'duration_minutes': self.duration_minutes,
             'status': self.status,

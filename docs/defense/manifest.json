@@ -1,0 +1,260 @@
+{
+  "meta": {
+    "title": "A3 / PLEX 个性化学习系统",
+    "subtitle": "基于大模型的个性化资源生成与学习多智能体系统",
+    "version": "2026-05-27",
+    "tagline": "探索编程知识宇宙 — 教师发布试炼、学生成长闭环",
+    "a3BaseUrl": "http://localhost:5173"
+  },
+  "pages": [
+    {
+      "id": "home",
+      "title": "项目概览",
+      "icon": "rocket",
+      "sections": ["overview", "names", "users"]
+    },
+    {
+      "id": "arch",
+      "title": "架构与技术",
+      "icon": "layers",
+      "sections": ["tech-stack", "auth", "local-dev"]
+    },
+    {
+      "id": "features",
+      "title": "功能演示",
+      "icon": "grid",
+      "sections": ["feature-trial", "feature-emergency", "feature-starpath", "feature-teacher"]
+    },
+    {
+      "id": "script",
+      "title": "答辩脚本",
+      "icon": "list",
+      "sections": ["script-5", "script-10", "script-15"]
+    },
+    {
+      "id": "faq",
+      "title": "常见问题",
+      "icon": "help",
+      "sections": ["faq-list", "boundaries", "roadmap"]
+    }
+  ],
+  "sections": [
+    {
+      "id": "overview",
+      "title": "一句话介绍",
+      "bullets": [
+        "问题：编程教学缺少个性化反馈与班级学情可视",
+        "方案：A3 前后端分离平台 + PLEX 游戏化宇宙叙事",
+        "当前：基础管理 + 试炼下发 + 星轨六域 + 教师工作台（规则题库，非 LLM）"
+      ],
+      "pitch": "我们的系统是 A3 个性化学习平台，学生端叫 PLEX 宇宙。教师发布试炼后，学生收到待修复碎片与今日委托；系统按薄弱点推送紧急补给，星轨展示六大学域进度。"
+    },
+    {
+      "id": "names",
+      "title": "名称对照",
+      "table": [
+        ["A3", "项目代号"],
+        ["正式题名", "基于大模型的个性化资源生成与学习多智能体系统"],
+        ["PLEX", "学生端 UI 世界观"],
+        ["PPPLEX", "答辩导航站（本页）"]
+      ]
+    },
+    {
+      "id": "users",
+      "title": "三端用户",
+      "cards": [
+        {
+          "role": "student",
+          "label": "Explorer 探索者",
+          "color": "#10B981",
+          "routes": ["/student/discovery", "/student/daily", "/student/star-path", "/student/archives"]
+        },
+        {
+          "role": "teacher",
+          "label": "Navigator 领航员",
+          "color": "#F97316",
+          "routes": ["/teacher", "/teacher/starfield", "/teacher/explorers", "/teacher/trials"]
+        },
+        {
+          "role": "admin",
+          "label": "管理员",
+          "color": "#7C3AED",
+          "routes": ["/admin"]
+        }
+      ]
+    },
+    {
+      "id": "tech-stack",
+      "title": "技术栈",
+      "table": [
+        ["前端", "Vue 3 + Vite + Naive UI + Pinia + Axios"],
+        ["后端", "Flask + SQLAlchemy + JWT"],
+        ["数据库", "MySQL / SQLite"],
+        ["API", "/api/v1 统一 JSON"],
+        ["AI", "规划：百炼 + LangGraph 等（未上生产）"]
+      ]
+    },
+    {
+      "id": "auth",
+      "title": "认证与权限",
+      "bullets": [
+        "JWT Access + Refresh，无 Session 为主",
+        "RBAC：student / teacher / admin",
+        "教师仅能访问本人班级，管理员全局"
+      ]
+    },
+    {
+      "id": "local-dev",
+      "title": "本地启动",
+      "commands": [
+        "cd backend && python run.py",
+        "cd frontend && npm run dev"
+      ],
+      "accounts": [
+        { "role": "教师", "user": "teacher001", "pass": "teacher123" },
+        { "role": "学生", "user": "student001", "pass": "student123" },
+        { "role": "管理员", "user": "admin", "pass": "admin123" }
+      ]
+    },
+    {
+      "id": "feature-trial",
+      "title": "教师试炼下发",
+      "summary": "教师发布试炼 → 题库随机 3 题 → 学生 assignments + 今日委托联动",
+      "screenshot": "今日委托.png",
+      "demoUrl": "/student/daily",
+      "demoUrlTeacher": "/teacher/trials",
+      "bullets": [
+        "API: GET /student/assignments, POST .../answer",
+        "表: trial_questions, trial_question_progress",
+        "探索舱「待修复碎片」实时提示"
+      ]
+    },
+    {
+      "id": "feature-emergency",
+      "title": "边界条件补给站",
+      "summary": "按薄弱知识点抽 3 题，全对 +55 XP，档案留痕",
+      "screenshot": "探索舱.png",
+      "demoUrl": "/student/discovery",
+      "bullets": [
+        "API: emergency-missions/start, .../submit",
+        "探索舱 EmergencyMissionModal",
+        "archive-insights 含历史记录"
+      ]
+    },
+    {
+      "id": "feature-starpath",
+      "title": "星轨六大学域",
+      "summary": "知识点导航 + URL 深链 + 算法域内嵌 Python 试炼",
+      "screenshot": "星轨.png",
+      "demoUrl": "/student/star-path",
+      "bullets": [
+        "六域：语言/算法/DP/几何/图论/数据结构",
+        "GET /student/learning-path",
+        "PythonTrialWorkspace 内嵌 practice 模式"
+      ]
+    },
+    {
+      "id": "feature-teacher",
+      "title": "教师工作台",
+      "summary": "overview 聚合班级 KPI、热力图、排名与关注学生",
+      "screenshot": "教师端领航总览.png",
+      "demoUrl": "/teacher",
+      "bullets": [
+        "GET /teacher/overview?class_id=&period=",
+        "星域观测 / Explorer 档案 / 试炼中枢"
+      ]
+    },
+    {
+      "id": "script-5",
+      "title": "5 分钟速览",
+      "steps": [
+        { "label": "学生探索舱", "account": "student001", "path": "/student/discovery" },
+        { "label": "今日委托", "account": "student001", "path": "/student/daily" },
+        { "label": "教师领航", "account": "teacher001", "path": "/teacher" }
+      ]
+    },
+    {
+      "id": "script-10",
+      "title": "10 分钟标准场（推荐）",
+      "steps": [
+        { "label": "登录并进入探索舱", "account": "student001", "path": "/student/discovery" },
+        { "label": "今日委托 / 教师题目", "account": "student001", "path": "/student/daily" },
+        { "label": "补给站紧急任务", "account": "student001", "path": "/student/discovery" },
+        { "label": "探索档案查看记录", "account": "student001", "path": "/student/archives" },
+        { "label": "星轨切换学域", "account": "student001", "path": "/student/star-path" },
+        { "label": "教师发布试炼", "account": "teacher001", "path": "/teacher/trials" },
+        { "label": "教师 overview", "account": "teacher001", "path": "/teacher" }
+      ]
+    },
+    {
+      "id": "script-15",
+      "title": "15 分钟完整场",
+      "steps": [
+        { "label": "内嵌 Python 试炼", "account": "student001", "path": "/student/star-path" },
+        { "label": "星域观测", "account": "teacher001", "path": "/teacher/starfield" },
+        { "label": "Explorer 档案", "account": "teacher001", "path": "/teacher/explorers" },
+        { "label": "讲解技术架构", "account": null, "path": null },
+        { "label": "说明已实现边界", "account": null, "path": null }
+      ],
+      "extends": "script-10"
+    },
+    {
+      "id": "faq-list",
+      "title": "FAQ 精选",
+      "faqs": [
+        {
+          "q": "为什么选 Vue 而不是 React？",
+          "a": "团队定案 Vue 3 + Naive UI；React 仅为早期参考，正式功能在 frontend/。"
+        },
+        {
+          "q": "题目如何生成？",
+          "a": "当前 QuestionGenerator 规则题库随机；大模型在路线图中。"
+        },
+        {
+          "q": "与洛谷/力扣差异？",
+          "a": "侧重班级教学闭环 + 游戏化 + 教师工作台，非纯 OJ。"
+        },
+        {
+          "q": "多智能体完成了吗？",
+          "a": "未完成，智能体编排图为产品愿景。"
+        }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "title": "已实现 vs 规划中",
+      "table": [
+        ["JWT 三端登录", "已实现"],
+        ["试炼发布与作答", "已实现（规则题库）"],
+        ["紧急任务 / 星轨 / 档案", "已实现"],
+        ["今日委托完整持久化", "部分"],
+        ["AI 对话 / 多智能体", "规划"],
+        ["个性化资源推荐", "规划"]
+      ]
+    },
+    {
+      "id": "roadmap",
+      "title": "五阶段路线图",
+      "table": [
+        ["一", "基础管理系统", "基本完成"],
+        ["二", "学习资源与推荐", "入口"],
+        ["三", "学习评估", "部分"],
+        ["四", "AI 对话辅导", "规划"],
+        ["五", "多智能体协同", "规划"]
+      ]
+    }
+  ],
+  "screenshots": [
+    { "file": "登录.png", "label": "登录", "route": "/login" },
+    { "file": "探索舱.png", "label": "探索舱", "route": "/student/discovery" },
+    { "file": "今日委托.png", "label": "今日委托", "route": "/student/daily" },
+    { "file": "星轨.png", "label": "星轨路径", "route": "/student/star-path" },
+    { "file": "试炼关卡.png", "label": "试炼关卡", "route": "/student/trials" },
+    { "file": "探索档案.png", "label": "探索档案", "route": "/student/archives" },
+    { "file": "教师端领航总览.png", "label": "教师领航", "route": "/teacher" },
+    { "file": "星域观测.png", "label": "星域观测", "route": "/teacher/starfield" },
+    { "file": "explorer档案.png", "label": "Explorer 档案", "route": "/teacher/explorers" },
+    { "file": "试炼中枢.png", "label": "试炼中枢", "route": "/teacher/trials" },
+    { "file": "中央调控.png", "label": "控制中枢", "route": "/admin" }
+  ]
+}

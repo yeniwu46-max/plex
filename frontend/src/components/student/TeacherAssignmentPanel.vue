@@ -22,10 +22,26 @@ const message = useMessage()
 const selections = ref<Record<number, number | null>>({})
 const submittingId = ref<number | null>(null)
 const feedback = ref<Record<number, { correct: boolean; correctIndex: number }>>({})
+const questionStartedAt = ref<Record<number, number>>({})
+
+function markQuestionStart(questionId: number) {
+  if (!questionStartedAt.value[questionId]) {
+    questionStartedAt.value[questionId] = Date.now()
+  }
+}
+
+function elapsedSec(questionId: number): number {
+  const started = questionStartedAt.value[questionId]
+  if (!started) return 0
+  return Math.max(1, Math.round((Date.now() - started) / 1000))
+}
 
 function initSelection(item: TeacherAssignmentItem) {
   if (selections.value[item.id] === undefined) {
     selections.value[item.id] = item.selected_index ?? null
+  }
+  if (item.status === 'pending') {
+    markQuestionStart(item.id)
   }
 }
 
@@ -39,7 +55,7 @@ async function submit(item: TeacherAssignmentItem) {
   if (selected === null || selected === undefined || submittingId.value) return
   submittingId.value = item.id
   try {
-    const result = await submitAssignmentAnswer(item.id, selected)
+    const result = await submitAssignmentAnswer(item.id, selected, elapsedSec(item.id))
     feedback.value[item.id] = { correct: result.correct, correctIndex: result.correct_index }
     showIncentiveFeedback(message, result.incentive)
     emit('updated', { assignments: result.assignments, daily: result.daily })

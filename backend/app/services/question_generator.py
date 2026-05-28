@@ -3,19 +3,25 @@ import random
 
 from app.models import Trial, TrialQuestion, db
 
+from app.data.knowledge_catalog import DOMAIN_LABELS, KNOWLEDGE_UNIVERSE, POINT_TO_BANK
+
 KNOWLEDGE_LABELS = {
     'dp': '动态规划',
     'graph': '图论基础',
     'ds': '数据结构',
     'data': '数据结构',
-    'algo': '算法综合',
+    'algo': '算法基础',
     'greedy': '贪心',
     'tree': '树结构',
-    'frontend': '前端工程化',
-    'front': '前端工程化',
+    'frontend': '前端开发',
+    'front': '前端开发',
+    'fe': '前端开发',
     'back': '后端开发',
+    'be': '后端开发',
     'db': '数据库',
     'sql': 'SQL',
+    'cs': '计算机基础',
+    **DOMAIN_LABELS,
 }
 
 # 每知识点题库（stem, options, correct_index）
@@ -129,6 +135,62 @@ QUESTION_BANK: dict[str, list[dict]] = {
             'options': ['序列有序', '序列唯一', '序列链表存储', '序列长度为奇数'],
             'correct_index': 0,
         },
+        {
+            'stem': '大 O 记号主要描述算法的？',
+            'options': ['渐近上界', '精确运行时间', '内存地址', '编译优化级别'],
+            'correct_index': 0,
+        },
+    ],
+    'back': [
+        {
+            'stem': 'RESTful API 中 GET 请求通常用于？',
+            'options': ['获取资源', '删除资源', '仅上传文件', '开启事务'],
+            'correct_index': 0,
+        },
+        {
+            'stem': 'JWT 常用于？',
+            'options': ['无状态认证', '数据库索引', '前端路由', '图片压缩'],
+            'correct_index': 0,
+        },
+        {
+            'stem': 'ORM 的主要作用是？',
+            'options': ['对象与关系表映射', '压缩 HTTP', '渲染 UI', '负载均衡'],
+            'correct_index': 0,
+        },
+    ],
+    'cs': [
+        {
+            'stem': '进程与线程的主要区别是？',
+            'options': ['线程共享进程资源', '进程一定比线程快', '线程不能并发', '进程没有地址空间'],
+            'correct_index': 0,
+        },
+        {
+            'stem': 'TCP 属于 OSI 模型的哪一层？',
+            'options': ['传输层', '应用层', '物理层', '表示层'],
+            'correct_index': 0,
+        },
+        {
+            'stem': '虚拟内存的主要目的是？',
+            'options': ['扩展可用地址空间', '提高 CPU 主频', '加密磁盘', '减少网络延迟'],
+            'correct_index': 0,
+        },
+    ],
+    'db': [
+        {
+            'stem': 'SQL 中 PRIMARY KEY 约束表示？',
+            'options': ['唯一标识一行', '允许重复', '必须为 NULL', '自动排序'],
+            'correct_index': 0,
+        },
+        {
+            'stem': '数据库索引的主要作用是？',
+            'options': ['加快查询', '增加存储冗余', '禁止更新', '替代事务'],
+            'correct_index': 0,
+        },
+        {
+            'stem': 'ACID 中 A 表示？',
+            'options': ['原子性', '可用性', '异步', '聚合'],
+            'correct_index': 0,
+        },
     ],
 }
 
@@ -141,12 +203,16 @@ class QuestionGenerator:
     @staticmethod
     def _normalize_key(knowledge_key: str | None) -> str:
         key = (knowledge_key or 'algo').lower().strip()
+        if key in POINT_TO_BANK:
+            return POINT_TO_BANK[key]
         if key in QUESTION_BANK:
             return key
         if key in ('data', 'tree', 'stack'):
             return 'ds'
-        if key in ('front', 'css', 'react'):
+        if key in ('front', 'css', 'react', 'fe'):
             return 'frontend'
+        if key in ('be',):
+            return 'back'
         return 'algo'
 
     @staticmethod
@@ -160,27 +226,61 @@ class QuestionGenerator:
         if existing:
             return existing
 
-        bank = QuestionGenerator.bank_for_key(trial.knowledge_key)
-        pick_count = min(count or QuestionGenerator.QUESTIONS_PER_TRIAL, len(bank))
-        picked = random.sample(bank, pick_count)
-        key = QuestionGenerator._normalize_key(trial.knowledge_key)
+        keys = trial.knowledge_keys() if hasattr(trial, 'knowledge_keys') else []
+        if not keys and trial.knowledge_key:
+            keys = [trial.knowledge_key]
 
+        pick_count = count or QuestionGenerator.QUESTIONS_PER_TRIAL
         created = []
-        for index, item in enumerate(picked):
-            question = TrialQuestion(
-                trial_id=trial.id,
-                sort_order=index + 1,
-                stem=item['stem'],
-                options=item['options'],
-                correct_index=int(item['correct_index']),
-                knowledge_key=key,
-            )
-            db.session.add(question)
-            created.append(question)
+        used_stems: set[str] = set()
+
+        if len(keys) > 1:
+            for index, raw_key in enumerate(keys[:pick_count]):
+                bank_key = QuestionGenerator._normalize_key(raw_key)
+                bank = QuestionGenerator.bank_for_key(raw_key)
+                candidates = [item for item in bank if item['stem'] not in used_stems]
+                if not candidates:
+                    candidates = bank
+                item = random.choice(candidates)
+                used_stems.add(item['stem'])
+                question = TrialQuestion(
+                    trial_id=trial.id,
+                    sort_order=index + 1,
+                    stem=item['stem'],
+                    options=item['options'],
+                    correct_index=int(item['correct_index']),
+                    knowledge_key=raw_key,
+                )
+                db.session.add(question)
+                created.append(question)
+        else:
+            bank = QuestionGenerator.bank_for_key(keys[0] if keys else trial.knowledge_key)
+            sample_count = min(pick_count, len(bank))
+            picked = random.sample(bank, sample_count)
+            key = QuestionGenerator._normalize_key(keys[0] if keys else trial.knowledge_key)
+            for index, item in enumerate(picked):
+                question = TrialQuestion(
+                    trial_id=trial.id,
+                    sort_order=index + 1,
+                    stem=item['stem'],
+                    options=item['options'],
+                    correct_index=int(item['correct_index']),
+                    knowledge_key=keys[0] if keys else key,
+                )
+                db.session.add(question)
+                created.append(question)
+
         db.session.commit()
         return created
 
     @staticmethod
     def label_for_key(knowledge_key: str | None) -> str:
+        if not knowledge_key:
+            return '综合练习'
+        if knowledge_key in POINT_TO_BANK:
+            for domain in KNOWLEDGE_UNIVERSE:
+                for point in domain['points']:
+                    if point['key'] == knowledge_key:
+                        return point['label']
         key = QuestionGenerator._normalize_key(knowledge_key)
-        return KNOWLEDGE_LABELS.get(key, KNOWLEDGE_LABELS.get(knowledge_key or '', '综合练习'))
+        return KNOWLEDGE_LABELS.get(key, KNOWLEDGE_LABELS.get(knowledge_key, '综合练习'))

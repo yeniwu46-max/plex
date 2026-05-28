@@ -1,4 +1,5 @@
 import type { TeacherOverview } from '../api/teacherOverview'
+import { TEACHER_KNOWLEDGE_UNIVERSE } from './teacherKnowledgeCatalog'
 
 export type OrbitNodeTone = 'amber' | 'gold' | 'teal' | 'red'
 
@@ -12,14 +13,26 @@ export interface OrbitNode {
   domainKey?: string
 }
 
-export const STARFIELD_DOMAINS: Omit<OrbitNode, 'score' | 'delta'>[] = [
-  { label: '算法基础', tone: 'amber', x: 43, y: 16, domainKey: 'algo' },
-  { label: '前端开发', tone: 'gold', x: 72, y: 26, domainKey: 'fe' },
-  { label: '后端开发', tone: 'red', x: 73, y: 70, domainKey: 'be' },
-  { label: '计算机基础', tone: 'teal', x: 50, y: 78, domainKey: 'cs' },
-  { label: '数据库', tone: 'amber', x: 21, y: 66, domainKey: 'db' },
-  { label: '数据结构', tone: 'red', x: 12, y: 39, domainKey: 'ds' },
-]
+const ORBIT_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
+  algo: { tone: 'amber', x: 43, y: 16 },
+  fe: { tone: 'gold', x: 72, y: 26 },
+  be: { tone: 'red', x: 73, y: 70 },
+  cs: { tone: 'teal', x: 50, y: 78 },
+  db: { tone: 'amber', x: 21, y: 66 },
+  ds: { tone: 'red', x: 12, y: 39 },
+}
+
+/** 知识宇宙六大学域（与 knowledge_catalog / 全景图一致） */
+export const STARFIELD_DOMAINS: Omit<OrbitNode, 'score' | 'delta'>[] = TEACHER_KNOWLEDGE_UNIVERSE.map(
+  (domain) => {
+    const layout = ORBIT_LAYOUT[domain.key] ?? { tone: 'amber' as const, x: 50, y: 50 }
+    return {
+      label: domain.label,
+      domainKey: domain.key,
+      ...layout,
+    }
+  },
+)
 
 const DELTA_CYCLE: OrbitNode['delta'][] = ['上升', '稳定', '下降']
 

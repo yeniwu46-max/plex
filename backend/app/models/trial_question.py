@@ -47,20 +47,27 @@ class TrialQuestionProgress(db.Model):
     )
     status = db.Column(db.String(20), nullable=False, default='pending')  # pending | completed
     selected_index = db.Column(db.Integer)
+    selected_label = db.Column(db.String(8))
     is_correct = db.Column(db.Boolean)
+    started_at = db.Column(db.DateTime)
     answered_at = db.Column(db.DateTime)
+    time_spent_sec = db.Column(db.Integer)
 
     __table_args__ = (db.UniqueConstraint('user_id', 'question_id', name='uq_user_trial_question'),)
 
     user = db.relationship('User', backref='trial_question_progress')
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_timing=False):
+        payload = {
             'id': self.id,
             'user_id': self.user_id,
             'question_id': self.question_id,
             'status': self.status,
             'selected_index': self.selected_index,
+            'selected_label': self.selected_label,
             'is_correct': self.is_correct,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
             'answered_at': self.answered_at.isoformat() if self.answered_at else None,
+            'time_spent_sec': self.time_spent_sec,
         }
+        return payload

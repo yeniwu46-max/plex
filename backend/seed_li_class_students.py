@@ -3,7 +3,7 @@ import os
 import sys
 from datetime import date, datetime, timedelta
 
-os.environ.setdefault('DATABASE_URL', 'sqlite:///learning_system.db')
+os.environ.setdefault('DATABASE_URL', 'sqlite:///instance/learning_system.db')
 
 from werkzeug.security import generate_password_hash
 
@@ -80,8 +80,8 @@ def main() -> int:
         target_class = Class.query.filter_by(teacher_id=teacher.id).order_by(Class.id.asc()).first()
         if not target_class:
             target_class = Class(
-                name='2024级1班',
-                description='李老师负责班级',
+                name='水星轨站·探索一班',
+                description='PLEX 水星轨站领航班级',
                 grade_level=1,
                 teacher_id=teacher.id,
             )

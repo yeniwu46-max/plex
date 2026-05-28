@@ -15,6 +15,9 @@ import ClassHeatmapPanel from '../components/teacher/ClassHeatmapPanel.vue'
 import ClassRankingBoard from '../components/teacher/ClassRankingBoard.vue'
 import KnowledgeOrbitMap from '../components/teacher/KnowledgeOrbitMap.vue'
 import TeacherInsightCard from '../components/teacher/TeacherInsightCard.vue'
+import TeacherClassAnswerBoard from '../components/teacher/TeacherClassAnswerBoard.vue'
+import PlexBarChart from '../components/charts/PlexBarChart.vue'
+import PlexPieChart from '../components/charts/PlexPieChart.vue'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import { buildClassStarfieldNodes, buildStarfieldInsight, polylineFromPoints } from '../data/teacherStarfield'
 import type { TeacherStudentRow } from '../api/teacherOverview'
@@ -26,6 +29,7 @@ const {
   period,
   metrics,
   students,
+  selectedClassId,
   attentionStudents,
   activityScore,
   hasSelectedClass,
@@ -229,7 +233,46 @@ function activityDescription() {
           <class-ranking-board class="overview-card ranking-card" :ranking="ranking" />
         </div>
 
+        <teacher-class-answer-board
+          class="overview-card teacher-quad-layout__full-row"
+          :class-id="selectedClassId"
+        />
+
         <class-activity-feed class="overview-card activity-card teacher-quad-layout__full-row" :activities="recentActivity" />
+
+        <div class="navigator-home__charts teacher-quad-layout__full-row teacher-quad-layout__cols-2">
+          <article class="overview-card teacher-panel">
+            <header class="teacher-panel__head">
+              <h2 class="teacher-panel__title">班级知识域掌握度</h2>
+            </header>
+            <div class="navigator-home__chart-wrap">
+              <plex-bar-chart
+                :x-data="['Python基础', '控制流', '函数', '数据结构', '算法', '面向对象']"
+                :series="[{
+                  name: '班级平均分',
+                  data: [88, 76, 68, 62, 52, 45],
+                  color: '#f97316'
+                }]"
+              />
+            </div>
+          </article>
+
+          <article class="overview-card teacher-panel">
+            <header class="teacher-panel__head">
+              <h2 class="teacher-panel__title">错题类型分布</h2>
+            </header>
+            <div class="navigator-home__chart-wrap">
+              <plex-pie-chart
+                :data="[
+                  { name: '语法错误', value: 28, color: '#f97316' },
+                  { name: '逻辑错误', value: 35, color: '#fb923c' },
+                  { name: '边界条件', value: 22, color: '#fdba74' },
+                  { name: '算法复杂度', value: 15, color: '#fde68a' },
+                ]"
+              />
+            </div>
+          </article>
+        </div>
       </template>
     </section>
   </TeacherDashboardShell>
@@ -240,7 +283,7 @@ function activityDescription() {
   --orange: var(--teacher-orange, #fb923c);
   --gold: var(--teacher-gold, #fbbf24);
   --teal: var(--teacher-teal, #2efff1);
-  grid-template-rows: minmax(480px, 1fr) auto auto auto auto;
+  grid-template-rows: minmax(480px, 1fr) auto auto auto auto auto;
 }
 
 .navigator-home__state {
@@ -251,11 +294,26 @@ function activityDescription() {
   grid-row: 3;
 }
 
+.navigator-home__charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.navigator-home__chart-wrap {
+  height: 240px;
+  margin-top: 0.5rem;
+}
+
 .navigator-home__row4 {
   grid-row: 4;
 }
 
 .navigator-home .activity-card {
+  grid-row: 6;
+}
+
+.navigator-home .overview-card.teacher-quad-layout__full-row:has(.class-answer-board) {
   grid-row: 5;
 }
 

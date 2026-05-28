@@ -11,6 +11,8 @@ export interface LoginPayload {
   role: string
   level?: number
   total_points?: number
+  bio?: string | null
+  avatar_url?: string | null
   access_token: string
   refresh_token: string
   expiresIn?: number

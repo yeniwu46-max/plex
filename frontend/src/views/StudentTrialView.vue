@@ -4,12 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon, NSelect, useMessage, type SelectOption } from 'naive-ui'
 import { ChevronForwardOutline, CodeSlashOutline } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
-import {
-  completeStudentTrial,
-  fetchStudentTrials,
-  joinStudentTrial,
-  type StudentTrial,
-} from '../api/studentTrials'
+import { fetchStudentTrials, joinStudentTrial, type StudentTrial } from '../api/studentTrials'
+import TrialMcqPanel from '../components/trial/TrialMcqPanel.vue'
 import TrialRecommendationPanel from '../components/trial/TrialRecommendationPanel.vue'
 import {
   formatStarPathNodeLabel,
@@ -19,7 +15,6 @@ import {
   isStarPathNodeUnlocked,
 } from '../data/starPathTrail'
 import { useAuthStore } from '../stores/auth'
-import { showIncentiveFeedback } from '../utils/incentiveFeedback'
 import { buildTrialPageRecommendation } from '../utils/trialPageRecommendation'
 
 const message = useMessage()
@@ -36,6 +31,7 @@ const loading = ref(true)
 const errorMessage = ref('')
 const trials = ref<StudentTrial[]>([])
 const actingId = ref<number | null>(null)
+const activeMcqTrial = ref<{ id: number; title: string } | null>(null)
 
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Explorer')
 const userId = computed(() => auth.profile?.id ?? 'guest')
@@ -99,8 +95,8 @@ async function onJoin(trial: StudentTrial) {
   actingId.value = trial.id
   try {
     await joinStudentTrial(trial.id)
-    message.success(`已参与「${trial.title}」`)
-    await loadTrials()
+    activeMcqTrial.value = { id: trial.id, title: trial.title }
+    message.success(`已进入「${trial.title}」答题`)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '参与失败')
   } finally {
@@ -108,24 +104,9 @@ async function onJoin(trial: StudentTrial) {
   }
 }
 
-async function onComplete(trial: StudentTrial) {
-  actingId.value = trial.id
-  try {
-    const result = await completeStudentTrial(trial.id, trial.difficulty)
-    showIncentiveFeedback(message, result.incentive)
-    if (!result.incentive?.points_gained) {
-      message.success(`完成试炼，获得 ${result.trial.reward_points} XP`)
-    }
-    if (auth.profile) {
-      auth.profile.total_points = result.total_points
-      if (result.incentive?.level) auth.profile.level = result.incentive.level
-    }
-    await loadTrials()
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '完成失败')
-  } finally {
-    actingId.value = null
-  }
+async function onMcqCompleted() {
+  activeMcqTrial.value = null
+  await loadTrials()
 }
 
 onMounted(() => {
@@ -148,6 +129,16 @@ onMounted(() => {
     <section class="student-trial" aria-label="学生试炼关卡">
       <p class="student-trial__welcome">你好，{{ displayName }} — 从 Python 入门题开始试炼，或参与班级任务。</p>
 
+      <TrialMcqPanel
+        v-if="activeMcqTrial"
+        :trial-id="activeMcqTrial.id"
+        :trial-title="activeMcqTrial.title"
+        class="student-trial__mcq"
+        @back="activeMcqTrial = null"
+        @completed="onMcqCompleted"
+      />
+
+      <template v-else>
       <div class="student-trial__python-layout">
         <section class="student-trial__section student-trial__section--python" aria-label="Python 入门试炼">
         <header class="student-trial__section-head">
@@ -249,17 +240,18 @@ onMounted(() => {
                 参与试炼
               </n-button>
               <n-button
-                v-else
+                v-else-if="trial.my_status === 'joined'"
                 type="primary"
                 :loading="actingId === trial.id"
-                @click="onComplete(trial)"
+                @click="activeMcqTrial = { id: trial.id, title: trial.title }"
               >
-                提交完成
+                继续答题
               </n-button>
             </div>
           </li>
         </ul>
       </section>
+      </template>
     </section>
   </DashboardShell>
 </template>

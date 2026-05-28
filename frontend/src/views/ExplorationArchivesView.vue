@@ -123,7 +123,7 @@ async function loadArchive() {
         label: skill.label,
         percent: skill.percent,
       }))
-      emergencyRecords.value = insights.emergency_missions ?? []
+      emergencyRecords.value = (insights.emergency_missions ?? []) as EmergencyMissionArchiveRecord[]
     }
     auth.syncProfile({
       id: overview.value.profile.id,

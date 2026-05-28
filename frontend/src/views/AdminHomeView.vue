@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NIcon, NInput, NSelect, type SelectOption } from 'naive-ui'
+import { NButton, NIcon, NInput, NSelect, useMessage, type SelectOption } from 'naive-ui'
 import {
   AlertCircleOutline,
   AnalyticsOutline,
@@ -22,6 +22,12 @@ import {
   SparklesOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
+import { createAdminAnnouncement, fetchAdminAnnouncements } from '../api/adminAnnouncements'
+import AdminAgentOrchestrationPanel from '../components/admin/AdminAgentOrchestrationPanel.vue'
+import AdminClassRequestPanel from '../components/admin/AdminClassRequestPanel.vue'
+import AdminKnowledgeNexusPanel from '../components/admin/AdminKnowledgeNexusPanel.vue'
+import AdminTrialObservatoryPanel from '../components/admin/AdminTrialObservatoryPanel.vue'
+import type { SystemAnnouncement } from '../api/teacherAnnouncements'
 
 type NavKey = 'nexus' | 'agents' | 'knowledge' | 'observer' | 'governance'
 type Tone = 'purple' | 'amber' | 'green' | 'red'
@@ -78,6 +84,19 @@ const activeNav = ref<NavKey>('nexus')
 const period = ref('today')
 const auth = useAuthStore()
 const router = useRouter()
+const message = useMessage()
+
+const announcementTitle = ref('')
+const announcementBody = ref('')
+const announcementTarget = ref<'teacher' | 'student' | 'all'>('teacher')
+const postingAnnouncement = ref(false)
+const recentAnnouncements = ref<SystemAnnouncement[]>([])
+
+const announcementTargetOptions: SelectOption[] = [
+  { label: '全体教师', value: 'teacher' },
+  { label: '全体学生', value: 'student' },
+  { label: '全体用户', value: 'all' },
+]
 
 const navItems = [
   { key: 'nexus' as const, label: '中央总控', sub: 'Central Nexus', icon: SettingsOutline },
@@ -106,6 +125,20 @@ const observerMetricCards: MetricCard[] = [
   { label: '系统健康度', value: '96.2%', sub: '较昨日 ↑ 1.3%', icon: ShieldCheckmarkOutline, tone: 'purple' },
   { label: '实时风险信号', value: '7', sub: '较昨日 ↓ 1', icon: AlertCircleOutline, tone: 'purple' },
   { label: '在线智能体数量', value: '2,456', sub: '较昨日 ↑ 128', icon: HardwareChipOutline, tone: 'purple' },
+]
+
+const agentsMetricCards: MetricCard[] = [
+  { label: '运行智能体', value: '24', sub: '较昨日 ↑ 9.1%', icon: HardwareChipOutline, tone: 'purple' },
+  { label: '当前编排任务', value: '128', sub: '较昨日 ↑ 15.6%', icon: GitNetworkOutline, tone: 'purple' },
+  { label: '平均响应延迟', value: '0.8s', sub: '较昨日 ↓ 8.7%', icon: AnalyticsOutline, tone: 'purple' },
+  { label: '协同成功率', value: '98.6%', sub: '较昨日 ↑ 1.2%', icon: ShieldCheckmarkOutline, tone: 'purple' },
+]
+
+const knowledgeMetricCards: MetricCard[] = [
+  { label: '知识节点总数', value: '48', sub: '试炼 24 + 星轨 24', icon: PlanetOutline, tone: 'purple' },
+  { label: '学域数量', value: '12', sub: '6 试炼域 + 6 星轨域', icon: GitNetworkOutline, tone: 'purple' },
+  { label: '关联边数', value: '14', sub: '前置与扩展关系', icon: BookOutline, tone: 'purple' },
+  { label: '同步状态', value: '正常', sub: '最近一次 14:32', icon: ShieldCheckmarkOutline, tone: 'purple' },
 ]
 
 const progressMetrics: ProgressMetric[] = [
@@ -143,12 +176,18 @@ const wavePoints = [48, 55, 66, 54, 49, 72, 86, 68, 51, 50, 74, 84, 72, 64, 70, 
 const wavePolyline = computed(() => wavePoints.map((point, index) => `${index * 26},${130 - point}`).join(' '))
 
 const currentNav = computed(() => navItems.find((item) => item.key === activeNav.value) ?? navItems[0])
-const pageSubtitle = computed(() =>
-  activeNav.value === 'observer'
-    ? '监测平台运行态势、活跃波动与全域风险信号'
-    : '实时掌控 PLEX 宇宙的运行状态与关键指标',
-)
-const visibleMetrics = computed(() => (activeNav.value === 'observer' ? observerMetricCards : metricCards))
+const pageSubtitle = computed(() => {
+  if (activeNav.value === 'observer') return '监测平台运行态势、活跃波动与全域风险信号'
+  if (activeNav.value === 'agents') return '配置教师检查智能体编排，协同完成学生做题自动校验'
+  if (activeNav.value === 'knowledge') return '浏览试炼与星轨知识节点、关联关系及题库绑定'
+  return '实时掌控 PLEX 宇宙的运行状态与关键指标'
+})
+const visibleMetrics = computed(() => {
+  if (activeNav.value === 'observer') return observerMetricCards
+  if (activeNav.value === 'agents') return agentsMetricCards
+  if (activeNav.value === 'knowledge') return knowledgeMetricCards
+  return metricCards
+})
 
 const anomalyItems = [
   { title: '某星域活跃度下降', desc: '「北极星域」活跃度较昨日下降 12.4%', level: '中等', progress: 42, icon: GitNetworkOutline },
@@ -173,6 +212,40 @@ const observerAlerts = [
 
 function setActiveNav(key: NavKey) {
   activeNav.value = key
+  if (key === 'governance') {
+    void loadAnnouncements()
+  }
+}
+
+async function loadAnnouncements() {
+  try {
+    recentAnnouncements.value = await fetchAdminAnnouncements()
+  } catch {
+    recentAnnouncements.value = []
+  }
+}
+
+async function postAnnouncement() {
+  if (!announcementTitle.value.trim() || !announcementBody.value.trim()) {
+    message.warning('请填写公告标题与内容')
+    return
+  }
+  postingAnnouncement.value = true
+  try {
+    await createAdminAnnouncement({
+      title: announcementTitle.value.trim(),
+      body: announcementBody.value.trim(),
+      target_role: announcementTarget.value,
+    })
+    message.success('公告已发布，教师端将收到通知')
+    announcementTitle.value = ''
+    announcementBody.value = ''
+    await loadAnnouncements()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '发布失败')
+  } finally {
+    postingAnnouncement.value = false
+  }
 }
 
 async function handleLogout() {
@@ -257,7 +330,11 @@ onUnmounted(() => {
         <div class="current-time">{{ currentTimeText }}</div>
       </header>
 
-      <section class="metric-row" :class="{ 'metric-row--observer': activeNav === 'observer' }" aria-label="核心指标">
+      <section
+        class="metric-row"
+        :class="{ 'metric-row--observer': activeNav === 'observer' || activeNav === 'agents' || activeNav === 'knowledge' }"
+        aria-label="核心指标"
+      >
         <article v-for="item in visibleMetrics" :key="item.label" class="metric-card" :class="`tone-${item.tone}`">
           <span class="metric-icon"><n-icon :component="item.icon" /></span>
           <div>
@@ -387,6 +464,8 @@ onUnmounted(() => {
       </section>
 
       <section v-else-if="activeNav === 'observer'" class="observer-grid" aria-label="系统观测面板">
+        <AdminTrialObservatoryPanel class="panel observatory-trials-panel" />
+
         <article class="panel observatory-panel">
           <header class="panel-head">
             <h2>平台运行态势 <span class="info-dot">i</span></h2>
@@ -472,6 +551,52 @@ onUnmounted(() => {
           </div>
           <p class="alert-delta">较昨日 ↓ 2</p>
         </article>
+      </section>
+
+      <admin-agent-orchestration-panel v-else-if="activeNav === 'agents'" />
+
+      <admin-knowledge-nexus-panel v-else-if="activeNav === 'knowledge'" />
+
+      <section v-else-if="activeNav === 'governance'" class="dashboard-grid governance-grid" aria-label="权限与公告">
+        <article class="panel governance-announce-panel">
+          <header class="panel-head">
+            <h2>向教师发布公告</h2>
+          </header>
+          <p class="governance-hint">教师登录后将在顶栏通知中收到管理员公告；发布作业请由教师在试炼中枢操作。</p>
+          <label class="gov-field">
+            <span>接收对象</span>
+            <n-select v-model:value="announcementTarget" :options="announcementTargetOptions" />
+          </label>
+          <label class="gov-field">
+            <span>公告标题</span>
+            <n-input v-model:value="announcementTitle" placeholder="例如：本周教研安排" />
+          </label>
+          <label class="gov-field">
+            <span>公告内容</span>
+            <n-input
+              v-model:value="announcementBody"
+              type="textarea"
+              :autosize="{ minRows: 4, maxRows: 8 }"
+              placeholder="请输入公告正文"
+            />
+          </label>
+          <n-button type="primary" :loading="postingAnnouncement" @click="postAnnouncement">发布公告</n-button>
+        </article>
+
+        <article class="panel governance-list-panel">
+          <header class="panel-head">
+            <h2>近期公告</h2>
+            <button type="button" @click="loadAnnouncements()">刷新</button>
+          </header>
+          <div v-if="!recentAnnouncements.length" class="governance-empty">暂无公告记录</div>
+          <article v-for="item in recentAnnouncements" :key="item.id" class="gov-announce-item">
+            <strong>{{ item.title }}</strong>
+            <p>{{ item.body }}</p>
+            <small>{{ item.target_role }} · {{ item.created_at?.slice(0, 16).replace('T', ' ') }}</small>
+          </article>
+        </article>
+
+        <admin-class-request-panel />
       </section>
 
       <footer class="admin-footer">© {{ currentYear }} PLEX Universe. All rights reserved.</footer>
@@ -1256,6 +1381,11 @@ onUnmounted(() => {
   align-items: stretch;
 }
 
+.observatory-trials-panel {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
 .observatory-panel,
 .anomaly-panel {
   display: flex;
@@ -1265,12 +1395,12 @@ onUnmounted(() => {
 
 .observatory-panel {
   grid-column: 1 / 3;
-  grid-row: 1;
+  grid-row: 2;
 }
 
 .anomaly-panel {
   grid-column: 3;
-  grid-row: 1;
+  grid-row: 2;
 }
 
 .anomaly-panel .anomaly-list {
@@ -1659,5 +1789,60 @@ onUnmounted(() => {
   .search-input {
     width: 100%;
   }
+}
+
+.governance-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1rem;
+}
+
+.governance-hint {
+  margin: 0 0 1rem;
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.gov-field {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+.gov-field > span {
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 0.82rem;
+}
+
+.governance-empty {
+  padding: 1.5rem 0;
+  color: rgba(226, 232, 240, 0.55);
+  text-align: center;
+}
+
+.gov-announce-item {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.12);
+}
+
+.gov-announce-item:last-child {
+  border-bottom: none;
+}
+
+.gov-announce-item strong {
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.gov-announce-item p {
+  margin: 0.35rem 0;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.gov-announce-item small {
+  color: rgba(167, 139, 250, 0.75);
+  font-size: 0.78rem;
 }
 </style>

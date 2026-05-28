@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { NDrawer, NDrawerContent, NButton } from 'naive-ui'
 import type { TeacherStudentRow } from '../../api/teacherOverview'
 import type { OrbitNode } from '../../data/teacherStarfield'
+import { TEACHER_KNOWLEDGE_UNIVERSE } from '../../data/teacherKnowledgeCatalog'
 
 const props = defineProps<{
   show: boolean
@@ -31,6 +32,11 @@ const comparedToClass = computed(() => {
   if (diff >= 5) return `高于班级均值 ${diff}%`
   if (diff <= -5) return `低于班级均值 ${Math.abs(diff)}%`
   return '与班级均值接近'
+})
+
+const domainKnowledgePoints = computed(() => {
+  if (!props.node?.domainKey) return []
+  return TEACHER_KNOWLEDGE_UNIVERSE.find((d) => d.key === props.node?.domainKey)?.points ?? []
 })
 
 function close() {
@@ -69,6 +75,13 @@ function goExplorer(studentId: number) {
         </div>
       </dl>
 
+      <section v-if="domainKnowledgePoints.length" class="domain-drawer__knowledge">
+        <h3>知识宇宙 · 本域知识点</h3>
+        <ul>
+          <li v-for="point in domainKnowledgePoints" :key="point.key">{{ point.label }}</li>
+        </ul>
+      </section>
+
       <section class="domain-drawer__attention">
         <h3>需关注 Explorer</h3>
         <ul v-if="attentionStudents.length">
@@ -91,6 +104,35 @@ function goExplorer(studentId: number) {
 </template>
 
 <style scoped>
+.domain-drawer__knowledge {
+  margin: 0 0 1.1rem;
+}
+
+.domain-drawer__knowledge h3,
+.domain-drawer__attention h3 {
+  margin: 0 0 0.55rem;
+  color: #fff7ed;
+  font-size: 0.88rem;
+}
+
+.domain-drawer__knowledge ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.domain-drawer__knowledge li {
+  padding: 0.28rem 0.55rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(251, 146, 60, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(255, 237, 213, 0.88);
+  font-size: 0.78rem;
+}
+
 .domain-drawer__note {
   margin: 0 0 1rem;
   padding: 0.65rem 0.75rem;

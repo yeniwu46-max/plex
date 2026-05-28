@@ -61,8 +61,12 @@ def create_teacher_trial():
 def publish_teacher_trial(trial_id):
     try:
         current_user_id = int(get_jwt_identity())
+        payload = request.get_json() or {}
+        notify = payload.get('notify_students', True)
         return success_response(
-            TrialService.publish_trial(current_user_id, trial_id, _role_name(current_user_id)),
+            TrialService.publish_trial(
+                current_user_id, trial_id, _role_name(current_user_id), notify_students=bool(notify)
+            ),
             '试炼已发布',
         )
     except PermissionError as exc:
@@ -88,6 +92,51 @@ def update_teacher_trial(trial_id):
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/teacher/trials/<int:trial_id>', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_teacher_trial_detail(trial_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        return success_response(
+            AssignmentService.get_trial_detail_for_teacher(
+                current_user_id, trial_id, _role_name(current_user_id)
+            )
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/admin/trials', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def list_admin_trials():
+    try:
+        class_id = request.args.get('class_id', type=int)
+        return success_response(AssignmentService.list_admin_trials(class_id))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/student/trials/<int:trial_id>/questions', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def list_student_trial_questions(trial_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        return success_response(AssignmentService.list_for_trial(current_user_id, trial_id))
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 
@@ -169,7 +218,12 @@ def submit_student_assignment(question_id):
         if payload.get('selected_index') is None:
             return error_response('selected_index 不能为空', 40001, None, 400)
         return success_response(
-            AssignmentService.submit_answer(current_user_id, question_id, payload['selected_index']),
+            AssignmentService.submit_answer(
+                current_user_id,
+                question_id,
+                payload['selected_index'],
+                payload.get('time_spent_sec'),
+            ),
             '已提交作答',
         )
     except PermissionError as exc:

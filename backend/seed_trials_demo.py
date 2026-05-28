@@ -3,7 +3,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-os.environ.setdefault('DATABASE_URL', 'sqlite:///learning_system.db')
+os.environ.setdefault('DATABASE_URL', 'sqlite:///instance/learning_system.db')
 
 from app import create_app, db
 from app.models import Class, Trial, TrialParticipation, User

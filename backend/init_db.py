@@ -47,7 +47,7 @@ def init_db():
         # 分配权限（多对多关联表 role_permissions）
         student_role.permissions.extend([permissions[0], permissions[8], permissions[6], permissions[9]])
         teacher_role.permissions.extend(
-            [permissions[0], permissions[1], permissions[4], permissions[6], permissions[7], permissions[9]]
+            [permissions[0], permissions[1], permissions[2], permissions[3], permissions[6], permissions[7], permissions[9]]
         )
         admin_role.permissions.extend(permissions)
         
@@ -73,10 +73,10 @@ def init_db():
         db.session.add_all([admin_user, teacher_user])
         db.session.flush()
         
-        # 创建班级
+        # 创建班级（星球命名）
         class1 = Class(
-            name='2024级1班',
-            description='2024年入学的一班',
+            name='水星轨站·探索一班',
+            description='PLEX 水星轨站领航班级 · 近太阳轨道编制',
             grade_level=1,
             teacher_id=teacher_user.id
         )

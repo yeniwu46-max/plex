@@ -36,6 +36,26 @@ export interface CompleteTrialResult {
   incentive?: IncentiveFeedbackPayload
 }
 
+export interface StudentTrialQuestionsResult {
+  trial_id: number
+  trial_title: string
+  question_count: number
+  pending_count: number
+  answered_count: number
+  correct_count: number
+  score: number
+  my_status: string | null
+  items: import('./studentAssignments').TeacherAssignmentItem[]
+}
+
+export async function fetchStudentTrialQuestions(trialId: number) {
+  const { data } = await http.get<ApiEnvelope<StudentTrialQuestionsResult>>(
+    `/v1/student/trials/${trialId}/questions`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '试炼题目加载失败')
+  return data.data
+}
+
 export async function fetchStudentTrials() {
   const { data } = await http.get<ApiEnvelope<StudentTrialsResult>>('/v1/student/trials')
   if (data.code !== 0) throw new Error(data.message || '试炼列表加载失败')

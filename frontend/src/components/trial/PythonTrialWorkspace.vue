@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Codemirror } from 'vue-codemirror'
-import { python } from '@codemirror/lang-python'
-import { oneDark } from '@codemirror/theme-one-dark'
 import { NButton, NIcon, useMessage } from 'naive-ui'
+import PlexCodeEditor from './PlexCodeEditor.vue'
 import {
   ArrowBackOutline,
   BulbOutline,
@@ -15,15 +13,30 @@ import {
 } from '@vicons/ionicons5'
 import type { PythonTrialQuestion } from '../../data/pythonTrialQuestions'
 import { useAuthStore } from '../../stores/auth'
+import { useNotificationStore } from '../../stores/notifications'
 import { recordTrialRun } from '../../utils/trialMistakeLog'
 
-const props = defineProps<{
-  question: PythonTrialQuestion
+const props = withDefaults(
+  defineProps<{
+    question: PythonTrialQuestion
+    embedded?: boolean
+    backLabel?: string
+  }>(),
+  {
+    embedded: false,
+    backLabel: '返回星轨',
+  },
+)
+
+const emit = defineEmits<{
+  back: []
+  passed: []
 }>()
 
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
+const notifications = useNotificationStore()
 
 const code = ref(props.question.starterCode)
 const running = ref(false)
@@ -46,8 +59,6 @@ const passedCount = computed(() => caseResults.value.filter((item) => item.passe
 const allPassed = computed(
   () => caseResults.value.length > 0 && passedCount.value === caseResults.value.length,
 )
-
-const editorExtensions = shallowRef([python(), oneDark])
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pyodideInstance: any = null
@@ -146,6 +157,11 @@ async function onRun() {
     )
     if (results.every((item) => item.passed)) {
       message.success('全部测试通过！')
+      emit('passed')
+      const uid = auth.profile?.id
+      if (uid && auth.profile?.role === 'student') {
+        notifications.push(uid, 'first_coding_solved')
+      }
     } else {
       message.warning(`${results.filter((item) => item.passed).length}/${results.length} 个测试通过`)
     }
@@ -167,6 +183,10 @@ function revealHint() {
 }
 
 function goBack() {
+  if (props.embedded) {
+    emit('back')
+    return
+  }
   void router.push('/student/trials')
 }
 
@@ -185,11 +205,11 @@ watch(
     <header class="py-workspace__bar">
       <button type="button" class="py-workspace__back" @click="goBack">
         <n-icon :component="ArrowBackOutline" />
-        返回题目列表
+        {{ embedded ? backLabel : '返回题目列表' }}
       </button>
       <div class="py-workspace__meta">
         <span class="py-workspace__topic">{{ question.topic }}</span>
-        <span class="py-workspace__diff">{{ question.difficulty }}</span>
+        <span class="py-workspace__diff" :data-level="question.difficulty">{{ question.difficulty }}</span>
         <span class="py-workspace__xp">+{{ question.rewardXp }} XP</span>
       </div>
       <div class="py-workspace__actions">
@@ -296,12 +316,11 @@ watch(
           <span>main.py</span>
         </header>
         <div class="py-editor__wrap">
-          <codemirror
+          <plex-code-editor
             v-model="code"
-            :extensions="editorExtensions"
-            :style="{ height: '100%', fontSize: '14px' }"
-            :indent-with-tab="true"
-            :tab-size="4"
+            language="python"
+            filename="main.py"
+            height="100%"
           />
         </div>
 
@@ -371,6 +390,11 @@ watch(
 .py-workspace__diff {
   background: rgba(130, 212, 255, 0.12);
   color: #93c5fd;
+}
+
+.py-workspace__diff:where([data-level='挑战']) {
+  background: rgba(244, 63, 94, 0.16);
+  color: #fb7185;
 }
 
 .py-workspace__xp {
@@ -704,14 +728,9 @@ watch(
   overflow: hidden;
 }
 
-.py-editor__wrap :deep(.cm-editor) {
-  height: 100%;
-  background: #0a1628;
-}
-
-.py-editor__wrap :deep(.cm-scroller) {
-  font-family: 'Consolas', 'Fira Code', 'Microsoft YaHei', monospace;
-  line-height: 1.55;
+.py-editor__wrap :deep(.plex-code-editor) {
+  border-radius: 0;
+  border: none;
 }
 
 .py-editor__footer {

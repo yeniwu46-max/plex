@@ -20,25 +20,8 @@ export interface ArchiveSkill {
   percent: number
 }
 
-export interface EmergencyMissionArchiveRecord {
-  id: number
-  title: string
-  focus_label: string
-  date: string | null
-  all_correct: boolean
-  correct_count: number
-  total_count: number
-  reward_points: number
-  questions: Array<{
-    id: number
-    sort_order: number
-    stem: string
-    options: string[]
-    selected_index: number | null
-    is_correct: boolean | null
-    correct_index?: number
-  }>
-}
+export type { EmergencyMissionArchiveRecord } from './emergencyMission'
+import type { EmergencyMissionArchiveRecord } from './emergencyMission'
 
 export interface ArchiveInsightsResult {
   tendency: { label: string; description: string }

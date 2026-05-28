@@ -1,0 +1,280 @@
+:root {
+  --plex-bg: #031019;
+  --plex-surface: #0a1a28;
+  --plex-border: rgba(16, 185, 129, 0.22);
+  --plex-student: #10b981;
+  --plex-teacher: #f97316;
+  --plex-admin: #7c3aed;
+  --plex-text: #e8f4f8;
+  --plex-muted: #8ba3b5;
+  --plex-glow: rgba(16, 185, 129, 0.35);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--plex-text);
+  background: var(--plex-bg);
+  line-height: 1.55;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(16, 185, 129, 0.12), transparent),
+    var(--plex-bg);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--plex-student);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.main-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.content-wrap {
+  flex: 1;
+  padding: 1.5rem 2rem 3rem;
+  max-width: 1100px;
+}
+
+.card {
+  background: var(--plex-surface);
+  border: 1px solid var(--plex-border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.card h2,
+.card h3 {
+  margin-top: 0;
+}
+
+.card h2 {
+  font-size: 1.15rem;
+  color: var(--plex-student);
+}
+
+.bullet-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.bullet-list li {
+  margin-bottom: 0.35rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.data-table th {
+  color: var(--plex-muted);
+  font-weight: 500;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--plex-border);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--plex-student);
+  text-decoration: none;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.btn:hover {
+  background: rgba(16, 185, 129, 0.22);
+  box-shadow: 0 0 20px var(--plex-glow);
+}
+
+.btn--teacher {
+  border-color: rgba(249, 115, 22, 0.35);
+  background: rgba(249, 115, 22, 0.12);
+  color: var(--plex-teacher);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--plex-muted);
+}
+
+.pitch {
+  font-size: 1.05rem;
+  border-left: 3px solid var(--plex-student);
+  padding-left: 1rem;
+  color: var(--plex-text);
+  margin: 0.75rem 0;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.feature-card img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--plex-border);
+  cursor: zoom-in;
+  aspect-ratio: 16/10;
+  object-fit: cover;
+  background: #000;
+}
+
+.screenshot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.screenshot-thumb {
+  border: 1px solid var(--plex-border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #000;
+}
+
+.screenshot-thumb img {
+  width: 100%;
+  display: block;
+  aspect-ratio: 16/10;
+  object-fit: cover;
+}
+
+.screenshot-thumb span {
+  display: block;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--plex-muted);
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.lightbox img {
+  max-width: min(1200px, 95vw);
+  max-height: 90vh;
+  border-radius: 8px;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--plex-surface);
+  border: 1px solid var(--plex-border);
+  color: var(--plex-text);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+}
+
+.script-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.script-step input {
+  margin-top: 0.35rem;
+  accent-color: var(--plex-student);
+}
+
+.faq details {
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--plex-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.faq summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.faq p {
+  margin: 0.5rem 0 0;
+  color: var(--plex-muted);
+  font-size: 0.92rem;
+}
+
+.user-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.user-card {
+  border-radius: 10px;
+  padding: 1rem;
+  border: 1px solid var(--plex-border);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.user-card h4 {
+  margin: 0 0 0.5rem;
+}
+
+.user-card code {
+  font-size: 0.8rem;
+  color: var(--plex-muted);
+}

@@ -1,0 +1,84 @@
+- generic [ref=e4]:
+  - complementary "主导航" [ref=e5]:
+    - generic [ref=e6]:
+      - img [ref=e7]
+      - generic [ref=e10]: PLEX
+    - navigation [ref=e11]:
+      - link "探索舱 EXPLORER" [ref=e12] [cursor=pointer]:
+        - /url: /discovery
+        - img [ref=e14]:
+          - img [ref=e15]
+        - generic [ref=e18]:
+          - generic [ref=e19]: 探索舱
+          - generic [ref=e20]: EXPLORER
+      - link "星轨路径 STARPATH" [ref=e21] [cursor=pointer]:
+        - /url: /star-path
+        - img [ref=e23]:
+          - img [ref=e24]
+        - generic [ref=e30]:
+          - generic [ref=e31]: 星轨路径
+          - generic [ref=e32]: STARPATH
+      - link "试炼关卡 TRIAL ARENA" [ref=e33] [cursor=pointer]:
+        - /url: /trial-arena
+        - img [ref=e35]:
+          - img [ref=e36]
+        - generic [ref=e41]:
+          - generic [ref=e42]: 试炼关卡
+          - generic [ref=e43]: TRIAL ARENA
+      - link "驿站使者 MESSENGER" [ref=e44] [cursor=pointer]:
+        - /url: /messenger
+        - img [ref=e46]:
+          - img [ref=e47]
+        - generic [ref=e50]:
+          - generic [ref=e51]: 驿站使者
+          - generic [ref=e52]: MESSENGER
+      - link "今日委托 DAILY QUEST" [ref=e53] [cursor=pointer]:
+        - /url: /daily
+        - img [ref=e55]:
+          - img [ref=e56]
+        - generic [ref=e67]:
+          - generic [ref=e68]: 今日委托
+          - generic [ref=e69]: DAILY QUEST
+      - link "探索档案 ARCHIVES" [ref=e70] [cursor=pointer]:
+        - /url: /archives
+        - img [ref=e72]:
+          - img [ref=e73]
+        - generic [ref=e77]:
+          - generic [ref=e78]: 探索档案
+          - generic [ref=e79]: ARCHIVES
+    - button "收起侧栏" [ref=e80] [cursor=pointer]: «
+  - generic [ref=e81]:
+    - banner [ref=e82]:
+      - generic [ref=e83]:
+        - heading "领航总览" [level=1] [ref=e84]: 领航总览
+        - paragraph [ref=e86]: 观察整个知识宇宙的成长轨迹
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - button "通知" [ref=e89] [cursor=pointer]:
+            - img [ref=e90]:
+              - img [ref=e91]
+          - superscript [ref=e94]
+        - button "李老师 Lv.1" [ref=e96] [cursor=pointer]:
+          - generic [ref=e101]:
+            - strong [ref=e102]: 李老师
+            - emphasis [ref=e103]: Lv.1
+          - img [ref=e104]:
+            - img [ref=e105]
+    - region "教师端筛选与状态" [ref=e108]:
+      - generic [ref=e111]:
+        - generic:
+          - generic: 选择班级
+        - img "loading" [ref=e112] [cursor=pointer]:
+          - img [ref=e117]:
+            - img [ref=e118]
+      - generic [ref=e120]:
+        - generic [ref=e121]: 班级活跃度
+        - strong [ref=e122]: 0%
+      - generic [ref=e127]:
+        - strong [ref=e128]: Waystation Keeper
+        - text: 在线
+      - button "刷新" [ref=e129]:
+        - img "loading" [ref=e131]:
+          - img [ref=e134]
+    - region "教师端领航总览" [ref=e138]:
+      - generic [ref=e139]: 正在同步领航数据…

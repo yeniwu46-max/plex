@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { NButton, NIcon } from 'naive-ui'
+import { NIcon } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 import {
   ChevronForwardOutline,
@@ -12,16 +11,16 @@ import {
   TrophyOutline,
 } from '@vicons/ionicons5'
 import StarFieldMap from '../components/discovery/StarFieldMap.vue'
-import TrialArenaMap from '../components/discovery/TrialArenaMap.vue'
+import ClassArenaHub from '../components/discovery/ClassArenaHub.vue'
 import { fetchStudentArenaTrials } from '../api/studentTrials'
 import { mapApiTrialsToArenaModes, type TrialMode } from '../data/trialArena'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 import { fetchCurrentStudent, type CurrentStudent } from '../api/studentOverview'
 import { fetchStudentAssignments } from '../api/studentAssignments'
+import { useStudentNotificationSync } from '../composables/useStudentNotificationSync'
 
 const auth = useAuthStore()
-const router = useRouter()
 const sidebarCollapsed = ref(false)
 const profile = ref<CurrentStudent | null>(null)
 const mapMode = ref<'starfield' | 'trial'>('starfield')
@@ -29,11 +28,16 @@ const arenaTrials = ref<TrialMode[]>([])
 const arenaLoading = ref(false)
 const arenaError = ref('')
 const selectedArenaKey = ref<string | null>(null)
+const classArenaInWorkspace = ref(false)
 const pendingFragmentCount = ref(0)
+const { syncTeacherAssignments } = useStudentNotificationSync()
 
 const displayName = computed(
   () => profile.value?.real_name || auth.profile?.real_name || auth.profile?.username || 'Explorer',
 )
+const className = computed(() => profile.value?.class?.name || '暂未加入班级')
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const classRank = computed(() => (profile.value as any)?.class_rank ?? (auth.profile as any)?.class_rank ?? null)
 const userLevel = computed(() => profile.value?.level ?? auth.profile?.level ?? 1)
 const xpCurrent = computed(() => profile.value?.total_points ?? auth.profile?.total_points ?? 0)
 const streakDays = computed(() => profile.value?.consecutive_days ?? 0)
@@ -60,6 +64,7 @@ async function loadAssignments() {
   try {
     const data = await fetchStudentAssignments()
     pendingFragmentCount.value = data.pending_count
+    await syncTeacherAssignments()
   } catch {
     pendingFragmentCount.value = 0
   }
@@ -99,16 +104,8 @@ async function loadArenaTrials() {
   }
 }
 
-function onArenaEnter(trial: TrialMode) {
-  if (!trial.trialId) {
-    void router.push('/student/trials')
-    return
-  }
-  void router.push({ path: '/student/trials', query: { trialId: String(trial.trialId) } })
-}
-
 watch(mapMode, (mode) => {
-  if (mode === 'trial' && !arenaTrials.value.length && !arenaLoading.value) {
+  if (mode === 'trial' && !arenaLoading.value) {
     void loadArenaTrials()
   }
 })
@@ -124,7 +121,7 @@ onMounted(() => {
   <div class="cabin-shell" :class="{ 'cabin-shell--collapsed': sidebarCollapsed }">
     <PlexSidebar v-model:collapsed="sidebarCollapsed" active-key="cabin" />
 
-    <main class="cabin-main">
+    <main class="cabin-main" :class="{ 'cabin-main--trial': mapMode === 'trial' }">
       <div class="cabin-space" aria-hidden="true">
         <span class="cabin-space__planet" />
         <span class="cabin-space__star cabin-space__star--one" />
@@ -146,27 +143,24 @@ onMounted(() => {
 
         <StarFieldMap v-if="mapMode === 'starfield'" :pending-fragment-count="pendingFragmentCount" />
 
-        <div v-else class="cabin-trial-wrap">
-          <div v-if="arenaLoading" class="cabin-trial-state">正在同步班级试炼…</div>
-          <div v-else-if="arenaError" class="cabin-trial-state cabin-trial-state--error">
-            <span>{{ arenaError }}</span>
-            <n-button secondary size="small" @click="loadArenaTrials()">重试</n-button>
-          </div>
-          <p v-else-if="!arenaTrials.length" class="cabin-trial-state">
-            暂无进行中的班级试炼，请等待教师发布或稍后再来。
-          </p>
-          <TrialArenaMap
-            v-else
-            v-model="selectedArenaKey"
-            :trials="arenaTrials"
-            :allow-demo-fallback="false"
+        <div v-else class="cabin-trial-wrap" :class="{ 'cabin-trial-wrap--workspace': classArenaInWorkspace }">
+          <ClassArenaHub
+            :class-name="className"
+            :class-rank="classRank"
+            :user-name="displayName"
             :user-level="userLevel"
-            @enter="onArenaEnter"
+            :trials="arenaTrials"
+            :trials-loading="arenaLoading"
+            :trials-error="arenaError"
+            :selected-arena-key="selectedArenaKey"
+            @update:selected-arena-key="selectedArenaKey = $event"
+            @retry-trials="loadArenaTrials()"
+            @session-change="classArenaInWorkspace = $event"
           />
         </div>
       </section>
 
-      <footer class="cabin-status" aria-label="探索者资源">
+      <footer v-if="mapMode === 'starfield'" class="cabin-status" aria-label="探索者资源">
         <section class="status-profile">
           <div class="level-ring" :style="{ '--level-progress': xpRatio }">
             <span>Lv.{{ userLevel }}</span>
@@ -594,7 +588,13 @@ onMounted(() => {
 
 .cabin-trial-wrap {
   height: calc(100% - 2.5rem);
-  min-height: 380px;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.cabin-trial-wrap--workspace {
+  min-height: calc(100dvh - 220px);
+  height: calc(100dvh - 220px);
 }
 
 .cabin-trial-state {
@@ -615,6 +615,17 @@ onMounted(() => {
   height: calc(100dvh - 282px);
   min-height: 440px;
   margin: 0 var(--plex-page-gutter-x);
+}
+
+.cabin-main--trial .cabin-map-wrap {
+  height: calc(100dvh - 168px);
+  min-height: 560px;
+  margin-bottom: var(--plex-page-gutter-bottom);
+}
+
+.cabin-main--trial .cabin-trial-wrap--workspace {
+  min-height: calc(100dvh - 168px);
+  height: calc(100dvh - 168px);
 }
 
 .cabin-status {

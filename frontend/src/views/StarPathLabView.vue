@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain } from '../api/studentProgress'
-import { getPythonTrialQuestion } from '../data/pythonTrialQuestions'
+import { getPythonTrialQuestion, type PythonTrialQuestion } from '../data/pythonTrialQuestions'
 import {
   STAR_PATH_DOMAINS,
   STAR_PATH_TAB_ALL,
@@ -13,25 +13,30 @@ import {
   getStarPathKnowledgePoint,
   type StarPathKnowledgePoint,
 } from '../data/starPathDomains'
+import { buildKnowledgeTrack } from '../data/starPathKnowledgeTracks'
 import {
   STAR_PATH_ALGO_NODES,
-  formatStarPathGems,
-  getStarPathNode,
   isStarPathNodeUnlocked,
-  starPathNodeTrackClass,
   getPrimaryQuestionId,
   type StarPathNode,
 } from '../data/starPathTrail'
 import {
   ChevronDownOutline,
   ChevronForwardOutline,
-  CodeSlashOutline,
   LockClosedOutline,
   MapOutline,
-  ServerOutline,
 } from '@vicons/ionicons5'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
+import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
+import PythonTrialWorkspace from '../components/trial/PythonTrialWorkspace.vue'
+import PlexKnowledgeGraph from '../components/shared/PlexKnowledgeGraph.vue'
+import { KG_NODES, KG_EDGES } from '../data/knowledgeGraphData'
+import {
+  clearStarPathQuestionCache,
+  resolveQuestionById,
+  resolveStarPathQuestion,
+} from '../utils/starPathQuestionGenerator'
 
 const router = useRouter()
 const route = useRoute()
@@ -52,14 +57,24 @@ const domains = ref<Domain[]>([])
 const activeTabKey = ref<string>(STAR_PATH_TAB_ALL)
 const activeDomainKey = ref('algo')
 const selectedKnowledgeId = ref<string | null>(null)
-const knowledgePanelRef = ref<HTMLElement | null>(null)
+const selectedNodeId = ref('01')
+const viewMode = ref<'track' | 'map' | 'practice'>('track')
+const activeQuestion = ref<PythonTrialQuestion | null>(null)
+const activeQuestionId = ref<string | null>(null)
 
 const activeDomain = computed(() => domains.value.find((item) => item.key === activeDomainKey.value) ?? domains.value[0])
 const activeDomainMeta = computed(() => getStarPathDomain(activeDomainKey.value))
 
-const starPathNodes = STAR_PATH_ALGO_NODES
-const selectedNodeId = ref('01')
-const showAlgoTrack = computed(() => activeTabKey.value !== STAR_PATH_TAB_ALL && activeDomainKey.value === 'algo')
+const showDomainTrack = computed(() => activeTabKey.value !== STAR_PATH_TAB_ALL)
+const isAlgoDomain = computed(() => activeDomainKey.value === 'algo')
+
+const starPathNodes = computed<StarPathNode[]>(() => {
+  if (!showDomainTrack.value) return []
+  if (isAlgoDomain.value) return STAR_PATH_ALGO_NODES
+  return buildKnowledgeTrack(activeDomainKey.value)
+})
+
+const trackVariant = computed<'seven' | 'four'>(() => (isAlgoDomain.value ? 'seven' : 'four'))
 
 const visibleKnowledgePoints = computed<StarPathKnowledgePoint[]>(() => {
   if (activeTabKey.value === STAR_PATH_TAB_ALL) {
@@ -73,44 +88,111 @@ const selectedKnowledge = computed(() => {
   return getStarPathKnowledgePoint(selectedKnowledgeId.value)
 })
 
-const selectedNode = computed(() => getStarPathNode(selectedNodeId.value) ?? starPathNodes[0])
-const selectedQuestion = computed(() => {
-  const kp = selectedKnowledge.value?.point
-  if (kp?.questionId) return getPythonTrialQuestion(kp.questionId)
-  return getPythonTrialQuestion(getPrimaryQuestionId(selectedNode.value))
-})
-
-const detailMode = computed<'knowledge' | 'node'>(() =>
-  selectedKnowledge.value ? 'knowledge' : 'node',
+const selectedNode = computed(
+  () =>
+    starPathNodes.value.find((n) => n.id === selectedNodeId.value) ??
+    starPathNodes.value[0] ??
+    STAR_PATH_ALGO_NODES[0],
 )
 
-function nodeIcon(node: StarPathNode) {
-  if (node.status === 'locked') return LockClosedOutline
-  if (node.icon === 'server') return ServerOutline
-  return CodeSlashOutline
-}
+const selectedQuestion = computed(() => {
+  if (activeQuestion.value) return activeQuestion.value
+  const kp = selectedKnowledge.value?.point
+  if (kp) return resolveStarPathQuestion(kp)
+  const qid = getPrimaryQuestionId(selectedNode.value)
+  return qid ? getPythonTrialQuestion(qid) : null
+})
 
-function nodePositionClasses(node: StarPathNode) {
-  return [
-    `track-node--${starPathNodeTrackClass(node)}`,
-    node.position !== 'center' ? `track-node--${node.position}` : '',
-    node.anchor ? `track-node--anchor-${node.anchor}` : '',
-    { 'track-node--selected': selectedNodeId.value === node.id },
-  ]
-}
+const detailMode = computed<'knowledge' | 'node'>(() => {
+  if (isAlgoDomain.value) return 'node'
+  return selectedKnowledge.value ? 'knowledge' : 'node'
+})
 
-function onNodeClick(node: StarPathNode) {
-  selectedKnowledgeId.value = null
-  selectedNodeId.value = node.id
-  if (isStarPathNodeUnlocked(node)) {
-    void router.push(`/student/trials/practice/${getPrimaryQuestionId(node)}`)
+const nodeQuestionIds = computed(() => selectedNode.value?.questionIds ?? [])
+
+function syncKnowledgeFromNode(node: StarPathNode) {
+  if (node.id.includes('-')) {
+    selectedKnowledgeId.value = node.id
+  } else if (isAlgoDomain.value) {
+    selectedKnowledgeId.value = null
   }
 }
 
-function continueExplore() {
+function onNodeClick(node: StarPathNode) {
+  selectedNodeId.value = node.id
+  syncKnowledgeFromNode(node)
+}
+
+function questionForNode(node: StarPathNode, questionId?: string) {
+  const qid = questionId ?? getPrimaryQuestionId(node)
+  if (!qid) return null
+  const kp = node.id.includes('-') ? getStarPathKnowledgePoint(node.id)?.point : selectedKnowledge.value?.point
+  return resolveQuestionById(qid, kp ?? null) ?? getPythonTrialQuestion(qid)
+}
+
+function openPractice(questionId?: string) {
   const node = selectedNode.value
   if (!isStarPathNodeUnlocked(node)) return
-  void router.push(`/student/trials/practice/${getPrimaryQuestionId(node)}`)
+  const qid = questionId ?? getPrimaryQuestionId(node)
+  if (!qid) {
+    const kp = selectedKnowledge.value?.point
+    if (kp) {
+      const generated = resolveStarPathQuestion(kp)
+      if (generated) {
+        activeQuestion.value = generated
+        activeQuestionId.value = generated.id
+        viewMode.value = 'practice'
+        syncPracticeQuery()
+        return
+      }
+    }
+    return
+  }
+  const kp = selectedKnowledge.value?.point
+  const question = questionForNode(node, qid) ?? (kp ? resolveStarPathQuestion(kp) : null)
+  if (!question) return
+  activeQuestion.value = question
+  activeQuestionId.value = question.id
+  viewMode.value = 'practice'
+  syncPracticeQuery()
+}
+
+function closePractice() {
+  viewMode.value = 'track'
+  activeQuestion.value = null
+  activeQuestionId.value = null
+  const q: Record<string, string | undefined> = {}
+  if (activeTabKey.value !== STAR_PATH_TAB_ALL) {
+    q.domain = activeDomainKey.value
+    if (selectedKnowledgeId.value) q.kp = selectedKnowledgeId.value
+  }
+  void router.replace({ path: '/student/star-path', query: q })
+}
+
+function syncPracticeQuery() {
+  const q: Record<string, string> = { practice: '1' }
+  if (activeTabKey.value !== STAR_PATH_TAB_ALL) {
+    q.domain = activeDomainKey.value
+    if (selectedKnowledgeId.value) q.kp = selectedKnowledgeId.value
+  }
+  if (activeQuestionId.value) q.q = activeQuestionId.value
+  void router.replace({ path: '/student/star-path', query: q })
+}
+
+function rerollQuestion() {
+  const kp = selectedKnowledge.value?.point
+  if (!kp) return
+  clearStarPathQuestionCache(kp.id)
+  const generated = resolveStarPathQuestion(kp, { reroll: true })
+  if (!generated) return
+  activeQuestion.value = generated
+  activeQuestionId.value = generated.id
+  viewMode.value = 'practice'
+  syncPracticeQuery()
+}
+
+function continueExplore() {
+  openPractice()
 }
 
 function goToMessenger() {
@@ -122,21 +204,28 @@ function isTabActive(tabKey: string) {
 }
 
 function selectTab(tabKey: string) {
+  if (viewMode.value === 'practice') closePractice()
   activeTabKey.value = tabKey
   if (tabKey === STAR_PATH_TAB_ALL) {
     const first = STAR_PATH_DOMAINS[0]?.knowledgePoints[0]
     selectedKnowledgeId.value = first?.id ?? null
+    selectedNodeId.value = '01'
     void router.replace({ path: '/student/star-path', query: {} })
     return
   }
   activeDomainKey.value = tabKey
   const points = getKnowledgePointsForDomain(tabKey)
-  selectedKnowledgeId.value = points[0]?.id ?? null
+  const firstKp = points[0]
+  selectedKnowledgeId.value = firstKp?.id ?? null
+  if (tabKey === 'algo') {
+    selectedNodeId.value = '01'
+  } else {
+    selectedNodeId.value = firstKp?.id ?? '01'
+  }
   void router.replace({
     path: '/student/star-path',
-    query: { domain: tabKey, kp: points[0]?.id ?? undefined },
+    query: { domain: tabKey, kp: firstKp?.id ?? undefined },
   })
-  void scrollToKnowledge()
 }
 
 function selectDomainCard(domain: Domain) {
@@ -145,42 +234,72 @@ function selectDomainCard(domain: Domain) {
 }
 
 function jumpToKnowledge(kp: StarPathKnowledgePoint) {
+  if (viewMode.value === 'practice') closePractice()
   activeTabKey.value = kp.domainKey
   activeDomainKey.value = kp.domainKey
   selectedKnowledgeId.value = kp.id
+  if (kp.domainKey === 'algo') {
+    const suffix = kp.id.split('-')[1]
+    selectedNodeId.value = suffix ? suffix.padStart(2, '0') : '01'
+  } else {
+    selectedNodeId.value = kp.id
+  }
   void router.replace({ path: '/student/star-path', query: { domain: kp.domainKey, kp: kp.id } })
-  void scrollToKnowledge()
-}
-
-async function scrollToKnowledge() {
-  await nextTick()
-  knowledgePanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
 function applyRouteQuery() {
   const domain = typeof route.query.domain === 'string' ? route.query.domain : null
   const kp = typeof route.query.kp === 'string' ? route.query.kp : null
+  const practice = route.query.practice === '1'
+  const q = typeof route.query.q === 'string' ? route.query.q : null
+
   if (domain && getStarPathDomain(domain)) {
     activeTabKey.value = domain
     activeDomainKey.value = domain
     if (kp && getStarPathKnowledgePoint(kp)) {
       selectedKnowledgeId.value = kp
+      if (domain === 'algo') {
+        const suffix = kp.split('-')[1]
+        if (suffix) selectedNodeId.value = suffix.padStart(2, '0')
+      } else {
+        selectedNodeId.value = kp
+      }
     } else {
       const points = getKnowledgePointsForDomain(domain)
-      selectedKnowledgeId.value = points[0]?.id ?? null
+      const first = points[0]
+      selectedKnowledgeId.value = first?.id ?? null
+      selectedNodeId.value = domain === 'algo' ? '01' : (first?.id ?? '01')
+    }
+  } else {
+    activeTabKey.value = STAR_PATH_TAB_ALL
+  }
+
+  if (practice) {
+    const kpMeta = kp ? getStarPathKnowledgePoint(kp) : selectedKnowledge.value
+    const node = starPathNodes.value.find((n) => n.id === selectedNodeId.value) ?? starPathNodes.value[0]
+    let question: PythonTrialQuestion | null = null
+    if (q) {
+      question = resolveQuestionById(q, kpMeta?.point ?? null) ?? getPythonTrialQuestion(q)
+    } else if (kpMeta?.point) {
+      question = resolveStarPathQuestion(kpMeta.point)
+    } else if (node) {
+      question = questionForNode(node)
+    }
+    if (question) {
+      activeQuestion.value = question
+      activeQuestionId.value = question.id
+      viewMode.value = 'practice'
     }
     return
   }
-  activeTabKey.value = STAR_PATH_TAB_ALL
+
+  viewMode.value = 'track'
+  activeQuestion.value = null
+  activeQuestionId.value = null
 }
 
 function continueKnowledgeTrial() {
-  const qid = selectedKnowledge.value?.point.questionId
-  if (qid) {
-    void router.push(`/student/trials/practice/${qid}`)
-    return
-  }
-  continueExplore()
+  openPractice(selectedKnowledge.value?.point.questionId)
 }
 
 function mapDomain(item: LearningDomain): Domain {
@@ -213,7 +332,7 @@ async function loadPath() {
 }
 
 watch(
-  () => route.query.domain,
+  () => [route.query.domain, route.query.kp, route.query.practice, route.query.q],
   () => applyRouteQuery(),
 )
 
@@ -250,7 +369,7 @@ onMounted(() => {
             切换视图
             <n-icon :component="ChevronDownOutline" />
           </button>
-          <button type="button" class="map-button" aria-label="地图视图">
+          <button type="button" class="map-button" aria-label="知识图谱" @click="viewMode = viewMode === 'map' ? 'track' : 'map'">
             <n-icon :component="MapOutline" />
           </button>
         </div>
@@ -262,7 +381,33 @@ onMounted(() => {
         <n-button secondary size="small" @click="loadPath()">重试</n-button>
       </div>
 
-      <section v-else class="starpath-content" :aria-label="`${activeDomain?.title ?? '星域'}星轨`">
+      <section
+        v-else
+        class="starpath-content"
+        :class="{ 'starpath-content--practice': viewMode === 'practice' }"
+        :aria-label="viewMode === 'practice' ? '编程试炼' : `${activeDomain?.title ?? '星域'}星轨`"
+      >
+        <div v-if="viewMode === 'practice' && activeQuestion" class="practice-shell">
+          <PythonTrialWorkspace
+            embedded
+            :question="activeQuestion"
+            back-label="返回星轨"
+            @back="closePractice"
+          />
+        </div>
+
+        <template v-else-if="viewMode === 'map'">
+          <div class="starpath-kg-section">
+            <header class="starpath-kg-head">
+              <h2>知识地图</h2>
+              <p>计算思维知识图谱 · 点击节点查看详情与前置知识</p>
+              <button type="button" class="starpath-kg-back" @click="viewMode = 'track'">← 返回星轨</button>
+            </header>
+            <plex-knowledge-graph :nodes="KG_NODES" :edges="KG_EDGES" mode="student" height="500px" />
+          </div>
+        </template>
+
+        <template v-else>
         <div class="content-left">
           <section class="path-board">
             <div class="domain-copy">
@@ -284,58 +429,14 @@ onMounted(() => {
             </div>
 
             <div class="path-canvas" aria-label="星轨节点图">
-              <div v-if="showAlgoTrack" class="path-track">
-              <div class="path-orbits" aria-hidden="true">
-                <span class="orbit orbit--outer" />
-                <span class="orbit orbit--middle" />
-                <span class="orbit orbit--inner" />
-              </div>
-              <svg class="path-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                <defs>
-                  <filter id="trackGlow" x="-30%" y="-30%" width="160%" height="160%">
-                    <feGaussianBlur stdDeviation="0.35" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-                <!-- 路径起止点在节点圆环边缘，控制点绕开圆心，避免线条穿过圆形组件 -->
-                <g fill="none" filter="url(#trackGlow)">
-                  <path class="path-line path-line--locked" d="M8.5 75.2 C9.5 66 12 56 17.5 48.5" />
-                  <path class="path-line path-line--done" d="M19.5 46.2 C28 41 38 38 50.5 35.5" />
-                  <path class="path-line path-line--active" d="M56.2 34.5 C66 27 78 18 89.5 12.2" />
-                  <path class="path-line path-line--active" d="M50.2 40.2 C42 54 34 70 30.2 82.8" />
-                  <path class="path-line path-line--active" d="M32.2 84.4 C52 78 72 68 90.8 58.2" />
-                  <path class="path-line path-line--locked" d="M7.2 12.5 C16 17 32 26 49.2 35.2" />
-                </g>
-              </svg>
-
-              <div
-                v-for="node in starPathNodes"
-                :key="node.id"
-                class="track-node"
-                :class="nodePositionClasses(node)"
-                role="button"
-                :tabindex="isStarPathNodeUnlocked(node) ? 0 : -1"
-                :aria-label="`${node.id} ${node.title}${node.status === 'locked' ? '，未解锁' : ''}`"
-                @click="onNodeClick(node)"
-                @keydown.enter.prevent="onNodeClick(node)"
-                @keydown.space.prevent="onNodeClick(node)"
-              >
-                <span v-if="node.status === 'current'" class="track-node__badge">当前所在</span>
-                <span class="track-node__orb">
-                  <n-icon :component="nodeIcon(node)" />
-                </span>
-                <strong>{{ node.id }}</strong>
-                <p>
-                  {{ node.title }}<template v-if="node.titleLine2"><br />{{ node.titleLine2 }}</template>
-                </p>
-                <em>{{ formatStarPathGems(node.gems) }}</em>
-              </div>
-              </div>
-
-              <div v-else class="knowledge-map" aria-label="知识点星图">
+              <StarPathTrackCanvas
+                v-if="showDomainTrack"
+                :nodes="starPathNodes"
+                :selected-id="selectedNodeId"
+                :variant="trackVariant"
+                @select="onNodeClick"
+              />
+              <div v-else class="knowledge-map" aria-label="全部星域知识点">
                 <button
                   v-for="kp in visibleKnowledgePoints"
                   :key="kp.id"
@@ -347,36 +448,10 @@ onMounted(() => {
                   <span class="knowledge-node__level">{{ kp.level }}</span>
                   <strong>{{ kp.title }}</strong>
                   <p>{{ kp.summary }}</p>
-                </button>
-              </div>
-
-              <div v-if="showAlgoTrack" class="legend">
-                <span><i class="legend__dot legend__dot--done" /> 已完成</span>
-                <span><i class="legend__dot legend__dot--active" /> 进行中</span>
-                <span><i class="legend__dot legend__dot--locked" /> 未解锁</span>
-              </div>
-            </div>
-
-            <section
-              ref="knowledgePanelRef"
-              class="knowledge-strip"
-              :aria-label="`${activeDomainMeta?.title ?? '全部'}知识点列表`"
-            >
-              <h3>知识点导航</h3>
-              <div class="knowledge-strip__list">
-                <button
-                  v-for="kp in visibleKnowledgePoints"
-                  :key="`strip-${kp.id}`"
-                  type="button"
-                  class="knowledge-chip"
-                  :class="{ 'knowledge-chip--active': selectedKnowledgeId === kp.id }"
-                  @click="jumpToKnowledge(kp)"
-                >
-                  <span>{{ kp.title }}</span>
                   <em>{{ getStarPathDomain(kp.domainKey)?.title }}</em>
                 </button>
               </div>
-            </section>
+            </div>
           </section>
 
           <section class="domain-overview">
@@ -426,6 +501,22 @@ onMounted(() => {
                   <span class="detail-panel__level">{{ selectedKnowledge.point.level }}</span>
                 </div>
               </div>
+              <div v-if="nodeQuestionIds.length" class="sub-trials">
+                <strong>试炼小题</strong>
+                <div class="sub-trials__list">
+                  <button
+                    v-for="(qid, idx) in nodeQuestionIds"
+                    :key="qid"
+                    type="button"
+                    class="sub-trials__chip"
+                    :class="{ 'sub-trials__chip--active': activeQuestionId === qid }"
+                    :disabled="!isStarPathNodeUnlocked(selectedNode)"
+                    @click="openPractice(qid)"
+                  >
+                    第 {{ idx + 1 }} 题
+                  </button>
+                </div>
+              </div>
             </template>
             <template v-else>
               <div class="detail-panel__head">
@@ -445,6 +536,20 @@ onMounted(() => {
                 <strong>核心知识</strong>
                 <div>
                   <span v-for="tag in selectedNode.knowledgeTags" :key="tag">{{ tag }}</span>
+                </div>
+              </div>
+              <div v-if="nodeQuestionIds.length > 1" class="sub-trials">
+                <strong>试炼小题</strong>
+                <div class="sub-trials__list">
+                  <button
+                    v-for="(qid, idx) in nodeQuestionIds"
+                    :key="qid"
+                    type="button"
+                    class="sub-trials__chip"
+                    @click="openPractice(qid)"
+                  >
+                    第 {{ idx + 1 }} 题
+                  </button>
                 </div>
               </div>
             </template>
@@ -486,17 +591,21 @@ onMounted(() => {
           <button
             type="button"
             class="continue-btn"
-            :disabled="detailMode === 'node' && !isStarPathNodeUnlocked(selectedNode)"
+            :disabled="!isStarPathNodeUnlocked(selectedNode)"
             @click="detailMode === 'knowledge' ? continueKnowledgeTrial() : continueExplore()"
           >
-            <template v-if="detailMode === 'knowledge'">
-              {{ selectedKnowledge?.point.questionId ? '进入关联试炼' : '返回算法星轨试炼' }}
-            </template>
-            <template v-else>
-              {{ isStarPathNodeUnlocked(selectedNode) ? '进入试炼' : '节点未解锁' }}
-            </template>
+            {{ isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
+          </button>
+          <button
+            v-if="detailMode === 'knowledge' && !selectedKnowledge?.point.questionId"
+            type="button"
+            class="continue-btn continue-btn--ghost"
+            @click="rerollQuestion"
+          >
+            换一题
           </button>
         </aside>
+        </template>
       </section>
     </main>
   </div>
@@ -1017,48 +1126,74 @@ onMounted(() => {
   line-height: 1.45;
 }
 
-.knowledge-strip {
-  grid-column: 1 / -1;
-  padding: 0.85rem 1.25rem 1rem;
-  border-top: 1px solid rgba(126, 188, 220, 0.1);
-}
-
-.knowledge-strip h3 {
-  margin: 0 0 0.65rem;
-  font-size: 0.88rem;
-  color: rgba(35, 255, 222, 0.9);
-  font-weight: 650;
-}
-
-.knowledge-strip__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.knowledge-chip {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  padding: 0.45rem 0.7rem;
-  border: 1px solid rgba(130, 212, 255, 0.12);
-  border-radius: 0.45rem;
-  background: rgba(7, 22, 36, 0.75);
-  color: #edf7ff;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.knowledge-chip em {
+.knowledge-node em {
   font-size: 0.68rem;
   font-style: normal;
   color: rgba(142, 163, 184, 0.9);
 }
 
-.knowledge-chip--active {
+.starpath-content--practice {
+  grid-template-columns: 1fr;
+}
+
+.practice-shell {
+  grid-column: 1 / -1;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(90, 208, 255, 0.13);
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: rgba(4, 14, 24, 0.72);
+}
+
+.practice-shell :deep(.py-workspace) {
+  flex: 1;
+  min-height: 0;
+}
+
+.sub-trials {
+  margin-top: 1rem;
+}
+
+.sub-trials strong {
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.sub-trials__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.sub-trials__chip {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid rgba(130, 212, 255, 0.14);
+  border-radius: 0.4rem;
+  background: rgba(7, 22, 36, 0.75);
+  color: #edf7ff;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.sub-trials__chip--active {
   border-color: rgba(35, 255, 222, 0.55);
-  background: rgba(16, 240, 192, 0.1);
+  background: rgba(16, 240, 192, 0.12);
+}
+
+.sub-trials__chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.continue-btn--ghost {
+  margin-top: 0.45rem;
+  background: transparent;
+  border: 1px solid rgba(35, 255, 222, 0.35);
+  color: #23ffde;
 }
 
 .detail-panel__detail {
@@ -1820,5 +1955,40 @@ onMounted(() => {
     right: auto;
     flex-wrap: wrap;
   }
+}
+
+.starpath-kg-section {
+  padding: 0 var(--plex-page-gutter-x, 1.5rem) 2rem;
+}
+
+.starpath-kg-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.starpath-kg-head h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.starpath-kg-head p {
+  margin: 0;
+  color: rgba(203, 213, 225, 0.65);
+  font-size: 0.82rem;
+}
+
+.starpath-kg-back {
+  margin-left: auto;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.08);
+  color: #4ade80;
+  font-size: 0.82rem;
+  cursor: pointer;
 }
 </style>

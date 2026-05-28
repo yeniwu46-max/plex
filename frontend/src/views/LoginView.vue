@@ -4,11 +4,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { NInput, NCheckbox, NIcon, useMessage } from 'naive-ui'
 import { PersonOutline, LockClosedOutline, EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
+import { useNotificationStore } from '../stores/notifications'
 
 const router = useRouter()
 const route = useRoute()
 const message = useMessage()
 const auth = useAuthStore()
+const notifications = useNotificationStore()
 
 const username = ref('')
 const password = ref('')
@@ -28,8 +30,12 @@ async function onSubmit(e: Event) {
   }
   loading.value = true
   try {
-    await auth.login(username.value.trim(), password.value)
+    const session = await auth.login(username.value.trim(), password.value)
     message.success('登录成功')
+    if (session.role === 'student' && session.id) {
+      notifications.hydrate(session.id)
+      notifications.push(session.id, 'welcome')
+    }
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     const fallback = auth.homePathForRole(auth.profile?.role)
     await router.replace(redirect || fallback)

@@ -8,10 +8,12 @@ import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vu
 import ExplorerKnowledgePanel from '../components/teacher/ExplorerKnowledgePanel.vue'
 import ExplorerListPanel from '../components/teacher/ExplorerListPanel.vue'
 import ExplorerMemberManage from '../components/teacher/ExplorerMemberManage.vue'
+import TeacherClassManagePanel from '../components/teacher/TeacherClassManagePanel.vue'
 import ExplorerProfileHero from '../components/teacher/ExplorerProfileHero.vue'
 import ExplorerQuestPanel from '../components/teacher/ExplorerQuestPanel.vue'
 import ExplorerStatusAside from '../components/teacher/ExplorerStatusAside.vue'
 import ExplorerTrialPanel from '../components/teacher/ExplorerTrialPanel.vue'
+import TeacherClassAnswerBoard from '../components/teacher/TeacherClassAnswerBoard.vue'
 import GrowthLineChart from '../components/teacher/GrowthLineChart.vue'
 import { fetchStudentAchievements } from '../api/teacherStudentDetail'
 import type { UserAchievementRecord } from '../api/studentOverview'
@@ -38,6 +40,7 @@ const statusFilter = ref<string | null>(null)
 const domainFilter = ref<string | null>(null)
 const sortBy = ref('activity')
 const pageMode = ref<'archive' | 'manage'>('archive')
+const manageTab = ref<'students' | 'classes'>('students')
 const detailTab = ref<'growth' | 'knowledge' | 'trial' | 'quest'>('growth')
 
 const selectedStudent = computed<TeacherStudentRow | null>(() => {
@@ -184,14 +187,46 @@ if (shellSearch) {
         <span>当前教师账号还没有负责的班级。</span>
       </div>
 
-      <explorer-member-manage
-        v-else-if="pageMode === 'manage'"
-        class="explorers-page__manage"
-        :default-class-id="selectedClassId"
-        @changed="onMembersChanged"
-      />
+      <div v-else-if="pageMode === 'manage'" class="explorers-page__manage">
+        <div class="explorers-page__manage-tabs" role="tablist" aria-label="成员与班级管理">
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="manageTab === 'students'"
+            :class="{ 'is-active': manageTab === 'students' }"
+            @click="manageTab = 'students'"
+          >
+            Explorer 成员
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="manageTab === 'classes'"
+            :class="{ 'is-active': manageTab === 'classes' }"
+            @click="manageTab = 'classes'"
+          >
+            班级管理
+          </button>
+        </div>
+        <explorer-member-manage
+          v-if="manageTab === 'students'"
+          :default-class-id="selectedClassId"
+          @changed="onMembersChanged"
+        />
+        <teacher-class-manage-panel
+          v-else
+          :default-class-id="selectedClassId"
+          @changed="onMembersChanged"
+        />
+      </div>
 
       <template v-else-if="pageMode === 'archive' && hasSelectedClass">
+        <teacher-class-answer-board
+          class="explorers-page__class-board teacher-panel"
+          :class-id="selectedClassId"
+          compact
+        />
+
         <explorer-list-panel
           class="explorers-page__list"
           :students="students"
@@ -257,10 +292,15 @@ if (shellSearch) {
 .explorers-page {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(260px, 300px);
-  grid-template-rows: auto minmax(480px, 1fr);
+  grid-template-rows: auto auto minmax(480px, 1fr);
   gap: var(--teacher-quad-gap, 1.1rem);
   align-content: start;
   align-items: stretch;
+}
+
+.explorers-page__class-board {
+  grid-column: 1 / -1;
+  grid-row: 2;
 }
 
 .explorers-page--manage {
@@ -294,6 +334,30 @@ if (shellSearch) {
 .explorers-page__manage {
   grid-column: 1 / -1;
   min-height: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.explorers-page__manage-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.explorers-page__manage-tabs button {
+  padding: 0.45rem 1rem;
+  border: 1px solid rgba(130, 212, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(4, 12, 20, 0.55);
+  color: var(--teacher-muted);
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+
+.explorers-page__manage-tabs button.is-active {
+  border-color: rgba(251, 146, 60, 0.5);
+  background: rgba(251, 146, 60, 0.14);
+  color: var(--teacher-text);
 }
 
 .explorers-page__state {
@@ -303,7 +367,7 @@ if (shellSearch) {
 .explorers-page__list,
 .explorers-page__detail,
 .explorers-page__aside {
-  grid-row: 2;
+  grid-row: 3;
   min-height: 520px;
   align-self: stretch;
 }

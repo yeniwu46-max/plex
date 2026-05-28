@@ -1,4 +1,6 @@
-export type PythonTrialDifficulty = '入门' | '基础' | '进阶'
+import { getClassArenaQuestion } from './classArenaQuestions'
+
+export type PythonTrialDifficulty = '入门' | '基础' | '进阶' | '挑战'
 
 export type PythonRunMode = 'stdout' | 'expression'
 
@@ -597,5 +599,5 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
 ]
 
 export function getPythonTrialQuestion(id: string) {
-  return PYTHON_TRIAL_QUESTIONS.find((item) => item.id === id) ?? null
+  return PYTHON_TRIAL_QUESTIONS.find((item) => item.id === id) ?? getClassArenaQuestion(id)
 }

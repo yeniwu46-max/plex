@@ -28,7 +28,8 @@
 ### 3. 星轨路径 · 六大学域与知识点导航
 
 - **学域标签**：全部星域、语言基础、算法基础、动态规划、计算几何、图论、数据结构（`frontend/src/data/starPathDomains.ts`）。
-- **交互**：标签/星域概览卡片/知识点芯片点击 → 切换学域、更新 URL（`?domain=&kp=`）、右侧详情面板展示知识点详解；算法基础保留 01–07 星轨节点与 Python 试炼关联。
+- **交互**：标签/星域概览卡片/路径节点点击 → 切换学域、更新 URL（`?domain=&kp=`）、右侧详情面板展示知识点详解；非算法学域为 4 节点路径图；算法基础保留 01–07 星轨节点与 Python 试炼关联。
+- **内嵌试炼**：在星轨页点击「开始编程试炼」于当前页打开 `PythonTrialWorkspace`（`?practice=1&q=`），不跳转试炼关卡；无静态题的知识点由前端模板随机生成编程题（`sessionStorage` 按 `kp.id` 缓存）。
 - **后端**：`StudentProgressService.DOMAIN_CATALOG` 与前端六域对齐，`GET /api/v1/student/learning-path` 返回对应进度。
 
 ### 4. 开发与运维修复

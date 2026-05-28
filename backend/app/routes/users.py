@@ -5,6 +5,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services import UserService
 from app.utils.response import success_response, error_response
 from app.utils.decorators import permission_required
+from app.utils.access import can_manage_classes, can_manage_student_user, permission_names
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/v1/users')
 
@@ -12,13 +13,7 @@ users_bp = Blueprint('users', __name__, url_prefix='/api/v1/users')
 def _current_user():
     from app.models import User
 
-    return User.query.get(get_jwt_identity())
-
-
-def _permission_names(user):
-    if not user or not user.role or not user.role.permissions:
-        return set()
-    return {perm.name for perm in user.role.permissions}
+    return User.query.get(int(get_jwt_identity()))
 
 
 @users_bp.route('/me', methods=['GET'])
@@ -32,21 +27,39 @@ def get_current_user():
         return error_response(str(e), 50001)
 
 
+@users_bp.route('/me', methods=['PATCH'])
+@jwt_required()
+def update_current_user_profile():
+    """学生/教师更新自己的昵称、签名、头像等。"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
+        allowed = {k: data[k] for k in ('real_name', 'phone', 'avatar_url', 'bio', 'gender') if k in data}
+        user = UserService.update_user(current_user_id, admin_edit=False, **allowed)
+        return success_response(user.to_dict(), '资料已更新')
+    except Exception as e:
+        return error_response(str(e), 50001)
+
+
 @users_bp.route('', methods=['POST'])
 @jwt_required()
 @permission_required('create_user')
 def create_user():
-    """Create a student account from the admin console."""
+    """管理员或教师（本班）创建学生账号。"""
     try:
         current_user = _current_user()
-        if not current_user or not current_user.role or current_user.role.name != 'admin':
-            return error_response('只有管理员可以新增学生', 40301, None, 403)
-
         data = request.get_json() or {}
         required_fields = ['username', 'email', 'password', 'real_name']
         for field in required_fields:
             if not data.get(field):
                 return error_response(f'缺少必需字段: {field}', 40001, None, 400)
+
+        class_id = data.get('class_id')
+        if current_user and current_user.role and current_user.role.name == 'teacher':
+            from app.utils.access import teacher_owns_class
+
+            if not class_id or not teacher_owns_class(current_user, int(class_id)):
+                return error_response('只能在自己负责的班级中新增学生', 40301, None, 403)
 
         user = UserService.create_student(
             username=data['username'].strip(),
@@ -56,7 +69,7 @@ def create_user():
             phone=data.get('phone'),
             gender=data.get('gender'),
             bio=data.get('bio'),
-            class_id=data.get('class_id'),
+            class_id=class_id,
         )
         return success_response(user.to_dict(), '学生创建成功', 0, 201)
     except Exception as e:
@@ -108,8 +121,19 @@ def update_user(user_id):
         admin_edit = current_user_id != user_id
 
         if admin_edit:
-            if 'edit_user' not in _permission_names(current_user):
-                return error_response('您没有权限修改其他用户信息', 40301, None, 403)
+            target = UserService.get_user(user_id)
+            if 'edit_user' not in permission_names(current_user) and not can_manage_student_user(current_user, target):
+                return error_response('您没有权限修改该用户信息', 40301, None, 403)
+            if (
+                current_user
+                and current_user.role
+                and current_user.role.name == 'teacher'
+                and 'manage_classes' not in permission_names(current_user)
+            ):
+                from app.utils.access import teacher_owns_class
+
+                if target.class_id and not teacher_owns_class(current_user, target.class_id):
+                    return error_response('只能编辑本班学生', 40301, None, 403)
 
         data = request.get_json() or {}
         user = UserService.update_user(user_id, admin_edit=admin_edit, **data)
@@ -147,6 +171,10 @@ def change_password(user_id):
 @permission_required('delete_user')
 def delete_user(user_id):
     try:
+        current_user = _current_user()
+        target = UserService.get_user(user_id)
+        if not can_manage_student_user(current_user, target):
+            return error_response('无权删除该用户', 40301, None, 403)
         UserService.delete_user(user_id)
         return success_response(None, '用户已删除')
     except Exception as e:

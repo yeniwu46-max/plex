@@ -1,5 +1,5 @@
 import { http, type ApiEnvelope } from './http'
-import type { DailyQuestTodayResult, IncentiveFeedbackPayload } from './studentOverview'
+import type { CompleteTrialResult, IncentiveFeedbackPayload } from './studentTrials'
 
 export interface TeacherAssignmentItem {
   id: number
@@ -26,9 +26,12 @@ export interface TeacherAssignmentsResult {
 export interface SubmitAssignmentResult {
   correct: boolean
   correct_index: number
+  time_spent_sec?: number
+  answered_at?: string | null
   assignments: TeacherAssignmentsResult
-  daily: DailyQuestTodayResult | null
+  daily: import('./studentOverview').DailyQuestTodayResult | null
   incentive?: IncentiveFeedbackPayload
+  trial_complete?: CompleteTrialResult | null
 }
 
 export async function fetchStudentAssignments() {
@@ -39,10 +42,17 @@ export async function fetchStudentAssignments() {
   return data.data
 }
 
-export async function submitAssignmentAnswer(questionId: number, selectedIndex: number) {
+export async function submitAssignmentAnswer(
+  questionId: number,
+  selectedIndex: number,
+  timeSpentSec?: number,
+) {
   const { data } = await http.post<ApiEnvelope<SubmitAssignmentResult>>(
     `/v1/student/assignments/${questionId}/answer`,
-    { selected_index: selectedIndex },
+    {
+      selected_index: selectedIndex,
+      time_spent_sec: timeSpentSec,
+    },
   )
   if (data.code !== 0) {
     throw new Error(data.message || '提交答案失败')

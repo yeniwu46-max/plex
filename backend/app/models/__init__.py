@@ -15,6 +15,10 @@ from .trial import Trial, TrialParticipation
 from .trial_question import TrialQuestion, TrialQuestionProgress
 from .emergency_mission import EmergencyMissionSession, EmergencyMissionQuestion
 from .system_setting import SystemSetting
+from .teacher_trial_template import TeacherTrialTemplate
+from .system_announcement import SystemAnnouncement
+from .student_notification import StudentNotification
+from .class_change_request import ClassChangeRequest
 
 __all__ = [
     'db',
@@ -37,4 +41,8 @@ __all__ = [
     'EmergencyMissionSession',
     'EmergencyMissionQuestion',
     'SystemSetting',
+    'TeacherTrialTemplate',
+    'SystemAnnouncement',
+    'StudentNotification',
+    'ClassChangeRequest',
 ]

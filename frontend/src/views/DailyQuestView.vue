@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, markRaw, onMounted, ref, type Component } from 'vue'
+import { computed, markRaw, onMounted, ref, watch, type Component } from 'vue'
 import { NIcon, useMessage } from 'naive-ui'
 import { showIncentiveFeedback } from '../utils/incentiveFeedback'
 import {
@@ -25,6 +25,8 @@ import {
 import { DAILY_BONUS_STAR_KEYS, DAILY_BONUS_XP, DAILY_QUESTS, type QuestAccent } from '../data/dailyQuests'
 import TeacherAssignmentPanel from '../components/student/TeacherAssignmentPanel.vue'
 import type { TeacherAssignmentsResult } from '../api/studentAssignments'
+import { useAuthStore } from '../stores/auth'
+import { useNotificationStore } from '../stores/notifications'
 
 type Quest = {
   key: string
@@ -42,7 +44,10 @@ type Quest = {
 }
 
 const message = useMessage()
+const auth = useAuthStore()
+const notifications = useNotificationStore()
 const sidebarCollapsed = ref(false)
+const allCompletedNotified = ref(false)
 const dailyData = ref<DailyQuestTodayResult | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
@@ -115,16 +120,26 @@ const bonusClaimed = computed(() => Boolean(dailyData.value?.bonus_claimed))
 const bonusXp = computed(() => dailyData.value?.bonus_xp ?? DAILY_BONUS_XP)
 const pendingQuest = computed(() => quests.value.find((quest) => quest.current < quest.total))
 
+function notifyDailyAllCompletedIfNeeded() {
+  if (!allCompleted.value || allCompletedNotified.value) return
+  const id = auth.profile?.id
+  if (!id) return
+  const pushed = notifications.push(id, 'daily_quest_all_done')
+  if (pushed) allCompletedNotified.value = true
+}
 
 async function loadTodayQuests() {
   loading.value = true
   errorMessage.value = ''
   try {
     dailyData.value = await fetchTodayDailyQuests()
-    teacherAssignments.value = dailyData.value.teacher_assignments ?? {
+    teacherAssignments.value = (dailyData.value.teacher_assignments as TeacherAssignmentsResult | undefined) ?? {
       pending_count: 0,
       total_count: 0,
       items: [],
+    }
+    if (dailyData.value.all_completed) {
+      notifyDailyAllCompletedIfNeeded()
     }
   } catch (error) {
     dailyData.value = null
@@ -160,12 +175,17 @@ async function advanceQuest(key: string) {
       dailyData.value = await claimDailyQuestBonus()
       showIncentiveFeedback(message, dailyData.value?.incentive)
     }
+    notifyDailyAllCompletedIfNeeded()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Failed to update daily quest'
   } finally {
     savingKey.value = ''
   }
 }
+
+watch(allCompleted, (done) => {
+  if (done) notifyDailyAllCompletedIfNeeded()
+})
 
 function onAssignmentsUpdated(payload: {
   assignments: TeacherAssignmentsResult
@@ -200,69 +220,71 @@ onMounted(loadTodayQuests)
           <button v-if="errorMessage" type="button" @click="loadTodayQuests">Retry</button>
         </div>
 
-        <TeacherAssignmentPanel
-          :assignments="teacherAssignments"
-          :loading="loading"
-          @updated="onAssignmentsUpdated"
-        />
+        <div class="daily-content__main">
+          <TeacherAssignmentPanel
+            :assignments="teacherAssignments"
+            :loading="loading"
+            @updated="onAssignmentsUpdated"
+          />
 
-        <section class="quest-board" aria-labelledby="quest-board-title">
-          <div class="quest-board__panel">
-            <h2 id="quest-board-title">今日探索航线</h2>
-            <div class="quest-timeline">
-              <article
-                v-for="quest in quests"
-                :key="quest.key"
-                class="quest-row"
-                :class="[`quest-row--${quest.accent}`, { 'quest-row--done': quest.current >= quest.total }]"
-              >
-                <div class="quest-time">
-                  <n-icon :component="quest.key === 'night-summary' ? MoonOutline : quest.key === 'trial-challenge' ? TimeOutline : SunnyOutline" />
-                  <strong>{{ quest.period }}</strong>
-                  <span>{{ quest.time }}</span>
-                </div>
-
-                <button
-                  type="button"
-                  class="quest-node"
-                  :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total"
-                  :aria-label="`${quest.title} 进度 ${quest.current}/${quest.total}`"
-                  @click="advanceQuest(quest.key)"
+          <section class="quest-board" aria-labelledby="quest-board-title">
+            <div class="quest-board__panel">
+              <h2 id="quest-board-title">今日探索航线</h2>
+              <div class="quest-timeline">
+                <article
+                  v-for="quest in quests"
+                  :key="quest.key"
+                  class="quest-row"
+                  :class="[`quest-row--${quest.accent}`, { 'quest-row--done': quest.current >= quest.total }]"
                 >
-                  <n-icon :component="quest.icon" />
-                </button>
+                  <div class="quest-time">
+                    <n-icon :component="quest.key === 'night-summary' ? MoonOutline : quest.key === 'trial-challenge' ? TimeOutline : SunnyOutline" />
+                    <strong>{{ quest.period }}</strong>
+                    <span>{{ quest.time }}</span>
+                  </div>
 
-                <button
-                  type="button"
-                  class="quest-card"
-                  :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total"
-                  @click="advanceQuest(quest.key)"
-                >
-                  <span class="quest-card__text">
-                    <strong>{{ quest.title }}</strong>
-                    <span>{{ quest.description }}</span>
-                  </span>
-                  <span class="quest-card__progress">+{{ quest.rewardXp }} XP · {{ quest.current }}/{{ quest.total }}</span>
-                  <span class="quest-card__ring" :style="{ '--quest-ratio': quest.current / quest.total }">
-                    <n-icon v-if="quest.current >= quest.total" :component="CheckmarkOutline" />
-                  </span>
-                </button>
-              </article>
+                  <button
+                    type="button"
+                    class="quest-node"
+                    :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total"
+                    :aria-label="`${quest.title} 进度 ${quest.current}/${quest.total}`"
+                    @click="advanceQuest(quest.key)"
+                  >
+                    <n-icon :component="quest.icon" />
+                  </button>
+
+                  <button
+                    type="button"
+                    class="quest-card"
+                    :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total"
+                    @click="advanceQuest(quest.key)"
+                  >
+                    <span class="quest-card__text">
+                      <strong>{{ quest.title }}</strong>
+                      <span>{{ quest.description }}</span>
+                    </span>
+                    <span class="quest-card__progress">+{{ quest.rewardXp }} XP · {{ quest.current }}/{{ quest.total }}</span>
+                    <span class="quest-card__ring" :style="{ '--quest-ratio': quest.current / quest.total }">
+                      <n-icon v-if="quest.current >= quest.total" :component="CheckmarkOutline" />
+                    </span>
+                  </button>
+                </article>
+              </div>
+
+              <footer class="quest-reward">
+                <span>{{ allCompleted ? '今日委托已全部完成，奖励反馈已解锁' : '完成全部委托可获得额外奖励' }}</span>
+                <strong class="reward-chip reward-chip--xp">
+                  <span>XP</span>
+                  <em>+{{ bonusXp }}</em>
+                </strong>
+                <strong class="reward-chip reward-chip--star">
+                  <span>钥</span>
+                  <em>+{{ DAILY_BONUS_STAR_KEYS }}</em>
+                </strong>
+              </footer>
             </div>
-
-            <footer class="quest-reward">
-              <span>{{ allCompleted ? '今日委托已全部完成，奖励反馈已解锁' : '完成全部委托可获得额外奖励' }}</span>
-              <strong class="reward-chip reward-chip--xp">
-                <span>XP</span>
-                <em>+{{ bonusXp }}</em>
-              </strong>
-              <strong class="reward-chip reward-chip--star">
-                <span>钥</span>
-                <em>+{{ DAILY_BONUS_STAR_KEYS }}</em>
-              </strong>
-            </footer>
-          </div>
-        </section>
+          </section>
+        </div>
 
         <aside class="daily-aside" aria-label="委托概览与奖励">
           <section class="daily-panel daily-overview">
@@ -334,9 +356,9 @@ onMounted(loadTodayQuests)
               :disabled="!isPersisted || savingKey === 'bonus'"
               @click="claimBonus"
             >
-              {{ savingKey === 'bonus' ? 'Claiming...' : 'Claim bonus' }}
+              {{ savingKey === 'bonus' ? '领取中…' : '领取奖励' }}
             </button>
-            <span v-else-if="bonusClaimed" class="bonus-claimed">Bonus saved</span>
+            <span v-else-if="bonusClaimed" class="bonus-claimed">奖励已领取</span>
           </section>
 
           <section class="daily-panel reset-note" aria-label="委托重置说明">
@@ -500,7 +522,9 @@ onMounted(loadTodayQuests)
 
 .daily-main {
   position: relative;
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
   overflow: hidden;
   background:
@@ -643,13 +667,30 @@ onMounted(loadTodayQuests)
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 560px);
-  grid-template-rows: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  grid-template-areas: 'main aside';
   align-items: stretch;
-  gap: 3rem;
-  height: calc(100dvh - 122px);
+  gap: 1.5rem;
+  flex: 1;
   min-height: 0;
-  padding: 0 var(--plex-page-gutter-x) var(--plex-page-gutter-bottom);
+  padding: 0.35rem var(--plex-page-gutter-x) var(--plex-page-gutter-bottom);
+}
+
+.daily-content__main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.daily-content__main :deep(.teacher-assign) {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  max-height: min(38vh, 320px);
+  overflow-y: auto;
 }
 
 .space-scene {
@@ -716,10 +757,10 @@ onMounted(loadTodayQuests)
   position: relative;
   z-index: 2;
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  height: 100%;
 }
 
 .quest-state {
@@ -794,12 +835,13 @@ onMounted(loadTodayQuests)
 }
 
 .quest-timeline {
+  --quest-time-col: 10.5rem;
+  --quest-node-col: 5.75rem;
   position: relative;
   display: grid;
   flex: 1;
-  gap: clamp(1.15rem, 2.2vh, 2rem);
+  gap: clamp(0.95rem, 1.8vh, 1.45rem);
   min-height: 0;
-  max-width: 930px;
   overflow-y: auto;
   padding-right: 0.35rem;
 }
@@ -807,10 +849,11 @@ onMounted(loadTodayQuests)
 .quest-timeline::before {
   content: '';
   position: absolute;
-  left: 16.2rem;
+  left: calc(var(--quest-time-col) + var(--quest-node-col) / 2);
   top: 0;
   bottom: 0;
   width: 2px;
+  transform: translateX(-50%);
   background: linear-gradient(180deg, rgba(37, 245, 238, 0.65), rgba(71, 149, 255, 0.74), rgba(183, 83, 255, 0.7));
   box-shadow: 0 0 16px rgba(37, 245, 238, 0.2);
 }
@@ -818,9 +861,10 @@ onMounted(loadTodayQuests)
 .quest-row {
   position: relative;
   display: grid;
-  grid-template-columns: 12.8rem 7.2rem minmax(360px, 1fr);
+  grid-template-columns: var(--quest-time-col) var(--quest-node-col) minmax(0, 1fr);
   align-items: center;
-  min-height: 100px;
+  gap: 0 0.85rem;
+  min-height: 92px;
 }
 
 .quest-time {
@@ -850,9 +894,10 @@ onMounted(loadTodayQuests)
 .quest-node {
   position: relative;
   z-index: 1;
+  justify-self: center;
   display: grid;
-  width: 92px;
-  height: 92px;
+  width: 80px;
+  height: 80px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--quest-color) 72%, transparent);
   border-radius: 50%;
@@ -899,11 +944,11 @@ onMounted(loadTodayQuests)
 
 .quest-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 48px;
+  grid-template-columns: minmax(0, 1fr) auto 44px;
   align-items: center;
-  gap: 1.35rem;
-  min-height: 100px;
-  padding: 1.35rem 1.6rem;
+  gap: 0.85rem 1rem;
+  min-height: 88px;
+  padding: 1rem 1.15rem;
   border: 1px solid rgba(125, 205, 255, 0.12);
   border-radius: 0.85rem;
   background:
@@ -1025,14 +1070,14 @@ onMounted(loadTodayQuests)
 }
 
 .daily-aside {
+  grid-area: aside;
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-self: stretch;
-  height: 100%;
   min-height: 0;
-  gap: 1.35rem;
+  gap: 1rem;
   min-width: 0;
   overflow-y: auto;
 }
@@ -1056,19 +1101,20 @@ onMounted(loadTodayQuests)
 
 .overview-body {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 1.7rem;
+  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
+  gap: 1.25rem;
   align-items: center;
-  margin-top: 1.8rem;
+  margin-top: 1.35rem;
 }
 
 .progress-orbit {
   --progress-deg: calc(var(--progress) * 360deg);
   position: relative;
   display: grid;
-  width: 180px;
+  width: min(100%, 160px);
   aspect-ratio: 1;
   place-items: center;
+  justify-self: center;
   border-radius: 50%;
   background:
     radial-gradient(circle, rgba(7, 19, 31, 0.94) 0 55%, transparent 56%),
@@ -1252,34 +1298,30 @@ onMounted(loadTodayQuests)
 }
 
 @media (max-width: 1280px) {
-  .daily-topbar {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .daily-userbar {
-    justify-self: start;
-  }
-
   .daily-content {
     grid-template-columns: 1fr;
-    height: auto;
-    min-height: calc(100dvh - 220px);
+    grid-template-areas:
+      'main'
+      'aside';
     overflow-y: auto;
   }
 
-  .quest-board {
-    height: auto;
+  .daily-content__main {
+    overflow: visible;
   }
 
-  .quest-board__panel {
-    flex: none;
+  .daily-content__main :deep(.teacher-assign) {
+    max-height: none;
+  }
+
+  .quest-board {
+    min-height: 420px;
   }
 
   .daily-aside {
     display: grid;
-    height: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
   }
 
   .reset-note {
@@ -1331,39 +1373,67 @@ onMounted(loadTodayQuests)
   }
 
   .daily-content {
-    display: block;
-    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow: visible;
+  }
+
+  .daily-content__main,
+  .daily-aside {
+    width: 100%;
   }
 
   .quest-board__panel {
-    padding: 1.3rem 1rem;
+    padding: 1.15rem 0.95rem;
+  }
+
+  .quest-timeline {
+    --quest-time-col: 100%;
+    --quest-node-col: 4.5rem;
   }
 
   .quest-timeline::before {
-    left: var(--plex-page-gutter-x);
+    left: calc(var(--quest-node-col) / 2 + 0.25rem);
   }
 
   .quest-row {
-    grid-template-columns: 5.7rem 1fr;
-    gap: 0 0.8rem;
+    grid-template-columns: var(--quest-node-col) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 0.55rem 0.75rem;
     align-items: start;
-    margin-bottom: 1.2rem;
+    min-height: 0;
+    padding-left: 0.15rem;
   }
 
   .quest-time {
     grid-column: 1 / -1;
-    margin-bottom: 0.65rem;
+    grid-template-columns: 1.25rem 1fr auto;
+    margin-bottom: 0;
+  }
+
+  .quest-time .n-icon {
+    grid-row: auto;
   }
 
   .quest-node {
-    width: 64px;
-    height: 64px;
+    grid-row: 2;
+    grid-column: 1;
+    width: 56px;
+    height: 56px;
   }
 
   .quest-card {
-    min-height: 86px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding: 1rem;
+    grid-row: 2;
+    grid-column: 2;
+    min-height: 76px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.45rem;
+    padding: 0.85rem 0.95rem;
+  }
+
+  .quest-card__progress {
+    font-size: 0.88rem;
   }
 
   .quest-card__ring {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { NButton, NIcon, NSelect, NSlider, useMessage, type SelectOption } from 'naive-ui'
+import { computed, onMounted, ref, watch } from 'vue'
+import { NButton, NCheckbox, NIcon, NSelect, NSlider, useMessage, type SelectOption } from 'naive-ui'
 import {
   AnalyticsOutline,
   CubeOutline,
@@ -14,6 +14,9 @@ import {
   TimeOutline,
 } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
+import TeacherTemplatesPanel from '../components/teacher/TeacherTemplatesPanel.vue'
+import TeacherTrialDetailPanel from '../components/teacher/TeacherTrialDetailPanel.vue'
+import KnowledgePointPicker from '../components/teacher/KnowledgePointPicker.vue'
 import {
   createTeacherTrial,
   fetchTeacherTrials,
@@ -22,7 +25,11 @@ import {
   type TeacherTrial,
   type TeacherTrialSummary,
 } from '../api/teacherTrials'
+import { labelForKnowledgeKey } from '../data/teacherKnowledgeCatalog'
+import { useKnowledgeCatalog } from '../composables/useKnowledgeCatalog'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
+import { useAuthStore } from '../stores/auth'
+import { useTeacherNotificationStore } from '../stores/teacherNotifications'
 
 type TrialStatus = 'running' | 'soon' | 'ended' | 'draft'
 type TrialTone = 'orange' | 'blue' | 'purple' | 'amber'
@@ -53,11 +60,15 @@ interface TemplateItem {
 }
 
 const message = useMessage()
+const auth = useAuthStore()
+const teacherNotifications = useTeacherNotificationStore()
 const { selectedClassId, hasSelectedClass } = useTeacherOverviewInjected()
 
 const activeTab = ref<'manage' | 'templates'>('manage')
 const trialType = ref('solo')
-const knowledge = ref<string | null>(null)
+const selectedKnowledgeKeys = ref<string[]>([])
+const { domains: knowledgeDomains, loadCatalog } = useKnowledgeCatalog()
+const notifyStudentsOnPublish = ref(true)
 const duration = ref('60')
 const difficulty = ref(78)
 const loading = ref(false)
@@ -68,6 +79,7 @@ const scheduleDelay = ref('30')
 const errorMessage = ref('')
 const summary = ref<TeacherTrialSummary | null>(null)
 const trials = ref<TrialCard[]>([])
+const detailTrialId = ref<number | null>(null)
 
 const typeLabels: Record<string, string> = {
   solo: '个人挑战',
@@ -76,25 +88,11 @@ const typeLabels: Record<string, string> = {
   abyss: '深渊试炼',
 }
 
-const knowledgeLabels: Record<string, string> = {
-  dp: '动态规划',
-  graph: '图论基础',
-  ds: '数据结构',
-  frontend: '前端工程化',
-}
-
 const trialTypeOptions: SelectOption[] = [
   { label: '个人挑战', value: 'solo' },
   { label: '小组协作', value: 'team' },
   { label: '限时竞赛', value: 'timed' },
   { label: '深渊试炼', value: 'abyss' },
-]
-
-const knowledgeOptions: SelectOption[] = [
-  { label: '动态规划', value: 'dp' },
-  { label: '图论基础', value: 'graph' },
-  { label: '数据结构', value: 'ds' },
-  { label: '前端工程化', value: 'frontend' },
 ]
 
 const durationOptions: SelectOption[] = [
@@ -109,6 +107,13 @@ const publishModeOptions: SelectOption[] = [
   { label: '保存草稿', value: 'draft' },
   { label: '定时发布', value: 'scheduled' },
 ]
+
+const trialTypeOptionsPlain = computed(() =>
+  trialTypeOptions.map((item) => ({
+    label: typeof item.label === 'string' ? item.label : String(item.value ?? ''),
+    value: String(item.value ?? ''),
+  })),
+)
 
 const scheduleDelayOptions: SelectOption[] = [
   { label: '30 分钟后', value: '30' },
@@ -173,7 +178,8 @@ function mapTrial(item: TeacherTrial): TrialCard {
     frontend: 'planet',
   }
   const typeLabel = typeLabels[item.trial_type] ?? item.trial_type
-  const knowLabel = item.knowledge_key ? knowledgeLabels[item.knowledge_key] ?? item.knowledge_key : ''
+  const keys = item.knowledge_keys?.length ? item.knowledge_keys : item.knowledge_key ? [item.knowledge_key] : []
+  const knowLabel = keys.map((k) => labelForKnowledgeKey(k)).join('、')
   return {
     id: item.id,
     title: item.title,
@@ -216,30 +222,45 @@ async function createTrial() {
     message.warning('请先选择班级')
     return
   }
-  if (!knowledge.value) {
-    message.warning('请选择知识星域')
+  if (!selectedKnowledgeKeys.value.length) {
+    message.warning('请至少勾选一个知识点')
     return
   }
   const typeLabel = trialTypeOptions.find((item) => item.value === trialType.value)?.label ?? '个人挑战'
-  const knowLabel = knowledgeOptions.find((item) => item.value === knowledge.value)?.label ?? ''
-  const title = `${knowLabel}${typeLabel}`.replace(/^$/, '未命名试炼')
+  const knowLabel = selectedKnowledgeKeys.value.map((k) => labelForKnowledgeKey(k)).join('、')
+  const title = `${knowLabel.slice(0, 24)}${knowLabel.length > 24 ? '…' : ''} · ${typeLabel}`
 
   creating.value = true
   try {
-    await createTeacherTrial({
+    const result = await createTeacherTrial({
       class_id: selectedClassId.value,
       title,
       trial_type: trialType.value,
-      knowledge_key: knowledge.value,
+      knowledge_keys: selectedKnowledgeKeys.value,
+      knowledge_key: selectedKnowledgeKeys.value[0],
       difficulty: difficulty.value,
       duration_minutes: Number(duration.value),
       reward_points: Math.max(15, Math.round(difficulty.value / 2)),
       publish_mode: publishMode.value,
       start_delay_minutes: publishMode.value === 'scheduled' ? Number(scheduleDelay.value) : undefined,
+      notify_students: notifyStudentsOnPublish.value,
     })
     const modeLabel =
       publishMode.value === 'draft' ? '已保存草稿' : publishMode.value === 'scheduled' ? '已创建定时试炼' : '已发布试炼'
-    message.success(`${modeLabel}「${title}」`)
+    if (publishMode.value === 'now' && notifyStudentsOnPublish.value && auth.profile?.id) {
+      teacherNotifications.notifyAssignmentPublished(
+        auth.profile.id,
+        title,
+        result.student_count ?? 0,
+      )
+      if (result.student_count) {
+        message.success(`${modeLabel}「${title}」，已通知 ${result.student_count} 名学生`)
+      } else {
+        message.success(`${modeLabel}「${title}」`)
+      }
+    } else {
+      message.success(`${modeLabel}「${title}」`)
+    }
     await loadTrials()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '创建失败')
@@ -251,8 +272,19 @@ async function createTrial() {
 async function onPublishTrial(trialId: number) {
   actingTrialId.value = trialId
   try {
-    await publishTeacherTrial(trialId)
-    message.success('试炼已发布')
+    const trial = trials.value.find((t) => t.id === trialId)
+    const result = await publishTeacherTrial(trialId, notifyStudentsOnPublish.value)
+    const title = result.trial?.title ?? trial?.title ?? '试炼'
+    if (notifyStudentsOnPublish.value && auth.profile?.id) {
+      teacherNotifications.notifyAssignmentPublished(auth.profile.id, title, result.student_count ?? 0)
+      message.success(
+        result.student_count
+          ? `试炼已发布，已通知 ${result.student_count} 名学生`
+          : '试炼已发布',
+      )
+    } else {
+      message.success('试炼已发布')
+    }
     await loadTrials()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '发布失败')
@@ -279,6 +311,10 @@ function switchTemplate(template: TemplateItem) {
   message.info(`已选用「${template.title}」模板`)
 }
 
+onMounted(() => {
+  void loadCatalog()
+})
+
 watch(selectedClassId, () => {
   void loadTrials()
 }, { immediate: true })
@@ -301,7 +337,13 @@ watch(selectedClassId, () => {
             <button type="button" :class="{ active: activeTab === 'templates' }" @click="activeTab = 'templates'">我的模板</button>
           </header>
 
-          <div class="panel-section">
+          <TeacherTemplatesPanel
+            v-if="activeTab === 'templates'"
+            :trial-type-options="trialTypeOptionsPlain"
+            @published="loadTrials()"
+          />
+
+          <div v-if="activeTab === 'manage'" class="panel-section">
             <div class="section-head">
               <h2>进行中的试炼</h2>
               <button type="button" @click="loadTrials()">刷新 <span>›</span></button>
@@ -336,7 +378,7 @@ watch(selectedClassId, () => {
                   </div>
                   <strong v-if="trial.status === 'running'">{{ trial.progress }}%</strong>
                   <span v-if="trial.status === 'ended'" class="complete-mark">✓</span>
-                  <div v-if="trial.canPublish || trial.canEnd" class="trial-card__actions">
+                  <div class="trial-card__actions">
                     <n-button
                       v-if="trial.canPublish"
                       size="tiny"
@@ -355,16 +397,24 @@ watch(selectedClassId, () => {
                     >
                       结束
                     </n-button>
+                    <n-button size="tiny" secondary @click.stop="detailTrialId = trial.id">
+                      查看数据
+                    </n-button>
                   </div>
                 </div>
               </article>
             </div>
           </div>
 
-          <div class="panel-section template-section">
+          <TeacherTrialDetailPanel
+            v-if="detailTrialId && activeTab === 'manage'"
+            :trial-id="detailTrialId"
+            @close="detailTrialId = null"
+          />
+
+          <div v-if="activeTab === 'manage'" class="panel-section template-section">
             <div class="section-head">
-              <h2>试炼模板库</h2>
-              <button type="button">进入模板库 <span>›</span></button>
+              <h2>试炼类型快捷选用</h2>
             </div>
             <div class="template-row">
               <button
@@ -383,7 +433,7 @@ watch(selectedClassId, () => {
           </div>
         </section>
 
-        <section class="command-panel data-panel">
+        <section v-if="activeTab === 'manage'" class="command-panel data-panel">
           <h2>试炼数据概览</h2>
           <div class="stats-row">
             <article v-for="item in stats" :key="item.label" :class="`stat-card stat-card--${item.tone}`">
@@ -395,7 +445,7 @@ watch(selectedClassId, () => {
         </section>
       </main>
 
-      <aside class="create-panel">
+      <aside v-if="activeTab === 'manage'" class="create-panel">
         <h2>快速创建试炼</h2>
         <div class="create-orbit" aria-hidden="true">
           <span v-for="ring in 6" :key="ring" :style="{ '--ring': ring }" />
@@ -408,10 +458,12 @@ watch(selectedClassId, () => {
           <n-select v-model:value="trialType" :options="trialTypeOptions" class="field-select" />
         </label>
 
-        <label class="field">
-          <span>选择知识星域</span>
-          <n-select v-model:value="knowledge" :options="knowledgeOptions" placeholder="请选择知识星域" class="field-select" />
-        </label>
+        <div class="field">
+          <span>勾选知识点（知识宇宙）</span>
+          <KnowledgePointPicker v-model="selectedKnowledgeKeys" :domains="knowledgeDomains" />
+        </div>
+
+        <n-checkbox v-model:checked="notifyStudentsOnPublish">发布时通知全班学生</n-checkbox>
 
         <div class="field">
           <span>难度设置</span>
@@ -576,10 +628,20 @@ watch(selectedClassId, () => {
   display: flex;
   height: 100%;
   flex-direction: column;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid rgba(130, 212, 255, 0.12);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 45% 0%, rgba(251, 146, 60, 0.08), transparent 34%),
+    linear-gradient(145deg, rgba(5, 18, 30, 0.91), rgba(3, 12, 20, 0.78));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04), 0 22px 70px rgba(0, 0, 0, 0.2);
 }
 
-.command-panel,
-.create-panel {
+.command-panel {
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -1106,6 +1168,12 @@ watch(selectedClassId, () => {
   }
 
   .create-panel {
+    display: flex;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .create-orbit {
     display: none;
   }
 }

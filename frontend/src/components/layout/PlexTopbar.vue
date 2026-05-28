@@ -1,9 +1,23 @@
 <script setup lang="ts">
-import { computed, h } from 'vue'
+import { computed, h, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NAvatar, NBadge, NDropdown, NIcon, NInput, type DropdownOption } from 'naive-ui'
+import {
+  NAvatar,
+  NBadge,
+  NButton,
+  NDropdown,
+  NEmpty,
+  NIcon,
+  NInput,
+  NPopover,
+  type DropdownOption,
+} from 'naive-ui'
 import { ChevronDownOutline, ExitOutline, NotificationsOutline, SearchOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../../stores/auth'
+import { useNotificationStore } from '../../stores/notifications'
+import { useTeacherNotificationStore } from '../../stores/teacherNotifications'
+import { useStudentNotificationSync } from '../../composables/useStudentNotificationSync'
+import { useTeacherNotificationSync } from '../../composables/useTeacherNotificationSync'
 
 withDefaults(
   defineProps<{
@@ -23,7 +37,20 @@ withDefaults(
 const search = defineModel<string>('search', { default: '' })
 
 const auth = useAuthStore()
+const studentNotifications = useNotificationStore()
+const teacherNotifications = useTeacherNotificationStore()
 const router = useRouter()
+const showNotifications = ref(false)
+
+const isStudent = computed(() => auth.profile?.role === 'student')
+const isTeacher = computed(() => {
+  const role = auth.profile?.role
+  return role === 'teacher' || role === 'admin'
+})
+
+useStudentNotificationSync()
+useTeacherNotificationSync()
+
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || '张子轩')
 const userLevel = computed(() => auth.profile?.level ?? 18)
 const userOptions: DropdownOption[] = [
@@ -34,8 +61,48 @@ const userOptions: DropdownOption[] = [
   },
 ]
 
+const notificationItems = computed(() => {
+  if (isStudent.value) return studentNotifications.items
+  if (isTeacher.value) return teacherNotifications.items
+  return []
+})
+
+const unreadCount = computed(() => {
+  if (isStudent.value) return studentNotifications.unreadCount
+  if (isTeacher.value) return teacherNotifications.unreadCount
+  return 0
+})
+
+const showNotificationPanel = computed(() => isStudent.value || isTeacher.value)
+
+function formatTime(iso: string) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function onNotificationOpen(show: boolean) {
+  showNotifications.value = show
+}
+
+function markAllRead() {
+  const id = auth.profile?.id
+  if (!id) return
+  if (isStudent.value) studentNotifications.markAllRead(id)
+  else if (isTeacher.value) teacherNotifications.markAllRead(id)
+}
+
+function onNotificationClick(id: string) {
+  const uid = auth.profile?.id
+  if (!uid) return
+  if (isStudent.value) studentNotifications.markRead(uid, id)
+  else if (isTeacher.value) teacherNotifications.markRead(uid, id)
+}
+
 async function handleUserSelect(key: string) {
   if (key !== 'logout') return
+  studentNotifications.clearForLogout()
+  teacherNotifications.clearForLogout()
   await auth.logout()
   await router.replace({ name: 'login' })
 }
@@ -60,7 +127,51 @@ async function handleUserSelect(key: string) {
     </div>
 
     <div class="plex-topbar__userbar">
-      <n-badge dot type="success" :offset="[-1, 5]">
+      <n-popover
+        v-if="showNotificationPanel"
+        trigger="click"
+        placement="bottom-end"
+        :show="showNotifications"
+        class="plex-notif-popover"
+        @update:show="onNotificationOpen"
+      >
+        <template #trigger>
+          <n-badge :value="unreadCount || undefined" :max="9" type="error" :offset="[-2, 4]">
+            <button type="button" class="plex-topbar__icon-btn" aria-label="通知">
+              <n-icon :component="NotificationsOutline" :size="25" />
+            </button>
+          </n-badge>
+        </template>
+        <div class="plex-notif-panel">
+          <header class="plex-notif-panel__head">
+            <strong>通知</strong>
+            <n-button
+              v-if="notificationItems.length"
+              text
+              size="tiny"
+              type="primary"
+              @click="markAllRead"
+            >
+              全部已读
+            </n-button>
+          </header>
+          <ul v-if="notificationItems.length" class="plex-notif-panel__list">
+            <li
+              v-for="item in notificationItems"
+              :key="item.id"
+              class="plex-notif-item"
+              :class="{ 'plex-notif-item--unread': !item.read }"
+              @click="onNotificationClick(item.id)"
+            >
+              <div class="plex-notif-item__title">{{ item.title }}</div>
+              <p class="plex-notif-item__body">{{ item.body }}</p>
+              <time class="plex-notif-item__time">{{ formatTime(item.createdAt) }}</time>
+            </li>
+          </ul>
+          <n-empty v-else size="small" description="暂无通知" class="plex-notif-panel__empty" />
+        </div>
+      </n-popover>
+      <n-badge v-else dot type="success" :offset="[-1, 5]">
         <button type="button" class="plex-topbar__icon-btn" aria-label="通知">
           <n-icon :component="NotificationsOutline" :size="25" />
         </button>
@@ -261,6 +372,69 @@ async function handleUserSelect(key: string) {
   color: #57fff2;
   font-size: 0.76rem;
   font-style: normal;
+}
+
+.plex-notif-panel {
+  width: min(360px, 92vw);
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.plex-notif-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.15rem 0.65rem;
+  border-bottom: 1px solid rgba(130, 212, 255, 0.12);
+  color: #edf7ff;
+}
+
+.plex-notif-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0 0;
+  overflow-y: auto;
+  max-height: 340px;
+}
+
+.plex-notif-item {
+  padding: 0.65rem 0.5rem;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.plex-notif-item:hover {
+  background: rgba(37, 245, 238, 0.06);
+}
+
+.plex-notif-item--unread {
+  background: rgba(16, 240, 192, 0.08);
+}
+
+.plex-notif-item__title {
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 680;
+}
+
+.plex-notif-item__body {
+  margin: 0.25rem 0 0;
+  color: rgba(224, 237, 247, 0.78);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.plex-notif-item__time {
+  display: block;
+  margin-top: 0.35rem;
+  color: rgba(142, 163, 184, 0.85);
+  font-size: 0.72rem;
+}
+
+.plex-notif-panel__empty {
+  padding: 1.5rem 0;
 }
 
 @media (max-width: 1280px) {

@@ -141,17 +141,53 @@ class TrialService(BaseService):
             starts_at=starts_at,
             ends_at=ends_at,
         )
+        keys = payload.get('knowledge_keys') or []
+        if keys:
+            trial.set_knowledge_keys(keys)
+        elif payload.get('knowledge_key'):
+            trial.knowledge_key = payload.get('knowledge_key')
         db.session.add(trial)
         db.session.commit()
         if trial.status in ('running', 'scheduled'):
             QuestionGenerator.ensure_for_trial(trial)
-        return trial.to_dict(
+        result = trial.to_dict(
             include_stats=True,
             effective_status=TrialService.effective_status(trial),
         )
+        if trial.status == 'running':
+            notify = bool(payload.get('notify_students', True))
+            result['notify_students'] = notify
+            result['student_count'] = TrialService._class_student_count(class_id) if notify else 0
+            if notify:
+                result['notifications_sent'] = TrialService._notify_students_if_requested(trial, True)
+        return result
 
     @staticmethod
-    def publish_trial(current_user_id, trial_id, role_name):
+    def _class_student_count(class_id: int) -> int:
+        from app.models import Role, User
+
+        student_role = Role.query.filter_by(name='student').first()
+        if not student_role:
+            return 0
+        return User.query.filter_by(class_id=class_id, role_id=student_role.id).count()
+
+    @staticmethod
+    def _notify_students_if_requested(trial: Trial, notify_students: bool) -> int:
+        if not notify_students or trial.status != 'running':
+            return 0
+        from app.services.student_notification import StudentNotificationService
+
+        teacher = trial.teacher
+        teacher_name = (teacher.real_name or teacher.username) if teacher else '老师'
+        return StudentNotificationService.notify_class_teacher_task(
+            trial.class_id,
+            trial.id,
+            trial.title,
+            teacher_name,
+        )
+
+    @staticmethod
+    def publish_trial(current_user_id, trial_id, role_name, notify_students: bool = True):
         trial = Trial.query.get(trial_id)
         if not trial:
             raise ValueError('试炼不存在')
@@ -173,10 +209,19 @@ class TrialService(BaseService):
         db.session.commit()
         if trial.status in ('running', 'scheduled'):
             QuestionGenerator.ensure_for_trial(trial)
-        return trial.to_dict(
-            include_stats=True,
-            effective_status=TrialService.effective_status(trial),
-        )
+        student_count = TrialService._class_student_count(trial.class_id) if notify_students else 0
+        notifications_sent = 0
+        if notify_students and trial.status == 'running':
+            notifications_sent = TrialService._notify_students_if_requested(trial, True)
+        return {
+            'trial': trial.to_dict(
+                include_stats=True,
+                effective_status=TrialService.effective_status(trial),
+            ),
+            'notify_students': bool(notify_students),
+            'student_count': student_count,
+            'notifications_sent': notifications_sent,
+        }
 
     @staticmethod
     def update_trial(current_user_id, trial_id, role_name, payload):
@@ -288,8 +333,19 @@ class TrialService(BaseService):
         if part.status == 'completed':
             raise ValueError('已完成该试炼')
 
+        from .assignment import AssignmentService
+
+        questions = AssignmentService._questions_for_trial(trial_id)
+        if questions:
+            computed_score, answered_count, _ = AssignmentService.compute_trial_score(user_id, trial_id)
+            if answered_count < len(questions):
+                raise ValueError('请先完成全部题目再提交试炼')
+            final_score = int(score if score is not None else computed_score)
+        else:
+            final_score = int(score if score is not None else max(60, trial.difficulty))
+
         part.status = 'completed'
-        part.score = int(score if score is not None else max(60, trial.difficulty))
+        part.score = final_score
         part.completed_at = datetime.utcnow()
 
         incentive_feedback = None

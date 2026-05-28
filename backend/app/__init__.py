@@ -49,13 +49,55 @@ def init_seed_data():
             role_permissions.insert().values(role_id=student_role.id, permission_id=permission_objs[idx].id)
         )
 
-    for idx in [0, 1, 4, 6, 7, 9]:
+    for idx in [0, 1, 2, 3, 6, 7, 9]:
         db.session.execute(
             role_permissions.insert().values(role_id=teacher_role.id, permission_id=permission_objs[idx].id)
         )
 
     for perm in permission_objs:
         db.session.execute(role_permissions.insert().values(role_id=admin_role.id, permission_id=perm.id))
+
+    db.session.commit()
+
+
+def sync_teacher_role_permissions():
+    """将教师角色权限与定案对齐（已有库升级时调用）。"""
+    from app.models import Permission, Role, role_permissions
+
+    teacher_role = Role.query.filter_by(name='teacher').first()
+    if not teacher_role:
+        return
+
+    desired = {
+        'view_users',
+        'create_user',
+        'edit_user',
+        'delete_user',
+        'view_achievements',
+        'manage_achievements',
+        'view_rankings',
+    }
+    remove = {'manage_classes', 'manage_permissions'}
+
+    perm_by_name = {p.name: p for p in Permission.query.all()}
+    current = {p.name for p in teacher_role.permissions}
+
+    for name in remove:
+        perm = perm_by_name.get(name)
+        if perm and name in current:
+            db.session.execute(
+                role_permissions.delete().where(
+                    role_permissions.c.role_id == teacher_role.id,
+                    role_permissions.c.permission_id == perm.id,
+                )
+            )
+
+    for name in desired:
+        perm = perm_by_name.get(name)
+        if perm and name not in current:
+            db.session.execute(
+                role_permissions.insert().values(role_id=teacher_role.id, permission_id=perm.id)
+            )
 
     db.session.commit()
 
@@ -132,7 +174,11 @@ def create_app(config_name='development'):
 
     with app.app_context():
         db.create_all()
+        from app.utils.db_migrate import ensure_trial_progress_columns
+
+        ensure_trial_progress_columns()
         init_seed_data()
+        sync_teacher_role_permissions()
         ensure_dev_login_users()
         from app.services.daily_quest import DailyQuestService
 

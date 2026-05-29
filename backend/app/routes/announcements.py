@@ -36,6 +36,16 @@ def list_admin_announcements():
         return error_response(str(exc), 50001, None, 500)
 
 
+@announcements_bp.route('/student/announcements', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def list_student_announcements():
+    try:
+        return success_response(AnnouncementService.list_for_role('student', limit=20))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @announcements_bp.route('/admin/announcements', methods=['POST'])
 @jwt_required()
 @role_required('admin')

@@ -43,3 +43,27 @@ export async function saveAdminSettings(settings: Partial<AdminSettingsPayload>,
   if (data.code !== 0) throw new Error(data.message || '保存配置失败')
   return data.data
 }
+
+export interface AdminDashboardResult {
+  metrics: {
+    active_students: number
+    total_students: number
+    active_teachers: number
+    running_trials: number
+    total_trials: number
+    trial_completion_rate: number
+    health_score: number
+  }
+  progress: {
+    task_completion_rate: number
+    trial_participation_rate: number
+    knowledge_mastery_rate: number
+    activity_rate: number
+  }
+}
+
+export async function fetchAdminDashboard() {
+  const { data } = await http.get<ApiEnvelope<AdminDashboardResult>>('/v1/admin/dashboard')
+  if (data.code !== 0) throw new Error(data.message || '大盘数据加载失败')
+  return data.data
+}

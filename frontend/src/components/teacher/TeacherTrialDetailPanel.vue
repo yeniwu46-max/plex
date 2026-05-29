@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { NButton, NTag } from 'naive-ui'
+import { NButton, NTag, NCollapse, NCollapseItem } from 'naive-ui'
 import { fetchTeacherTrialDetail, type TeacherTrialDetailResult } from '../../api/teacherTrials'
 import { formatDateTimeText, formatDurationSec } from '../../utils/trialAnswerFormat'
 
@@ -114,6 +114,37 @@ watch(
           </table>
         </div>
         <p v-else class="trial-detail__empty">暂无题目数据</p>
+      </section>
+
+      <section v-if="detail.questions && detail.questions.length" class="trial-detail__section">
+        <h3>题目预览</h3>
+        <n-collapse>
+          <n-collapse-item
+            v-for="(q, idx) in detail.questions"
+            :key="q.id"
+            :name="String(q.id)"
+          >
+            <template #header>
+              <span class="trial-detail__q-header">
+                第 {{ idx + 1 }} 题
+                <span class="trial-detail__q-kp">{{ q.knowledge_key ?? '' }}</span>
+              </span>
+            </template>
+            <div class="trial-detail__q-body">
+              <p class="trial-detail__q-stem">{{ q.stem }}</p>
+              <ul class="trial-detail__q-options">
+                <li
+                  v-for="(opt, oi) in q.options"
+                  :key="oi"
+                  :class="{ 'trial-detail__q-opt--correct': oi === q.correct_index }"
+                >
+                  <span class="trial-detail__q-opt-label">{{ String.fromCharCode(65 + oi) }}</span>
+                  {{ opt }}
+                </li>
+              </ul>
+            </div>
+          </n-collapse-item>
+        </n-collapse>
       </section>
 
       <section class="trial-detail__section">
@@ -341,5 +372,69 @@ watch(
   margin: 0;
   color: var(--plex-text-muted, #8ea3b8);
   font-size: 0.85rem;
+}
+
+.trial-detail__q-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+}
+
+.trial-detail__q-kp {
+  font-size: 0.75rem;
+  color: var(--plex-text-muted, #8ea3b8);
+  background: rgba(16, 240, 192, 0.07);
+  border-radius: 4px;
+  padding: 0 0.35rem;
+}
+
+.trial-detail__q-body {
+  padding: 0.25rem 0 0.5rem;
+}
+
+.trial-detail__q-stem {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.trial-detail__q-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.trial-detail__q-options li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+  color: var(--plex-text-muted, #8ea3b8);
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.trial-detail__q-opt--correct {
+  color: #10f0c0 !important;
+  background: rgba(16, 240, 192, 0.08);
+  font-weight: 600;
+}
+
+.trial-detail__q-opt-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
 }
 </style>

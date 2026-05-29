@@ -156,6 +156,9 @@ async function claimBonus() {
   try {
     dailyData.value = await claimDailyQuestBonus()
     showIncentiveFeedback(message, dailyData.value?.incentive)
+    if (dailyData.value?.incentive?.total_points !== undefined) {
+      auth.syncProfile({ total_points: dailyData.value.incentive.total_points, level: dailyData.value.incentive.level })
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Failed to claim daily quest bonus'
   } finally {
@@ -171,9 +174,15 @@ async function advanceQuest(key: string) {
   try {
     dailyData.value = await advanceDailyQuest(key)
     showIncentiveFeedback(message, dailyData.value?.incentive)
+    if (dailyData.value?.incentive?.total_points !== undefined) {
+      auth.syncProfile({ total_points: dailyData.value.incentive.total_points, level: dailyData.value.incentive.level })
+    }
     if (dailyData.value.all_completed && !dailyData.value.bonus_claimed) {
       dailyData.value = await claimDailyQuestBonus()
       showIncentiveFeedback(message, dailyData.value?.incentive)
+      if (dailyData.value?.incentive?.total_points !== undefined) {
+        auth.syncProfile({ total_points: dailyData.value.incentive.total_points, level: dailyData.value.incentive.level })
+      }
     }
     notifyDailyAllCompletedIfNeeded()
   } catch (error) {
@@ -235,7 +244,7 @@ onMounted(loadTodayQuests)
                   v-for="quest in quests"
                   :key="quest.key"
                   class="quest-row"
-                  :class="[`quest-row--${quest.accent}`, { 'quest-row--done': quest.current >= quest.total }]"
+                  :class="[`quest-row--${quest.accent}`, { 'quest-row--done': quest.current >= quest.total, 'quest-row--auto': quest.key === 'morning-launch' || quest.key === 'night-summary' }]"
                 >
                   <div class="quest-time">
                     <n-icon :component="quest.key === 'night-summary' ? MoonOutline : quest.key === 'trial-challenge' ? TimeOutline : SunnyOutline" />
@@ -246,9 +255,9 @@ onMounted(loadTodayQuests)
                   <button
                     type="button"
                     class="quest-node"
-                    :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total"
+                    :disabled="true"
                     :aria-label="`${quest.title} 进度 ${quest.current}/${quest.total}`"
-                    @click="advanceQuest(quest.key)"
+                    @click="quest.key !== 'morning-launch' && quest.key !== 'night-summary' ? advanceQuest(quest.key) : undefined"
                   >
                     <n-icon :component="quest.icon" />
                   </button>
@@ -256,12 +265,14 @@ onMounted(loadTodayQuests)
                   <button
                     type="button"
                     class="quest-card"
-                    :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total"
-                    @click="advanceQuest(quest.key)"
+                    :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total || quest.key === 'morning-launch' || quest.key === 'night-summary'"
+                    @click="quest.key !== 'morning-launch' && quest.key !== 'night-summary' ? advanceQuest(quest.key) : undefined"
                   >
                     <span class="quest-card__text">
                       <strong>{{ quest.title }}</strong>
-                      <span>{{ quest.description }}</span>
+                      <span v-if="quest.key === 'morning-launch'">进入探索舱即可自动完成</span>
+                      <span v-else-if="quest.key === 'night-summary'">访问探索档案即可自动完成</span>
+                      <span v-else>{{ quest.description }}</span>
                     </span>
                     <span class="quest-card__progress">+{{ quest.rewardXp }} XP · {{ quest.current }}/{{ quest.total }}</span>
                     <span class="quest-card__ring" :style="{ '--quest-ratio': quest.current / quest.total }">
@@ -1021,6 +1032,16 @@ onMounted(loadTodayQuests)
 
 .quest-row--done .quest-card {
   border-color: rgba(46, 255, 241, 0.21);
+}
+
+.quest-row--auto .quest-card {
+  cursor: default;
+  opacity: 0.88;
+}
+
+.quest-row--auto .quest-card__text span {
+  font-style: italic;
+  color: rgba(226, 232, 240, 0.55);
 }
 
 .quest-reward {

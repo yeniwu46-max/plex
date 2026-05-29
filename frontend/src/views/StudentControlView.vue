@@ -5,6 +5,7 @@ import { NAvatar, NButton, NInput, NSwitch, NUpload, useMessage, type UploadFile
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import { useAuthStore } from '../stores/auth'
 import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
+import { fetchAbilityStats, type AbilityStatsResult } from '../api/studentProgress'
 import { resolveAvatarUrl, updateMyProfile, uploadMyAvatar } from '../api/studentProfile'
 import PlexRadarChart from '../components/charts/PlexRadarChart.vue'
 import PlexLineChart from '../components/charts/PlexLineChart.vue'
@@ -13,6 +14,7 @@ const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
 const overview = ref<StudentOverview | null>(null)
+const abilityStats = ref<AbilityStatsResult | null>(null)
 const loading = ref(true)
 const savingProfile = ref(false)
 const uploadingAvatar = ref(false)
@@ -50,7 +52,12 @@ function syncFormFromProfile() {
 async function loadProfile() {
   loading.value = true
   try {
-    overview.value = await fetchStudentOverview()
+    const [overviewResult, stats] = await Promise.all([
+      fetchStudentOverview(),
+      fetchAbilityStats().catch(() => null),
+    ])
+    overview.value = overviewResult
+    abilityStats.value = stats
     syncFormFromProfile()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '资料加载失败')
@@ -58,6 +65,24 @@ async function loadProfile() {
     loading.value = false
   }
 }
+
+const radarDimensions = computed(
+  () => abilityStats.value?.radar.dimensions ?? ['抽象建模', '算法设计', '分解问题', '调试能力', '逻辑推理'],
+)
+const radarValues = computed(() => abilityStats.value?.radar.values ?? [0, 0, 0, 0, 0])
+const trendXData = computed(() => abilityStats.value?.trend.x_data ?? ['周一', '周二', '周三', '周四', '周五', '周六', '周日'])
+const trendSeries = computed(() => [
+  {
+    name: '正确率(%)',
+    data: abilityStats.value?.trend.correct_rate ?? [0, 0, 0, 0, 0, 0, 0],
+    color: '#22c55e',
+  },
+  {
+    name: '练习次数',
+    data: abilityStats.value?.trend.practice_count ?? [0, 0, 0, 0, 0, 0, 0],
+    color: '#38bdf8',
+  },
+])
 
 async function saveProfile() {
   const name = editName.value.trim()
@@ -252,14 +277,8 @@ onMounted(() => {
           </header>
           <div class="student-control__chart-wrap">
             <plex-radar-chart
-              :dimensions="['抽象建模', '算法设计', '分解问题', '调试能力', '逻辑推理']"
-              :values="[
-                Math.min(100, (profile?.total_points ?? 0) % 100 + 40),
-                Math.min(100, (profile?.total_points ?? 0) % 90 + 35),
-                Math.min(100, (profile?.total_points ?? 0) % 80 + 50),
-                Math.min(100, (profile?.total_points ?? 0) % 70 + 60),
-                Math.min(100, (profile?.total_points ?? 0) % 85 + 45),
-              ]"
+              :dimensions="radarDimensions"
+              :values="radarValues"
               color="#22c55e"
             />
           </div>
@@ -272,11 +291,8 @@ onMounted(() => {
           </header>
           <div class="student-control__chart-wrap">
             <plex-line-chart
-              :x-data="['周一', '周二', '周三', '周四', '周五', '周六', '周日']"
-              :series="[
-                { name: '正确率(%)', data: [72, 78, 65, 85, 90, 88, 93], color: '#22c55e' },
-                { name: '练习次数', data: [5, 8, 4, 10, 12, 9, 14], color: '#38bdf8' },
-              ]"
+              :x-data="trendXData"
+              :series="trendSeries"
             />
           </div>
         </article>

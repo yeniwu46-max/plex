@@ -137,6 +137,7 @@ export interface IncentiveFeedbackPayload {
   level?: number
   title?: string
   points_gained?: number
+  total_points?: number
   class_rank?: number | null
   unlocked_achievements?: Array<{ name: string; rarity?: string }>
 }

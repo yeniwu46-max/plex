@@ -1,9 +1,11 @@
 """Teacher dashboard aggregation service."""
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 
-from app.models import Class, PointsLog, RankingCache, User, UserDailyQuest, db
+from app.models import Class, PointsLog, RankingCache, Trial, TrialQuestion, TrialQuestionProgress, User, UserDailyQuest, db
 
 from .base import BaseService
+from .question_generator import QuestionGenerator
 
 
 class TeacherService(BaseService):
@@ -294,3 +296,65 @@ class TeacherService(BaseService):
             'real_name': teacher.real_name,
             'role': teacher.role.name if teacher.role else None,
         }
+
+    @staticmethod
+    def get_class_stats(current_user_id, class_id=None):
+        teacher = User.query.get(current_user_id)
+        if not teacher or not teacher.role:
+            raise PermissionError('用户信息获取失败或未设置角色')
+        role_name = teacher.role.name
+        if role_name not in ['teacher', 'admin']:
+            raise PermissionError('只有教师或管理员可以访问班级统计')
+
+        classes_query = Class.query.order_by(Class.created_at.desc())
+        if role_name == 'teacher':
+            classes_query = classes_query.filter_by(teacher_id=teacher.id)
+        classes = classes_query.all()
+        selected_class = TeacherService._select_class(classes, class_id, role_name, teacher.id)
+        if not selected_class:
+            return {'domain_mastery': [], 'mistake_types': []}
+
+        students = User.query.filter_by(class_id=selected_class.id).all()
+        student_ids = [student.id for student in students]
+        if not student_ids:
+            return {'domain_mastery': [], 'mistake_types': []}
+
+        trial_ids = [trial.id for trial in Trial.query.filter_by(class_id=selected_class.id).all()]
+        if not trial_ids:
+            return {'domain_mastery': [], 'mistake_types': []}
+
+        questions = TrialQuestion.query.filter(TrialQuestion.trial_id.in_(trial_ids)).all()
+        by_knowledge: dict[str, dict] = defaultdict(lambda: {'correct': 0, 'answered': 0, 'label': ''})
+        mistake_by_label: dict[str, int] = defaultdict(int)
+
+        for question in questions:
+            rows = TrialQuestionProgress.query.filter(
+                TrialQuestionProgress.question_id == question.id,
+                TrialQuestionProgress.user_id.in_(student_ids),
+                TrialQuestionProgress.status == 'completed',
+            ).all()
+            key = question.knowledge_key or 'algo'
+            label = QuestionGenerator.label_for_key(key)
+            bucket = by_knowledge[key]
+            bucket['label'] = label
+            for row in rows:
+                bucket['answered'] += 1
+                if row.is_correct:
+                    bucket['correct'] += 1
+                else:
+                    mistake_by_label[label] += 1
+
+        domain_mastery = []
+        for stats in by_knowledge.values():
+            answered = stats['answered']
+            rate = round((stats['correct'] / answered) * 100) if answered else 0
+            domain_mastery.append({'label': stats['label'], 'mastery_rate': rate})
+        domain_mastery.sort(key=lambda item: item['mastery_rate'], reverse=True)
+
+        colors = ['#f97316', '#fb923c', '#fdba74', '#fde68a', '#fed7aa', '#ffedd5']
+        mistake_types = [
+            {'name': name, 'value': count, 'color': colors[index % len(colors)]}
+            for index, (name, count) in enumerate(sorted(mistake_by_label.items(), key=lambda item: -item[1]))
+        ]
+
+        return {'domain_mastery': domain_mastery, 'mistake_types': mistake_types}

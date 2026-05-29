@@ -28,6 +28,8 @@ import AdminClassRequestPanel from '../components/admin/AdminClassRequestPanel.v
 import AdminKnowledgeNexusPanel from '../components/admin/AdminKnowledgeNexusPanel.vue'
 import AdminTrialObservatoryPanel from '../components/admin/AdminTrialObservatoryPanel.vue'
 import type { SystemAnnouncement } from '../api/teacherAnnouncements'
+import { fetchAdminSettings, saveAdminSettings, fetchAdminDashboard, type AdminSettingsPayload, type AdminDashboardResult } from '../api/adminSettings'
+import { NInputNumber, NSwitch } from 'naive-ui'
 
 type NavKey = 'nexus' | 'agents' | 'knowledge' | 'observer' | 'governance'
 type Tone = 'purple' | 'amber' | 'green' | 'red'
@@ -92,6 +94,84 @@ const announcementTarget = ref<'teacher' | 'student' | 'all'>('teacher')
 const postingAnnouncement = ref(false)
 const recentAnnouncements = ref<SystemAnnouncement[]>([])
 
+const settingsLoading = ref(false)
+const settingsSaving = ref(false)
+const settingsError = ref('')
+const settingsOpenTime = ref('00:00')
+const settingsDailyLimit = ref('10')
+const settingsDifficulty = ref(50)
+const settingsAiStrategies = ref<{ key: string; label: string; enabled: boolean }[]>([])
+const settingsNotices = ref<{ key: string; label: string; enabled: boolean }[]>([])
+const dashboardData = ref<AdminDashboardResult | null>(null)
+const dashboardLoading = ref(false)
+
+const AI_STRATEGY_LABELS: Record<string, string> = {
+  auto_question_gen: '自动生成题目',
+  personalized_recommend: '个性化推荐',
+  weakness_detection: '薄弱点检测',
+  agent_grading: '智能体批改',
+}
+const NOTICE_LABELS: Record<string, string> = {
+  trial_published: '试炼发布通知',
+  quest_reminder: '委托提醒',
+  rank_change: '排名变化提醒',
+}
+
+async function loadSettings() {
+  settingsLoading.value = true
+  settingsError.value = ''
+  try {
+    const result = await fetchAdminSettings()
+    const s = result.settings
+    settingsOpenTime.value = s.rules?.open_time ?? '00:00'
+    settingsDailyLimit.value = s.rules?.daily_limit ?? '10'
+    settingsDifficulty.value = s.rules?.difficulty ?? 50
+    settingsAiStrategies.value = (s.ai_strategies ?? []).map((item) => ({
+      key: item.key,
+      label: AI_STRATEGY_LABELS[item.key] ?? item.key,
+      enabled: item.enabled,
+    }))
+    if (!settingsAiStrategies.value.length) {
+      settingsAiStrategies.value = Object.keys(AI_STRATEGY_LABELS).map((k) => ({ key: k, label: AI_STRATEGY_LABELS[k], enabled: false }))
+    }
+    settingsNotices.value = (s.notices ?? []).map((item) => ({
+      key: item.key,
+      label: NOTICE_LABELS[item.key] ?? item.key,
+      enabled: item.enabled,
+    }))
+    if (!settingsNotices.value.length) {
+      settingsNotices.value = Object.keys(NOTICE_LABELS).map((k) => ({ key: k, label: NOTICE_LABELS[k], enabled: true }))
+    }
+  } catch (err) {
+    settingsError.value = err instanceof Error ? err.message : '加载设置失败'
+  } finally {
+    settingsLoading.value = false
+  }
+}
+
+async function saveSettings() {
+  settingsSaving.value = true
+  try {
+    const payload: Partial<AdminSettingsPayload> = {
+      rules: {
+        open_time: settingsOpenTime.value,
+        daily_limit: settingsDailyLimit.value,
+        difficulty: settingsDifficulty.value,
+        punish: 'none',
+      },
+      ai_strategies: settingsAiStrategies.value.map(({ key, enabled }) => ({ key, enabled })),
+      notices: settingsNotices.value.map(({ key, enabled }) => ({ key, enabled })),
+      data_scope: 'all',
+    }
+    await saveAdminSettings(payload)
+    message.success('系统设置已保存')
+  } catch (err) {
+    message.error(err instanceof Error ? err.message : '保存失败')
+  } finally {
+    settingsSaving.value = false
+  }
+}
+
 const announcementTargetOptions: SelectOption[] = [
   { label: '全体教师', value: 'teacher' },
   { label: '全体学生', value: 'student' },
@@ -113,12 +193,76 @@ const periodOptions: SelectOption[] = [
 ]
 
 const metricCards: MetricCard[] = [
-  { label: '活跃学习者', value: '32,681', sub: '较昨日 ↑ 12.4%', icon: PeopleOutline, tone: 'purple' },
-  { label: '活跃教师', value: '2,153', sub: '较昨日 ↑ 8.7%', icon: BookOutline, tone: 'amber' },
-  { label: '运行智能体', value: '24', sub: '全部正常运行', icon: HardwareChipOutline, tone: 'purple' },
-  { label: '知识节点总数', value: '156,782', sub: '较昨日 ↑ 3.6%', icon: PlanetOutline, tone: 'purple' },
-  { label: '系统健康度', value: '98.7%', sub: '状态良好', icon: ShieldCheckmarkOutline, tone: 'purple' },
+  { label: '活跃学习者', value: '—', sub: '近 7 日有作答记录', icon: PeopleOutline, tone: 'purple' },
+  { label: '注册教师', value: '—', sub: '平台教师账号', icon: BookOutline, tone: 'amber' },
+  { label: '运行试炼', value: '—', sub: '当前进行中', icon: HardwareChipOutline, tone: 'purple' },
+  { label: '试炼总数', value: '—', sub: '累计发布', icon: PlanetOutline, tone: 'purple' },
+  { label: '系统健康度', value: '—', sub: '状态良好', icon: ShieldCheckmarkOutline, tone: 'purple' },
 ]
+
+async function loadDashboard() {
+  dashboardLoading.value = true
+  try {
+    dashboardData.value = await fetchAdminDashboard()
+  } catch {
+    dashboardData.value = null
+  } finally {
+    dashboardLoading.value = false
+  }
+}
+
+const liveMetricCards = computed<MetricCard[]>(() => {
+  const m = dashboardData.value?.metrics
+  if (!m) return metricCards
+  return [
+    {
+      label: '活跃学习者',
+      value: String(m.active_students),
+      sub: `共 ${m.total_students} 名学生`,
+      icon: PeopleOutline,
+      tone: 'purple',
+    },
+    {
+      label: '注册教师',
+      value: String(m.active_teachers),
+      sub: '平台教师账号',
+      icon: BookOutline,
+      tone: 'amber',
+    },
+    {
+      label: '运行试炼',
+      value: String(m.running_trials),
+      sub: `共 ${m.total_trials} 场试炼`,
+      icon: HardwareChipOutline,
+      tone: 'purple',
+    },
+    {
+      label: '试炼完成率',
+      value: `${m.trial_completion_rate}%`,
+      sub: '参与记录完成比例',
+      icon: PlanetOutline,
+      tone: 'purple',
+    },
+    {
+      label: '系统健康度',
+      value: `${m.health_score}%`,
+      sub: '状态良好',
+      icon: ShieldCheckmarkOutline,
+      tone: 'purple',
+    },
+  ]
+})
+
+const liveProgressMetrics = computed<ProgressMetric[]>(() => {
+  const p = dashboardData.value?.progress
+  if (!p) return progressMetrics
+  return [
+    { label: '学习任务完成率', value: p.task_completion_rate, delta: '实时', icon: SettingsOutline },
+    { label: '试炼参与率', value: p.trial_participation_rate, delta: '实时', icon: BookOutline },
+    { label: '知识掌握率', value: p.knowledge_mastery_rate, delta: '实时', icon: ShieldCheckmarkOutline },
+    { label: '学习活跃度', value: p.activity_rate, delta: '实时', icon: SparklesOutline },
+  ]
+})
 
 const observerMetricCards: MetricCard[] = [
   { label: '平台活跃度', value: '78.6%', sub: '较昨日 ↑ 8.6%', icon: AnalyticsOutline, tone: 'purple' },
@@ -186,7 +330,7 @@ const visibleMetrics = computed(() => {
   if (activeNav.value === 'observer') return observerMetricCards
   if (activeNav.value === 'agents') return agentsMetricCards
   if (activeNav.value === 'knowledge') return knowledgeMetricCards
-  return metricCards
+  return liveMetricCards.value
 })
 
 const anomalyItems = [
@@ -214,6 +358,10 @@ function setActiveNav(key: NavKey) {
   activeNav.value = key
   if (key === 'governance') {
     void loadAnnouncements()
+    void loadSettings()
+  }
+  if (key === 'nexus') {
+    void loadDashboard()
   }
 }
 
@@ -257,6 +405,7 @@ onMounted(() => {
   clockTimer = setInterval(() => {
     now.value = new Date()
   }, 1000)
+  void loadDashboard()
 })
 
 onUnmounted(() => {
@@ -352,7 +501,7 @@ onUnmounted(() => {
             <n-select v-model:value="period" :options="periodOptions" size="small" class="period-select" />
           </header>
           <div class="progress-list">
-            <article v-for="item in progressMetrics" :key="item.label">
+            <article v-for="item in liveProgressMetrics" :key="item.label">
               <span><n-icon :component="item.icon" /></span>
               <div>
                 <div class="progress-copy">
@@ -597,6 +746,55 @@ onUnmounted(() => {
         </article>
 
         <admin-class-request-panel />
+
+        <article class="panel governance-settings-panel">
+          <header class="panel-head">
+            <h2>系统设置</h2>
+            <button type="button" :disabled="settingsLoading" @click="loadSettings()">刷新</button>
+          </header>
+          <div v-if="settingsLoading" class="governance-empty">加载中…</div>
+          <div v-else-if="settingsError" class="governance-empty gov-err">{{ settingsError }}</div>
+          <template v-else>
+            <section class="gov-settings-section">
+              <h3>试炼规则</h3>
+              <label class="gov-field">
+                <span>每日试炼上限</span>
+                <n-input v-model:value="settingsDailyLimit" style="width: 100px" />
+              </label>
+              <label class="gov-field">
+                <span>开放时段（起始）</span>
+                <n-input v-model:value="settingsOpenTime" placeholder="00:00" style="width: 120px" />
+              </label>
+              <label class="gov-field">
+                <span>难度系数（0-100）</span>
+                <n-input-number v-model:value="settingsDifficulty" :min="0" :max="100" style="width: 120px" />
+              </label>
+            </section>
+            <section class="gov-settings-section">
+              <h3>AI 策略开关</h3>
+              <label
+                v-for="item in settingsAiStrategies"
+                :key="item.key"
+                class="gov-field gov-field--switch"
+              >
+                <span>{{ item.label }}</span>
+                <n-switch v-model:value="item.enabled" />
+              </label>
+            </section>
+            <section class="gov-settings-section">
+              <h3>通知配置</h3>
+              <label
+                v-for="item in settingsNotices"
+                :key="item.key"
+                class="gov-field gov-field--switch"
+              >
+                <span>{{ item.label }}</span>
+                <n-switch v-model:value="item.enabled" />
+              </label>
+            </section>
+            <n-button type="primary" :loading="settingsSaving" @click="saveSettings()">保存设置</n-button>
+          </template>
+        </article>
       </section>
 
       <footer class="admin-footer">© {{ currentYear }} PLEX Universe. All rights reserved.</footer>
@@ -1844,5 +2042,31 @@ onUnmounted(() => {
 .gov-announce-item small {
   color: rgba(167, 139, 250, 0.75);
   font-size: 0.78rem;
+}
+
+.governance-settings-panel {
+  grid-column: 1 / -1;
+}
+
+.gov-settings-section {
+  margin-bottom: 1.2rem;
+}
+
+.gov-settings-section h3 {
+  font-size: 0.85rem;
+  color: rgba(167, 139, 250, 0.9);
+  margin: 0 0 0.65rem;
+  letter-spacing: 0.03em;
+}
+
+.gov-field--switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+}
+
+.gov-err {
+  color: #ef4444;
 }
 </style>

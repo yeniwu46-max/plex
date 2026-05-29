@@ -1,7 +1,7 @@
 """边界条件补给站 · 紧急任务"""
 import random
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 
 from app.models import EmergencyMissionQuestion, EmergencyMissionSession, User, db
 from app.services.question_generator import KNOWLEDGE_LABELS, QuestionGenerator
@@ -59,10 +59,39 @@ class EmergencyMissionService:
         return picked[:EMERGENCY_QUESTION_COUNT]
 
     @staticmethod
+    def today_status(user_id: int) -> dict:
+        """查询今日紧急任务完成状态。"""
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        completed_today = (
+            EmergencyMissionSession.query.filter(
+                EmergencyMissionSession.user_id == user_id,
+                EmergencyMissionSession.status == 'completed',
+                EmergencyMissionSession.submitted_at >= today_start,
+            )
+            .order_by(EmergencyMissionSession.id.desc())
+            .first()
+        )
+        if completed_today:
+            return {'done': True, 'session_id': completed_today.id}
+        return {'done': False, 'session_id': None}
+
+    @staticmethod
     def start_session(user_id: int):
         user = User.query.get(user_id)
         if not user:
             raise ValueError('用户不存在')
+
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        completed_today = (
+            EmergencyMissionSession.query.filter(
+                EmergencyMissionSession.user_id == user_id,
+                EmergencyMissionSession.status == 'completed',
+                EmergencyMissionSession.submitted_at >= today_start,
+            )
+            .first()
+        )
+        if completed_today:
+            raise ValueError('already_done_today')
 
         active = (
             EmergencyMissionSession.query.filter_by(user_id=user_id, status='in_progress')

@@ -55,3 +55,14 @@ export async function fetchDashboardExtras() {
   if (data.code !== 0) throw new Error(data.message || '加载概览扩展失败')
   return data.data
 }
+
+export interface AbilityStatsResult {
+  radar: { dimensions: string[]; values: number[] }
+  trend: { x_data: string[]; correct_rate: number[]; practice_count: number[] }
+}
+
+export async function fetchAbilityStats() {
+  const { data } = await http.get<ApiEnvelope<AbilityStatsResult>>('/v1/student/ability-stats')
+  if (data.code !== 0) throw new Error(data.message || '能力统计加载失败')
+  return data.data
+}

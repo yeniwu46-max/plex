@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import User
+from app.services.admin_dashboard import AdminDashboardService
 from app.services.system_setting import SystemSettingService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -27,6 +28,16 @@ def get_admin_settings():
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/dashboard', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_admin_dashboard():
+    try:
+        return success_response(AdminDashboardService.get_dashboard())
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 

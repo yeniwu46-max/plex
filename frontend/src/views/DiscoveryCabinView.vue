@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { advanceDailyQuest } from '../api/studentOverview'
 import { NIcon } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -19,6 +20,7 @@ import PlexTopbar from '../components/layout/PlexTopbar.vue'
 import { fetchCurrentStudent, type CurrentStudent } from '../api/studentOverview'
 import { fetchStudentAssignments } from '../api/studentAssignments'
 import { useStudentNotificationSync } from '../composables/useStudentNotificationSync'
+import { fetchEmergencyTodayStatus } from '../api/emergencyMission'
 
 const auth = useAuthStore()
 const sidebarCollapsed = ref(false)
@@ -30,6 +32,7 @@ const arenaError = ref('')
 const selectedArenaKey = ref<string | null>(null)
 const classArenaInWorkspace = ref(false)
 const pendingFragmentCount = ref(0)
+const emergencyDoneToday = ref(false)
 const { syncTeacherAssignments } = useStudentNotificationSync()
 
 const displayName = computed(
@@ -110,9 +113,41 @@ watch(mapMode, (mode) => {
   }
 })
 
+async function loadEmergencyStatus() {
+  try {
+    const data = await fetchEmergencyTodayStatus()
+    emergencyDoneToday.value = data.done
+  } catch {
+    emergencyDoneToday.value = false
+  }
+}
+
+let fragmentPollTimer: ReturnType<typeof setInterval> | undefined
+
+async function triggerMorningLaunch() {
+  try {
+    await advanceDailyQuest('morning-launch')
+  } catch {
+    /* 幂等，忽略错误 */
+  }
+}
+
 onMounted(() => {
   void loadProfile()
   void loadAssignments()
+  void loadEmergencyStatus()
+  void triggerMorningLaunch()
+  fragmentPollTimer = setInterval(() => {
+    void loadAssignments()
+  }, 30000)
+})
+
+onActivated(() => {
+  void loadAssignments()
+})
+
+onBeforeUnmount(() => {
+  if (fragmentPollTimer !== undefined) clearInterval(fragmentPollTimer)
 })
 
 </script>
@@ -141,7 +176,12 @@ onMounted(() => {
           </button>
         </div>
 
-        <StarFieldMap v-if="mapMode === 'starfield'" :pending-fragment-count="pendingFragmentCount" />
+        <StarFieldMap
+          v-if="mapMode === 'starfield'"
+          :pending-fragment-count="pendingFragmentCount"
+          :emergency-done-today="emergencyDoneToday"
+          @emergency-completed="emergencyDoneToday = true"
+        />
 
         <div v-else class="cabin-trial-wrap" :class="{ 'cabin-trial-wrap--workspace': classArenaInWorkspace }">
           <ClassArenaHub

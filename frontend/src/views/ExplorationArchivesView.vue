@@ -1,53 +1,48 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { advanceDailyQuest } from '../api/studentOverview'
 import ArchiveProfileCard from '../components/archives/ArchiveProfileCard.vue'
 import ExplorationTendencyCard from '../components/archives/ExplorationTendencyCard.vue'
 import GrowthTrajectory from '../components/archives/GrowthTrajectory.vue'
 import SkillDistribution from '../components/archives/SkillDistribution.vue'
 import AchievementCollection from '../components/archives/AchievementCollection.vue'
 import EmergencyMissionRecords from '../components/archives/EmergencyMissionRecords.vue'
-import {
-  archiveProfile as mockProfile,
-  explorationTendency,
-  growthTimeline,
-  skillDistribution,
-  achievements as mockAchievements,
-  type AchievementItem,
-  type GrowthEvent,
-} from '../data/archivesMock'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
 import { fetchArchiveInsights, type EmergencyMissionArchiveRecord } from '../api/studentProgress'
+import type { AchievementItem, GrowthEvent, SkillItem } from '../data/archivesMock'
 
 const auth = useAuthStore()
 const sidebarCollapsed = ref(false)
 const overview = ref<StudentOverview | null>(null)
-const tendencyLabel = ref(explorationTendency.label)
-const tendencyDescription = ref(explorationTendency.description)
-const skillItemsFromApi = ref<typeof skillDistribution | null>(null)
+const tendencyLabel = ref('探索起步型')
+const tendencyDescription = ref('完成试炼与今日委托后，这里会展示你的探索倾向分析。')
+const skillItemsFromApi = ref<SkillItem[]>([])
 const emergencyRecords = ref<EmergencyMissionArchiveRecord[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
 
 const displayName = computed(
-  () => overview.value?.profile.real_name || auth.profile?.real_name || auth.profile?.username || mockProfile.displayName,
+  () => overview.value?.profile.real_name || auth.profile?.real_name || auth.profile?.username || 'Explorer',
 )
-const userLevel = computed(() => overview.value?.profile.level ?? auth.profile?.level ?? mockProfile.level)
+const userLevel = computed(() => overview.value?.profile.level ?? auth.profile?.level ?? 1)
 
 const profile = computed(() => ({
-  ...mockProfile,
   displayName: displayName.value,
   level: userLevel.value,
-  explorerId: overview.value?.profile.username ? `PX-${String(overview.value.profile.id).padStart(4, '0')}` : mockProfile.explorerId,
-  rankTitle: overview.value?.profile.title || mockProfile.rankTitle,
-  streakDays: overview.value?.profile.consecutive_days ?? mockProfile.streakDays,
+  explorerId: overview.value?.profile.id
+    ? `PX-${String(overview.value.profile.id).padStart(4, '0')}`
+    : auth.profile?.id
+      ? `PX-${String(auth.profile.id).padStart(4, '0')}`
+      : 'PX-0000',
+  rankTitle: overview.value?.profile.title || '见习 Explorer',
+  streakDays: overview.value?.profile.consecutive_days ?? 0,
 }))
 
 const achievementItems = computed<AchievementItem[]>(() => {
   const apiItems = overview.value?.achievements?.achievements ?? []
-  if (!apiItems.length) return mockAchievements
   const tones: AchievementItem['tone'][] = ['teal', 'gold', 'blue']
   const mapped: AchievementItem[] = apiItems.slice(0, 4).map((item, index) => ({
     id: String(item.id),
@@ -61,10 +56,7 @@ const achievementItems = computed<AchievementItem[]>(() => {
   return mapped
 })
 
-const skillItems = computed(() => {
-  if (skillItemsFromApi.value?.length) return skillItemsFromApi.value
-  return skillDistribution
-})
+const skillItems = computed(() => skillItemsFromApi.value)
 
 const growthEvents = computed<GrowthEvent[]>(() => {
   const tones: GrowthEvent['tone'][] = ['teal', 'gold', 'blue', 'purple']
@@ -96,7 +88,6 @@ const growthEvents = computed<GrowthEvent[]>(() => {
     return a._prio - b._prio
   })
 
-  if (!merged.length) return growthTimeline
   return merged.slice(0, 5).map(({ id, title, date, description, tone }) => ({
     id,
     title,
@@ -112,19 +103,17 @@ async function loadArchive() {
   try {
     const [overviewResult, insights] = await Promise.all([
       fetchStudentOverview(),
-      fetchArchiveInsights().catch(() => null),
+      fetchArchiveInsights(),
     ])
     overview.value = overviewResult
-    if (insights) {
-      tendencyLabel.value = insights.tendency.label
-      tendencyDescription.value = insights.tendency.description
-      skillItemsFromApi.value = insights.skills.map((skill) => ({
-        key: skill.key,
-        label: skill.label,
-        percent: skill.percent,
-      }))
-      emergencyRecords.value = (insights.emergency_missions ?? []) as EmergencyMissionArchiveRecord[]
-    }
+    tendencyLabel.value = insights.tendency.label
+    tendencyDescription.value = insights.tendency.description
+    skillItemsFromApi.value = insights.skills.map((skill) => ({
+      key: skill.key,
+      label: skill.label,
+      percent: skill.percent,
+    }))
+    emergencyRecords.value = (insights.emergency_missions ?? []) as EmergencyMissionArchiveRecord[]
     auth.syncProfile({
       id: overview.value.profile.id,
       username: overview.value.profile.username,
@@ -141,7 +130,18 @@ async function loadArchive() {
   }
 }
 
-onMounted(loadArchive)
+async function triggerNightSummary() {
+  try {
+    await advanceDailyQuest('night-summary')
+  } catch {
+    /* 幂等 */
+  }
+}
+
+onMounted(() => {
+  void loadArchive()
+  void triggerNightSummary()
+})
 
 </script>
 

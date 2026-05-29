@@ -15,9 +15,11 @@ import EmergencyMissionModal from './EmergencyMissionModal.vue'
 const props = withDefaults(
   defineProps<{
     pendingFragmentCount?: number
+    emergencyDoneToday?: boolean
   }>(),
   {
     pendingFragmentCount: 0,
+    emergencyDoneToday: false,
   },
 )
 
@@ -35,6 +37,7 @@ const router = useRouter()
 const emergencyOpen = ref(false)
 
 function openEmergencyMission() {
+  if (props.emergencyDoneToday) return
   emergencyOpen.value = true
 }
 
@@ -112,10 +115,12 @@ function openStarPath() {
     <button
       type="button"
       class="map-node map-node--teal map-node--top"
-      aria-label="边界条件补给站，开启紧急任务"
+      :class="{ 'map-node--done': emergencyDoneToday }"
+      :aria-label="emergencyDoneToday ? '今日紧急任务已完成' : '边界条件补给站，开启紧急任务'"
+      :disabled="emergencyDoneToday"
       @click="openEmergencyMission"
     >
-      <span class="map-node__tag">推荐</span>
+      <span class="map-node__tag">{{ emergencyDoneToday ? '今日已完成' : '推荐' }}</span>
       <span class="map-node__orb">
         <n-icon :component="StorefrontOutline" />
       </span>
@@ -326,6 +331,13 @@ function openStarPath() {
 
 .map-node--teal {
   --node-color: #27ffee;
+}
+
+.map-node--done,
+.map-node:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
 }
 
 .map-node--amber {

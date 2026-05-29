@@ -36,6 +36,17 @@ def get_archive_insights():
         return error_response(str(exc), 50001, None, 500)
 
 
+@student_progress_bp.route('/emergency-missions/today-status', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_emergency_today_status():
+    try:
+        user_id = int(get_jwt_identity())
+        return success_response(EmergencyMissionService.today_status(user_id))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @student_progress_bp.route('/emergency-missions/start', methods=['POST'])
 @jwt_required()
 @role_required('student')
@@ -44,7 +55,10 @@ def start_emergency_mission():
         user_id = int(get_jwt_identity())
         return success_response(EmergencyMissionService.start_session(user_id), '紧急任务已生成')
     except ValueError as exc:
-        return error_response(str(exc), 40001, None, 400)
+        msg = str(exc)
+        if msg == 'already_done_today':
+            return error_response('今日已完成紧急任务，明日再来吧', 40901, None, 409)
+        return error_response(msg, 40001, None, 400)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 
@@ -76,5 +90,18 @@ def get_dashboard_extras():
     try:
         user_id = int(get_jwt_identity())
         return success_response(StudentProgressService.get_student_dashboard_extras(user_id))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/ability-stats', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_ability_stats():
+    try:
+        user_id = int(get_jwt_identity())
+        return success_response(StudentProgressService.get_ability_stats(user_id))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)

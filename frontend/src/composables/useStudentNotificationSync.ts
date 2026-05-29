@@ -7,6 +7,14 @@ import {
 } from '../stores/notifications'
 import { fetchStudentAssignments } from '../api/studentAssignments'
 import { fetchStudentInbox } from '../api/studentInbox'
+import { http, type ApiEnvelope } from '../api/http'
+import type { SystemAnnouncement } from '../api/teacherAnnouncements'
+
+async function fetchStudentAnnouncements(): Promise<SystemAnnouncement[]> {
+  const { data } = await http.get<ApiEnvelope<SystemAnnouncement[]>>('/v1/student/announcements')
+  if (data.code !== 0) throw new Error(data.message || '公告加载失败')
+  return data.data
+}
 
 const POLL_MS = 20000
 
@@ -32,6 +40,17 @@ export function useStudentNotificationSync() {
     try {
       const inbox = await fetchStudentInbox(true)
       notifications.ingestServer(id, inbox.items)
+    } catch {
+      /* 非关键 */
+    }
+  }
+
+  async function syncAnnouncements() {
+    const id = userId()
+    if (!id || auth.profile?.role !== 'student') return
+    try {
+      const items = await fetchStudentAnnouncements()
+      notifications.ingestAnnouncements(id, items)
     } catch {
       /* 非关键 */
     }
@@ -71,12 +90,14 @@ export function useStudentNotificationSync() {
   async function syncAll() {
     await syncServerInbox()
     await syncTeacherAssignments()
+    await syncAnnouncements()
   }
 
   function startPolling() {
     if (pollTimer) return
     pollTimer = setInterval(() => {
       void syncServerInbox()
+      void syncAnnouncements()
     }, POLL_MS)
   }
 

@@ -6,6 +6,7 @@ export type PlexNotificationKind =
   | 'first_coding_solved'
   | 'teacher_task_published'
   | 'daily_quest_all_done'
+  | 'system_announcement'
 
 export interface PlexNotification {
   id: string
@@ -35,6 +36,10 @@ const COPY: Record<
   daily_quest_all_done: {
     title: '今日委托',
     body: '今日委托已全部完成，奖励反馈已解锁。',
+  },
+  system_announcement: {
+    title: '系统公告',
+    body: '管理员发布了新公告，请查阅。',
   },
 }
 
@@ -211,12 +216,50 @@ export const useNotificationStore = defineStore('notifications', () => {
     }
   }
 
+  /** 合并管理员公告（学生端），按公告 id 去重 */
+  function ingestAnnouncements(
+    userId: number | string,
+    announcements: Array<{ id: number; title: string; body: string; created_at: string | null }>,
+  ) {
+    const seenKey = `plex-notif-announce-seen:${userId}`
+    let seen: number[] = []
+    try {
+      const raw = localStorage.getItem(seenKey)
+      if (raw) seen = JSON.parse(raw) as number[]
+    } catch {
+      seen = []
+    }
+    const seenSet = new Set(seen)
+    let added = false
+    for (const row of announcements) {
+      if (seenSet.has(row.id)) continue
+      items.value = [
+        {
+          id: `announce-${row.id}`,
+          kind: 'system_announcement' as const,
+          title: row.title,
+          body: row.body,
+          createdAt: row.created_at ?? new Date().toISOString(),
+          read: false,
+        },
+        ...items.value,
+      ].slice(0, 50)
+      seenSet.add(row.id)
+      added = true
+    }
+    if (added) {
+      persist(userId)
+      localStorage.setItem(seenKey, JSON.stringify([...seenSet]))
+    }
+  }
+
   return {
     items,
     unreadCount,
     hydrate,
     push,
     ingestServer,
+    ingestAnnouncements,
     markRead,
     markAllRead,
     clearForLogout,

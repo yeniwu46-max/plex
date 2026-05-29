@@ -1,7 +1,8 @@
 """学生星轨 / 探索档案聚合（由试炼、委托、积分推导）"""
 from collections import defaultdict
+from datetime import date, datetime, timedelta
 
-from app.models import Trial, TrialParticipation, User, UserDailyQuest, db
+from app.models import Trial, TrialParticipation, TrialQuestionProgress, User, UserDailyQuest, db
 
 DOMAIN_CATALOG = [
     {'key': 'lang', 'title': '语言基础', 'knowledge_keys': ['lang', 'python', 'syntax', 'basic']},
@@ -157,3 +158,70 @@ class StudentProgressService:
         if user and user.class_id:
             running = Trial.query.filter_by(class_id=user.class_id, status='running').count()
         return {'running_trials': running}
+
+    RADAR_DIMENSIONS = [
+        ('抽象建模', ['geom', 'geometry', 'graph', 'tree']),
+        ('算法设计', ['algo', 'greedy', 'sort', 'complexity']),
+        ('分解问题', ['dp']),
+        ('调试能力', ['lang', 'python', 'syntax', 'basic']),
+        ('逻辑推理', ['data', 'ds', 'stack', 'heap']),
+    ]
+
+    @staticmethod
+    def get_ability_stats(user_id: int):
+        user = User.query.get(user_id)
+        if not user:
+            raise ValueError('用户不存在')
+
+        completed = StudentProgressService._completed_trials(user_id)
+        skill_scores: dict[str, list[int]] = defaultdict(list)
+        for part in completed:
+            key = (part.trial.knowledge_key or 'algo').lower()
+            skill_scores[key].append(part.score or 60)
+
+        def avg_for_keys(keys: list[str]) -> int:
+            scores: list[int] = []
+            for key in keys:
+                scores.extend(skill_scores.get(key, []))
+            return min(100, round(sum(scores) / len(scores))) if scores else 0
+
+        radar_values = [avg_for_keys(keys) for _, keys in StudentProgressService.RADAR_DIMENSIONS]
+        if not any(radar_values):
+            boost = min(30, (user.level or 1) * 5)
+            radar_values = [min(100, boost + index * 4) for index in range(len(radar_values))]
+
+        weekday_labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        x_data: list[str] = []
+        correct_rates: list[int] = []
+        practice_counts: list[int] = []
+        today = date.today()
+
+        for offset in range(6, -1, -1):
+            day = today - timedelta(days=offset)
+            x_data.append(weekday_labels[day.weekday()])
+            day_start = datetime.combine(day, datetime.min.time())
+            day_end = datetime.combine(day, datetime.max.time())
+            rows = TrialQuestionProgress.query.filter(
+                TrialQuestionProgress.user_id == user_id,
+                TrialQuestionProgress.status == 'completed',
+                TrialQuestionProgress.answered_at >= day_start,
+                TrialQuestionProgress.answered_at <= day_end,
+            ).all()
+            practice_counts.append(len(rows))
+            if rows:
+                correct = len([row for row in rows if row.is_correct])
+                correct_rates.append(round((correct / len(rows)) * 100))
+            else:
+                correct_rates.append(0)
+
+        return {
+            'radar': {
+                'dimensions': [label for label, _ in StudentProgressService.RADAR_DIMENSIONS],
+                'values': radar_values,
+            },
+            'trend': {
+                'x_data': x_data,
+                'correct_rate': correct_rates,
+                'practice_count': practice_counts,
+            },
+        }

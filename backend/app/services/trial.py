@@ -365,6 +365,12 @@ class TrialService(BaseService):
 
             incentive_feedback = IncentiveService.process_user_incentive(user_id)
 
+        try:
+            from .daily_quest import DailyQuestService
+            DailyQuestService.advance_progress(user_id, 'trial-challenge')
+        except Exception:
+            pass
+
         db.session.commit()
         return {
             'participation': part.to_dict(),

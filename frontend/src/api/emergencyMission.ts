@@ -53,6 +53,14 @@ export async function startEmergencyMission() {
   return data.data
 }
 
+export async function fetchEmergencyTodayStatus(): Promise<{ done: boolean; session_id: number | null }> {
+  const { data } = await http.get<ApiEnvelope<{ done: boolean; session_id: number | null }>>(
+    '/v1/student/emergency-missions/today-status',
+  )
+  if (data.code !== 0) throw new Error(data.message || '查询今日状态失败')
+  return data.data
+}
+
 export async function submitEmergencyMission(
   sessionId: number,
   answers: Array<{ question_id: number; selected_index: number }>,

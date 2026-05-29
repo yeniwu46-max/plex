@@ -34,6 +34,22 @@ def get_teacher_overview():
         return error_response(str(exc), 50001, None, 500)
 
 
+@teacher_bp.route('/class-stats', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_teacher_class_stats():
+    try:
+        current_user_id = int(get_jwt_identity())
+        class_id = request.args.get('class_id', type=int)
+        return success_response(TeacherService.get_class_stats(current_user_id, class_id))
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @teacher_bp.route('/classes/<int:class_id>/trial-answers', methods=['GET'])
 @jwt_required()
 @role_required('teacher', 'admin')

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { NButton, NIcon, NSelect } from 'naive-ui'
 import {
   CompassOutline,
@@ -21,6 +21,7 @@ import PlexPieChart from '../components/charts/PlexPieChart.vue'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import { buildClassStarfieldNodes, buildStarfieldInsight, polylineFromPoints } from '../data/teacherStarfield'
 import type { TeacherStudentRow } from '../api/teacherOverview'
+import { fetchTeacherClassStats, type TeacherClassStatsResult } from '../api/teacherOverview'
 
 const {
   overview,
@@ -37,6 +38,50 @@ const {
   loadOverview,
   changePeriod,
 } = useTeacherOverviewInjected()
+
+const classStats = ref<TeacherClassStatsResult | null>(null)
+
+async function loadClassStats() {
+  if (!selectedClassId.value) {
+    classStats.value = null
+    return
+  }
+  try {
+    classStats.value = await fetchTeacherClassStats(selectedClassId.value)
+  } catch {
+    classStats.value = null
+  }
+}
+
+onMounted(() => {
+  void loadClassStats()
+})
+
+watch(selectedClassId, () => {
+  void loadClassStats()
+})
+
+const domainChartData = computed(() => {
+  const items = classStats.value?.domain_mastery ?? []
+  if (!items.length) {
+    return {
+      xData: ['暂无数据'],
+      series: [{ name: '班级掌握度', data: [0], color: '#f97316' }],
+    }
+  }
+  return {
+    xData: items.map((item) => item.label),
+    series: [{ name: '班级掌握度', data: items.map((item) => item.mastery_rate), color: '#f97316' }],
+  }
+})
+
+const mistakeChartData = computed(() => {
+  const items = classStats.value?.mistake_types ?? []
+  if (!items.length) {
+    return [{ name: '暂无错题', value: 1, color: '#64748b' }]
+  }
+  return items
+})
 
 const DAILY_QUEST_LABELS = ['晨间启动', '修复知识碎片', '试炼挑战', '夜间总结'] as const
 
@@ -247,12 +292,8 @@ function activityDescription() {
             </header>
             <div class="navigator-home__chart-wrap">
               <plex-bar-chart
-                :x-data="['Python基础', '控制流', '函数', '数据结构', '算法', '面向对象']"
-                :series="[{
-                  name: '班级平均分',
-                  data: [88, 76, 68, 62, 52, 45],
-                  color: '#f97316'
-                }]"
+                :x-data="domainChartData.xData"
+                :series="domainChartData.series"
               />
             </div>
           </article>
@@ -262,14 +303,7 @@ function activityDescription() {
               <h2 class="teacher-panel__title">错题类型分布</h2>
             </header>
             <div class="navigator-home__chart-wrap">
-              <plex-pie-chart
-                :data="[
-                  { name: '语法错误', value: 28, color: '#f97316' },
-                  { name: '逻辑错误', value: 35, color: '#fb923c' },
-                  { name: '边界条件', value: 22, color: '#fdba74' },
-                  { name: '算法复杂度', value: 15, color: '#fde68a' },
-                ]"
-              />
+              <plex-pie-chart :data="mistakeChartData" />
             </div>
           </article>
         </div>

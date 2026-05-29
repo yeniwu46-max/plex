@@ -8,6 +8,7 @@ import {
 } from '../../api/studentAssignments'
 import type { DailyQuestTodayResult } from '../../api/studentOverview'
 import { showIncentiveFeedback } from '../../utils/incentiveFeedback'
+import { useAuthStore } from '../../stores/auth'
 
 const props = defineProps<{
   assignments: TeacherAssignmentsResult
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
+const authStore = useAuthStore()
 const selections = ref<Record<number, number | null>>({})
 const submittingId = ref<number | null>(null)
 const feedback = ref<Record<number, { correct: boolean; correctIndex: number }>>({})
@@ -58,6 +60,9 @@ async function submit(item: TeacherAssignmentItem) {
     const result = await submitAssignmentAnswer(item.id, selected, elapsedSec(item.id))
     feedback.value[item.id] = { correct: result.correct, correctIndex: result.correct_index }
     showIncentiveFeedback(message, result.incentive)
+    if (result.incentive?.total_points !== undefined) {
+      authStore.syncProfile({ total_points: result.incentive.total_points, level: result.incentive.level })
+    }
     emit('updated', { assignments: result.assignments, daily: result.daily })
     message.success(result.correct ? '回答正确，已计入知识碎片修复' : '回答有误，可继续尝试其他题目')
   } catch (error) {

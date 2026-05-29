@@ -71,6 +71,7 @@ export interface TeacherStudentRow {
   inactive_days: number | null
   is_inactive_7d: boolean
   reasons?: string[]
+  weak_domain?: string | null
 }
 
 export interface TeacherActivity {
@@ -108,5 +109,18 @@ export async function fetchTeacherOverview(params: { classId?: number | null; pe
   if (data.code !== 0) {
     throw new Error(data.message || '教师端数据加载失败')
   }
+  return data.data
+}
+
+export interface TeacherClassStatsResult {
+  domain_mastery: Array<{ label: string; mastery_rate: number }>
+  mistake_types: Array<{ name: string; value: number; color: string }>
+}
+
+export async function fetchTeacherClassStats(classId?: number | null) {
+  const { data } = await http.get<ApiEnvelope<TeacherClassStatsResult>>('/v1/teacher/class-stats', {
+    params: { class_id: classId || undefined },
+  })
+  if (data.code !== 0) throw new Error(data.message || '班级统计加载失败')
   return data.data
 }

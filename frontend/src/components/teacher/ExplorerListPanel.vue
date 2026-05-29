@@ -59,6 +59,9 @@ const filteredStudents = computed(() => {
   } else if (props.statusFilter === 'online') {
     rows = rows.filter((s) => !s.is_inactive_7d && s.status === 'active')
   }
+  if (props.domainFilter && props.domainFilter !== 'all') {
+    rows = rows.filter((s) => !s.weak_domain || s.weak_domain === props.domainFilter)
+  }
   if (props.sortBy === 'points') {
     rows.sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0))
   } else if (props.sortBy === 'level') {

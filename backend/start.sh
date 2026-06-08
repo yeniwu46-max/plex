@@ -28,8 +28,8 @@ else
 fi
 
 echo ""
-echo "[2/4] 初始化数据库..."
-python3 init_db.py
+echo "[2/4] 非破坏性初始化数据库..."
+python3 manage.py init
 if [ $? -ne 0 ]; then
     echo "数据库初始化失败"
     exit 1

@@ -18,10 +18,13 @@ export interface StudentRecommendationsResult {
     daily_minutes?: string | null
   }
   profile_update_suggestion?: {
+    id: number
     dimension: string
-    value: string
+    proposed_value: string
+    evidence: string[]
     source: string
-    requires_confirmation: boolean
+    status: string
+    profile_version: number
   } | null
 }
 

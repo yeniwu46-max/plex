@@ -59,3 +59,30 @@ def profile_history():
         request.args.get('page', 1, type=int),
         request.args.get('page_size', 20, type=int),
     ))
+
+
+@student_profile_bp.route('/suggestions', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def profile_suggestions():
+    return success_response(StudentProfileService.suggestions(
+        int(get_jwt_identity()),
+        request.args.get('status', 'pending'),
+    ))
+
+
+@student_profile_bp.route('/suggestions/<int:suggestion_id>', methods=['PUT'])
+@jwt_required()
+@role_required('student')
+def resolve_profile_suggestion(suggestion_id):
+    try:
+        payload = request.get_json() or {}
+        return success_response(StudentProfileService.resolve_suggestion(
+            int(get_jwt_identity()),
+            suggestion_id,
+            payload.get('action') or '',
+        ))
+    except LookupError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)

@@ -24,6 +24,17 @@ def create_resource_task():
         return error_response(str(exc), code, None, 400)
 
 
+@personalized_resources_bp.route('/student/resource-generation/tasks', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def list_resource_tasks():
+    return success_response(PersonalizedResourceService.list_tasks(
+        int(get_jwt_identity()),
+        request.args.get('page', 1, type=int),
+        request.args.get('page_size', 20, type=int),
+    ))
+
+
 @personalized_resources_bp.route('/student/resource-generation/tasks/<task_id>', methods=['GET'])
 @jwt_required()
 @role_required('student')

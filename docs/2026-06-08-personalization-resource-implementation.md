@@ -142,3 +142,6 @@ IFLYTEK_SPARK_URL=https://spark-api-open.xf-yun.com/v1/chat/completions
 - 制作 PPT、架构图、7 分钟视频脚本并录制最终视频。
 - 在全新机器或干净环境执行一次完整部署。
 
+## 八、工程稳定阶段更新
+
+2026-06-09 已进一步完成任务幂等、原子领取、启动恢复、任务历史、五类资源 JSON Schema、风险原因、持久化画像建议、健康检查和非破坏性数据库管理命令。以 `docs/2026-06-09-engineering-stability.md` 为最新工程说明。

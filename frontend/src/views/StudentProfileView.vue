@@ -5,13 +5,17 @@ import DashboardShell from '../components/layout/DashboardShell.vue'
 import {
   chatDynamicProfile,
   fetchDynamicProfile,
+  fetchProfileSuggestions,
+  resolveProfileSuggestion,
   updateDynamicProfile,
   type DynamicStudentProfile,
   type ProfileDimensionKey,
+  type ProfileSuggestion,
 } from '../api/personalizedProfile'
 
 const message = useMessage()
 const profile = ref<DynamicStudentProfile | null>(null)
+const suggestions = ref<ProfileSuggestion[]>([])
 const prompt = ref('')
 const loading = ref(false)
 const backend = ref('')
@@ -55,8 +59,26 @@ async function edit(key: ProfileDimensionKey) {
   message.success('画像已按你的确认更新')
 }
 
+async function loadSuggestions() {
+  suggestions.value = (await fetchProfileSuggestions()).items
+}
+
+async function resolveSuggestion(item: ProfileSuggestion, action: 'accepted' | 'rejected') {
+  try {
+    const result = await resolveProfileSuggestion(item.id, action)
+    if (result.profile) profile.value = result.profile
+    await loadSuggestions()
+    message.success(action === 'accepted' ? '画像建议已接受' : '画像建议已忽略')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '画像建议处理失败')
+  }
+}
+
 onMounted(async () => {
-  profile.value = await fetchDynamicProfile()
+  await Promise.all([
+    fetchDynamicProfile().then((value) => { profile.value = value }),
+    loadSuggestions(),
+  ])
 })
 </script>
 
@@ -70,6 +92,20 @@ onMounted(async () => {
       <section class="profile-dialog">
         <n-input v-model:value="prompt" type="textarea" :autosize="{ minRows: 3, maxRows: 6 }" placeholder="介绍你的专业、基础、目标、讲解偏好、易错点、学习节奏和兴趣方向。" @keydown.ctrl.enter.prevent="analyze" />
         <div class="dialog-actions"><span v-if="backend">本次后端：{{ backend }}</span><n-button type="primary" :loading="loading" @click="analyze">分析并更新画像</n-button></div>
+      </section>
+      <section v-if="suggestions.length" class="suggestion-list">
+        <article v-for="item in suggestions" :key="item.id" class="suggestion-card">
+          <div>
+            <n-tag type="warning">学习行为建议</n-tag>
+            <h3>{{ labels[item.dimension] }}</h3>
+            <p>{{ item.proposed_value }}</p>
+            <small>{{ item.evidence.join('；') }}</small>
+          </div>
+          <footer>
+            <n-button secondary @click="resolveSuggestion(item, 'rejected')">忽略</n-button>
+            <n-button type="primary" @click="resolveSuggestion(item, 'accepted')">接受并更新画像</n-button>
+          </footer>
+        </article>
       </section>
       <section class="dimension-grid">
         <article v-for="[key, item] in entries" :key="key" class="dimension-card">
@@ -85,5 +121,5 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.profile-page{width:100%;padding:0 var(--plex-page-gutter-x) 2rem;overflow-y:auto}.profile-hero,.profile-dialog,.dimension-card{border:1px solid rgba(37,245,238,.16);background:rgba(3,16,28,.82);border-radius:18px}.profile-hero{display:flex;justify-content:space-between;align-items:center;padding:1.5rem;margin-bottom:1rem}.profile-hero p{color:#52fff1;letter-spacing:.12em;font-size:.72rem;margin:0}.profile-hero h2{margin:.35rem 0;color:#f3fbff}.profile-hero span{color:rgba(215,230,242,.68)}.profile-dialog{padding:1.25rem;margin-bottom:1rem}.dialog-actions{display:flex;justify-content:space-between;align-items:center;margin-top:.8rem;color:#8ddbd6;font-size:.82rem}.dimension-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.dimension-card{padding:1.2rem}.dimension-card header{display:flex;justify-content:space-between;align-items:center}.dimension-card h3{margin:0;color:#effaff}.dimension-value{min-height:2.8rem;color:#cfe8f3;line-height:1.55}.dimension-card ul{min-height:2rem;padding-left:1.1rem;color:rgba(205,222,235,.62);font-size:.82rem}@media(max-width:800px){.dimension-grid{grid-template-columns:1fr}}
+.profile-page{width:100%;padding:0 var(--plex-page-gutter-x) 2rem;overflow-y:auto}.profile-hero,.profile-dialog,.dimension-card,.suggestion-card{border:1px solid rgba(37,245,238,.16);background:rgba(3,16,28,.82);border-radius:18px}.profile-hero{display:flex;justify-content:space-between;align-items:center;padding:1.5rem;margin-bottom:1rem}.profile-hero p{color:#52fff1;letter-spacing:.12em;font-size:.72rem;margin:0}.profile-hero h2{margin:.35rem 0;color:#f3fbff}.profile-hero span{color:rgba(215,230,242,.68)}.profile-dialog{padding:1.25rem;margin-bottom:1rem}.dialog-actions{display:flex;justify-content:space-between;align-items:center;margin-top:.8rem;color:#8ddbd6;font-size:.82rem}.suggestion-list{display:grid;gap:.75rem;margin-bottom:1rem}.suggestion-card{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.2rem}.suggestion-card h3{margin:.5rem 0;color:#effaff}.suggestion-card p{margin:.25rem 0;color:#cfe8f3}.suggestion-card small{color:rgba(205,222,235,.62)}.suggestion-card footer{display:flex;gap:.5rem;flex-shrink:0}.dimension-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.dimension-card{padding:1.2rem}.dimension-card header{display:flex;justify-content:space-between;align-items:center}.dimension-card h3{margin:0;color:#effaff}.dimension-value{min-height:2.8rem;color:#cfe8f3;line-height:1.55}.dimension-card ul{min-height:2rem;padding-left:1.1rem;color:rgba(205,222,235,.62);font-size:.82rem}@media(max-width:800px){.dimension-grid{grid-template-columns:1fr}.suggestion-card{align-items:stretch;flex-direction:column}.suggestion-card footer{justify-content:flex-end}}
 </style>

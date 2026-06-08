@@ -23,6 +23,7 @@ from .search import search_bp
 from .file_upload import upload_bp
 from .student_profile import student_profile_bp
 from .personalized_resources import personalized_resources_bp
+from .health import health_bp
 
 def register_routes(app):
     """注册所有路由"""
@@ -49,3 +50,4 @@ def register_routes(app):
     app.register_blueprint(upload_bp)
     app.register_blueprint(student_profile_bp)
     app.register_blueprint(personalized_resources_bp)
+    app.register_blueprint(health_bp)

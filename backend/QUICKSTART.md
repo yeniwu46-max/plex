@@ -34,23 +34,21 @@ cd backend
 pip install -r requirements.txt
 ```
 
-### 第 2 步：初始化数据库
+### 第 2 步：非破坏性初始化/升级数据库
 
 ```bash
-python init_db.py
+python manage.py init
 ```
 
-输出示例：
+该命令对空库创建当前结构并标记迁移版本；对已有库执行增量升级，不删除业务数据。
+
+需要准备两组比赛演示画像时执行：
+
+```bash
+python manage.py seed-demo
 ```
-删除现有表...
-创建新表...
-插入初始数据...
-数据库初始化完成！
-测试账户信息：
-  管理员: admin / admin123
-  教师: teacher001 / teacher123
-  学生: student001 / student123 (学生001-005)
-```
+
+`init_db.py` 会删除所有表，仅限明确需要重置本地演示库时手工执行。
 
 ### 第 3 步：启动应用
 
@@ -207,7 +205,7 @@ cd backend
 python -m unittest tests.test_trials tests.test_admin_settings tests.test_teacher_student_trials tests.test_student_progress -v
 ```
 
-本地若已有旧库，需重启后端或执行 `db.create_all()` 以创建 `system_settings` 表。
+本地若已有旧库，执行 `python manage.py init` 完成非破坏性升级。
 
 ---
 

@@ -66,6 +66,9 @@ class MistakeService:
             db.session.add(row)
 
         db.session.commit()
+        from app.services.student_profile import StudentProfileService
+
+        StudentProfileService.create_behavior_suggestion(user_id)
         return row
 
     @staticmethod

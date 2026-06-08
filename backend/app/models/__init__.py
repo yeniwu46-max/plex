@@ -21,7 +21,7 @@ from .student_notification import StudentNotification
 from .class_change_request import ClassChangeRequest
 from .student_mistake import StudentMistake
 from .learning_resource import LearningResource
-from .student_profile import StudentProfile, StudentProfileHistory
+from .student_profile import StudentProfile, StudentProfileHistory, StudentProfileSuggestion
 from .personalized_resource import PersonalizedLearningResource, ResourceGenerationTask
 
 __all__ = [
@@ -53,6 +53,7 @@ __all__ = [
     'LearningResource',
     'StudentProfile',
     'StudentProfileHistory',
+    'StudentProfileSuggestion',
     'PersonalizedLearningResource',
     'ResourceGenerationTask',
 ]

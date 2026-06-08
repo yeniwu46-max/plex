@@ -186,6 +186,14 @@ def create_app(config_name='development'):
         from app.services.learning_resource import LearningResourceService
 
         LearningResourceService.ensure_seed()
+        if not app.config.get('TESTING'):
+            from app.services.personalized_resource import PersonalizedResourceService
+
+            try:
+                PersonalizedResourceService.recover_stale_tasks(app)
+            except Exception:
+                db.session.rollback()
+                app.logger.exception('Resource task recovery skipped; run `python manage.py upgrade`.')
 
     return app
 

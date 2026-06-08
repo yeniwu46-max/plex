@@ -10,3 +10,4 @@ marshmallow-sqlalchemy==0.29.0
 Werkzeug==2.3.0
 requests==2.31.0
 alembic==1.13.1
+jsonschema==4.23.0

@@ -1,7 +1,7 @@
 """统一个性化推荐（规则层，聚合错题与学习报告）"""
 from app.services.evaluation import EvaluationService
 from app.services.mistake import MistakeService
-from app.models import PersonalizedLearningResource, StudentProfile
+from app.models import PersonalizedLearningResource, StudentProfile, StudentProfileSuggestion
 
 
 class RecommendationService:
@@ -26,6 +26,10 @@ class RecommendationService:
         dimensions = profile.dimensions if profile else {}
         pace = (dimensions.get('learning_pace') or {}).get('value') if dimensions else None
         preference = (dimensions.get('explanation_preference') or {}).get('value') if dimensions else None
+        pending_suggestion = StudentProfileSuggestion.query.filter_by(
+            user_id=user_id,
+            status='pending',
+        ).order_by(StudentProfileSuggestion.created_at.desc()).first()
         return {
             'period': period,
             'summary': report.get('summary'),
@@ -44,13 +48,5 @@ class RecommendationService:
                 ),
                 'daily_minutes': pace,
             },
-            'profile_update_suggestion': (
-                {
-                    'dimension': 'mistake_pattern',
-                    'value': '近期薄弱点：' + '、'.join(item['knowledge_label'] for item in weak[:3]),
-                    'source': 'behavior',
-                    'requires_confirmation': True,
-                }
-                if weak else None
-            ),
+            'profile_update_suggestion': pending_suggestion.to_dict() if pending_suggestion else None,
         }

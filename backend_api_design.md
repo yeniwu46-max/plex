@@ -1354,11 +1354,21 @@ curl -X POST http://localhost:5000/api/v1/classes \
 个性化资源：
 
 - `POST /api/v1/student/resource-generation/tasks`
+- `GET /api/v1/student/resource-generation/tasks`
 - `GET /api/v1/student/resource-generation/tasks/<task_id>`
 - `POST /api/v1/student/resource-generation/tasks/<task_id>/retry`
 - `GET /api/v1/student/personalized-resources`
 - `GET /api/v1/teacher/personalized-resources/review`
 - `PUT /api/v1/teacher/personalized-resources/<id>/review`
 
-生成资源统一返回 `backend`、`citations`、`confidence`、`review_status`、`generator_agent`、`generation_task_id` 和 `profile_snapshot`。详细实现与验证结果见 `docs/2026-06-08-personalization-resource-implementation.md`。
+画像闭环：
 
+- `GET /api/v1/student/profile/suggestions`
+- `PUT /api/v1/student/profile/suggestions/<id>`，请求 `action` 仅允许 `accepted` 或 `rejected`
+
+健康检查：
+
+- `GET /api/v1/health`
+- `GET /api/v1/system/ai-health`
+
+生成资源统一返回 `backend`、`citations`、`confidence`、`review_status`、`risk_reasons`、`generator_agent`、`generation_task_id` 和 `profile_snapshot`。生成任务增加 `profile_version`、`request_fingerprint` 和 `recoverable`。详细实现见 `docs/2026-06-09-engineering-stability.md`。

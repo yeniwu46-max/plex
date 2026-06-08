@@ -5,6 +5,7 @@ import { NButton, NIcon } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain } from '../api/studentProgress'
 import type { LearningRecommendation } from '../api/learningReport'
 import { fetchStudentRecommendations } from '../api/recommendations'
+import type { PersonalizedResource } from '../api/personalizedResources'
 import { fetchStudentLearningResources, type LearningResourceItem } from '../api/learningResources'
 import { getPythonTrialQuestion, type PythonTrialQuestion } from '../data/pythonTrialQuestions'
 import {
@@ -71,6 +72,7 @@ const activeQuestion = ref<PythonTrialQuestion | null>(null)
 const activeQuestionId = ref<string | null>(null)
 const pathRecommendations = ref<LearningRecommendation[]>([])
 const knowledgeResources = ref<LearningResourceItem[]>([])
+const personalizedResources = ref<PersonalizedResource[]>([])
 const kgNodes = ref<KgNode[]>([])
 const kgEdges = ref<KgEdge[]>([])
 const kgLoading = ref(false)
@@ -389,6 +391,7 @@ async function loadPath() {
       fetchStudentRecommendations('7d').catch(() => null),
     ])
     pathRecommendations.value = rec?.recommendations ?? []
+    personalizedResources.value = rec?.personalized_resources ?? []
     domains.value = data.domains.map(mapDomain)
     if (!route.query.domain) {
       activeDomainKey.value = data.active_domain_key
@@ -626,6 +629,15 @@ onMounted(() => {
                   <li v-for="res in knowledgeResources" :key="res.id">
                     <em>{{ res.type }}</em>
                     <span>{{ res.title }}</span>
+                  </li>
+                </ul>
+              </div>
+              <div v-if="personalizedResources.length" class="sub-trials">
+                <strong>为什么推荐给我</strong>
+                <ul class="resource-list">
+                  <li v-for="res in personalizedResources.slice(0, 3)" :key="res.id">
+                    <em>{{ res.resource_type }}</em>
+                    <span>{{ res.title }}：{{ res.recommendation_reason }}</span>
                   </li>
                 </ul>
               </div>

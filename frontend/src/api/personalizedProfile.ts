@@ -40,6 +40,17 @@ export interface ProfileChatResult {
   backend: string
 }
 
+export interface ProfileSuggestion {
+  id: number
+  dimension: ProfileDimensionKey
+  proposed_value: string
+  evidence: string[]
+  source: string
+  status: 'pending' | 'accepted' | 'rejected'
+  profile_version: number
+  created_at?: string | null
+}
+
 export async function fetchDynamicProfile() {
   const { data } = await http.get<ApiEnvelope<DynamicStudentProfile>>('/v1/student/profile')
   if (data.code !== 0) throw new Error(data.message || '画像加载失败')
@@ -61,5 +72,21 @@ export async function updateDynamicProfile(changes: Partial<Record<ProfileDimens
     reason: 'student_correction',
   })
   if (data.code !== 0) throw new Error(data.message || '画像更新失败')
+  return data.data
+}
+
+export async function fetchProfileSuggestions() {
+  const { data } = await http.get<ApiEnvelope<{ items: ProfileSuggestion[]; total: number }>>(
+    '/v1/student/profile/suggestions',
+  )
+  if (data.code !== 0) throw new Error(data.message || '画像建议加载失败')
+  return data.data
+}
+
+export async function resolveProfileSuggestion(id: number, action: 'accepted' | 'rejected') {
+  const { data } = await http.put<
+    ApiEnvelope<{ suggestion: ProfileSuggestion; profile: DynamicStudentProfile | null }>
+  >(`/v1/student/profile/suggestions/${id}`, { action })
+  if (data.code !== 0) throw new Error(data.message || '画像建议处理失败')
   return data.data
 }

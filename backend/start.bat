@@ -32,8 +32,8 @@ if errorlevel 1 (
 )
 
 echo.
-echo [2/4] 初始化数据库...
-python init_db.py
+echo [2/4] 非破坏性初始化数据库...
+python manage.py init
 if errorlevel 1 (
     echo 数据库初始化失败
     pause

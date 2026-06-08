@@ -25,6 +25,7 @@ export interface PersonalizedResource {
   confidence: number
   review_status: 'pending_review' | 'approved' | 'rejected'
   review_reason?: string | null
+  risk_reasons: string[]
   generator_agent: string
   generation_task_id: string
   backend: string
@@ -41,14 +42,40 @@ export interface ResourceTask {
   backend: string
   fallback_reason?: string | null
   retry_of?: string | null
+  profile_version: number
+  request_fingerprint: string
+  recoverable: boolean
+  created_at?: string | null
+  completed_at?: string | null
 }
 
-export async function createResourceTask(knowledgeKey: string, resourceTypes?: PersonalizedResourceType[]) {
+export async function createResourceTask(
+  knowledgeKey: string,
+  resourceTypes?: PersonalizedResourceType[],
+  idempotencyKey?: string,
+) {
   const { data } = await http.post<ApiEnvelope<ResourceTask>>('/v1/student/resource-generation/tasks', {
     knowledge_key: knowledgeKey,
     resource_types: resourceTypes,
+    idempotency_key: idempotencyKey,
   })
   if (data.code !== 0) throw new Error(data.message || '创建生成任务失败')
+  return data.data
+}
+
+export async function fetchResourceTasks() {
+  const { data } = await http.get<ApiEnvelope<{ items: ResourceTask[]; total: number }>>(
+    '/v1/student/resource-generation/tasks',
+  )
+  if (data.code !== 0) throw new Error(data.message || '任务历史加载失败')
+  return data.data
+}
+
+export async function retryResourceTask(taskId: string) {
+  const { data } = await http.post<ApiEnvelope<ResourceTask>>(
+    `/v1/student/resource-generation/tasks/${taskId}/retry`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '任务重试失败')
   return data.data
 }
 

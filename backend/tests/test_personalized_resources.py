@@ -107,6 +107,44 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
         self.assertEqual(approved.status_code, 200)
         self.assertEqual(approved.get_json()['data']['review_status'], 'approved')
 
+    def test_teacher_approval_requires_reason(self):
+        with self.app.app_context():
+            student = User.query.filter_by(username='student001').first()
+            task = ResourceGenerationTask(
+                task_id='rg_reason',
+                user_id=student.id,
+                knowledge_key='loop',
+                requested_types=['lesson_document'],
+                status='completed',
+                progress=100,
+            )
+            db.session.add(task)
+            db.session.flush()
+            resource = PersonalizedLearningResource(
+                user_id=student.id,
+                generation_task_id=task.task_id,
+                knowledge_key='loop',
+                knowledge_label='循环结构',
+                resource_type='lesson_document',
+                title='待审核',
+                content={'format': 'markdown', 'markdown': '足够长的待审核课程资源内容。' * 3},
+                profile_snapshot={},
+                recommendation_reason='测试',
+                citations=[],
+                confidence=0.5,
+                review_status='pending_review',
+                backend='local_rules',
+            )
+            db.session.add(resource)
+            db.session.commit()
+            resource_id = resource.id
+        response = self.client.put(
+            f'/api/v1/teacher/personalized-resources/{resource_id}/review',
+            headers=self.auth(self.teacher_token),
+            json={'review_status': 'approved', 'reason': ''},
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 if __name__ == '__main__':
     unittest.main()

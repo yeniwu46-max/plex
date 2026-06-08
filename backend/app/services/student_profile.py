@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
-from app.models import StudentProfile, StudentProfileHistory, db
+from app.models import StudentProfile, StudentProfileHistory, StudentProfileSuggestion, db
 from app.services.iflytek_spark import IflytekSparkService
 from app.services.mistake import MistakeService
 
@@ -109,6 +110,34 @@ class StudentProfileService:
         }
 
     @staticmethod
+    def create_behavior_suggestion(user_id: int) -> dict | None:
+        candidate = StudentProfileService._behavior_changes(user_id).get('mistake_pattern')
+        if not candidate or not candidate.get('value'):
+            return None
+        value = str(candidate['value'])[:500]
+        profile = StudentProfileService.get_or_create(user_id)
+        existing = StudentProfileSuggestion.query.filter_by(
+            user_id=user_id,
+            dimension='mistake_pattern',
+            proposed_value=value,
+            status='pending',
+        ).first()
+        if existing:
+            return existing.to_dict()
+        row = StudentProfileSuggestion(
+            user_id=user_id,
+            dimension='mistake_pattern',
+            proposed_value=value,
+            evidence=candidate.get('evidence') or [],
+            source='behavior',
+            status='pending',
+            profile_version=profile.version if profile.id else 0,
+        )
+        db.session.add(row)
+        db.session.commit()
+        return row.to_dict()
+
+    @staticmethod
     def _completion(dimensions: dict) -> int:
         filled = sum(1 for key in PROFILE_DIMENSIONS if (dimensions.get(key) or {}).get('value'))
         return round(filled / len(PROFILE_DIMENSIONS) * 100)
@@ -200,3 +229,43 @@ class StudentProfileService:
             'page': pagination.page,
             'page_size': pagination.per_page,
         }
+
+    @staticmethod
+    def suggestions(user_id: int, status: str = 'pending') -> dict:
+        query = StudentProfileSuggestion.query.filter_by(user_id=user_id)
+        if status:
+            query = query.filter_by(status=status)
+        rows = query.order_by(StudentProfileSuggestion.created_at.desc()).all()
+        return {'items': [row.to_dict() for row in rows], 'total': len(rows)}
+
+    @staticmethod
+    def resolve_suggestion(user_id: int, suggestion_id: int, action: str) -> dict:
+        if action not in ('accepted', 'rejected'):
+            raise ValueError('action必须为accepted或rejected')
+        row = StudentProfileSuggestion.query.filter_by(
+            id=suggestion_id,
+            user_id=user_id,
+        ).first()
+        if not row:
+            raise LookupError('画像建议不存在')
+        if row.status != 'pending':
+            raise ValueError('画像建议已经处理')
+        profile = None
+        if action == 'accepted':
+            profile = StudentProfileService.apply_changes(
+                user_id,
+                {
+                    row.dimension: StudentProfileService._dimension(
+                        row.proposed_value,
+                        row.evidence,
+                        1.0,
+                        'confirmed',
+                    )
+                },
+                'behavior_confirmed',
+                'behavior',
+            )
+        row.status = action
+        row.resolved_at = datetime.utcnow()
+        db.session.commit()
+        return {'suggestion': row.to_dict(), 'profile': profile}

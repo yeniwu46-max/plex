@@ -55,3 +55,34 @@ class StudentProfileHistory(BaseModel):
             'backend': self.backend,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class StudentProfileSuggestion(BaseModel):
+    __tablename__ = 'student_profile_suggestions'
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    dimension = db.Column(db.String(64), nullable=False, index=True)
+    proposed_value = db.Column(db.String(500), nullable=False)
+    evidence = db.Column(db.JSON, nullable=False, default=list)
+    source = db.Column(db.String(32), nullable=False, default='behavior')
+    status = db.Column(db.String(16), nullable=False, default='pending', index=True)
+    profile_version = db.Column(db.Integer, nullable=False, default=0)
+    resolved_at = db.Column(db.DateTime)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'dimension': self.dimension,
+            'proposed_value': self.proposed_value,
+            'evidence': self.evidence or [],
+            'source': self.source,
+            'status': self.status,
+            'profile_version': self.profile_version,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+        }

@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import os
+import hashlib
+import json
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
 from flask import current_app
+from jsonschema import Draft202012Validator
 
 from app.data.knowledge_catalog import KNOWLEDGE_UNIVERSE
 from app.models import PersonalizedLearningResource, ResourceGenerationTask, db
@@ -57,6 +60,58 @@ DOCUMENT_IDS = {
     'algo-search': 'python-stage4-algorithm',
 }
 VALID_DOCUMENT_IDS = frozenset(DOCUMENT_IDS.values())
+RESOURCE_SCHEMAS = {
+    'lesson_document': {
+        'type': 'object', 'required': ['format', 'markdown'],
+        'properties': {'format': {'const': 'markdown'}, 'markdown': {'type': 'string', 'minLength': 20}},
+        'additionalProperties': True,
+    },
+    'mind_map': {
+        'type': 'object', 'required': ['format', 'root', 'children'],
+        'properties': {
+            'format': {'const': 'tree'}, 'root': {'type': 'string', 'minLength': 1},
+            'children': {'type': 'array', 'minItems': 2},
+        },
+        'additionalProperties': True,
+    },
+    'exercise_set': {
+        'type': 'object', 'required': ['format', 'questions'],
+        'properties': {
+            'format': {'const': 'questions'},
+            'questions': {
+                'type': 'array', 'minItems': 2,
+                'items': {
+                    'type': 'object', 'required': ['level', 'question'],
+                    'properties': {
+                        'level': {'type': 'string', 'minLength': 1},
+                        'question': {'type': 'string', 'minLength': 5},
+                    },
+                },
+            },
+        },
+        'additionalProperties': True,
+    },
+    'extended_reading': {
+        'type': 'object', 'required': ['format', 'markdown'],
+        'properties': {'format': {'const': 'markdown'}, 'markdown': {'type': 'string', 'minLength': 20}},
+        'additionalProperties': True,
+    },
+    'coding_lab': {
+        'type': 'object', 'required': ['format', 'scenario', 'starter_code', 'checks'],
+        'properties': {
+            'format': {'const': 'coding_lab'},
+            'scenario': {'type': 'string', 'minLength': 10},
+            'starter_code': {'type': 'string'},
+            'checks': {'type': 'array', 'minItems': 1},
+        },
+        'additionalProperties': True,
+    },
+    'audio_explanation': {
+        'type': 'object', 'required': ['format', 'transcript'],
+        'properties': {'format': {'type': 'string'}, 'transcript': {'type': 'string', 'minLength': 10}},
+        'additionalProperties': True,
+    },
+}
 
 
 class PersonalizedResourceService:
@@ -84,7 +139,11 @@ class PersonalizedResourceService:
         ]
 
     @staticmethod
-    def recover_stale_tasks():
+    def executor_status():
+        return {'backend': 'in_process', 'max_workers': 2, 'available': True}
+
+    @staticmethod
+    def recover_stale_tasks(app=None):
         cutoff = datetime.utcnow() - timedelta(minutes=10)
         rows = ResourceGenerationTask.query.filter(
             ResourceGenerationTask.status == 'running',
@@ -94,8 +153,24 @@ class PersonalizedResourceService:
             row.status = 'failed'
             row.error = '任务因服务重启或超时中断，可重新生成'
             row.current_agent = None
+            row.recoverable = True
         if rows:
             db.session.commit()
+        pending = ResourceGenerationTask.query.filter_by(status='pending').all()
+        if app and not app.config.get('TESTING'):
+            for row in pending:
+                _EXECUTOR.submit(PersonalizedResourceService.run_task, app, row.task_id)
+        return {'failed_stale': len(rows), 'resubmitted_pending': len(pending) if app else 0}
+
+    @staticmethod
+    def _fingerprint(user_id: int, profile_version: int, knowledge_key: str, resource_types: list[str]) -> str:
+        raw = json.dumps({
+            'user_id': user_id,
+            'profile_version': profile_version,
+            'knowledge_key': knowledge_key,
+            'resource_types': sorted(resource_types),
+        }, sort_keys=True, ensure_ascii=True)
+        return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
     @staticmethod
     def create_task(user_id: int, payload: dict) -> dict:
@@ -107,11 +182,23 @@ class PersonalizedResourceService:
         if not PersonalizedResourceService._safe_text(str(payload)):
             raise ValueError('输入包含不允许的内容')
 
+        profile = StudentProfileService.get_or_create(user_id)
+        profile_version = profile.version if profile.id else 0
+        fingerprint = PersonalizedResourceService._fingerprint(
+            user_id, profile_version, knowledge_key, resource_types
+        )
+        idempotency_key = str(payload.get('idempotency_key') or '').strip()[:100] or None
+
         if not payload.get('force_regenerate'):
             active = ResourceGenerationTask.query.filter(
                 ResourceGenerationTask.user_id == user_id,
-                ResourceGenerationTask.knowledge_key == knowledge_key,
-                ResourceGenerationTask.status.in_(('pending', 'running')),
+                ResourceGenerationTask.status.in_(('pending', 'running', 'completed')),
+                ResourceGenerationTask.created_at >= datetime.utcnow() - timedelta(minutes=15),
+                (
+                    (ResourceGenerationTask.idempotency_key == idempotency_key)
+                    if idempotency_key
+                    else (ResourceGenerationTask.request_fingerprint == fingerprint)
+                ),
             ).order_by(ResourceGenerationTask.id.desc()).first()
             if active:
                 return PersonalizedResourceService.get_task(user_id, active.task_id)
@@ -123,6 +210,10 @@ class PersonalizedResourceService:
             requested_types=resource_types,
             steps=PersonalizedResourceService._steps(),
             retry_of=payload.get('retry_of'),
+            profile_version=profile_version,
+            request_fingerprint=fingerprint,
+            idempotency_key=idempotency_key,
+            recoverable=True,
         )
         db.session.add(row)
         db.session.commit()
@@ -169,6 +260,48 @@ class PersonalizedResourceService:
             and item.get('document_id') in VALID_DOCUMENT_IDS
             for item in citations
         )
+
+    @staticmethod
+    def _risk_reasons(item: dict, knowledge_key: str) -> list[str]:
+        risks = []
+        resource_type = item.get('resource_type')
+        content = item.get('content')
+        confidence = float(item.get('confidence') or 0)
+        citations = item.get('citations') or []
+        if confidence < 0.8:
+            risks.append('low_confidence')
+        expected_document = DOCUMENT_IDS[knowledge_key]
+        if (
+            not PersonalizedResourceService._citations_are_valid(citations)
+            or any(
+                citation.get('document_id') != expected_document
+                or citation.get('section') != knowledge_key
+                for citation in citations
+            )
+        ):
+            risks.append('invalid_citation')
+        schema = RESOURCE_SCHEMAS.get(resource_type)
+        if not schema or not isinstance(content, dict) or list(Draft202012Validator(schema).iter_errors(content)):
+            risks.append('schema_invalid')
+        serialized = json.dumps(content, ensure_ascii=False) if isinstance(content, dict) else str(content)
+        if not PersonalizedResourceService._safe_text(serialized):
+            risks.append('safety_blocked')
+        if knowledge_key not in POINTS:
+            risks.append('out_of_scope')
+        if resource_type == 'exercise_set' and isinstance(content, dict):
+            questions = [
+                str(row.get('question') or '').strip()
+                for row in content.get('questions', [])
+                if isinstance(row, dict)
+            ]
+            if len(set(questions)) != len(questions):
+                risks.append('schema_invalid')
+        if resource_type == 'coding_lab' and isinstance(content, dict):
+            try:
+                compile(str(content.get('starter_code') or ''), '<coding_lab>', 'exec')
+            except SyntaxError:
+                risks.append('schema_invalid')
+        return list(dict.fromkeys(risks))
 
     @staticmethod
     def _local_resources(knowledge_key: str, resource_types: list[str], profile: dict) -> list[dict]:
@@ -277,12 +410,16 @@ class PersonalizedResourceService:
     @staticmethod
     def run_task(app, task_id: str):
         with app.app_context():
-            row = ResourceGenerationTask.query.filter_by(task_id=task_id).first()
-            if not row:
-                return
-            row.status = 'running'
-            row.started_at = datetime.utcnow()
+            claimed = ResourceGenerationTask.query.filter_by(
+                task_id=task_id, status='pending'
+            ).update({
+                ResourceGenerationTask.status: 'running',
+                ResourceGenerationTask.started_at: datetime.utcnow(),
+            }, synchronize_session=False)
             db.session.commit()
+            if claimed != 1:
+                return
+            row = ResourceGenerationTask.query.filter_by(task_id=task_id).first()
             try:
                 profile = PersonalizedResourceService._profile_snapshot(row.user_id)
                 for index, (agent, progress) in enumerate(PIPELINE_STEPS):
@@ -305,13 +442,11 @@ class PersonalizedResourceService:
                         ).delete()
                         for item in generated:
                             confidence = min(max(float(item.get('confidence', 0.8)), 0), 1)
+                            item['difficulty'] = min(max(int(item.get('difficulty') or 50), 0), 100)
+                            item['estimated_minutes'] = min(max(int(item.get('estimated_minutes') or 15), 1), 180)
                             citations = item.get('citations') or []
-                            review_status = (
-                                'approved'
-                                if confidence >= 0.8
-                                and PersonalizedResourceService._citations_are_valid(citations)
-                                else 'pending_review'
-                            )
+                            risk_reasons = PersonalizedResourceService._risk_reasons(item, row.knowledge_key)
+                            review_status = 'approved' if not risk_reasons else 'pending_review'
                             db.session.add(PersonalizedLearningResource(
                                 user_id=row.user_id,
                                 generation_task_id=row.task_id,
@@ -322,13 +457,14 @@ class PersonalizedResourceService:
                                 content=item.get('content') if isinstance(item.get('content'), dict)
                                 else {'format': 'markdown', 'markdown': str(item.get('content') or '')},
                                 content_url=item.get('content_url'),
-                                difficulty=int(item.get('difficulty') or 50),
-                                estimated_minutes=int(item.get('estimated_minutes') or 15),
+                                difficulty=item['difficulty'],
+                                estimated_minutes=item['estimated_minutes'],
                                 profile_snapshot=profile,
                                 recommendation_reason=str(item.get('recommendation_reason') or '根据画像与薄弱点生成'),
                                 citations=citations,
                                 confidence=confidence,
                                 review_status=review_status,
+                                risk_reasons=risk_reasons,
                                 generator_agent=agent,
                                 backend=row.backend,
                             ))
@@ -339,6 +475,7 @@ class PersonalizedResourceService:
                 row.progress = 100
                 row.current_agent = None
                 row.completed_at = datetime.utcnow()
+                row.recoverable = False
                 db.session.commit()
             except Exception as exc:
                 db.session.rollback()
@@ -346,6 +483,7 @@ class PersonalizedResourceService:
                 row.status = 'failed'
                 row.error = str(exc)[:500]
                 row.current_agent = None
+                row.recoverable = True
                 db.session.commit()
 
     @staticmethod
@@ -373,6 +511,26 @@ class PersonalizedResourceService:
         })
 
     @staticmethod
+    def list_tasks(user_id: int, page: int = 1, page_size: int = 20) -> dict:
+        query = ResourceGenerationTask.query.filter_by(user_id=user_id).order_by(
+            ResourceGenerationTask.created_at.desc()
+        )
+        pagination = query.paginate(
+            page=max(1, page),
+            per_page=min(max(page_size, 1), 100),
+            error_out=False,
+        )
+        return {
+            'items': [
+                PersonalizedResourceService.get_task(user_id, row.task_id)
+                for row in pagination.items
+            ],
+            'total': pagination.total,
+            'page': pagination.page,
+            'page_size': pagination.per_page,
+        }
+
+    @staticmethod
     def list_student(user_id: int, args) -> dict:
         query = PersonalizedLearningResource.query.filter_by(user_id=user_id, review_status='approved')
         if args.get('knowledge_key'):
@@ -394,6 +552,8 @@ class PersonalizedResourceService:
     def review(resource_id: int, reviewer_id: int, status: str, reason: str = '') -> dict:
         if status not in ('approved', 'rejected'):
             raise ValueError('review_status必须为approved或rejected')
+        if status == 'approved' and not reason.strip():
+            raise ValueError('批准资源时必须填写审核说明')
         row = PersonalizedLearningResource.query.get(resource_id)
         if not row:
             raise LookupError('资源不存在')

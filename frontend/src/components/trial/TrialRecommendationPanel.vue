@@ -34,9 +34,14 @@ defineProps<{
 <style scoped>
 .trial-recommend {
   position: sticky;
-  top: 0.5rem;
+  top: 0.75rem;
   align-self: start;
-  padding: 1.1rem 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 7rem);
+  min-height: 0;
+  overflow: hidden;
+  padding: 1rem 1rem 0.85rem;
   border: 1px solid rgba(90, 208, 255, 0.14);
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(8, 25, 39, 0.88), rgba(4, 15, 26, 0.82));
@@ -48,7 +53,8 @@ defineProps<{
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.65rem;
+  flex-shrink: 0;
 }
 
 .trial-recommend__head h2 {
@@ -69,10 +75,11 @@ defineProps<{
 }
 
 .trial-recommend__pick {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.55rem;
   color: rgba(226, 232, 240, 0.85);
   font-size: 0.88rem;
   line-height: 1.45;
+  flex-shrink: 0;
 }
 
 .trial-recommend__pick strong {
@@ -93,23 +100,27 @@ defineProps<{
 }
 
 .trial-recommend__summary {
-  margin: 0 0 0.85rem;
-  padding: 0.65rem 0.75rem;
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.7rem;
   border-radius: 10px;
   background: rgba(6, 18, 31, 0.55);
   color: rgba(221, 230, 239, 0.72);
   font-size: 0.8rem;
-  line-height: 1.55;
+  line-height: 1.5;
+  flex-shrink: 0;
 }
 
 .trial-recommend__steps {
   margin: 0;
-  padding: 0;
+  padding: 0 0 0.85rem;
   list-style: none;
   display: grid;
   gap: 0.55rem;
-  max-height: min(52vh, 420px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-bottom: 0.85rem;
 }
 
 .trial-recommend__steps li {
@@ -137,11 +148,15 @@ defineProps<{
 @media (max-width: 1024px) {
   .trial-recommend {
     position: static;
+    max-height: none;
+    overflow: visible;
     margin-top: 0.5rem;
   }
 
   .trial-recommend__steps {
-    max-height: none;
+    flex: none;
+    overflow: visible;
+    padding-bottom: 0;
   }
 }
 </style>

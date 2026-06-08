@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { TEACHER_SHELL_SEARCH_KEY } from '../composables/useTeacherOverview'
@@ -18,6 +18,7 @@ import GrowthLineChart from '../components/teacher/GrowthLineChart.vue'
 import { fetchStudentAchievements } from '../api/teacherStudentDetail'
 import type { UserAchievementRecord } from '../api/studentOverview'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
+import { fetchTeacherStudentLearningReport, type LearningReportResult } from '../api/learningReport'
 import {
   buildAiObservation,
   buildExplorerRadarFromStudent,
@@ -53,15 +54,29 @@ const achievementsLoading = ref(false)
 const achievementsError = ref('')
 let achievementsRequestId = 0
 
+const learningReport = ref<LearningReportResult | null>(null)
+const learningReportLoading = ref(false)
+const learningReportError = ref('')
+let learningReportRequestId = 0
+
 const selectedHeatmapRow = computed(() => {
   const id = selectedStudent.value?.id
   if (!id) return null
   return overview.value?.heatmap.rows.find((row) => row.user_id === id) ?? null
 })
 
-const radar = computed(() =>
-  selectedStudent.value ? buildExplorerRadarFromStudent(selectedStudent.value, achievements.value) : [],
-)
+const radar = computed(() => {
+  if (learningReport.value?.radar?.values?.length) {
+    return learningReport.value.radar.dimensions.map((label, index) => ({
+      key: `dim-${index}`,
+      label,
+      value: learningReport.value!.radar.values[index] ?? 0,
+    }))
+  }
+  return selectedStudent.value
+    ? buildExplorerRadarFromStudent(selectedStudent.value, achievements.value)
+    : []
+})
 const growthPoints = computed(() =>
   selectedStudent.value
     ? buildGrowthSeriesFromHeatmap(selectedHeatmapRow.value, period.value, selectedStudent.value)
@@ -70,11 +85,14 @@ const growthPoints = computed(() =>
 const statCards = computed(() => (selectedStudent.value ? buildExplorerStats(selectedStudent.value) : []))
 const overallStatus = computed(() => (selectedStudent.value ? buildOverallStatus(selectedStudent.value) : 0))
 const todos = computed(() => (selectedStudent.value ? buildRiskTodos(selectedStudent.value) : []))
-const aiText = computed(() =>
-  selectedStudent.value && radar.value.length
+const aiText = computed(() => {
+  if (learningReport.value?.recommendations?.length) {
+    return learningReport.value.recommendations.map((r) => r.detail).join(' ')
+  }
+  return selectedStudent.value && radar.value.length
     ? buildAiObservation(selectedStudent.value, radar.value)
-    : '选择一名 Explorer 查看 AI 观察。',
-)
+    : '选择一名 Explorer 查看 AI 观察。'
+})
 
 function applyRouteStudentId() {
   const raw = route.query.studentId
@@ -123,15 +141,37 @@ async function loadAchievements(userId: number) {
   }
 }
 
+async function loadLearningReport(userId: number) {
+  const requestId = ++learningReportRequestId
+  learningReportLoading.value = true
+  learningReportError.value = ''
+  try {
+    const result = await fetchTeacherStudentLearningReport(userId, '7d')
+    if (requestId !== learningReportRequestId) return
+    learningReport.value = result
+  } catch (error) {
+    if (requestId !== learningReportRequestId) return
+    learningReport.value = null
+    learningReportError.value = error instanceof Error ? error.message : '学情报告加载失败'
+  } finally {
+    if (requestId === learningReportRequestId) {
+      learningReportLoading.value = false
+    }
+  }
+}
+
 watch(
   selectedStudentId,
   (id) => {
     if (!id) {
       achievements.value = []
       achievementsError.value = ''
+      learningReport.value = null
+      learningReportError.value = ''
       return
     }
     void loadAchievements(id)
+    void loadLearningReport(id)
   },
   { immediate: true },
 )
@@ -165,7 +205,10 @@ if (shellSearch) {
   >
     <section
       class="explorers-page teacher-page"
-      :class="{ 'explorers-page--manage': pageMode === 'manage' }"
+      :class="{
+        'explorers-page--manage': pageMode === 'manage',
+        'explorers-page--no-selection': pageMode === 'archive' && !selectedStudent,
+      }"
       aria-label="Explorer 档案"
     >
       <div class="explorers-page__mode-tabs" role="tablist" aria-label="档案视图切换">
@@ -228,7 +271,7 @@ if (shellSearch) {
         />
 
         <explorer-list-panel
-          class="explorers-page__list"
+          class="explorers-page__list" data-tour="teacher-student-profile"
           :students="students"
           :selected-id="selectedStudent?.id ?? null"
           :search="search"
@@ -272,6 +315,10 @@ if (shellSearch) {
             :loading="achievementsLoading"
             :error="achievementsError"
             :achievements="achievements"
+            :report="learningReport"
+            :report-loading="learningReportLoading"
+            :report-error="learningReportError"
+            :student-id="selectedStudent?.id ?? null"
           />
           <explorer-trial-panel v-else-if="detailTab === 'trial' && selectedStudent" :student-id="selectedStudent.id" />
         </section>
@@ -305,6 +352,15 @@ if (shellSearch) {
 
 .explorers-page--manage {
   grid-template-columns: 1fr;
+}
+
+.explorers-page--no-selection {
+  grid-template-columns: 1fr;
+}
+
+.explorers-page--no-selection .explorers-page__list {
+  grid-column: 1 / -1;
+  max-width: none;
 }
 
 .explorers-page__mode-tabs {

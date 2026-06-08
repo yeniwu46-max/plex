@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NIcon, NTag } from 'naive-ui'
-import { BookOutline, GitNetworkOutline, LinkOutline, ServerOutline } from '@vicons/ionicons5'
+import { BookOutline, CloudUploadOutline, GitNetworkOutline, LinkOutline, ServerOutline } from '@vicons/ionicons5'
+import PlexFileUploader from '../shared/upload/PlexFileUploader.vue'
+import { ADMIN_PRESETS } from '../../config/upload/uploadPresets'
 import {
   KNOWLEDGE_POINT_BANK_MAP,
   KNOWLEDGE_PREREQUISITE_EDGES,
@@ -10,7 +12,39 @@ import {
 import { TEACHER_KNOWLEDGE_UNIVERSE } from '../../data/teacherKnowledgeCatalog'
 import { STAR_PATH_DOMAINS } from '../../data/starPathDomains'
 import PlexKnowledgeGraph from '../shared/PlexKnowledgeGraph.vue'
-import { KG_NODES, KG_EDGES } from '../../data/knowledgeGraphData'
+import { KG_NODES, KG_EDGES, type KgEdge, type KgNode } from '../../data/knowledgeGraphData'
+import { fetchAdminKnowledgeGraph } from '../../api/knowledgeGraph'
+import { fetchKbDocuments, fetchKbStatus, type KbDocument, type KbStatus } from '../../api/knowledgeBase'
+
+const kgNodes = ref<KgNode[]>(KG_NODES)
+const kgEdges = ref<KgEdge[]>(KG_EDGES)
+const kbDocuments = ref<KbDocument[]>([])
+const kbStatus = ref<KbStatus | null>(null)
+
+onMounted(async () => {
+  try {
+    const [graph, docs, status] = await Promise.all([
+      fetchAdminKnowledgeGraph(),
+      fetchKbDocuments().catch(() => null),
+      fetchKbStatus().catch(() => null),
+    ])
+    kgNodes.value = graph.nodes
+    kgEdges.value = graph.edges
+    if (docs) kbDocuments.value = docs.documents
+    if (status) kbStatus.value = status
+  } catch {
+    /* keep static fallback */
+  }
+})
+
+async function onKbDocUploaded() {
+  try {
+    const docs = await fetchKbDocuments()
+    if (docs) kbDocuments.value = docs.documents
+  } catch {
+    /* ignore refresh errors */
+  }
+}
 
 const trialPointCount = computed(() =>
   TEACHER_KNOWLEDGE_UNIVERSE.reduce((sum, domain) => sum + domain.points.length, 0),
@@ -77,7 +111,59 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
           <p>基于 AntV G6 的可视化知识图谱，支持点击查看节点详情与学习路径推荐</p>
         </div>
       </header>
-      <plex-knowledge-graph :nodes="KG_NODES" :edges="KG_EDGES" mode="admin" height="480px" />
+      <plex-knowledge-graph :nodes="kgNodes" :edges="kgEdges" mode="admin" height="480px" />
+    </article>
+
+    <article v-if="kbStatus" class="panel section-panel kb-status-panel">
+      <header class="section-head">
+        <n-icon :component="ServerOutline" />
+        <div>
+          <h2>RAG 知识库服务</h2>
+          <p>
+            后端 {{ kbStatus.backend }} · 已索引 {{ kbStatus.indexed_documents }}/{{ kbStatus.total_documents }} 文档 ·
+            {{ kbStatus.total_chunks }} 切块
+          </p>
+        </div>
+      </header>
+      <ul v-if="kbDocuments.length" class="kb-doc-list">
+        <li v-for="doc in kbDocuments" :key="doc.id">
+          <strong>{{ doc.name }}</strong>
+          <span>{{ doc.status }}</span>
+          <em>{{ doc.chunk_count }} chunks</em>
+        </li>
+      </ul>
+    </article>
+
+    <!-- 管理员资料上传 -->
+    <article class="panel section-panel">
+      <header class="section-head">
+        <n-icon :component="CloudUploadOutline" />
+        <div>
+          <h2>资料上传中心</h2>
+          <p>上传知识库文档、系统配置与图谱数据，为平台提供结构化数据入口</p>
+        </div>
+      </header>
+      <div class="admin-upload-grid">
+        <div class="admin-upload-card">
+          <plex-file-uploader
+            role="admin"
+            v-bind="ADMIN_PRESETS.knowledgeDoc"
+            @upload-success="onKbDocUploaded"
+          />
+        </div>
+        <div class="admin-upload-card">
+          <plex-file-uploader
+            role="admin"
+            v-bind="ADMIN_PRESETS.systemConfig"
+          />
+        </div>
+        <div class="admin-upload-card">
+          <plex-file-uploader
+            role="admin"
+            v-bind="ADMIN_PRESETS.graphData"
+          />
+        </div>
+      </div>
     </article>
 
     <article class="panel section-panel">
@@ -477,6 +563,41 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
   line-height: 1.35;
 }
 
+.kb-doc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.kb-doc-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(129, 140, 248, 0.08);
+  border: 1px solid rgba(129, 140, 248, 0.15);
+  font-size: 0.82rem;
+}
+
+.kb-doc-list strong {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.kb-doc-list span {
+  color: #a5b4fc;
+  text-transform: capitalize;
+}
+
+.kb-doc-list em {
+  color: rgba(226, 232, 240, 0.55);
+  font-style: normal;
+  font-size: 0.75rem;
+}
+
 @media (max-width: 1280px) {
   .domain-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -496,6 +617,31 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
   .relation-list li {
     grid-template-columns: 1fr;
     gap: 0.2rem;
+  }
+}
+
+.admin-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-upload-card {
+  padding: 1rem;
+  border-radius: 10px;
+  background: var(--plex-bg-elevated, var(--plex-bg-card));
+  border: 1px solid var(--plex-border-subtle);
+}
+
+@media (max-width: 1280px) {
+  .admin-upload-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-upload-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

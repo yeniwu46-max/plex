@@ -159,3 +159,45 @@
   }
 }
 
+/* ─── 教师端浅色模式覆盖 ─────────────────────────────────── */
+html[data-theme='light'] .teacher-shell {
+  --teacher-orange: #ea580c;
+  --teacher-orange-soft: rgba(234, 88, 12, 0.1);
+  --teacher-orange-glow: rgba(234, 88, 12, 0.35);
+  --teacher-gold: #d97706;
+  --teacher-teal: #0891b2;
+  --teacher-red: #dc2626;
+  --teacher-text: #0f172a;
+  --teacher-muted: rgba(71, 85, 105, 0.75);
+  --teacher-border: rgba(0, 0, 0, 0.08);
+  --teacher-panel-bg: #ffffff;
+}
+
+html[data-theme='light'] .teacher-panel {
+  background: var(--plex-bg-card) !important;
+  border-color: var(--plex-border-subtle) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+html[data-theme='light'] .teacher-panel__title {
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .teacher-state-panel {
+  background: #f8fafc !important;
+  border-color: rgba(234, 88, 12, 0.2) !important;
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .teacher-toolbar__filter .n-base-selection {
+  --n-color: #f8fafc !important;
+  --n-border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  --n-border-hover: 1px solid rgba(234, 88, 12, 0.5) !important;
+  --n-text-color: #0f172a !important;
+}
+
+html[data-theme='light'] .teacher-main {
+  background: #f0f4f8 !important;
+  color: var(--plex-text) !important;
+}
+

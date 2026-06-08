@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NIcon, NSelect, useMessage, type SelectOption } from 'naive-ui'
-import { ChevronForwardOutline, CodeSlashOutline } from '@vicons/ionicons5'
+import { NButton, NIcon, NSelect, NTag, useMessage, type SelectOption } from 'naive-ui'
+import { CheckmarkCircleOutline, ChevronForwardOutline, CodeSlashOutline } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
-import { fetchStudentTrials, joinStudentTrial, type StudentTrial } from '../api/studentTrials'
-import TrialMcqPanel from '../components/trial/TrialMcqPanel.vue'
+import PlexFileUploader from '../components/shared/upload/PlexFileUploader.vue'
+import { STUDENT_PRESETS } from '../config/upload/uploadPresets'
+import {
+  fetchStudentTrialStats,
+  fetchStudentTrials,
+  joinStudentTrial,
+  type StudentTrial,
+  type StudentTrialStatsResult,
+} from '../api/studentTrials'
+import TrialExamPanel from '../components/trial/TrialExamPanel.vue'
 import TrialRecommendationPanel from '../components/trial/TrialRecommendationPanel.vue'
 import {
   formatStarPathNodeLabel,
@@ -13,9 +21,11 @@ import {
   getStarPathQuestionsForNode,
   getUnlockedStarPathNodes,
   isStarPathNodeUnlocked,
+  resolveStarPathNodeId,
 } from '../data/starPathTrail'
 import { useAuthStore } from '../stores/auth'
 import { buildTrialPageRecommendation } from '../utils/trialPageRecommendation'
+import { fetchServerMistakeRecords, getTrialMistakeRecords, type TrialMistakeRecord } from '../utils/trialMistakeLog'
 
 const message = useMessage()
 const auth = useAuthStore()
@@ -29,15 +39,22 @@ const highlightTrialId = computed(() => {
 
 const loading = ref(true)
 const errorMessage = ref('')
+const trialStats = ref<StudentTrialStatsResult | null>(null)
+const statsLoading = ref(true)
 const trials = ref<StudentTrial[]>([])
+const serverMistakes = ref<TrialMistakeRecord[]>([])
 const actingId = ref<number | null>(null)
 const activeMcqTrial = ref<{ id: number; title: string } | null>(null)
+const currentView = ref<'card' | 'list'>('card')
+
+const TRIAL_LIST_CACHE_MS = 30_000
+let trialListLoadedAt = 0
 
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Explorer')
 const userId = computed(() => auth.profile?.id ?? 'guest')
 
 const unlockedNodes = computed(() => getUnlockedStarPathNodes())
-const selectedNodeId = ref('01')
+const selectedNodeId = ref('stage1-intro')
 
 const nodeSelectOptions = computed<SelectOption[]>(() =>
   unlockedNodes.value.map((node) => ({
@@ -55,10 +72,29 @@ const selectedNodeLabel = computed(() => {
 })
 
 const pageRecommendation = computed(() =>
-  buildTrialPageRecommendation(userId.value, selectedNodeId.value, activeQuestions.value),
+  buildTrialPageRecommendation(
+    userId.value,
+    selectedNodeId.value,
+    activeQuestions.value,
+    serverMistakes.value,
+  ),
 )
 
 const recommendedQuestionId = computed(() => pageRecommendation.value.recommendedQuestionId)
+
+
+const questionAcStatus = computed(() => {
+  const records = getTrialMistakeRecords(userId.value)
+  const map: Record<string, 'ac' | 'wa'> = {}
+  for (const r of records) {
+    if (r.lastPassedAt && new Date(r.lastPassedAt) > new Date(r.lastFailedAt)) {
+      map[r.questionId] = 'ac'
+    } else {
+      map[r.questionId] = 'wa'
+    }
+  }
+  return map
+})
 
 watch(
   unlockedNodes,
@@ -73,12 +109,27 @@ watch(
   { immediate: true },
 )
 
-async function loadTrials() {
+async function loadTrialStats() {
+  statsLoading.value = true
+  try {
+    trialStats.value = await fetchStudentTrialStats()
+  } catch {
+    trialStats.value = null
+  } finally {
+    statsLoading.value = false
+  }
+}
+
+async function loadTrials(force = false) {
+  if (!force && trials.value.length && Date.now() - trialListLoadedAt < TRIAL_LIST_CACHE_MS) {
+    return
+  }
   loading.value = true
   errorMessage.value = ''
   try {
     const data = await fetchStudentTrials()
     trials.value = data.trials
+    trialListLoadedAt = Date.now()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '加载失败'
     trials.value = []
@@ -106,15 +157,58 @@ async function onJoin(trial: StudentTrial) {
 
 async function onMcqCompleted() {
   activeMcqTrial.value = null
-  await loadTrials()
+  await Promise.all([loadTrials(true), loadTrialStats()])
+}
+
+function onViewSwitch(key: string) {
+  currentView.value = key === 'list' ? 'list' : 'card'
+}
+
+
+function onSearchSubmit(query: string) {
+  const q = query.trim().toLowerCase()
+  if (!q) return
+
+  for (const node of getUnlockedStarPathNodes()) {
+    const questions = getStarPathQuestionsForNode(node.id)
+    const hit = questions.find(
+      (question) =>
+        question.title.toLowerCase().includes(q) ||
+        question.topic.toLowerCase().includes(q) ||
+        question.tags.some((tag) => tag.toLowerCase().includes(q)),
+    )
+    if (hit) {
+      void router.push(`/student/trials/practice/${hit.id}`)
+      return
+    }
+  }
+
+  // 搜索班级试炼
+  const trialHit = trials.value.find((trial) => trial.title.toLowerCase().includes(q))
+  if (trialHit) {
+    void router.push({ path: '/student/trials', query: { trialId: String(trialHit.id) } })
+    return
+  }
+
+  message.warning(`未找到"${query}"相关题目或试炼`)
 }
 
 onMounted(() => {
   const rawNode = route.query.node
-  if (typeof rawNode === 'string' && getStarPathNode(rawNode) && isStarPathNodeUnlocked(getStarPathNode(rawNode)!)) {
-    selectedNodeId.value = rawNode
+  if (typeof rawNode === 'string') {
+    const resolved = resolveStarPathNodeId(rawNode)
+    const node = getStarPathNode(resolved)
+    if (isStarPathNodeUnlocked(node)) {
+      selectedNodeId.value = resolved
+    }
   }
-  void loadTrials()
+  void Promise.all([
+    loadTrials(),
+    loadTrialStats(),
+    fetchServerMistakeRecords(userId.value).then((records) => {
+      serverMistakes.value = records
+    }),
+  ])
 })
 </script>
 
@@ -123,13 +217,45 @@ onMounted(() => {
     active-nav="trial"
     page-title="试炼关卡"
     page-subtitle="Python 入门代码试炼 · 参与班级任务赢取探索积分"
-    search-placeholder="搜索试炼或知识点…"
-    hide-search
+    search-placeholder="搜索试炼、题目或知识点…"
+    show-view-switcher
+    @view-switch="onViewSwitch"
+    @search-submit="onSearchSubmit"
   >
     <section class="student-trial" aria-label="学生试炼关卡">
       <p class="student-trial__welcome">你好，{{ displayName }} — 从 Python 入门题开始试炼，或参与班级任务。</p>
 
-      <TrialMcqPanel
+      <section v-if="!activeMcqTrial" class="student-trial__stats" aria-label="试炼战绩">
+        <div v-if="statsLoading" class="student-trial__stats-loading">同步战绩…</div>
+        <template v-else-if="trialStats">
+          <div class="student-trial__stats-grid">
+            <article class="student-trial__stat-card">
+              <span class="student-trial__stat-label">已完成</span>
+              <strong>{{ trialStats.summary.completed_count }}</strong>
+            </article>
+            <article class="student-trial__stat-card">
+              <span class="student-trial__stat-label">进行中</span>
+              <strong>{{ trialStats.summary.active_count }}</strong>
+            </article>
+            <article class="student-trial__stat-card">
+              <span class="student-trial__stat-label">均分</span>
+              <strong>{{ trialStats.summary.avg_score }}</strong>
+            </article>
+            <article class="student-trial__stat-card">
+              <span class="student-trial__stat-label">累计参与</span>
+              <strong>{{ trialStats.summary.total_participations }}</strong>
+            </article>
+          </div>
+          <ul v-if="trialStats.recent_completions.length" class="student-trial__recent">
+            <li v-for="item in trialStats.recent_completions" :key="`${item.trial_id}-${item.completed_at}`">
+              <span>{{ item.title }}</span>
+              <em>{{ item.score }} 分</em>
+            </li>
+          </ul>
+        </template>
+      </section>
+
+      <TrialExamPanel
         v-if="activeMcqTrial"
         :trial-id="activeMcqTrial.id"
         :trial-title="activeMcqTrial.title"
@@ -163,12 +289,16 @@ onMounted(() => {
           </div>
         </header>
 
-        <ul v-if="activeQuestions.length" class="student-trial__python-list">
+        <ul v-if="activeQuestions.length" class="student-trial__python-list" :class="{ 'student-trial__python-list--list': currentView === 'list' }">
           <li v-for="(question, index) in activeQuestions" :key="question.id">
             <button
               type="button"
               class="student-trial__python-card"
-              :class="{ 'student-trial__python-card--recommended': question.id === recommendedQuestionId }"
+              :class="{
+                'student-trial__python-card--recommended': question.id === recommendedQuestionId,
+                'student-trial__python-card--ac': questionAcStatus[question.id] === 'ac',
+                'student-trial__python-card--wa': questionAcStatus[question.id] === 'wa',
+              }"
               @click="openPythonQuestion(question.id)"
             >
               <span class="student-trial__python-index">{{ String(index + 1).padStart(2, '0') }}</span>
@@ -183,7 +313,12 @@ onMounted(() => {
                 </div>
               </div>
               <div class="student-trial__python-side">
-                <em>+{{ question.rewardXp }} XP</em>
+                <n-tag v-if="questionAcStatus[question.id] === 'ac'" type="success" size="small" class="student-trial__ac-tag">
+                  <template #icon><n-icon :component="CheckmarkCircleOutline" /></template>
+                  AC
+                </n-tag>
+                <n-tag v-else-if="questionAcStatus[question.id] === 'wa'" type="warning" size="small" class="student-trial__ac-tag">WA</n-tag>
+                <em v-else>+{{ question.rewardXp }} XP</em>
                 <n-icon :component="ChevronForwardOutline" />
               </div>
             </button>
@@ -252,14 +387,29 @@ onMounted(() => {
         </ul>
       </section>
       </template>
+
+      <!-- 代码文件上传 -->
+      <section class="student-trial__upload" aria-label="代码文件上传">
+        <article class="student-upload-card">
+          <plex-file-uploader
+            role="student"
+            v-bind="STUDENT_PRESETS.codeFile"
+          />
+        </article>
+      </section>
     </section>
   </DashboardShell>
 </template>
 
 <style scoped>
 .student-trial {
-  padding: 0 var(--plex-page-gutter-x, 1.25rem) 2rem;
-  max-width: 1180px;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 0 var(--plex-page-gutter-x) 2rem;
 }
 
 .student-trial__python-layout {
@@ -279,6 +429,76 @@ onMounted(() => {
   margin: 0 0 1.35rem;
   color: rgba(226, 232, 240, 0.75);
   font-size: 0.92rem;
+}
+
+.student-trial__stats {
+  margin-bottom: 1.35rem;
+}
+
+.student-trial__stats-loading {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(5, 17, 29, 0.72);
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.86rem;
+}
+
+.student-trial__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.student-trial__stat-card {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(130, 212, 255, 0.14);
+  background: rgba(5, 18, 30, 0.85);
+}
+
+.student-trial__stat-label {
+  display: block;
+  color: rgba(221, 230, 239, 0.55);
+  font-size: 0.76rem;
+}
+
+.student-trial__stat-card strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: #5fffe8;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.student-trial__recent {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.student-trial__recent li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(5, 17, 29, 0.55);
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.84rem;
+}
+
+.student-trial__recent em {
+  font-style: normal;
+  color: #fb923c;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .student-trial__stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .student-trial__section {
@@ -532,9 +752,56 @@ onMounted(() => {
   gap: 0.5rem;
 }
 
+.student-trial__python-card--ac {
+  border-color: rgba(52, 211, 153, 0.35) !important;
+  background: linear-gradient(135deg, rgba(5, 25, 18, 0.92), rgba(3, 15, 10, 0.78)) !important;
+}
+
+.student-trial__python-card--wa {
+  border-color: rgba(251, 146, 60, 0.25) !important;
+}
+
+.student-trial__ac-tag {
+  flex-shrink: 0;
+}
+
+.student-trial__python-list--list .student-trial__python-card {
+  gap: 0.65rem;
+  padding: 0.6rem 0.85rem;
+}
+
+.student-trial__python-list--list .student-trial__python-index {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+}
+
+.student-trial__python-list--list .student-trial__python-copy strong {
+  font-size: 0.88rem;
+}
+
+.student-trial__python-list--list .student-trial__tags {
+  display: none;
+}
+
 @media (max-width: 1024px) {
   .student-trial__python-layout {
     grid-template-columns: 1fr;
   }
+}
+
+.student-trial__upload {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 0 0.5rem;
+}
+
+.student-upload-card {
+  width: 100%;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  background: var(--plex-bg-card);
+  border: 1px solid var(--plex-border-subtle);
 }
 </style>

@@ -8,10 +8,11 @@ import {
   CompassOutline,
   PlanetOutline,
   SettingsOutline,
+  LibraryOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../../stores/auth'
 
-export type TeacherNavKey = 'navigator' | 'starfield' | 'trial' | 'explorers' | 'admin'
+export type TeacherNavKey = 'navigator' | 'starfield' | 'trial' | 'explorers' | 'resources' | 'admin'
 
 const props = withDefaults(
   defineProps<{
@@ -34,6 +35,7 @@ const allNavItems = [
   { key: 'starfield' as const, label: '星域观测', sub: 'STARFIELD ANALYTICS', icon: PlanetOutline, to: '/teacher/starfield' },
   { key: 'trial' as const, label: '试炼中枢', sub: 'TRIAL COMMAND', icon: BarbellOutline, to: '/teacher/trials' },
   { key: 'explorers' as const, label: 'Explorer 档案', sub: 'EXPLORER ARCHIVES', icon: ArchiveOutline, to: '/teacher/explorers' },
+  { key: 'resources' as const, label: '资源审核', sub: 'RESOURCE REVIEW', icon: LibraryOutline, to: '/teacher/resources' },
   { key: 'admin' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/admin' },
 ]
 

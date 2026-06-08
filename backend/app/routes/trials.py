@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import User
+from app.services.ai_question_generator import AiQuestionGenerator
 from app.services.assignment import AssignmentService
 from app.services.trial import TrialService
 from app.utils.decorators import role_required
@@ -55,6 +56,24 @@ def create_teacher_trial():
         return error_response(str(exc), 50001, None, 500)
 
 
+@trials_bp.route('/teacher/trials/ai-generate-questions', methods=['POST'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def ai_generate_trial_questions():
+    try:
+        payload = request.get_json() or {}
+        keys = payload.get('knowledge_keys') or []
+        if payload.get('knowledge_key'):
+            keys = [payload['knowledge_key'], *keys]
+        count = int(payload.get('count') or 3)
+        questions = AiQuestionGenerator.generate(keys, count)
+        return success_response({'questions': questions})
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @trials_bp.route('/teacher/trials/<int:trial_id>/publish', methods=['POST'])
 @jwt_required()
 @role_required('teacher', 'admin')
@@ -92,6 +111,36 @@ def update_teacher_trial(trial_id):
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/teacher/trials/<int:trial_id>', methods=['DELETE'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def delete_teacher_trial(trial_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        return success_response(
+            TrialService.delete_trial(current_user_id, trial_id, _role_name(current_user_id)),
+            '试炼已删除',
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/teacher/coding-question-bank', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def list_coding_question_bank():
+    try:
+        from app.data.coding_question_bank import CODING_QUESTION_BANK
+
+        return success_response({'items': CODING_QUESTION_BANK})
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 
@@ -230,6 +279,46 @@ def submit_student_assignment(question_id):
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/student/assignments/<int:question_id>/code-submit', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def submit_student_code_assignment(question_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        payload = request.get_json() or {}
+        code = payload.get('code', '')
+        if not str(code).strip():
+            return error_response('code 不能为空', 40001, None, 400)
+        return success_response(
+            AssignmentService.submit_code_answer(
+                current_user_id,
+                question_id,
+                code,
+                payload.get('time_spent_sec'),
+            ),
+            '代码已提交',
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/student/trial-stats', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_student_trial_stats():
+    try:
+        current_user_id = int(get_jwt_identity())
+        return success_response(TrialService.get_student_trial_stats(current_user_id))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 

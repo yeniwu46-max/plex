@@ -47,6 +47,21 @@ function formatTime(iso: string | null) {
 .class-activity {
   padding: 1.35rem 1.25rem;
   min-height: 0;
+  overflow: visible;
+}
+
+.class-activity.teacher-panel {
+  overflow: visible;
+}
+
+.class-activity .teacher-panel__head {
+  overflow: visible;
+}
+
+.class-activity .teacher-panel__title {
+  white-space: nowrap;
+  overflow: visible;
+  line-height: 1.35;
 }
 
 .class-activity__list {

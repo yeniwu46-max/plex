@@ -25,6 +25,7 @@ class Trial(db.Model):
     ends_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    draft_questions_json = db.Column(db.Text)
 
     class_rel = db.relationship('Class', backref='trials')
     teacher = db.relationship('User', backref='created_trials', foreign_keys=[teacher_id])
@@ -48,6 +49,18 @@ class Trial(db.Model):
         self.knowledge_keys_json = json.dumps(cleaned, ensure_ascii=False) if cleaned else None
         self.knowledge_key = cleaned[0] if cleaned else None
 
+    def draft_questions(self) -> list[dict]:
+        if not self.draft_questions_json:
+            return []
+        try:
+            parsed = json.loads(self.draft_questions_json)
+            return parsed if isinstance(parsed, list) else []
+        except (TypeError, json.JSONDecodeError):
+            return []
+
+    def set_draft_questions(self, questions: list[dict]) -> None:
+        self.draft_questions_json = json.dumps(questions, ensure_ascii=False) if questions else None
+
     def to_dict(self, include_stats=False, effective_status=None):
         display_status = effective_status or self.status
         payload = {
@@ -67,6 +80,8 @@ class Trial(db.Model):
             'ends_at': self.ends_at.isoformat() if self.ends_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+        if self.status == 'draft':
+            payload['draft_questions'] = self.draft_questions()
         if include_stats:
             joined = [p for p in self.participations if p.status in ('joined', 'completed')]
             completed = [p for p in self.participations if p.status == 'completed']

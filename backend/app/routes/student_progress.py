@@ -3,6 +3,11 @@ from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.services.emergency_mission import EmergencyMissionService
+from app.services.evaluation import EvaluationService
+from app.services.learning_resource import LearningResourceService
+from app.services.messenger_chat import MessengerChatService
+from app.services.mistake import MistakeService
+from app.services.recommendation import RecommendationService
 from app.services.student_progress import StudentProgressService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -101,6 +106,94 @@ def get_ability_stats():
     try:
         user_id = int(get_jwt_identity())
         return success_response(StudentProgressService.get_ability_stats(user_id))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/mistakes', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def list_student_mistakes():
+    try:
+        user_id = int(get_jwt_identity())
+        knowledge_key = request.args.get('knowledge_key')
+        active_only = request.args.get('active_only', 'true').lower() != 'false'
+        items = MistakeService.list_for_student(
+            user_id,
+            knowledge_key=knowledge_key,
+            active_only=active_only,
+        )
+        weak = MistakeService.list_weak_knowledge(user_id)
+        return success_response({'items': items, 'weak_knowledge': weak, 'total': len(items)})
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/code-trial/runs', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def record_code_trial_run():
+    try:
+        user_id = int(get_jwt_identity())
+        payload = request.get_json() or {}
+        row = MistakeService.record_code_trial_run(user_id, payload)
+        return success_response({'record': row.to_dict() if row else None})
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/recommendations', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_recommendations():
+    try:
+        user_id = int(get_jwt_identity())
+        period = request.args.get('period', '7d')
+        return success_response(RecommendationService.get_student_recommendations(user_id, period))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/learning-resources', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def list_learning_resources():
+    try:
+        knowledge_key = request.args.get('knowledge_key')
+        return success_response(LearningResourceService.list_for_knowledge(knowledge_key))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/messenger/chat', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def messenger_chat():
+    try:
+        user_id = int(get_jwt_identity())
+        payload = request.get_json() or {}
+        message = payload.get('message') or payload.get('content') or ''
+        return success_response(MessengerChatService.chat(user_id, message))
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/learning-report', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_learning_report():
+    try:
+        user_id = int(get_jwt_identity())
+        period = request.args.get('period', '7d')
+        return success_response(EvaluationService.get_student_learning_report(user_id, period))
     except ValueError as exc:
         return error_response(str(exc), 40401, None, 404)
     except Exception as exc:

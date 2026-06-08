@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { advanceDailyQuest } from '../api/studentOverview'
+import PlexFileUploader from '../components/shared/upload/PlexFileUploader.vue'
+import { STUDENT_PRESETS } from '../config/upload/uploadPresets'
 import ArchiveProfileCard from '../components/archives/ArchiveProfileCard.vue'
 import ExplorationTendencyCard from '../components/archives/ExplorationTendencyCard.vue'
 import GrowthTrajectory from '../components/archives/GrowthTrajectory.vue'
@@ -12,6 +14,8 @@ import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
 import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
 import { fetchArchiveInsights, type EmergencyMissionArchiveRecord } from '../api/studentProgress'
+import { fetchStudentLearningReport, type LearningReportResult } from '../api/learningReport'
+import PlexLearningDashboard from '../components/charts/PlexLearningDashboard.vue'
 import type { AchievementItem, GrowthEvent, SkillItem } from '../data/archivesMock'
 
 const auth = useAuthStore()
@@ -21,6 +25,7 @@ const tendencyLabel = ref('探索起步型')
 const tendencyDescription = ref('完成试炼与今日委托后，这里会展示你的探索倾向分析。')
 const skillItemsFromApi = ref<SkillItem[]>([])
 const emergencyRecords = ref<EmergencyMissionArchiveRecord[]>([])
+const learningReport = ref<LearningReportResult | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -57,6 +62,29 @@ const achievementItems = computed<AchievementItem[]>(() => {
 })
 
 const skillItems = computed(() => skillItemsFromApi.value)
+
+const dashboardRadar = computed(() => learningReport.value?.radar.values ?? [0, 0, 0, 0, 0])
+const dashboardTrendDays = computed(() => learningReport.value?.trend.x_data ?? [])
+const dashboardTrendCorrect = computed(() => learningReport.value?.trend.correct_rate ?? [])
+const dashboardTrendCount = computed(() => learningReport.value?.trend.practice_count ?? [])
+const dashboardBarLabels = computed(
+  () => learningReport.value?.domain_mastery.map((item) => item.label) ?? [],
+)
+const dashboardBarValues = computed(
+  () => learningReport.value?.domain_mastery.map((item) => item.mastery_rate) ?? [],
+)
+const dashboardPieData = computed(() => {
+  const highlights = learningReport.value?.mistake_highlights ?? []
+  const counter = new Map<string, number>()
+  for (const item of highlights) {
+    const key = item.error_type || item.error_types?.[0] || item.topic || '其他'
+    counter.set(key, (counter.get(key) ?? 0) + (item.fail_count || 1))
+  }
+  if (!counter.size) {
+    return [{ name: '暂无错题', value: 1 }]
+  }
+  return [...counter.entries()].map(([name, value]) => ({ name, value }))
+})
 
 const growthEvents = computed<GrowthEvent[]>(() => {
   const tones: GrowthEvent['tone'][] = ['teal', 'gold', 'blue', 'purple']
@@ -101,10 +129,12 @@ async function loadArchive() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const [overviewResult, insights] = await Promise.all([
+    const [overviewResult, insights, report] = await Promise.all([
       fetchStudentOverview(),
       fetchArchiveInsights(),
+      fetchStudentLearningReport('7d').catch(() => null),
     ])
+    learningReport.value = report
     overview.value = overviewResult
     tendencyLabel.value = insights.tendency.label
     tendencyDescription.value = insights.tendency.description
@@ -172,6 +202,52 @@ onMounted(() => {
             class="archives-grid__emergency"
             :records="emergencyRecords"
           />
+          <section v-if="learningReport" class="archives-grid__dashboard">
+            <plex-learning-dashboard
+              mode="student"
+              :radar-values="dashboardRadar"
+              :trend-days="dashboardTrendDays"
+              :trend-correct="dashboardTrendCorrect"
+              :trend-count="dashboardTrendCount"
+              :bar-labels="dashboardBarLabels"
+              :bar-values="dashboardBarValues"
+              :pie-data="dashboardPieData"
+            />
+          </section>
+          <section v-if="learningReport" class="archives-grid__report learning-report">
+            <header>
+              <h3>学习报告</h3>
+              <span class="learning-report__badge">{{ learningReport.summary.level_label }}</span>
+            </header>
+            <p class="learning-report__index">
+              探索指数 <strong>{{ learningReport.summary.index }}</strong>
+              <span>近 7 日正确率 {{ learningReport.summary.correct_rate }}%</span>
+            </p>
+            <ul v-if="learningReport.recommendations.length" class="learning-report__recs">
+              <li v-for="(rec, idx) in learningReport.recommendations" :key="idx">
+                <strong>{{ rec.title }}</strong> — {{ rec.detail }}
+              </li>
+            </ul>
+            <p v-if="learningReport.risk_tags.length" class="learning-report__risks">
+              关注：{{ learningReport.risk_tags.join(' · ') }}
+            </p>
+          </section>
+
+          <!-- 学生资料上传 -->
+          <section class="archives-grid__upload-row" aria-label="学习资料上传">
+            <article class="archive-panel upload-panel-card">
+              <plex-file-uploader
+                role="student"
+                v-bind="STUDENT_PRESETS.learningReport"
+              />
+            </article>
+            <article class="archive-panel upload-panel-card">
+              <plex-file-uploader
+                role="student"
+                v-bind="STUDENT_PRESETS.screenshot"
+              />
+            </article>
+          </section>
         </div>
       </div>
     </div>
@@ -487,14 +563,17 @@ onMounted(() => {
 .archives-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto auto;
   gap: 0.85rem;
   min-height: min(100%, 720px);
   grid-template-areas:
     'profile tendency'
     'timeline skills'
     'timeline achievements'
-    'emergency emergency';
+    'emergency emergency'
+    'dashboard dashboard'
+    'report report'
+    'upload-row upload-row';
 }
 
 .archives-grid__profile {
@@ -523,6 +602,81 @@ onMounted(() => {
   grid-area: emergency;
 }
 
+.archives-grid__dashboard {
+  grid-area: dashboard;
+}
+
+.archives-grid__report {
+  grid-area: report;
+}
+
+.archives-grid__upload-row {
+  grid-area: upload-row;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.archive-panel.upload-panel-card {
+  padding: 1.1rem 1.1rem 1rem;
+  border-radius: 14px;
+  background: var(--plex-bg-card);
+  border: 1px solid var(--plex-border-subtle);
+}
+
+.learning-report {
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(34, 197, 94, 0.15);
+}
+
+.learning-report header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.learning-report h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.learning-report__badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.learning-report__index {
+  margin: 0 0 0.75rem;
+  color: var(--plex-muted);
+  font-size: 0.9rem;
+}
+
+.learning-report__index strong {
+  color: var(--plex-text);
+  font-size: 1.35rem;
+  margin-right: 0.5rem;
+}
+
+.learning-report__recs {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--plex-muted);
+}
+
+.learning-report__risks {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: #fbbf24;
+}
+
 @media (max-width: 1100px) {
   .archives-grid {
     grid-template-columns: 1fr;
@@ -532,7 +686,8 @@ onMounted(() => {
       'timeline'
       'skills'
       'achievements'
-      'emergency';
+      'emergency'
+      'report';
   }
 }
 

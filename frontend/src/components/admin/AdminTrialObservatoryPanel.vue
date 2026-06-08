@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { NButton, NSelect, type SelectOption } from 'naive-ui'
 import { fetchAdminTrials, type AdminTrialRow } from '../../api/adminTrials'
 import { fetchTeacherTrialDetail, type TeacherTrialDetailResult } from '../../api/teacherTrials'
+import { fetchAdminDashboard } from '../../api/adminSettings'
 import { http, type ApiEnvelope } from '../../api/http'
 import PlexLineChart from '../charts/PlexLineChart.vue'
 import PlexBarChart from '../charts/PlexBarChart.vue'
@@ -20,6 +21,13 @@ const classOptions = ref<SelectOption[]>([{ label: '全部班级', value: '' }])
 const selectedClassId = ref<string>('')
 const selectedTrialId = ref<number | null>(null)
 const detail = ref<TeacherTrialDetailResult | null>(null)
+const dashboardCharts = ref<{
+  x_data: string[]
+  submissions: number[]
+  passed: number[]
+  classLabels: string[]
+  classRates: number[]
+} | null>(null)
 
 const statusLabels: Record<string, string> = {
   running: '进行中',
@@ -76,9 +84,27 @@ async function openDetail(trialId: number) {
   }
 }
 
+async function loadDashboardCharts() {
+  try {
+    const dashboard = await fetchAdminDashboard()
+    const charts = dashboard.charts
+    if (!charts) return
+    dashboardCharts.value = {
+      x_data: charts.activity_trend.x_data,
+      submissions: charts.activity_trend.submissions,
+      passed: charts.activity_trend.passed,
+      classLabels: charts.class_completion.map((item) => item.label),
+      classRates: charts.class_completion.map((item) => item.rate),
+    }
+  } catch {
+    dashboardCharts.value = null
+  }
+}
+
 onMounted(() => {
   void loadClasses()
   void loadTrials()
+  void loadDashboardCharts()
 })
 </script>
 
@@ -106,7 +132,7 @@ onMounted(() => {
       {{ errorMessage }}
     </div>
 
-    <div v-else class="admin-trials__layout">
+    <div v-else class="admin-trials__body">
       <ul class="admin-trials__list">
         <li v-for="trial in trials" :key="trial.id">
           <button
@@ -131,6 +157,35 @@ onMounted(() => {
         </li>
         <li v-if="!trials.length" class="admin-trials__state">暂无试炼记录</li>
       </ul>
+
+      <div class="admin-trials__charts">
+        <div class="admin-trials__chart-card">
+          <h4>平台试炼活跃度（近 7 天）</h4>
+          <div class="admin-trials__chart-wrap">
+            <plex-line-chart
+              :x-data="dashboardCharts?.x_data ?? ['周一', '周二', '周三', '周四', '周五', '周六', '周日']"
+              :series="[
+                { name: '提交次数', data: dashboardCharts?.submissions ?? [0, 0, 0, 0, 0, 0, 0], color: '#818cf8' },
+                { name: '通过人数', data: dashboardCharts?.passed ?? [0, 0, 0, 0, 0, 0, 0], color: '#38bdf8' },
+              ]"
+            />
+          </div>
+        </div>
+
+        <div class="admin-trials__chart-card">
+          <h4>各班级试炼完成率对比</h4>
+          <div class="admin-trials__chart-wrap">
+            <plex-bar-chart
+              :x-data="dashboardCharts?.classLabels ?? ['暂无班级']"
+              :series="[{
+                name: '完成率(%)',
+                data: dashboardCharts?.classRates ?? [0],
+                color: '#818cf8'
+              }]"
+            />
+          </div>
+        </div>
+      </div>
 
       <aside class="admin-trials__detail">
         <div v-if="detailLoading" class="admin-trials__state">加载详情…</div>
@@ -162,43 +217,20 @@ onMounted(() => {
             </ul>
           </section>
         </template>
-        <p v-else class="admin-trials__state">选择左侧试炼查看详细数据</p>
+        <p v-else class="admin-trials__state">选择上方试炼查看详细数据</p>
       </aside>
-    </div>
-
-    <div class="admin-trials__charts">
-      <div class="admin-trials__chart-card">
-        <h4>平台试炼活跃度（近 7 天）</h4>
-        <div class="admin-trials__chart-wrap">
-          <plex-line-chart
-            :x-data="['周一', '周二', '周三', '周四', '周五', '周六', '周日']"
-            :series="[
-              { name: '提交次数', data: [42, 58, 35, 72, 88, 65, 95], color: '#818cf8' },
-              { name: '通过人数', data: [28, 44, 22, 55, 70, 50, 78], color: '#38bdf8' },
-            ]"
-          />
-        </div>
-      </div>
-
-      <div class="admin-trials__chart-card">
-        <h4>各班级试炼完成率对比</h4>
-        <div class="admin-trials__chart-wrap">
-          <plex-bar-chart
-            :x-data="trials.slice(0, 6).map(tr => tr.class_name || '班级' + tr.id).concat(['A班', 'B班', 'C班', 'D班']).slice(0, Math.max(4, trials.length))"
-            :series="[{
-              name: '完成率(%)',
-              data: trials.slice(0, 6).map(() => Math.round(Math.random() * 40 + 55)).concat([78, 65, 82, 70]).slice(0, Math.max(4, trials.length)),
-              color: '#818cf8'
-            }]"
-          />
-        </div>
-      </div>
     </div>
   </section>
 </template>
 
 <style scoped>
 .admin-trials {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-trials__body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -251,13 +283,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.admin-trials__layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 1rem;
-  min-height: 360px;
-}
-
 .admin-trials__list {
   list-style: none;
   margin: 0;
@@ -265,7 +290,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  max-height: 520px;
+  max-height: 280px;
   overflow: auto;
 }
 
@@ -309,6 +334,8 @@ onMounted(() => {
   padding: 0.85rem 1rem;
   background: rgba(11, 22, 40, 0.72);
   overflow: auto;
+  min-height: 160px;
+  max-height: 360px;
 }
 
 .admin-trials__detail h3 {
@@ -348,11 +375,5 @@ onMounted(() => {
 
 .admin-trials__state--error {
   color: #e88080;
-}
-
-@media (max-width: 960px) {
-  .admin-trials__layout {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

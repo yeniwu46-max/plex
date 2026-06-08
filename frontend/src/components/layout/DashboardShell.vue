@@ -15,7 +15,7 @@ import PlexTopbar from './PlexTopbar.vue'
 
 const props = withDefaults(
   defineProps<{
-    activeNav: 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'control'
+    activeNav: 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'profile' | 'resources' | 'control'
     pageTitle: string
     pageSubtitle?: string
     searchPlaceholder: string
@@ -27,6 +27,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   viewSwitch: [key: string]
+  searchSubmit: [query: string]
 }>()
 
 const sidebarCollapsed = ref(false)
@@ -38,8 +39,8 @@ const viewOptions: DropdownOption[] = [
 ]
 
 
-function onViewSelect(key: string) {
-  emit('viewSwitch', key)
+function onViewSelect(key: string | number) {
+  emit('viewSwitch', String(key))
 }
 </script>
 
@@ -54,6 +55,7 @@ function onViewSelect(key: string) {
         :subtitle="pageSubtitle"
         :placeholder="searchPlaceholder"
         :hide-search="hideSearch"
+        @search-submit="(q) => emit('searchSubmit', q)"
       />
 
       <div v-if="showViewSwitcher" class="topbar-actions">
@@ -81,8 +83,8 @@ function onViewSelect(key: string) {
 .shell {
   display: flex;
   min-height: 100%;
-  background: #050a0e;
-  color: #e2e8f0;
+  background: var(--plex-bg, #050a0e);
+  color: var(--plex-text, #e2e8f0);
   font-family:
     'Outfit',
     'Noto Sans SC',
@@ -101,7 +103,7 @@ function onViewSelect(key: string) {
   flex-direction: column;
   padding: 1.25rem 0.75rem;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(5, 10, 14, 0.98) 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid var(--plex-border-subtle, rgba(255, 255, 255, 0.06));
   transition: width 0.2s ease;
 }
 

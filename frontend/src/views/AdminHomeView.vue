@@ -1,7 +1,8 @@
-<script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { NButton, NIcon, NInput, NSelect, useMessage, type SelectOption } from 'naive-ui'
+﻿<script setup lang="ts">
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
+import { usePlexTour } from '../composables/usePlexTour'
+import { useRoute, useRouter } from 'vue-router'
+import { NButton, NIcon, NInput, NModal, NSelect, useMessage, type SelectOption } from 'naive-ui'
 import {
   AlertCircleOutline,
   AnalyticsOutline,
@@ -16,20 +17,34 @@ import {
   PeopleOutline,
   PersonCircleOutline,
   PlanetOutline,
-  SearchOutline,
   SettingsOutline,
   ShieldCheckmarkOutline,
   SparklesOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
-import { createAdminAnnouncement, fetchAdminAnnouncements } from '../api/adminAnnouncements'
-import AdminAgentOrchestrationPanel from '../components/admin/AdminAgentOrchestrationPanel.vue'
+import {
+  createAdminAnnouncement,
+  deleteAdminAnnouncement,
+  fetchAdminAnnouncements,
+  updateAdminAnnouncement,
+} from '../api/adminAnnouncements'
 import AdminClassRequestPanel from '../components/admin/AdminClassRequestPanel.vue'
-import AdminKnowledgeNexusPanel from '../components/admin/AdminKnowledgeNexusPanel.vue'
-import AdminTrialObservatoryPanel from '../components/admin/AdminTrialObservatoryPanel.vue'
+import PlexThemeSwitcher from '../components/shared/PlexThemeSwitcher.vue'
+import PlexLocalSearch from '../components/search/PlexLocalSearch.vue'
+
+const AdminAgentOrchestrationPanel = defineAsyncComponent(
+  () => import('../components/admin/AdminAgentOrchestrationPanel.vue'),
+)
+const AdminKnowledgeNexusPanel = defineAsyncComponent(
+  () => import('../components/admin/AdminKnowledgeNexusPanel.vue'),
+)
+const AdminTrialObservatoryPanel = defineAsyncComponent(
+  () => import('../components/admin/AdminTrialObservatoryPanel.vue'),
+)
 import type { SystemAnnouncement } from '../api/teacherAnnouncements'
 import { fetchAdminSettings, saveAdminSettings, fetchAdminDashboard, type AdminSettingsPayload, type AdminDashboardResult } from '../api/adminSettings'
 import { NInputNumber, NSwitch } from 'naive-ui'
+import { useThemeStore, type ColorMode } from '../stores/theme'
 
 type NavKey = 'nexus' | 'agents' | 'knowledge' | 'observer' | 'governance'
 type Tone = 'purple' | 'amber' | 'green' | 'red'
@@ -70,7 +85,6 @@ interface AlertItem {
   tone: Tone
 }
 
-const searchText = ref('')
 const now = ref(new Date())
 let clockTimer: ReturnType<typeof setInterval> | undefined
 
@@ -82,9 +96,26 @@ function formatDateTime(date: Date) {
 const currentTimeText = computed(() => `当前时间 ${formatDateTime(now.value)}`)
 const currentYear = computed(() => now.value.getFullYear())
 
+const adminSearchQuery = ref('')
 const activeNav = ref<NavKey>('nexus')
+
+const { startTour, resetTour } = usePlexTour()
+async function restartAdminTour() {
+  resetTour('admin')
+  await startTour('admin')
+}
+
+// 挂载 plexAdminNavSetter 供导览 prepare 使用（window 全局临时挂载）
+onMounted(() => {
+  const w = window as Window & { __plexAdminNavSetter?: (key: NavKey) => void }
+  w.__plexAdminNavSetter = (key: NavKey) => { activeNav.value = key }
+})
+onUnmounted(() => {
+  delete (window as Window & { __plexAdminNavSetter?: (key: NavKey) => void }).__plexAdminNavSetter
+})
 const period = ref('today')
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 
@@ -93,6 +124,26 @@ const announcementBody = ref('')
 const announcementTarget = ref<'teacher' | 'student' | 'all'>('teacher')
 const postingAnnouncement = ref(false)
 const recentAnnouncements = ref<SystemAnnouncement[]>([])
+
+const filteredAnnouncements = computed(() => {
+  const q = adminSearchQuery.value.trim().toLowerCase()
+  if (!q) return recentAnnouncements.value
+  return recentAnnouncements.value.filter(
+    (item) => item.title.toLowerCase().includes(q) || item.body.toLowerCase().includes(q),
+  )
+})
+
+const editingAnnouncement = ref<SystemAnnouncement | null>(null)
+const showEditAnnouncementModal = ref(false)
+const editAnnouncementTitle = ref('')
+const editAnnouncementBody = ref('')
+const editAnnouncementTarget = ref<'teacher' | 'student' | 'all'>('teacher')
+const savingAnnouncement = ref(false)
+const deletingAnnouncementId = ref<number | null>(null)
+
+const adminThemeStore = useThemeStore()
+const themeMode = computed(() => adminThemeStore.mode)
+function setThemeMode(key: string) { adminThemeStore.setMode(key as ColorMode) }
 
 const settingsLoading = ref(false)
 const settingsSaving = ref(false)
@@ -368,8 +419,60 @@ function setActiveNav(key: NavKey) {
 async function loadAnnouncements() {
   try {
     recentAnnouncements.value = await fetchAdminAnnouncements()
-  } catch {
+  } catch (error) {
     recentAnnouncements.value = []
+    message.error(error instanceof Error ? error.message : '公告列表加载失败')
+  }
+}
+
+function announcementSuccessText(target: 'teacher' | 'student' | 'all') {
+  if (target === 'student') return '公告已发布，学生端将收到通知'
+  if (target === 'all') return '公告已发布，教师与学生端将收到通知'
+  return '公告已发布，教师端将收到通知'
+}
+
+function openEditAnnouncement(item: SystemAnnouncement) {
+  editingAnnouncement.value = item
+  editAnnouncementTitle.value = item.title
+  editAnnouncementBody.value = item.body
+  editAnnouncementTarget.value = item.target_role as 'teacher' | 'student' | 'all'
+  showEditAnnouncementModal.value = true
+}
+
+async function saveEditAnnouncement() {
+  if (!editingAnnouncement.value) return
+  if (!editAnnouncementTitle.value.trim() || !editAnnouncementBody.value.trim()) {
+    message.warning('请填写公告标题与内容')
+    return
+  }
+  savingAnnouncement.value = true
+  try {
+    await updateAdminAnnouncement(editingAnnouncement.value.id, {
+      title: editAnnouncementTitle.value.trim(),
+      body: editAnnouncementBody.value.trim(),
+      target_role: editAnnouncementTarget.value,
+    })
+    message.success('公告已更新')
+    showEditAnnouncementModal.value = false
+    editingAnnouncement.value = null
+    await loadAnnouncements()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '更新失败')
+  } finally {
+    savingAnnouncement.value = false
+  }
+}
+
+async function removeAnnouncement(id: number) {
+  deletingAnnouncementId.value = id
+  try {
+    await deleteAdminAnnouncement(id)
+    message.success('公告已删除')
+    await loadAnnouncements()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '删除失败')
+  } finally {
+    deletingAnnouncementId.value = null
   }
 }
 
@@ -385,7 +488,7 @@ async function postAnnouncement() {
       body: announcementBody.value.trim(),
       target_role: announcementTarget.value,
     })
-    message.success('公告已发布，教师端将收到通知')
+    message.success(announcementSuccessText(announcementTarget.value))
     announcementTitle.value = ''
     announcementBody.value = ''
     await loadAnnouncements()
@@ -406,6 +509,21 @@ onMounted(() => {
     now.value = new Date()
   }, 1000)
   void loadDashboard()
+
+  // Handle ?panel=xxx from global search result navigation
+  const valid: NavKey[] = ['nexus', 'agents', 'knowledge', 'observer', 'governance']
+  const initPanel = route.query.panel as string | undefined
+  if (initPanel && valid.includes(initPanel as NavKey)) {
+    setActiveNav(initPanel as NavKey)
+  }
+  watch(
+    () => route.query.panel as string | undefined,
+    (panel) => {
+      if (panel && valid.includes(panel as NavKey)) {
+        setActiveNav(panel as NavKey)
+      }
+    },
+  )
 })
 
 onUnmounted(() => {
@@ -462,12 +580,15 @@ onUnmounted(() => {
         </div>
 
         <div class="topbar-tools">
-          <n-input v-model:value="searchText" round clearable placeholder="搜索用户、智能体、资源或事件..." class="search-input">
-            <template #prefix>
-              <n-icon :component="SearchOutline" />
-            </template>
-          </n-input>
+          <PlexLocalSearch
+            v-model="adminSearchQuery"
+            variant="admin"
+            :compact="true"
+            placeholder="搜索当前面板内容…"
+            class="search-input"
+          />
           <button type="button" class="icon-button" aria-label="通知"><n-icon :component="NotificationsOutline" /><i /></button>
+          <plex-theme-switcher />
           <span class="nexus-globe" aria-hidden="true"><n-icon :component="SparklesOutline" /></span>
           <button type="button" class="profile-button">
             <n-icon :component="PersonCircleOutline" />
@@ -512,6 +633,18 @@ onUnmounted(() => {
                 <i><b :style="{ width: `${item.value}%` }" /></i>
               </div>
             </article>
+          </div>
+          <div
+            v-if="dashboardData?.weak_knowledge_top?.length"
+            class="weak-knowledge-top"
+          >
+            <h3>全校薄弱知识点 TOP</h3>
+            <ul>
+              <li v-for="item in dashboardData.weak_knowledge_top" :key="item.knowledge_key">
+                <span>{{ item.knowledge_label }}</span>
+                <em>{{ item.fail_count }} 次错题</em>
+              </li>
+            </ul>
           </div>
         </article>
 
@@ -612,28 +745,7 @@ onUnmounted(() => {
         </article>
       </section>
 
-      <section v-else-if="activeNav === 'observer'" class="observer-grid" aria-label="系统观测面板">
-        <AdminTrialObservatoryPanel class="panel observatory-trials-panel" />
-
-        <article class="panel observatory-panel">
-          <header class="panel-head">
-            <h2>平台运行态势 <span class="info-dot">i</span></h2>
-            <n-select :value="'realtime'" :options="[{ label: '实时监测', value: 'realtime' }, { label: '近 1 小时', value: 'hour' }]" size="small" class="observe-select" />
-          </header>
-          <div class="observatory-map">
-            <div class="pulse-field" aria-hidden="true">
-              <span v-for="ring in 9" :key="ring" :style="{ '--ring': ring }" />
-              <i v-for="bar in 34" :key="bar" :style="{ '--bar': bar }" />
-              <b><n-icon :component="SparklesOutline" /></b>
-            </div>
-            <div class="map-node map-node--user"><n-icon :component="PersonCircleOutline" /><span>用户交互</span></div>
-            <div class="map-node map-node--agent"><n-icon :component="HardwareChipOutline" /><span>智能体响应</span></div>
-            <div class="map-node map-node--resource"><n-icon :component="AppsOutline" /><span>资源调度</span></div>
-            <div class="map-node map-node--knowledge"><n-icon :component="BookOutline" /><span>知识服务</span></div>
-            <div class="map-node map-node--task"><n-icon :component="AppsOutline" /><span>任务处理</span></div>
-          </div>
-        </article>
-
+      <section v-else-if="activeNav === 'observer'" class="observer-grid" aria-label="系统观测面板" data-tour="admin-system-monitor">
         <article class="panel anomaly-panel">
           <header class="panel-head">
             <h2>异常洞察</h2>
@@ -652,6 +764,43 @@ onUnmounted(() => {
           </div>
         </article>
 
+        <AdminTrialObservatoryPanel class="panel observatory-trials-panel" />
+
+        <article class="panel observatory-panel">
+          <header class="panel-head">
+            <h2>平台运行态势 <span class="info-dot">i</span></h2>
+            <n-select :value="'realtime'" :options="[{ label: '实时监测', value: 'realtime' }, { label: '近 1 小时', value: 'hour' }]" size="small" class="observe-select" />
+          </header>
+          <div class="observatory-services">
+            <div class="observatory-service">
+              <n-icon :component="PersonCircleOutline" />
+              <span>用户交互</span>
+              <small>正常</small>
+            </div>
+            <div class="observatory-service">
+              <n-icon :component="HardwareChipOutline" />
+              <span>智能体响应</span>
+              <small>正常</small>
+            </div>
+            <div class="observatory-service">
+              <n-icon :component="AppsOutline" />
+              <span>资源调度</span>
+              <small>正常</small>
+            </div>
+            <div class="observatory-service">
+              <n-icon :component="BookOutline" />
+              <span>知识服务</span>
+              <small>正常</small>
+            </div>
+            <div class="observatory-service">
+              <n-icon :component="AppsOutline" />
+              <span>任务处理</span>
+              <small>正常</small>
+            </div>
+          </div>
+        </article>
+
+        <div class="observer-grid__footer">
         <article class="panel wave-panel">
           <header class="panel-head">
             <h2>近7日平台波动 <span class="info-dot">i</span></h2>
@@ -700,18 +849,19 @@ onUnmounted(() => {
           </div>
           <p class="alert-delta">较昨日 ↓ 2</p>
         </article>
+        </div>
       </section>
 
-      <admin-agent-orchestration-panel v-else-if="activeNav === 'agents'" />
+      <admin-agent-orchestration-panel v-else-if="activeNav === 'agents'" data-tour="admin-agent-flow" />
 
-      <admin-knowledge-nexus-panel v-else-if="activeNav === 'knowledge'" />
+      <admin-knowledge-nexus-panel v-else-if="activeNav === 'knowledge'" data-tour="admin-knowledge-maintenance" />
 
-      <section v-else-if="activeNav === 'governance'" class="dashboard-grid governance-grid" aria-label="权限与公告">
+      <section v-else-if="activeNav === 'governance'" class="dashboard-grid governance-grid" aria-label="权限与公告" data-tour="admin-permission-control">
         <article class="panel governance-announce-panel">
           <header class="panel-head">
-            <h2>向教师发布公告</h2>
+            <h2>系统公告</h2>
           </header>
-          <p class="governance-hint">教师登录后将在顶栏通知中收到管理员公告；发布作业请由教师在试炼中枢操作。</p>
+          <p class="governance-hint">向教师、学生或全体用户发布公告；教师/学生登录后将在顶栏通知中收到。</p>
           <label class="gov-field">
             <span>接收对象</span>
             <n-select v-model:value="announcementTarget" :options="announcementTargetOptions" />
@@ -729,32 +879,84 @@ onUnmounted(() => {
               placeholder="请输入公告正文"
             />
           </label>
-          <n-button type="primary" :loading="postingAnnouncement" @click="postAnnouncement">发布公告</n-button>
+          <n-button type="primary" class="gov-primary-btn" :loading="postingAnnouncement" @click="postAnnouncement">发布公告</n-button>
         </article>
 
         <article class="panel governance-list-panel">
           <header class="panel-head">
             <h2>近期公告</h2>
-            <button type="button" @click="loadAnnouncements()">刷新</button>
+            <n-button quaternary size="small" class="gov-refresh-btn" @click="loadAnnouncements()">刷新</n-button>
           </header>
-          <div v-if="!recentAnnouncements.length" class="governance-empty">暂无公告记录</div>
-          <article v-for="item in recentAnnouncements" :key="item.id" class="gov-announce-item">
+          <div v-if="!filteredAnnouncements.length" class="governance-empty">
+            {{ adminSearchQuery.trim() ? '没有匹配的公告' : '暂无公告记录' }}
+          </div>
+          <article v-for="item in filteredAnnouncements" :key="item.id" class="gov-announce-item">
             <strong>{{ item.title }}</strong>
             <p>{{ item.body }}</p>
             <small>{{ item.target_role }} · {{ item.created_at?.slice(0, 16).replace('T', ' ') }}</small>
+            <div class="gov-announce-actions">
+              <n-button size="tiny" secondary @click="openEditAnnouncement(item)">编辑</n-button>
+              <n-button
+                size="tiny"
+                quaternary
+                type="error"
+                :loading="deletingAnnouncementId === item.id"
+                @click="removeAnnouncement(item.id)"
+              >
+                删除
+              </n-button>
+            </div>
           </article>
         </article>
 
-        <admin-class-request-panel />
+        <n-modal
+          v-model:show="showEditAnnouncementModal"
+          preset="card"
+          title="编辑公告"
+          :style="{ maxWidth: '480px' }"
+        >
+          <label class="gov-field">
+            <span>接收对象</span>
+            <n-select v-model:value="editAnnouncementTarget" :options="announcementTargetOptions" />
+          </label>
+          <label class="gov-field">
+            <span>公告标题</span>
+            <n-input v-model:value="editAnnouncementTitle" />
+          </label>
+          <label class="gov-field">
+            <span>公告内容</span>
+            <n-input v-model:value="editAnnouncementBody" type="textarea" :autosize="{ minRows: 4, maxRows: 8 }" />
+          </label>
+          <template #footer>
+            <n-button quaternary @click="showEditAnnouncementModal = false">取消</n-button>
+            <n-button type="primary" class="gov-primary-btn" :loading="savingAnnouncement" @click="saveEditAnnouncement">保存</n-button>
+          </template>
+        </n-modal>
 
-        <article class="panel governance-settings-panel">
+        <article class="panel governance-settings-panel" data-tour="admin-feature-flags">
           <header class="panel-head">
             <h2>系统设置</h2>
-            <button type="button" :disabled="settingsLoading" @click="loadSettings()">刷新</button>
+            <n-button quaternary size="small" class="gov-refresh-btn" :loading="settingsLoading" @click="loadSettings()">刷新</n-button>
           </header>
           <div v-if="settingsLoading" class="governance-empty">加载中…</div>
           <div v-else-if="settingsError" class="governance-empty gov-err">{{ settingsError }}</div>
           <template v-else>
+            <section class="gov-settings-section">
+              <h3>外观模式</h3>
+              <div class="gov-field gov-field--inline">
+                <span>界面主题（本地偏好）</span>
+                <div class="gov-theme-options">
+                  <button
+                    v-for="opt in [{ key: 'dark', label: '深色' }, { key: 'light', label: '浅色' }, { key: 'auto', label: '跟随系统' }]"
+                    :key="opt.key"
+                    type="button"
+                    class="gov-theme-btn"
+                    :class="{ 'gov-theme-btn--active': themeMode === opt.key }"
+                    @click="setThemeMode(opt.key)"
+                  >{{ opt.label }}</button>
+                </div>
+              </div>
+            </section>
             <section class="gov-settings-section">
               <h3>试炼规则</h3>
               <label class="gov-field">
@@ -792,9 +994,12 @@ onUnmounted(() => {
                 <n-switch v-model:value="item.enabled" />
               </label>
             </section>
-            <n-button type="primary" :loading="settingsSaving" @click="saveSettings()">保存设置</n-button>
+            <n-button type="primary" class="gov-primary-btn" :loading="settingsSaving" @click="saveSettings()">保存设置</n-button>
+            <n-button secondary style="margin-top:0.65rem;width:100%" @click="restartAdminTour">重新查看功能导览</n-button>
           </template>
         </article>
+
+        <admin-class-request-panel />
       </section>
 
       <footer class="admin-footer">© {{ currentYear }} PLEX Universe. All rights reserved.</footer>
@@ -1271,6 +1476,38 @@ onUnmounted(() => {
   gap: 1.25rem;
 }
 
+.weak-knowledge-top {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(167, 139, 250, 0.12);
+}
+
+.weak-knowledge-top h3 {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  color: #ddd6fe;
+}
+
+.weak-knowledge-top ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.weak-knowledge-top li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #a5b4fc;
+}
+
+.weak-knowledge-top em {
+  font-style: normal;
+  color: #c4b5fd;
+}
+
 .progress-list article {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr);
@@ -1572,33 +1809,49 @@ onUnmounted(() => {
 
 .observer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(300px, auto) minmax(220px, auto);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto;
   gap: 1rem;
   margin-top: 1.05rem;
-  align-items: stretch;
+  align-items: start;
+  align-content: start;
 }
 
-.observatory-trials-panel {
-  grid-column: 1 / -1;
-  grid-row: 1;
+.observer-grid > .panel,
+.observer-grid > .observatory-trials-panel,
+.observer-grid > .observer-grid__footer {
+  grid-column: 1;
+  min-width: 0;
 }
 
-.observatory-panel,
 .anomaly-panel {
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.observatory-panel {
-  grid-column: 1 / 3;
+.observatory-trials-panel {
   grid-row: 2;
 }
 
-.anomaly-panel {
-  grid-column: 3;
-  grid-row: 2;
+.observatory-panel {
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.observer-grid__footer {
+  grid-row: 4;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.observer-grid__footer > .panel {
+  min-width: 0;
 }
 
 .anomaly-panel .anomaly-list {
@@ -1607,21 +1860,6 @@ onUnmounted(() => {
   max-height: 280px;
   align-content: start;
   overflow: auto;
-}
-
-.wave-panel {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.module-panel {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.global-alert-panel {
-  grid-column: 3;
-  grid-row: 2;
 }
 
 .info-dot {
@@ -1648,100 +1886,41 @@ onUnmounted(() => {
   --n-text-color: #ddd6fe !important;
 }
 
-.observatory-map {
-  position: relative;
-  flex: 1;
-  min-height: 240px;
-  max-height: 280px;
-  overflow: hidden;
-  border-top: 1px solid rgba(167, 139, 250, 0.08);
-}
-
-.pulse-field {
-  position: absolute;
-  inset: 0;
+.observatory-services {
   display: grid;
-  place-items: center;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding-top: 0.35rem;
 }
 
-.pulse-field span {
-  position: absolute;
-  width: calc(var(--ring) * 88px);
-  height: calc(var(--ring) * 28px);
-  transform: rotate(-5deg);
-  border: 1px solid rgba(139, 92, 246, 0.24);
-  border-radius: 50%;
-}
-
-.pulse-field i {
-  position: absolute;
-  left: calc(50% + (var(--bar) - 17) * 10px);
-  top: calc(50% - ((var(--bar) % 9) * 8px));
-  width: 3px;
-  height: calc(22px + (var(--bar) % 7) * 9px);
-  transform-origin: bottom;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(167, 139, 250, 0.9), rgba(139, 92, 246, 0.05));
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.75);
-}
-
-.pulse-field b {
-  position: relative;
+.observatory-service {
   display: grid;
-  width: 92px;
-  height: 92px;
-  place-items: center;
-  color: #ddd6fe;
-  font-size: 3.2rem;
-  filter: drop-shadow(0 0 24px rgba(139, 92, 246, 0.9));
-}
-
-.map-node {
-  position: absolute;
-  display: grid;
-  place-items: center;
+  justify-items: center;
   gap: 0.35rem;
-  color: rgba(226, 232, 240, 0.76);
-  font-size: 0.86rem;
+  padding: 0.85rem 0.5rem;
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  border-radius: 12px;
+  background: rgba(12, 14, 32, 0.55);
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.82rem;
+  text-align: center;
 }
 
-.map-node .n-icon {
+.observatory-service .n-icon {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border: 1px solid rgba(139, 92, 246, 0.55);
+  border: 1px solid rgba(139, 92, 246, 0.45);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.36), rgba(8, 11, 26, 0.78));
+  background: rgba(139, 92, 246, 0.12);
   color: #a78bfa;
-  font-size: 1.45rem;
-  box-shadow: 0 0 18px rgba(139, 92, 246, 0.35);
+  font-size: 1.25rem;
 }
 
-.map-node--user {
-  left: 18%;
-  top: 10%;
-}
-
-.map-node--agent {
-  right: 16%;
-  top: 10%;
-}
-
-.map-node--resource {
-  right: 12%;
-  bottom: 14%;
-}
-
-.map-node--knowledge {
-  left: 50%;
-  bottom: 10%;
-  transform: translateX(-50%);
-}
-
-.map-node--task {
-  left: 14%;
-  bottom: 14%;
+.observatory-service small {
+  color: #34d399;
+  font-size: 0.72rem;
 }
 
 .anomaly-list {
@@ -1927,27 +2106,27 @@ onUnmounted(() => {
   .metric-row,
   .dashboard-grid,
   .observer-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
   }
 
-  .observatory-panel {
-    grid-column: 1 / -1;
-  }
-
-  .observatory-panel,
   .anomaly-panel,
-  .wave-panel,
-  .module-panel,
-  .global-alert-panel {
+  .observatory-trials-panel,
+  .observatory-panel,
+  .observer-grid__footer {
+    grid-column: 1;
     grid-row: auto;
   }
 
-  .anomaly-panel .anomaly-list {
-    max-height: none;
+  .observer-grid__footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .observatory-map {
+  .observatory-services {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .anomaly-panel .anomaly-list {
     max-height: none;
   }
 
@@ -1975,6 +2154,14 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 
+  .observatory-services {
+    grid-template-columns: 1fr;
+  }
+
+  .observer-grid__footer {
+    grid-template-columns: 1fr;
+  }
+
   .topbar-tools,
   .admin-topbar {
     align-items: stretch;
@@ -1990,8 +2177,64 @@ onUnmounted(() => {
 }
 
 .governance-grid {
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto auto;
+  grid-auto-rows: auto;
   gap: 1rem;
+  align-items: stretch;
+  align-content: start;
+}
+
+.governance-grid .panel {
+  overflow: visible;
+  height: auto;
+  max-height: none;
+}
+
+.governance-announce-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.governance-list-panel {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: 100%;
+}
+
+.governance-list-panel .governance-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+}
+
+.governance-settings-panel {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.governance-grid :deep(.gov-class-panel) {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+@media (max-width: 1100px) {
+  .governance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .governance-announce-panel,
+  .governance-list-panel,
+  .governance-settings-panel,
+  .governance-grid :deep(.gov-class-panel) {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 
 .governance-hint {
@@ -2044,8 +2287,10 @@ onUnmounted(() => {
   font-size: 0.78rem;
 }
 
-.governance-settings-panel {
-  grid-column: 1 / -1;
+.gov-announce-actions {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
 }
 
 .gov-settings-section {
@@ -2068,5 +2313,41 @@ onUnmounted(() => {
 
 .gov-err {
   color: #ef4444;
+}
+
+.gov-field--inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  padding: 0.3rem 0;
+}
+
+.gov-theme-options {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gov-theme-btn {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(199, 210, 254, 0.75);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gov-theme-btn:hover {
+  border-color: rgba(129, 140, 248, 0.55);
+  color: #c7d2fe;
+}
+
+.gov-theme-btn--active {
+  border-color: #818cf8;
+  background: rgba(129, 140, 248, 0.15);
+  color: #a5b4fc;
 }
 </style>

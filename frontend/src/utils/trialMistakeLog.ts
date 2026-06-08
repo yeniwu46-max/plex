@@ -1,4 +1,6 @@
 import type { PythonTrialQuestion } from '../data/pythonTrialQuestions'
+import type { StudentMistakeItem } from '../api/studentMistakes'
+import { fetchStudentMistakes, submitCodeTrialRun } from '../api/studentMistakes'
 import { getStarPathNodeByQuestionId } from '../data/starPathTrail'
 
 const STORAGE_PREFIX = 'plex:trial-mistakes:'
@@ -48,6 +50,42 @@ export function getTrialMistakeRecords(userId: number | string): TrialMistakeRec
   return readAll(userId).sort(
     (a, b) => new Date(b.lastFailedAt).getTime() - new Date(a.lastFailedAt).getTime(),
   )
+}
+
+export function mapServerMistakeToRecord(item: StudentMistakeItem): TrialMistakeRecord {
+  const rawTypes: string[] = item.error_types?.length
+    ? item.error_types
+    : item.error_type
+      ? [item.error_type]
+      : []
+  const normalized = rawTypes.map((t) =>
+    t === 'wrong_answer' || t === 'wrong_output' ? 'wrong_output' : 'runtime_error',
+  ) as TrialMistakeErrorType[]
+  return {
+    questionId: item.question_id || item.question_ref,
+    questionTitle: item.question_title || item.question_ref,
+    topic: item.topic || item.knowledge_label || '综合',
+    tags: item.tags || [],
+    starPathNodeId: item.star_path_node_id,
+    starPathNodeTitle: item.star_path_node_title,
+    failedCaseLabels: item.failed_case_labels || [],
+    errorTypes: normalized.length ? normalized : ['wrong_output'],
+    failCount: item.fail_count,
+    lastFailedAt: item.last_failed_at,
+    lastPassedAt: item.last_passed_at,
+  }
+}
+
+export async function fetchServerMistakeRecords(userId: number | string): Promise<TrialMistakeRecord[]> {
+  if (userId === 'guest') return getActiveMistakeRecords(userId)
+  try {
+    const data = await fetchStudentMistakes({ active_only: true })
+    const server = data.items.map(mapServerMistakeToRecord)
+    if (server.length) return server
+  } catch {
+    /* 离线回退 localStorage */
+  }
+  return getActiveMistakeRecords(userId)
 }
 
 export function getActiveMistakeRecords(userId: number | string): TrialMistakeRecord[] {
@@ -114,4 +152,18 @@ export function recordTrialRun(
     records.push(patch)
   }
   writeAll(userId, records)
+
+  if (userId !== 'guest' && typeof userId === 'number') {
+    const node = getStarPathNodeByQuestionId(question.id)
+    void submitCodeTrialRun({
+      question_id: question.id,
+      question_title: question.title,
+      knowledge_key: question.tags[0] || 'algo',
+      topic: question.topic,
+      tags: question.tags,
+      star_path_node_id: node?.id ?? null,
+      star_path_node_title: nodeTitle,
+      cases,
+    }).catch(() => undefined)
+  }
 }

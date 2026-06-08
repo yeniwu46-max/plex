@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { NButton, NIcon, NSelect } from 'naive-ui'
 import {
@@ -20,8 +20,11 @@ import PlexBarChart from '../components/charts/PlexBarChart.vue'
 import PlexPieChart from '../components/charts/PlexPieChart.vue'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import { buildClassStarfieldNodes, buildStarfieldInsight, polylineFromPoints } from '../data/teacherStarfield'
-import type { TeacherStudentRow } from '../api/teacherOverview'
 import { fetchTeacherClassStats, type TeacherClassStatsResult } from '../api/teacherOverview'
+import { downloadClassEvaluationExport, fetchClassEvaluation } from '../api/learningReport'
+import type { ClassEvaluationStudent } from '../api/learningReport'
+import { teacherAgentSuggestion, type TeacherSuggestionResult } from '../api/agentService'
+import PlexTeacherSuggestionPanel from '../components/agent/PlexTeacherSuggestionPanel.vue'
 
 const {
   overview,
@@ -40,16 +43,40 @@ const {
 } = useTeacherOverviewInjected()
 
 const classStats = ref<TeacherClassStatsResult | null>(null)
+const classEvaluation = ref<Awaited<ReturnType<typeof fetchClassEvaluation>> | null>(null)
+const exportingCsv = ref(false)
+const teacherAgentLoading = ref(false)
+const teacherAgentResult = ref<TeacherSuggestionResult | null>(null)
+const teacherAgentError = ref('')
 
 async function loadClassStats() {
   if (!selectedClassId.value) {
     classStats.value = null
+    classEvaluation.value = null
     return
   }
   try {
-    classStats.value = await fetchTeacherClassStats(selectedClassId.value)
+    const [stats, evaluation] = await Promise.all([
+      fetchTeacherClassStats(selectedClassId.value),
+      fetchClassEvaluation(selectedClassId.value, period.value === 'month' ? '30d' : '7d').catch(() => null),
+    ])
+    classStats.value = stats
+    classEvaluation.value = evaluation
   } catch {
     classStats.value = null
+    classEvaluation.value = null
+  }
+}
+
+async function onExportCsv() {
+  if (!selectedClassId.value || exportingCsv.value) return
+  exportingCsv.value = true
+  try {
+    await downloadClassEvaluationExport(selectedClassId.value)
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '导出失败')
+  } finally {
+    exportingCsv.value = false
   }
 }
 
@@ -57,9 +84,33 @@ onMounted(() => {
   void loadClassStats()
 })
 
-watch(selectedClassId, () => {
+watch([selectedClassId, period], () => {
+  teacherAgentResult.value = null
+  teacherAgentError.value = ''
   void loadClassStats()
 })
+
+async function generateTeacherAgentSuggestion() {
+  if (!selectedClassId.value || teacherAgentLoading.value) return
+  teacherAgentLoading.value = true
+  teacherAgentError.value = ''
+  try {
+    const weakPointStats = (classStats.value?.mistake_types ?? []).map((item) => ({
+      knowledgePoint: item.name,
+      count: Math.round(item.value),
+    }))
+    teacherAgentResult.value = await teacherAgentSuggestion({
+      classId: String(selectedClassId.value),
+      weakPointStats,
+      commonErrorTypes: weakPointStats.slice(0, 2).map((item) => item.knowledgePoint),
+      recentExercises: classEvaluation.value?.students?.slice(0, 3).map((s) => s.username) ?? [],
+    })
+  } catch (error) {
+    teacherAgentError.value = error instanceof Error ? error.message : '生成教学建议失败'
+  } finally {
+    teacherAgentLoading.value = false
+  }
+}
 
 const domainChartData = computed(() => {
   const items = classStats.value?.domain_mastery ?? []
@@ -103,7 +154,7 @@ const explorationStats = computed(() => [
   { key: 'risk', icon: CubeOutline, value: metrics.value?.attention_count ?? 0, label: '需跟进学生' },
 ])
 
-const orbitNodes = computed(() => buildClassStarfieldNodes(overview.value))
+const orbitNodes = computed(() => buildClassStarfieldNodes(overview.value, classStats.value))
 
 const trendPoints = computed(() => {
   const rows = overview.value?.heatmap.rows ?? []
@@ -134,8 +185,27 @@ function studentsCompletedQuestThreshold(threshold: number) {
   }).length
 }
 
+const evaluationAttention = computed(() => {
+  const items = classEvaluation.value?.attention_students ?? []
+  return items.map((student: ClassEvaluationStudent) => ({
+    id: student.student_id,
+    username: student.username,
+    real_name: student.real_name,
+    reasons: student.risk_tags,
+    learning_index: student.learning_index,
+    level_label: student.level_label,
+  }))
+})
+
+const mergedAttentionStudents = computed(() => {
+  if (evaluationAttention.value.length) return evaluationAttention.value
+  return attentionStudents.value
+})
+
 const focusedExplorers = computed(() => {
-  const source = attentionStudents.value.length ? attentionStudents.value : students.value.slice(0, 5)
+  const source = mergedAttentionStudents.value.length
+    ? mergedAttentionStudents.value
+    : students.value.slice(0, 5)
   return source.slice(0, 5).map((student, index) => ({
     ...student,
     risk: riskText(student, index),
@@ -157,7 +227,7 @@ const missionItems = computed(() => {
   })
 })
 
-function riskText(student: TeacherStudentRow, index: number) {
+function riskText(student: { reasons?: string[] }, index: number) {
   if (student.reasons?.some((reason) => reason.includes('冻结') || reason.includes('无积分'))) return '高风险'
   if (student.reasons?.length || index < 4) return index < 2 ? '高风险' : '中风险'
   return '低风险'
@@ -198,7 +268,7 @@ function activityDescription() {
           <knowledge-orbit-map :nodes="orbitNodes" title="" />
         </section>
 
-        <aside class="overview-card stats-card teacher-panel teacher-quad-layout__side-top">
+        <aside class="overview-card stats-card teacher-panel teacher-quad-layout__side-top" data-tour="teacher-class-dashboard">
           <header class="teacher-panel__head">
             <h2 class="teacher-panel__title">今日探索概览</h2>
           </header>
@@ -212,7 +282,7 @@ function activityDescription() {
         </aside>
 
         <teacher-insight-card
-          class="overview-card insight-card teacher-quad-layout__side-bottom"
+          class="overview-card insight-card teacher-quad-layout__side-bottom" data-tour="teacher-ai-suggestion"
           title="AI 教学洞察"
           :rate="aiInsight.rate"
           :subject="aiInsight.subject"
@@ -248,7 +318,7 @@ function activityDescription() {
                 <strong>{{ student.real_name || student.username }}</strong>
                 <small>{{ student.risk }}</small>
               </article>
-              <span v-if="attentionStudents.length > 5" class="more-chip">+{{ attentionStudents.length - 5 }}</span>
+              <span v-if="mergedAttentionStudents.length > 5" class="more-chip">+{{ mergedAttentionStudents.length - 5 }}</span>
             </div>
           </article>
 
@@ -258,8 +328,10 @@ function activityDescription() {
             </header>
             <div class="mission-body">
               <div class="progress-ring" :style="{ '--progress': `${Math.round((missionDone / Math.max(1, missionTotal)) * 100)}%` }">
-                <strong>{{ missionDone }}</strong>
-                <span>/{{ missionTotal }}</span>
+                <div class="progress-ring__value">
+                  <strong>{{ missionDone }}</strong>
+                  <span>/{{ missionTotal }}</span>
+                </div>
                 <small>已完成</small>
               </div>
               <div class="mission-list">
@@ -279,14 +351,22 @@ function activityDescription() {
         </div>
 
         <teacher-class-answer-board
-          class="overview-card teacher-quad-layout__full-row"
-          :class-id="selectedClassId"
+          class="overview-card teacher-quad-layout__full-row" data-tour="teacher-assignment-analysis" :class-id="selectedClassId"
         />
 
         <class-activity-feed class="overview-card activity-card teacher-quad-layout__full-row" :activities="recentActivity" />
 
         <div class="navigator-home__charts teacher-quad-layout__full-row teacher-quad-layout__cols-2">
-          <article class="overview-card teacher-panel">
+          <div v-if="selectedClassId" class="navigator-home__export-row teacher-quad-layout__full-row">
+            <n-button
+              class="navigator-home__export-btn"
+              :loading="exportingCsv"
+              @click="onExportCsv"
+            >
+              导出班级学情 CSV
+            </n-button>
+          </div>
+          <article class="overview-card teacher-panel" data-tour="teacher-weak-points">
             <header class="teacher-panel__head">
               <h2 class="teacher-panel__title">班级知识域掌握度</h2>
             </header>
@@ -307,12 +387,46 @@ function activityDescription() {
             </div>
           </article>
         </div>
+
+        <section class="navigator-home__agent teacher-quad-layout__full-row" data-tour="teacher-agent-suggestion">
+          <header class="teacher-panel__head navigator-home__agent-head">
+            <h2 class="teacher-panel__title">AI 班级教学建议</h2>
+            <n-button
+              size="small"
+              type="warning"
+              :loading="teacherAgentLoading"
+              :disabled="!selectedClassId"
+              @click="generateTeacherAgentSuggestion"
+            >
+              生成 AI 教学建议
+            </n-button>
+          </header>
+          <plex-teacher-suggestion-panel
+            :result="teacherAgentResult"
+            :loading="teacherAgentLoading"
+            :error="teacherAgentError"
+          />
+        </section>
       </template>
     </section>
   </TeacherDashboardShell>
 </template>
 
 <style scoped>
+.navigator-home__export-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.navigator-home__export-btn {
+  font-size: 0.82rem;
+  color: var(--teacher-orange, #fb923c);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  border-radius: 999px;
+}
+
 .navigator-home {
   --orange: var(--teacher-orange, #fb923c);
   --gold: var(--teacher-gold, #fbbf24);
@@ -337,6 +451,19 @@ function activityDescription() {
 .navigator-home__chart-wrap {
   height: 240px;
   margin-top: 0.5rem;
+}
+
+.navigator-home__agent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.navigator-home__agent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .navigator-home__row4 {
@@ -537,11 +664,13 @@ function activityDescription() {
 
 .progress-ring {
   --progress: 0%;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   width: 106px;
   aspect-ratio: 1;
-  place-items: center;
-  justify-self: center;
   border-radius: 50%;
   background:
     radial-gradient(circle at center, #06121f 58%, transparent 59%),
@@ -549,21 +678,30 @@ function activityDescription() {
   box-shadow: 0 0 28px rgba(251, 146, 60, 0.28);
 }
 
+.progress-ring__value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.08rem;
+  margin-top: 0.15rem;
+}
+
 .progress-ring strong {
   color: #ffffff;
   font-size: 1.65rem;
-  transform: translateY(0.8rem);
+  line-height: 1;
 }
 
 .progress-ring span {
   color: rgba(255, 237, 213, 0.72);
-  transform: translateY(-1.25rem);
+  font-size: 0.92rem;
+  line-height: 1;
 }
 
 .progress-ring small {
   color: var(--orange);
   font-weight: 800;
-  transform: translateY(-2.55rem);
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 
 .mission-list {

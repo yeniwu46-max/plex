@@ -20,7 +20,29 @@ export const plexColors = {
   nodeGray: '#64748B',
 } as const
 
-/** Naive UI `themeOverrides` 的 `common` 段（暗色主题下卡片/输入等基底） */
+/** 角色浅色主色映射 */
+const PERSONA_LIGHT_PRIMARY: Record<string, string> = {
+  student: '#16a34a',
+  teacher: '#ea580c',
+  admin: '#6366f1',
+  default: '#0891b2',
+}
+
+const PERSONA_LIGHT_HOVER: Record<string, string> = {
+  student: '#15803d',
+  teacher: '#c2410c',
+  admin: '#4f46e5',
+  default: '#0e7490',
+}
+
+const PERSONA_LIGHT_PRESSED: Record<string, string> = {
+  student: '#166534',
+  teacher: '#9a3412',
+  admin: '#4338ca',
+  default: '#155e75',
+}
+
+/** 深色模式 Naive overrides（保留原始风格） */
 export const plexNaiveCommonOverrides = {
   primaryColor: plexColors.accent,
   primaryColorHover: plexColors.accentHover,
@@ -40,3 +62,44 @@ export const plexNaiveCommonOverrides = {
   borderColor: plexColors.border,
   borderRadius: '10px',
 } as const
+
+/** 浅色模式 Naive overrides */
+function getLightOverrides(persona: string) {
+  const primary = PERSONA_LIGHT_PRIMARY[persona] ?? PERSONA_LIGHT_PRIMARY.default
+  const hover = PERSONA_LIGHT_HOVER[persona] ?? PERSONA_LIGHT_HOVER.default
+  const pressed = PERSONA_LIGHT_PRESSED[persona] ?? PERSONA_LIGHT_PRESSED.default
+  return {
+    primaryColor: primary,
+    primaryColorHover: hover,
+    primaryColorPressed: pressed,
+    primaryColorSuppl: primary,
+    bodyColor: '#0f172a',
+    textColor1: '#0f172a',
+    textColor2: '#475569',
+    textColor3: '#64748b',
+    cardColor: '#ffffff',
+    modalColor: '#ffffff',
+    popoverColor: '#ffffff',
+    tableColor: '#ffffff',
+    tableHeaderColor: '#f8fafc',
+    inputColor: '#f8fafc',
+    actionColor: '#f1f5f9',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: '10px',
+  }
+}
+
+/**
+ * 根据当前 resolved 主题和角色返回 Naive themeOverrides。
+ * 在 App.vue 的 computed 中调用。
+ */
+export function getPlexNaiveOverrides(
+  resolved: 'dark' | 'light',
+  persona: string,
+): { common: Record<string, string> } {
+  const common =
+    resolved === 'light'
+      ? getLightOverrides(persona)
+      : { ...plexNaiveCommonOverrides }
+  return { common }
+}

@@ -354,7 +354,7 @@ coding/
 
 **进行中/待完成**:
 - [x] **试炼中枢 MVP** — 见 [docs/工作计划-2026-05-27-试炼中枢.md](docs/工作计划-2026-05-27-试炼中枢.md)（`trials` / `trial_participations`、教师/学生 API、`TrialArenaView` + `StudentTrialView` 联调）
-- [ ] 今日委托持久化与每日重置 - 需要新增任务/完成记录设计
+- [x] 今日委托持久化（`UserDailyQuest.quest_date` 按日推进；管理端模板配置可选）
 - [ ] 试炼关卡真实流程 - 需要新增试炼记录、完成结算、奖励发放与战绩接口
 - [x] 激励系统闭环：`IncentiveService` 统一记分 → 等级推算 → 成就自动解锁 → 班级周排名缓存刷新
 - [x] 排名缓存：`ranking_cache` 按 ISO 周汇总 `PointsLog`，教师看板与学生 `/users/me` 使用同一套排名
@@ -467,7 +467,7 @@ coding/
 **前后端联调需求**：
 - `GET /api/v1/trials` - 获取可用试炼列表
 - `POST /api/v1/trials/{id}/join` - 参加试炼
-- `GET /api/v1/user/trial-stats` - 用户试炼战绩
+- [x] `GET /api/v1/student/trial-stats` - 用户试炼战绩
 - `GET /api/v1/user/resources` - 用户资源余额
 - `GET /api/v1/user/profile` - 用户等级与积分信息
 

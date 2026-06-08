@@ -13,7 +13,7 @@
 | **langgraph** | 已安装 | 1.2.0 | 多步状态机、Agent 图、检查点恢复、与 LangChain 生态编排 |
 | **e2b** | 已安装 | 2.21.0 | 云端隔离沙箱里跑代码/命令、给 Agent 安全执行环境（需 [E2B](https://e2b.dev) API Key） |
 | **llama-index**（含 **llama-index-core**） | 已安装 | 0.14.21 | 文档索引、RAG、查询引擎、与多种 LLM/嵌入对接 |
-| **crewai** | **未安装**（见下） | — | 多 Agent 角色分工、Crew 编排、YAML 任务流 |
+| **crewai** | **已安装**（`backend/.venv-crewai`，Python 3.12，v1.14.6） | 1.14.6 | 多 Agent 角色分工、Crew 编排；Flask 3.14 进程会通过 `.venv-crewai` 自动加载 |
 
 ---
 
@@ -35,19 +35,25 @@
 - **导入**：`from llama_index.core import VectorStoreIndex` 等；元包 `llama-index` 会拉齐常用子包（如 `llama-index-llms-openai`）。
 - **适用**：PDF/Markdown 切块、向量检索、与项目文档（如 `backend_api_design.md`）结合的问答原型。
 
-### CrewAI（当前环境未装上）
+### CrewAI（已安装于 `backend/.venv-crewai`）
 
-在本机 **Python 3.14（Windows）** 上，`pip install crewai` 目前只会解析到 **0.11.2** 等旧约束，依赖需 **编译** 的 `regex` / `tiktoken` 旧版本，易与 **无预编译 wheel** 或 **缺少 Rust** 冲突而失败；从 **GitHub 源码** 安装若网络不稳定可能长时间卡在 `git clone`。
+- **仓库**：https://github.com/crewAIInc/crewAI  
+- **安装**（需 Python 3.10–3.12，**不支持 3.14**）：
 
-**建议**（任选其一）：
+```powershell
+cd backend
+powershell -ExecutionPolicy Bypass -File scripts/install_crewai.ps1
+```
 
-1. 使用 **Python 3.11 或 3.12** 新建虚拟环境，再执行：  
-   `pip install -U crewai`
-2. 网络稳定后从源码安装：  
-   `pip install "git+https://github.com/crewAIInc/crewAI.git"`
-3. 任务仅需「多 Agent 编排」时，可暂用 **LangGraph** 实现，待 CrewAI 环境就绪再迁移。
+或手动：
 
-项目内已有 CrewAI 相关 **Agent Skills**（`.agents/skills/…`）时，仍以技能说明为准；**运行时代码**依赖 `crewai` 包时请先完成上述安装。
+```bash
+py -3.12 -m venv .venv-crewai
+.venv-crewai\Scripts\pip install "git+https://github.com/crewAIInc/crewAI.git#subdirectory=lib/crewai"
+```
+
+- **启用**：环境变量 `AGENT_BACKEND=auto`（默认，检测到 venv 即报 `crewai`）或 `crewai`；真实 LLM 推理需配置 `OPENAI_API_KEY`（无 Key 时仍走 Mock fallback）。
+- **注意**：不要直接 `pip install` 仓库根目录（会装成 `UNKNOWN`）；必须带 `#subdirectory=lib/crewai`。
 
 ---
 

@@ -6,195 +6,189 @@ from app.models import Trial, TrialQuestion, db
 from app.data.knowledge_catalog import DOMAIN_LABELS, KNOWLEDGE_UNIVERSE, POINT_TO_BANK
 
 KNOWLEDGE_LABELS = {
-    'dp': '动态规划',
-    'graph': '图论基础',
-    'ds': '数据结构',
-    'data': '数据结构',
-    'algo': '算法基础',
-    'greedy': '贪心',
-    'tree': '树结构',
-    'frontend': '前端开发',
-    'front': '前端开发',
-    'fe': '前端开发',
-    'back': '后端开发',
-    'be': '后端开发',
-    'db': '数据库',
-    'sql': 'SQL',
-    'cs': '计算机基础',
+    'intro': 'Python 入门',
+    'var': '变量与类型',
+    'ops': '运算与表达式',
+    'cond': '条件分支',
+    'loop': '循环结构',
+    'list': '列表与容器',
+    'str': '字符串处理',
+    'func': '函数基础',
+    'file': '文件与异常',
+    'algo': '算法入门',
     **DOMAIN_LABELS,
 }
 
 # 每知识点题库（stem, options, correct_index）
 QUESTION_BANK: dict[str, list[dict]] = {
-    'dp': [
+    'intro': [
         {
-            'stem': '斐波那契数列用动态规划求 F(n)，状态转移方程是？',
-            'options': ['F(n)=F(n-1)+F(n-2)', 'F(n)=F(n-1)*F(n-2)', 'F(n)=2F(n-1)', 'F(n)=n+F(n-1)'],
+            'stem': 'Python 中用于输出内容的函数是？',
+            'options': ['print()', 'echo()', 'output()', 'write()'],
             'correct_index': 0,
         },
         {
-            'stem': '0-1 背包问题中，dp[i][w] 通常表示？',
-            'options': [
-                '前 i 件物品在容量 w 下的最大价值',
-                '第 i 件物品是否必选',
-                '容量 w 的最小物品数',
-                '前 i 件物品的总重量',
-            ],
+            'stem': '单行注释使用哪个符号开头？',
+            'options': ['#', '//', '/*', '--'],
             'correct_index': 0,
         },
         {
-            'stem': '最长公共子序列 LCS 的经典 DP 时间复杂度（两串长度 m,n）为？',
-            'options': ['O(mn)', 'O(m+n)', 'O(m log n)', 'O(m²)'],
-            'correct_index': 0,
-        },
-        {
-            'stem': '「重叠子问题」是动态规划的必要特征之一，含义是？',
-            'options': [
-                '子问题会被多次重复求解',
-                '子问题互不相交',
-                '必须使用递归',
-                '只能用于图论',
-            ],
+            'stem': 'print("Hello") 的输出结果是？',
+            'options': ['Hello', 'Hello()', '"Hello"', '报错'],
             'correct_index': 0,
         },
     ],
-    'graph': [
+    'var': [
         {
-            'stem': '无向连通图有 n 个顶点，最少需要多少条边？',
-            'options': ['n-1', 'n', 'n+1', '2n'],
+            'stem': '下列哪个是合法的变量名？',
+            'options': ['score1', '1score', 'for', 'my-score'],
             'correct_index': 0,
         },
         {
-            'stem': 'Dijkstra 算法不能正确处理哪种边权？',
-            'options': ['负权边', '零权边', '正权边', '无权边'],
+            'stem': 'input() 返回的数据类型通常是？',
+            'options': ['str', 'int', 'float', 'bool'],
             'correct_index': 0,
         },
         {
-            'stem': '拓扑排序适用于哪类图？',
-            'options': ['有向无环图 DAG', '无向完全图', '带负环的有向图', '任意稠密图'],
-            'correct_index': 0,
-        },
-        {
-            'stem': 'BFS 常用于求无权图上的？',
-            'options': ['最短路径（边权为 1）', '最小生成树', '强连通分量', '欧拉回路'],
+            'stem': 'int("12") 的结果是？',
+            'options': ['12', '"12"', '报错', '12.0'],
             'correct_index': 0,
         },
     ],
-    'ds': [
+    'ops': [
         {
-            'stem': '二叉搜索树中序遍历序列的特点是？',
-            'options': ['单调非降', '单调非增', '随机', '与插入顺序相同'],
+            'stem': '表达式 10 // 3 的结果是？',
+            'options': ['3', '3.33', '4', '1'],
             'correct_index': 0,
         },
         {
-            'stem': '栈的典型应用场景是？',
-            'options': ['表达式括号匹配', '最短路径', '归并排序', '哈希冲突处理'],
+            'stem': '比较运算 5 > 3 的结果是？',
+            'options': ['True', 'False', '5', '3'],
             'correct_index': 0,
         },
         {
-            'stem': '链表单节点删除（已知节点指针）平均时间复杂度？',
-            'options': ['O(1)', 'O(log n)', 'O(n)', 'O(n log n)'],
-            'correct_index': 0,
-        },
-        {
-            'stem': '哈希表平均查找复杂度通常为？',
-            'options': ['O(1)', 'O(log n)', 'O(n)', 'O(n²)'],
+            'stem': '逻辑运算 True and False 的结果是？',
+            'options': ['False', 'True', 'None', '0'],
             'correct_index': 0,
         },
     ],
-    'frontend': [
+    'cond': [
         {
-            'stem': 'Vue 3 中响应式 ref 在 script 里读取值需要？',
-            'options': ['.value', '.data', '.get()', '直接当普通变量'],
+            'stem': '判断年龄是否成年，最合适的结构是？',
+            'options': ['if-else', 'while', 'for', 'try-except'],
             'correct_index': 0,
         },
         {
-            'stem': 'HTTP 缓存头 Cache-Control: no-store 表示？',
-            'options': ['不存储任何缓存副本', '永久缓存', '仅 CDN 缓存', '只缓存 HTML'],
+            'stem': 'elif 的作用是？',
+            'options': ['再判断一个条件', '结束循环', '定义函数', '捕获异常'],
             'correct_index': 0,
         },
         {
-            'stem': 'Flex 布局中 justify-content 控制的是？',
-            'options': ['主轴对齐', '交叉轴对齐', '换行', '子项缩放'],
+            'stem': 'score=85 时，grade="B" 需要用到？',
+            'options': ['if-elif-else', 'print', 'input', 'import'],
+            'correct_index': 0,
+        },
+    ],
+    'loop': [
+        {
+            'stem': 'for i in range(3) 会循环几次？',
+            'options': ['3', '2', '4', '0'],
             'correct_index': 0,
         },
         {
-            'stem': 'TypeScript 中 interface 与 type 都可描述对象，常见区别是？',
-            'options': ['interface 可声明合并', 'type 一定更快', 'interface 不能继承', 'type 不能用于函数'],
+            'stem': 'break 的作用是？',
+            'options': ['提前结束循环', '跳过本次循环', '重新开始程序', '定义变量'],
+            'correct_index': 0,
+        },
+        {
+            'stem': '打印 1 到 5 的和，通常使用？',
+            'options': ['循环 + 累加变量', '只用一个 print', 'input', '注释'],
+            'correct_index': 0,
+        },
+    ],
+    'list': [
+        {
+            'stem': '列表 nums = [1,2,3]，nums[0] 的值是？',
+            'options': ['1', '2', '3', '0'],
+            'correct_index': 0,
+        },
+        {
+            'stem': 'len([10,20,30]) 的结果是？',
+            'options': ['3', '30', '2', '10'],
+            'correct_index': 0,
+        },
+        {
+            'stem': '字典 student = {"name":"A"}，取姓名应写？',
+            'options': ['student["name"]', 'student.name', 'name(student)', 'getname()'],
+            'correct_index': 0,
+        },
+    ],
+    'str': [
+        {
+            'stem': '"hello".upper() 的结果是？',
+            'options': ['HELLO', 'hello', 'Hello', '报错'],
+            'correct_index': 0,
+        },
+        {
+            'stem': '字符串 "abc"[1] 的结果是？',
+            'options': ['b', 'a', 'c', '1'],
+            'correct_index': 0,
+        },
+        {
+            'stem': '统计字符串长度应使用？',
+            'options': ['len(s)', 'count(s)', 'size(s)', 'length()'],
+            'correct_index': 0,
+        },
+    ],
+    'func': [
+        {
+            'stem': '定义函数使用哪个关键字？',
+            'options': ['def', 'function', 'fn', 'fun'],
+            'correct_index': 0,
+        },
+        {
+            'stem': '函数中 return 的作用是？',
+            'options': ['返回结果并结束函数', '打印输出', '导入模块', '开始循环'],
+            'correct_index': 0,
+        },
+        {
+            'stem': '封装“求两数之和”最适合用？',
+            'options': ['函数', '注释', 'print', 'break'],
+            'correct_index': 0,
+        },
+    ],
+    'file': [
+        {
+            'stem': '读取文本文件通常配合哪个语句？',
+            'options': ['with open(...) as f', 'for break', 'if else', 'def return'],
+            'correct_index': 0,
+        },
+        {
+            'stem': 'try-except 主要用于？',
+            'options': ['捕获运行错误', '循环遍历', '定义变量', '格式化输出'],
             'correct_index': 0,
         },
     ],
     'algo': [
         {
-            'stem': '快速排序平均时间复杂度是？',
-            'options': ['O(n log n)', 'O(n²)', 'O(n)', 'O(log n)'],
+            'stem': '在列表中逐个查找目标值，属于？',
+            'options': ['线性查找', '快速排序', '递归回溯', '动态规划'],
             'correct_index': 0,
         },
         {
-            'stem': '二分查找的前提条件是？',
-            'options': ['序列有序', '序列唯一', '序列链表存储', '序列长度为奇数'],
+            'stem': '统计列表元素出现次数，常用结构是？',
+            'options': ['循环 + 计数器', '只写 print', 'input', '注释'],
             'correct_index': 0,
         },
         {
-            'stem': '大 O 记号主要描述算法的？',
-            'options': ['渐近上界', '精确运行时间', '内存地址', '编译优化级别'],
-            'correct_index': 0,
-        },
-    ],
-    'back': [
-        {
-            'stem': 'RESTful API 中 GET 请求通常用于？',
-            'options': ['获取资源', '删除资源', '仅上传文件', '开启事务'],
-            'correct_index': 0,
-        },
-        {
-            'stem': 'JWT 常用于？',
-            'options': ['无状态认证', '数据库索引', '前端路由', '图片压缩'],
-            'correct_index': 0,
-        },
-        {
-            'stem': 'ORM 的主要作用是？',
-            'options': ['对象与关系表映射', '压缩 HTTP', '渲染 UI', '负载均衡'],
-            'correct_index': 0,
-        },
-    ],
-    'cs': [
-        {
-            'stem': '进程与线程的主要区别是？',
-            'options': ['线程共享进程资源', '进程一定比线程快', '线程不能并发', '进程没有地址空间'],
-            'correct_index': 0,
-        },
-        {
-            'stem': 'TCP 属于 OSI 模型的哪一层？',
-            'options': ['传输层', '应用层', '物理层', '表示层'],
-            'correct_index': 0,
-        },
-        {
-            'stem': '虚拟内存的主要目的是？',
-            'options': ['扩展可用地址空间', '提高 CPU 主频', '加密磁盘', '减少网络延迟'],
-            'correct_index': 0,
-        },
-    ],
-    'db': [
-        {
-            'stem': 'SQL 中 PRIMARY KEY 约束表示？',
-            'options': ['唯一标识一行', '允许重复', '必须为 NULL', '自动排序'],
-            'correct_index': 0,
-        },
-        {
-            'stem': '数据库索引的主要作用是？',
-            'options': ['加快查询', '增加存储冗余', '禁止更新', '替代事务'],
-            'correct_index': 0,
-        },
-        {
-            'stem': 'ACID 中 A 表示？',
-            'options': ['原子性', '可用性', '异步', '聚合'],
+            'stem': '使用 set 的主要好处之一是？',
+            'options': ['自动去重', '自动排序', '只能存数字', '不能遍历'],
             'correct_index': 0,
         },
     ],
 }
 
-DEFAULT_BANK = QUESTION_BANK['algo']
+DEFAULT_BANK = QUESTION_BANK['intro']
 
 
 class QuestionGenerator:
@@ -202,22 +196,103 @@ class QuestionGenerator:
 
     @staticmethod
     def _normalize_key(knowledge_key: str | None) -> str:
-        key = (knowledge_key or 'algo').lower().strip()
+        key = (knowledge_key or 'intro').lower().strip()
         if key in POINT_TO_BANK:
             return POINT_TO_BANK[key]
         if key in QUESTION_BANK:
             return key
-        if key in ('data', 'tree', 'stack'):
-            return 'ds'
-        if key in ('front', 'css', 'react', 'fe'):
-            return 'frontend'
-        if key in ('be',):
-            return 'back'
-        return 'algo'
+        if key in ('python', 'lang', 'syntax', 'basic', 'comment', 'input', 'io'):
+            return 'var' if key in ('input', 'io') else 'intro'
+        if key in ('condition', 'range'):
+            return 'cond' if key == 'condition' else 'loop'
+        if key in ('tuple', 'set', 'dict'):
+            return 'list'
+        if key in ('string', 'function'):
+            return 'str' if key == 'string' else 'func'
+        if key in ('except', 'exception'):
+            return 'file'
+        if key.startswith('algo'):
+            return 'algo'
+        return 'intro'
 
     @staticmethod
     def bank_for_key(knowledge_key: str | None) -> list[dict]:
         return QUESTION_BANK.get(QuestionGenerator._normalize_key(knowledge_key), DEFAULT_BANK)
+
+    @staticmethod
+    def ensure_from_custom(trial: Trial, custom_questions: list[dict]) -> list[TrialQuestion]:
+        """用教师自定义题干覆盖随机生成（兼容仅 MCQ 的旧调用）。"""
+        normalized = []
+        for entry in custom_questions:
+            qtype = (entry.get('question_type') or 'mcq').lower()
+            if qtype == 'coding':
+                normalized.append({**entry, 'question_type': 'coding'})
+            else:
+                normalized.append({**entry, 'question_type': 'mcq'})
+        return QuestionGenerator.ensure_from_payload(trial, normalized)
+
+    @staticmethod
+    def ensure_from_payload(trial: Trial, questions: list[dict]) -> list[TrialQuestion]:
+        """按题型写入试炼题目（MCQ + 编程混排）。"""
+        TrialQuestion.query.filter_by(trial_id=trial.id).delete()
+        db.session.flush()
+        created = []
+        for index, entry in enumerate(questions):
+            qtype = (entry.get('question_type') or 'mcq').lower()
+            if qtype == 'coding':
+                test_cases = entry.get('test_cases') or []
+                if not test_cases:
+                    continue
+                meta = {
+                    'starter_code': entry.get('starter_code') or '# 在此编写代码\n',
+                    'run_mode': entry.get('run_mode') or 'stdout',
+                    'hint': entry.get('hint') or '',
+                    'test_cases': test_cases,
+                    'constraints': entry.get('constraints') or [],
+                    'examples': entry.get('examples') or [],
+                }
+                question = TrialQuestion(
+                    trial_id=trial.id,
+                    sort_order=index + 1,
+                    question_type='coding',
+                    stem=str(entry.get('stem') or f'编程题 {index + 1}'),
+                    options=[],
+                    correct_index=0,
+                    knowledge_key=entry.get('knowledge_key') or trial.knowledge_key,
+                )
+                question.set_coding_meta(meta)
+            else:
+                options = entry.get('options') or []
+                if len(options) < 2:
+                    continue
+                question = TrialQuestion(
+                    trial_id=trial.id,
+                    sort_order=index + 1,
+                    question_type='mcq',
+                    stem=str(entry.get('stem') or f'题目 {index + 1}'),
+                    options=[str(o) for o in options[:6]],
+                    correct_index=min(max(int(entry.get('correct_index', 0)), 0), len(options) - 1),
+                    knowledge_key=entry.get('knowledge_key') or trial.knowledge_key,
+                )
+            db.session.add(question)
+            created.append(question)
+        if not created:
+            return QuestionGenerator.ensure_for_trial(trial)
+        db.session.commit()
+        return created
+
+    @staticmethod
+    def materialize_trial_questions(trial: Trial) -> list[TrialQuestion]:
+        """已发布试炼：确保题目已落库；草稿仅返回空列表。"""
+        if trial.status == 'draft':
+            return []
+        existing = TrialQuestion.query.filter_by(trial_id=trial.id).order_by(TrialQuestion.sort_order).all()
+        if existing:
+            return existing
+        draft = trial.draft_questions()
+        if draft:
+            return QuestionGenerator.ensure_from_payload(trial, draft)
+        return QuestionGenerator.ensure_for_trial(trial)
 
     @staticmethod
     def ensure_for_trial(trial: Trial, count: int | None = None) -> list[TrialQuestion]:

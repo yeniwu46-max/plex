@@ -13,63 +13,43 @@ export interface KnowledgeDomainDef {
 
 export const TEACHER_KNOWLEDGE_UNIVERSE: KnowledgeDomainDef[] = [
   {
-    key: 'algo',
-    label: '算法基础',
+    key: 'stage1',
+    label: '会写第一段 Python',
     points: [
-      { key: 'algo-complexity', label: '时间复杂度' },
-      { key: 'algo-greedy', label: '贪心策略' },
-      { key: 'algo-dp-intro', label: '动态规划入门' },
-      { key: 'algo-divide', label: '分治思想' },
+      { key: 'intro', label: 'Python 与 print' },
+      { key: 'comment', label: '注释' },
+      { key: 'var', label: '变量与类型' },
+      { key: 'io', label: '输入 input' },
     ],
   },
   {
-    key: 'fe',
-    label: '前端开发',
+    key: 'stage2',
+    label: '条件与循环',
     points: [
-      { key: 'fe-vue', label: 'Vue 组件化' },
-      { key: 'fe-state', label: '状态管理' },
-      { key: 'fe-http', label: 'HTTP 与接口' },
-      { key: 'fe-css', label: '布局与样式' },
+      { key: 'ops', label: '运算与表达式' },
+      { key: 'cond', label: 'if 分支' },
+      { key: 'loop', label: '循环结构' },
+      { key: 'range', label: 'range / break / continue' },
     ],
   },
   {
-    key: 'be',
-    label: '后端开发',
+    key: 'stage3',
+    label: '容器、字符串与函数',
     points: [
-      { key: 'be-rest', label: 'REST API' },
-      { key: 'be-auth', label: '认证与权限' },
-      { key: 'be-orm', label: 'ORM 与数据层' },
-      { key: 'be-cache', label: '缓存策略' },
+      { key: 'list', label: '列表 list' },
+      { key: 'dict', label: '字典 dict' },
+      { key: 'str', label: '字符串处理' },
+      { key: 'func', label: '函数基础' },
     ],
   },
   {
-    key: 'cs',
-    label: '计算机基础',
+    key: 'stage4',
+    label: '简单算法小任务',
     points: [
-      { key: 'cs-os', label: '操作系统' },
-      { key: 'cs-net', label: '计算机网络' },
-      { key: 'cs-memory', label: '内存与进程' },
-      { key: 'cs-binary', label: '数制与编码' },
-    ],
-  },
-  {
-    key: 'db',
-    label: '数据库',
-    points: [
-      { key: 'db-sql', label: 'SQL 查询' },
-      { key: 'db-index', label: '索引优化' },
-      { key: 'db-trans', label: '事务 ACID' },
-      { key: 'db-design', label: '表结构设计' },
-    ],
-  },
-  {
-    key: 'ds',
-    label: '数据结构',
-    points: [
-      { key: 'ds-array', label: '数组与链表' },
-      { key: 'ds-stack', label: '栈与队列' },
-      { key: 'ds-tree', label: '树与二叉树' },
-      { key: 'ds-graph', label: '图的表示' },
+      { key: 'file', label: '文件读写' },
+      { key: 'except', label: '异常处理' },
+      { key: 'algo-sum', label: '求和与统计' },
+      { key: 'algo-search', label: '线性查找' },
     ],
   },
 ]
@@ -78,7 +58,6 @@ export function labelForKnowledgeKey(key: string): string {
   for (const domain of TEACHER_KNOWLEDGE_UNIVERSE) {
     const point = domain.points.find((p) => p.key === key)
     if (point) return point.label
-    if (domain.key === key) return domain.label
   }
   return key
 }

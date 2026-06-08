@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { NButton, NTag, useMessage } from 'naive-ui'
 import {
+  completeStudentTrial,
   fetchStudentTrialQuestions,
   type StudentTrialQuestionsResult,
 } from '../../api/studentTrials'
@@ -41,6 +42,12 @@ function elapsedSec(questionId: number): number {
 
 const title = computed(() => props.trialTitle || payload.value?.trial_title || '班级试炼')
 const isDone = computed(() => payload.value?.my_status === 'completed')
+const canSubmitTrial = computed(() => {
+  const p = payload.value
+  if (!p || isDone.value) return false
+  return p.answered_count >= p.question_count && p.question_count > 0
+})
+const submittingTrial = ref(false)
 
 async function loadQuestions() {
   loading.value = true
@@ -96,6 +103,22 @@ async function submit(item: TeacherAssignmentItem) {
   }
 }
 
+async function submitTrial() {
+  if (!canSubmitTrial.value || submittingTrial.value) return
+  submittingTrial.value = true
+  try {
+    const result = await completeStudentTrial(props.trialId, payload.value?.score)
+    showIncentiveFeedback(message, result.incentive)
+    message.success(`试炼「${result.trial.title}」已完成，得分 ${result.participation.score}`)
+    emit('completed')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '提交试炼失败')
+    await loadQuestions()
+  } finally {
+    submittingTrial.value = false
+  }
+}
+
 onMounted(() => {
   void loadQuestions()
 })
@@ -124,6 +147,11 @@ onMounted(() => {
       <n-button secondary size="small" @click="loadQuestions()">重试</n-button>
     </p>
     <p v-else-if="!payload?.items.length" class="trial-mcq__empty">该试炼暂无题目，请稍后再试。</p>
+
+    <footer v-if="canSubmitTrial" class="trial-mcq__submit-bar">
+      <p>全部题目已作答，提交后计入试炼战绩与今日委托。</p>
+      <n-button type="primary" :loading="submittingTrial" @click="submitTrial">提交试炼</n-button>
+    </footer>
 
     <article
       v-for="item in payload?.items ?? []"
@@ -297,5 +325,23 @@ onMounted(() => {
 
 .trial-mcq__card footer {
   margin-top: 0.75rem;
+}
+
+.trial-mcq__submit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 240, 192, 0.35);
+  background: rgba(16, 240, 192, 0.08);
+}
+
+.trial-mcq__submit-bar p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--plex-text-muted, #8ea3b8);
 }
 </style>

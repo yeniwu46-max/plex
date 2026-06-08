@@ -1080,6 +1080,35 @@ GET /api/v1/student/dashboard-extras
 种子：`python seed_incentive_achievements.py`
 ```
 
+#### 6.7 学习评估与错题本（第三阶段）
+
+表 `student_mistakes`：`user_id`, `source`（`mcq` | `code_trial` | `emergency`）, `knowledge_key`, `question_ref`, `fail_count`, `last_failed_at`, `last_passed_at`, `meta`（JSON）。
+
+**学生端**
+
+```
+GET /api/v1/student/mistakes?knowledge_key=&active_only=true
+POST /api/v1/student/code-trial/runs
+GET /api/v1/student/learning-report?period=7d|30d
+```
+
+`POST code-trial/runs` 请求体：`question_id`, `question_title`, `knowledge_key`, `topic`, `tags`, `star_path_node_id`, `cases[]`（`label`, `passed`, `error`）。
+
+**教师端**
+
+```
+GET /api/v1/teacher/students/{id}/mistakes
+GET /api/v1/teacher/students/{id}/learning-report?period=7d|30d
+GET /api/v1/teacher/class-evaluation?class_id=&period=7d|30d
+GET /api/v1/teacher/class-export?class_id=&format=csv
+```
+
+`learning-report` 响应含：`summary`（探索指数、等级文案）、`domain_mastery[]`（含周环比 `delta`）、`mistake_highlights[]`、`trend`、`radar`、`risk_tags`、`recommendations[]`。
+
+**管理员**：`GET /api/v1/admin/dashboard` 增加 `weak_knowledge_top`（全校薄弱知识点 TOP3）。
+
+选择题答错时由 `AssignmentService.submit_answer` 自动写入错题本；紧急任务未全对时写入 `emergency` 来源错题。
+
 ---
 
 ## 四、认证授权流程
@@ -1313,4 +1342,23 @@ curl -X POST http://localhost:5000/api/v1/classes \
 - XSS防护
 
 ---
+# 个性化学习核心接口（2026-06-08 增补）
+
+学生画像：
+
+- `GET /api/v1/student/profile`
+- `POST /api/v1/student/profile/chat`
+- `PUT /api/v1/student/profile`
+- `GET /api/v1/student/profile/history`
+
+个性化资源：
+
+- `POST /api/v1/student/resource-generation/tasks`
+- `GET /api/v1/student/resource-generation/tasks/<task_id>`
+- `POST /api/v1/student/resource-generation/tasks/<task_id>/retry`
+- `GET /api/v1/student/personalized-resources`
+- `GET /api/v1/teacher/personalized-resources/review`
+- `PUT /api/v1/teacher/personalized-resources/<id>/review`
+
+生成资源统一返回 `backend`、`citations`、`confidence`、`review_status`、`generator_agent`、`generation_task_id` 和 `profile_snapshot`。详细实现与验证结果见 `docs/2026-06-08-personalization-resource-implementation.md`。
 

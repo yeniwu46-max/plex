@@ -12,23 +12,39 @@ class TrialQuestion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     trial_id = db.Column(db.Integer, db.ForeignKey('trials.id', ondelete='CASCADE'), nullable=False, index=True)
     sort_order = db.Column(db.Integer, default=0, nullable=False)
+    question_type = db.Column(db.String(16), nullable=False, default='mcq')  # mcq | coding
     stem = db.Column(db.Text, nullable=False)
     options = db.Column(db.JSON, nullable=False)
     correct_index = db.Column(db.Integer, nullable=False, default=0)
     knowledge_key = db.Column(db.String(32))
+    coding_meta_json = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=db.func.now())
 
     trial = db.relationship('Trial', backref=db.backref('questions', cascade='all, delete-orphan', lazy=True))
     progress_rows = db.relationship('TrialQuestionProgress', backref='question', cascade='all, delete-orphan')
+
+    def coding_meta(self) -> dict:
+        if not self.coding_meta_json:
+            return {}
+        try:
+            parsed = json.loads(self.coding_meta_json)
+            return parsed if isinstance(parsed, dict) else {}
+        except (TypeError, json.JSONDecodeError):
+            return {}
+
+    def set_coding_meta(self, meta: dict) -> None:
+        self.coding_meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
 
     def to_dict(self, include_answer=False):
         payload = {
             'id': self.id,
             'trial_id': self.trial_id,
             'sort_order': self.sort_order,
+            'question_type': self.question_type or 'mcq',
             'stem': self.stem,
             'options': self.options if isinstance(self.options, list) else json.loads(self.options or '[]'),
             'knowledge_key': self.knowledge_key,
+            'coding_meta': self.coding_meta(),
         }
         if include_answer:
             payload['correct_index'] = self.correct_index
@@ -49,6 +65,9 @@ class TrialQuestionProgress(db.Model):
     selected_index = db.Column(db.Integer)
     selected_label = db.Column(db.String(8))
     is_correct = db.Column(db.Boolean)
+    submitted_code = db.Column(db.Text)
+    code_passed = db.Column(db.Boolean)
+    code_results_json = db.Column(db.Text)
     started_at = db.Column(db.DateTime)
     answered_at = db.Column(db.DateTime)
     time_spent_sec = db.Column(db.Integer)
@@ -56,6 +75,18 @@ class TrialQuestionProgress(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'question_id', name='uq_user_trial_question'),)
 
     user = db.relationship('User', backref='trial_question_progress')
+
+    def code_results(self) -> list:
+        if not self.code_results_json:
+            return []
+        try:
+            parsed = json.loads(self.code_results_json)
+            return parsed if isinstance(parsed, list) else []
+        except (TypeError, json.JSONDecodeError):
+            return []
+
+    def set_code_results(self, results: list) -> None:
+        self.code_results_json = json.dumps(results, ensure_ascii=False) if results else None
 
     def to_dict(self, include_timing=False):
         payload = {
@@ -66,6 +97,9 @@ class TrialQuestionProgress(db.Model):
             'selected_index': self.selected_index,
             'selected_label': self.selected_label,
             'is_correct': self.is_correct,
+            'code_passed': self.code_passed,
+            'submitted_code': self.submitted_code,
+            'code_results': self.code_results(),
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'answered_at': self.answered_at.isoformat() if self.answered_at else None,
             'time_spent_sec': self.time_spent_sec,

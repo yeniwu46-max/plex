@@ -18,6 +18,11 @@ from .uploads import uploads_bp
 from .code import code_bp
 from .knowledge_base import kb_bp
 from .agent_service import agent_bp
+from .knowledge_graph import kg_graph_bp
+from .search import search_bp
+from .file_upload import upload_bp
+from .student_profile import student_profile_bp
+from .personalized_resources import personalized_resources_bp
 
 def register_routes(app):
     """注册所有路由"""
@@ -39,3 +44,8 @@ def register_routes(app):
     app.register_blueprint(code_bp)
     app.register_blueprint(kb_bp)
     app.register_blueprint(agent_bp)
+    app.register_blueprint(kg_graph_bp)
+    app.register_blueprint(search_bp)
+    app.register_blueprint(upload_bp)
+    app.register_blueprint(student_profile_bp)
+    app.register_blueprint(personalized_resources_bp)

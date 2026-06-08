@@ -1,4 +1,4 @@
-"""文件上传（头像等）。"""
+"""文件上传（头像 & 结构化资料）。"""
 import os
 import uuid
 from pathlib import Path
@@ -60,3 +60,7 @@ def upload_avatar():
 @uploads_bp.route('/avatars/<path:filename>', methods=['GET'])
 def serve_avatar(filename):
     return send_from_directory(_upload_root(), filename)
+
+
+# ─── 统一资料上传接口 ──────────────────────────────────────────
+

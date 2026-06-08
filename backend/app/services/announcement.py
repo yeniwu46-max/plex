@@ -14,6 +14,16 @@ class AnnouncementService:
         return [row.to_dict() for row in rows]
 
     @staticmethod
+    def list_all(limit: int = 50):
+        rows = (
+            SystemAnnouncement.query.filter_by(is_active=True)
+            .order_by(SystemAnnouncement.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [row.to_dict() for row in rows]
+
+    @staticmethod
     def create(admin_id: int, payload: dict):
         title = (payload.get('title') or '').strip()
         body = (payload.get('body') or '').strip()
@@ -32,3 +42,28 @@ class AnnouncementService:
         db.session.add(row)
         db.session.commit()
         return row.to_dict()
+
+    @staticmethod
+    def update(announcement_id: int, payload: dict):
+        row = SystemAnnouncement.query.get(announcement_id)
+        if not row:
+            raise ValueError('公告不存在')
+        if 'title' in payload and payload['title']:
+            row.title = str(payload['title']).strip()[:120]
+        if 'body' in payload and payload['body']:
+            row.body = str(payload['body']).strip()[:4000]
+        if 'target_role' in payload and payload['target_role']:
+            target = str(payload['target_role']).strip().lower()
+            if target in ('teacher', 'student', 'all'):
+                row.target_role = target
+        db.session.commit()
+        return row.to_dict()
+
+    @staticmethod
+    def delete(announcement_id: int):
+        row = SystemAnnouncement.query.get(announcement_id)
+        if not row:
+            raise ValueError('公告不存在')
+        row.is_active = False
+        db.session.commit()
+        return {'deleted': True, 'id': announcement_id}

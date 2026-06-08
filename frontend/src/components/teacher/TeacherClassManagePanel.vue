@@ -205,7 +205,7 @@ onMounted(() => {
           <span>说明</span>
           <n-input v-model:value="editForm.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" />
         </label>
-        <n-button type="primary" :loading="saving" @click="saveClassEdit">保存修改</n-button>
+        <n-button type="primary" class="class-manage__primary" :loading="saving" @click="saveClassEdit">保存修改</n-button>
       </article>
 
       <article v-if="!isAdmin" class="class-manage__card">
@@ -218,7 +218,7 @@ onMounted(() => {
           <span>说明（可选）</span>
           <n-input v-model:value="createForm.description" placeholder="班级简介" />
         </label>
-        <n-button type="primary" :loading="submitting" @click="requestCreateClass">提交新建申请</n-button>
+        <n-button type="primary" class="class-manage__primary" :loading="submitting" @click="requestCreateClass">提交新建申请</n-button>
       </article>
 
       <article v-if="!isAdmin" class="class-manage__card">
@@ -338,5 +338,16 @@ onMounted(() => {
   margin: 0.75rem 0 0;
   color: rgba(252, 211, 77, 0.9);
   font-size: 0.82rem;
+}
+
+.class-manage__primary {
+  --n-color: #ea580c !important;
+  --n-color-hover: #f97316 !important;
+  --n-color-pressed: #c2410c !important;
+  --n-color-focus: #ea580c !important;
+  --n-border: 1px solid rgba(251, 146, 60, 0.58) !important;
+  --n-border-hover: 1px solid rgba(251, 146, 60, 0.78) !important;
+  --n-border-pressed: 1px solid rgba(251, 146, 60, 0.78) !important;
+  --n-border-focus: 1px solid rgba(251, 146, 60, 0.78) !important;
 }
 </style>

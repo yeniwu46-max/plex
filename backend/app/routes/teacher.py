@@ -4,6 +4,8 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import User
 from app.services.assignment import AssignmentService
+from app.services.evaluation import EvaluationService
+from app.services.mistake import MistakeService
 from app.services.teacher import TeacherService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -77,6 +79,98 @@ def get_student_trial_answers(student_id):
         current_user_id = int(get_jwt_identity())
         return success_response(
             AssignmentService.get_student_answer_board(current_user_id, student_id, _role_name(current_user_id))
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/students/<int:student_id>/mistakes', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_student_mistakes(student_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        return success_response(
+            MistakeService.list_for_teacher_student(
+                current_user_id,
+                student_id,
+                _role_name(current_user_id),
+            )
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/students/<int:student_id>/learning-report', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_student_learning_report(student_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        period = request.args.get('period', '7d')
+        return success_response(
+            EvaluationService.get_teacher_student_report(
+                current_user_id,
+                student_id,
+                _role_name(current_user_id),
+                period,
+            )
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/class-evaluation', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_class_evaluation():
+    try:
+        current_user_id = int(get_jwt_identity())
+        class_id = request.args.get('class_id', type=int)
+        period = request.args.get('period', '7d')
+        return success_response(
+            EvaluationService.get_class_evaluation(current_user_id, class_id, period)
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/class-export', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def export_class_evaluation():
+    try:
+        from flask import Response
+
+        current_user_id = int(get_jwt_identity())
+        class_id = request.args.get('class_id', type=int)
+        if not class_id:
+            return error_response('class_id 必填', 40001, None, 400)
+        csv_text = EvaluationService.export_class_csv(
+            current_user_id,
+            class_id,
+            _role_name(current_user_id),
+        )
+        return Response(
+            csv_text,
+            mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': f'attachment; filename=class_{class_id}_evaluation.csv'},
         )
     except PermissionError as exc:
         return error_response(str(exc), 40301, None, 403)

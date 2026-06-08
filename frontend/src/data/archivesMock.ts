@@ -39,8 +39,8 @@ export const archiveProfile: ArchiveProfile = {
 }
 
 export const explorationTendency = {
-  label: '算法探索型',
-  description: '善于拆解复杂问题，在抽象建模与逻辑推演中突破思维边界。',
+  label: 'Python 探索型',
+  description: '善于从 print、变量与循环起步，在动手练习中逐步建立编程直觉。',
 }
 
 export const growthTimeline: GrowthEvent[] = [
@@ -55,7 +55,7 @@ export const growthTimeline: GrowthEvent[] = [
     id: '2',
     title: '完成首个星域',
     date: '2025-10-12',
-    description: '通过算法基础星域全部核心节点。',
+    description: '完成「会写第一段 Python」阶段全部核心节点。',
     tone: 'gold',
   },
   {
@@ -75,11 +75,10 @@ export const growthTimeline: GrowthEvent[] = [
 ]
 
 export const skillDistribution: SkillItem[] = [
-  { key: 'algo', label: '算法', percent: 88 },
-  { key: 'ds', label: '数据结构', percent: 76 },
-  { key: 'fe', label: '前端', percent: 62 },
-  { key: 'be', label: '后端', percent: 54 },
-  { key: 'db', label: '数据库', percent: 48 },
+  { key: 'stage1', label: '第一段 Python', percent: 88 },
+  { key: 'stage2', label: '条件与循环', percent: 76 },
+  { key: 'stage3', label: '容器与函数', percent: 62 },
+  { key: 'stage4', label: '算法小任务', percent: 54 },
 ]
 
 export const achievements: AchievementItem[] = [

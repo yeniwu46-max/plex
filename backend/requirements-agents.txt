@@ -1,0 +1,10 @@
+# CrewAI 多智能体依赖（与 backend/requirements.txt 分离，勿并入生产镜像）
+# Python 要求：>=3.10, <3.14（推荐 3.12）
+#
+# 从 GitHub 安装（与 PLEX agents.pdf 一致）：
+#   pip install "git+https://github.com/crewAIInc/crewAI.git#subdirectory=lib/crewai"
+#
+# Windows 一键脚本：
+#   powershell -ExecutionPolicy Bypass -File scripts/install_crewai.ps1
+
+git+https://github.com/crewAIInc/crewAI.git#subdirectory=lib/crewai

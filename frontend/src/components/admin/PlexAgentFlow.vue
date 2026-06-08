@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
+import {
+  fetchAgentsStatus,
+  studentDiagnose,
+  teacherAgentSuggestion,
+  type AgentStatusItem,
+} from '../../api/agentService'
+import PlexAgentStatusCard from '../agent/PlexAgentStatusCard.vue'
 
 type AgentStatus = 'idle' | 'running' | 'done' | 'error' | 'pending'
 
@@ -54,6 +61,49 @@ const logs = ref<AgentLog[]>([
 
 const selectedAgent = ref<(typeof AGENT_DEFS)[number] | null>(null)
 const isSimulating = ref(false)
+const agentStatusRows = ref<AgentStatusItem[]>([])
+let statusTimer: ReturnType<typeof setInterval> | undefined
+
+async function refreshAgentStatus() {
+  try {
+    const payload = await fetchAgentsStatus()
+    agentStatusRows.value = payload.agents
+    for (const agent of payload.agents) {
+      const mapped =
+        agent.id === 'learning_diagnosis'
+          ? 'diagnose'
+          : agent.id === 'code_analysis'
+            ? 'code'
+            : agent.id === 'knowledge_graph'
+              ? 'kg'
+              : agent.id === 'path_recommendation'
+                ? 'path'
+                : agent.id === 'feedback'
+                  ? 'feedback'
+                  : agent.id === 'teacher_assistant'
+                    ? 'teacher'
+                    : agent.id
+      if (mapped in agentStatuses.value) {
+        agentStatuses.value[mapped] =
+          agent.status === 'success' ? 'done' : agent.status === 'running' ? 'running' : agent.status === 'error' ? 'error' : 'idle'
+      }
+    }
+    nodes.value = makeNodes()
+  } catch {
+    /* 管理员页静默失败，避免打断观测 */
+  }
+}
+
+onMounted(() => {
+  void refreshAgentStatus()
+  statusTimer = setInterval(() => {
+    void refreshAgentStatus()
+  }, 30_000)
+})
+
+onBeforeUnmount(() => {
+  if (statusTimer) clearInterval(statusTimer)
+})
 
 function makeNodes(): Node[] {
   return AGENT_DEFS.map((def) => {
@@ -122,59 +172,66 @@ function setStatus(id: string, status: AgentStatus) {
   nodes.value = makeNodes()
 }
 
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 async function simulate() {
   if (isSimulating.value) return
   isSimulating.value = true
   Object.keys(agentStatuses.value).forEach((k) => (agentStatuses.value[k] = 'pending' as AgentStatus))
   nodes.value = makeNodes()
 
-  addLog('system', '收到学生代码提交，启动多智能体协同推理…', 'info')
-  await sleep(600)
+  const sampleCode = 'for i in range(1, n):\n    total += i'
 
-  setStatus('diagnose', 'running')
-  addLog('diagnose', '开始分析学生答题记录与代码运行结果', 'info')
-  await sleep(1200)
-  setStatus('diagnose', 'done')
-  addLog('diagnose', '诊断完成：检测到「循环结构」薄弱，「边界条件」错误率偏高', 'success')
-  await sleep(400)
+  try {
+    addLog('system', '收到学生代码提交，启动多智能体协同推理…', 'info')
 
-  setStatus('kg', 'running')
-  setStatus('code', 'running')
-  addLog('kg', '查询知识图谱：定位「循环结构」相关前置知识节点', 'info')
-  addLog('code', '解析代码错误：IndexError at line 7，循环边界未考虑空列表', 'info')
-  await sleep(1400)
-  setStatus('kg', 'done')
-  setStatus('code', 'done')
-  addLog('kg', '关联节点：变量→循环→列表→排序（推荐学习路径已生成）', 'success')
-  addLog('code', '代码分析完成：建议添加 `if not lst: return` 边界检查', 'success')
-  await sleep(300)
+    setStatus('diagnose', 'running')
+    addLog('diagnose', '调用 /api/v1/agents/student-diagnose', 'info')
+    const pipeline = await studentDiagnose({
+      exerciseId: 'demo-range-sum',
+      code: sampleCode,
+      stderr: '输出与预期不一致',
+      expectedOutput: '15',
+      knowledgePoints: ['for 循环', 'range', '累加求和'],
+      attemptCount: 2,
+      answerStatus: 'wrong',
+    })
+    setStatus('diagnose', 'done')
+    addLog('diagnose', pipeline.diagnosis.diagnosis, 'success')
 
-  setStatus('path', 'running')
-  addLog('path', '结合能力画像与图谱结果，规划个性化学习路径', 'info')
-  await sleep(1100)
-  setStatus('path', 'done')
-  addLog('path', '路径规划完成：循环 → 列表切片 → 排序基础（3 步路径）', 'success')
-  await sleep(300)
+    setStatus('code', 'running')
+    setStatus('kg', 'running')
+    setStatus('path', 'running')
+    addLog('code', pipeline.codeAnalysis.codeIssueSummary, 'success')
+    addLog('kg', pipeline.graphInsight.graphReason, 'success')
+    addLog('path', pipeline.recommendation.nextKnowledgePoint, 'success')
+    setStatus('code', 'done')
+    setStatus('kg', 'done')
+    setStatus('path', 'done')
 
-  setStatus('feedback', 'running')
-  addLog('feedback', '整合诊断结论，生成面向学生的自然语言反馈', 'info')
-  await sleep(900)
-  setStatus('feedback', 'done')
-  addLog('feedback', '反馈已生成：分层提示（语法层 → 逻辑层 → 优化层）', 'success')
-  await sleep(300)
+    setStatus('feedback', 'running')
+    addLog('feedback', pipeline.feedback.shortFeedback, 'success')
+    setStatus('feedback', 'done')
 
-  setStatus('teacher', 'running')
-  addLog('teacher', '汇总班级数据，生成教学干预建议', 'info')
-  await sleep(800)
-  setStatus('teacher', 'done')
-  addLog('teacher', '教学建议：本周重点讲解「循环边界条件」，推荐 3 名学生重点辅导', 'success')
+    setStatus('teacher', 'running')
+    const teacher = await teacherAgentSuggestion({
+      classId: 'demo-class',
+      weakPointStats: [{ knowledgePoint: 'range 边界', count: 6 }],
+      commonErrorTypes: ['logic'],
+      recentExercises: ['1 到 n 求和'],
+    })
+    setStatus('teacher', 'done')
+    addLog('teacher', teacher.classSummary, 'success')
 
-  isSimulating.value = false
-  addLog('system', '✓ 多智能体协同推理完成，结果已推送至各端', 'success')
+    addLog('system', `✓ 多智能体协同推理完成（backend: ${pipeline.backend ?? 'mock'}）`, 'success')
+    await refreshAgentStatus()
+  } catch (error) {
+    addLog('system', error instanceof Error ? error.message : '智能体链路失败', 'error')
+    Object.keys(agentStatuses.value).forEach((k) => {
+      if (agentStatuses.value[k] === 'running') agentStatuses.value[k] = 'error'
+    })
+    nodes.value = makeNodes()
+  } finally {
+    isSimulating.value = false
+  }
 }
 
 function resetFlow() {
@@ -195,7 +252,7 @@ function resetFlow() {
           type="button"
           @click="simulate"
         >
-          {{ isSimulating ? '⏳ 推理中…' : '▶ 模拟推理' }}
+          {{ isSimulating ? '⏳ 推理中…' : '▶ 运行协同推理' }}
         </button>
         <button class="plex-agent-flow__btn" type="button" @click="resetFlow">↺ 重置</button>
         <div class="plex-agent-flow__status-legend">
@@ -236,8 +293,8 @@ function resetFlow() {
         </div>
         <div class="plex-agent-flow__params">
           <div class="plex-agent-flow__param-title">接口预留</div>
-          <code>/api/v1/agent/{{ selectedAgent.id }}</code>
-          <div class="plex-agent-flow__param-hint">第一阶段 mock · 后续接 CrewAI</div>
+          <code>/api/v1/agents/{{ selectedAgent.id === 'diagnose' ? 'student-diagnose' : selectedAgent.id === 'teacher' ? 'teacher-suggestion' : 'status' }}</code>
+          <div class="plex-agent-flow__param-hint">顺序流水线 · Mock / CrewAI 可切换</div>
         </div>
       </div>
       <div v-else class="plex-agent-flow__agent-placeholder">
@@ -257,6 +314,11 @@ function resetFlow() {
             <span class="plex-agent-flow__log-msg">{{ log.message }}</span>
           </li>
         </ul>
+      </div>
+
+      <div v-if="agentStatusRows.length" class="plex-agent-flow__status-grid">
+        <h4>智能体状态</h4>
+        <plex-agent-status-card v-for="agent in agentStatusRows" :key="agent.id" :agent="agent" />
       </div>
     </aside>
   </div>
@@ -535,5 +597,20 @@ function resetFlow() {
   grid-row: 2;
   color: rgba(203, 213, 225, 0.75);
   padding-left: 0.2rem;
+}
+
+.plex-agent-flow__status-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.plex-agent-flow__status-grid h4 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.82rem;
 }
 </style>

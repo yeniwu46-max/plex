@@ -27,6 +27,8 @@ export interface TestCaseInput {
   label: string
   input?: string
   expected?: string
+  setup?: string
+  invoke?: string
 }
 
 export interface TestCaseResult {
@@ -38,6 +40,7 @@ export interface TestCaseResult {
   status: CodeRunStatus
   time: string
   memory: number
+  error?: string | null
 }
 
 export interface CodeSubmitResult {
@@ -46,6 +49,7 @@ export interface CodeSubmitResult {
   total: number
   results: TestCaseResult[]
   submitted_at: string
+  backend?: string
 }
 
 export interface SupportedLanguage {
@@ -66,6 +70,7 @@ export async function submitCode(params: {
   language: string
   code: string
   test_cases: TestCaseInput[]
+  run_mode?: 'stdout' | 'expression'
 }): Promise<CodeSubmitResult> {
   const { data } = await http.post<ApiEnvelope<CodeSubmitResult>>('/v1/code/submit', params)
   if (data.code !== 0) throw new Error(data.msg ?? '代码提交失败')

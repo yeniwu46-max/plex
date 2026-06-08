@@ -44,6 +44,12 @@ export async function saveAdminSettings(settings: Partial<AdminSettingsPayload>,
   return data.data
 }
 
+export interface WeakKnowledgeTopItem {
+  knowledge_key: string
+  knowledge_label: string
+  fail_count: number
+}
+
 export interface AdminDashboardResult {
   metrics: {
     active_students: number
@@ -59,6 +65,15 @@ export interface AdminDashboardResult {
     trial_participation_rate: number
     knowledge_mastery_rate: number
     activity_rate: number
+  }
+  weak_knowledge_top?: WeakKnowledgeTopItem[]
+  charts?: {
+    activity_trend: {
+      x_data: string[]
+      submissions: number[]
+      passed: number[]
+    }
+    class_completion: Array<{ label: string; rate: number }>
   }
 }
 

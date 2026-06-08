@@ -1,70 +1,78 @@
 # -*- coding: utf-8 -*-
-"""Multi-agent collaboration route - Mock CrewAI first phase."""
-import random
+"""Multi-agent collaboration routes."""
 from datetime import datetime
 
 from flask import Blueprint, request
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from ..utils.response import success_response, error_response
+from ..services.agent_orchestrator import AgentOrchestrator
+from ..utils.response import error_response, success_response
 
 agent_bp = Blueprint('agent_service', __name__, url_prefix='/api/v1')
 
-WEAK_POINTS = [
-    'loop boundary', 'recursion base case', 'list slicing',
-    'dict key access', 'function return', 'exception handling',
-    'string format', 'nested condition',
-]
-
-PATHS = {
-    'loop': ['variables', 'condition', 'loop', 'list', 'sorting'],
-    'recursion': ['function', 'condition', 'recursion', 'dynamic programming'],
-    'default': ['variables', 'control flow', 'function', 'data structure'],
-}
-
-ERROR_TIPS = {
-    'IndexError': 'List index out of range. Check loop bounds against list length.',
-    'TypeError': 'Type mismatch. Check you are operating on compatible types.',
-    'NameError': 'Variable not defined. Check spelling and assignment order.',
-    'SyntaxError': 'Syntax error. Check indentation, brackets, and colons.',
-    'ZeroDivisionError': 'Division by zero. Check denominator before dividing.',
-}
-
 
 def _now():
-    return datetime.utcnow().isoformat()
+    return datetime.utcnow().isoformat() + 'Z'
 
+
+def _user_id() -> int | None:
+    identity = get_jwt_identity()
+    if identity is None:
+        return None
+    return int(identity)
+
+
+@agent_bp.post('/agents/student-diagnose')
+@jwt_required()
+def student_diagnose():
+    body = request.get_json(silent=True) or {}
+    code = (body.get('code') or '').strip()
+    if not code:
+        return error_response('code required', code=400)
+    user_id = _user_id()
+    student_id = body.get('studentId') or body.get('student_id')
+    payload = {
+        **body,
+        'studentId': student_id or str(user_id),
+    }
+    return success_response(AgentOrchestrator.student_diagnose(user_id, payload))
+
+
+@agent_bp.post('/agents/teacher-suggestion')
+@jwt_required()
+def agents_teacher_suggestion():
+    body = request.get_json(silent=True) or {}
+    user_id = _user_id()
+    return success_response(AgentOrchestrator.teacher_suggestion(user_id, body))
+
+
+@agent_bp.get('/agents/status')
+@jwt_required()
+def agents_status():
+    status = AgentOrchestrator.agents_status()
+    return success_response({
+        **status,
+        'service': 'plex-agent-service',
+        'version': '1.0.0',
+        'checked_at': _now(),
+    })
+
+
+# ---- 兼容旧版端点 ----
 
 @agent_bp.post('/agent/diagnose')
 @jwt_required()
 def diagnose():
     body = request.get_json(silent=True) or {}
-    code_errors = body.get('code_errors', [])
-    weak_points = random.sample(WEAK_POINTS, k=min(3, len(WEAK_POINTS)))
-    error_types = [{'type': e, 'explanation': ERROR_TIPS[e]} for e in code_errors if e in ERROR_TIPS]
-    return success_response({
-        'agent': 'DiagnosisAgent', 'status': 'completed',
-        'weak_points': weak_points, 'error_types': error_types or [{'type': 'LogicError', 'explanation': 'Logic error detected.'}],
-        'overall_assessment': 'Found {} weak points, focus on: {}'.format(len(weak_points), weak_points[0]),
-        'diagnosed_at': _now(),
-    })
+    user_id = _user_id()
+    return success_response(AgentOrchestrator.diagnose(user_id, body))
 
 
 @agent_bp.post('/agent/recommend-path')
 @jwt_required()
 def recommend_path():
     body = request.get_json(silent=True) or {}
-    weak_points = body.get('weak_points', [])
-    keyword = weak_points[0] if weak_points else 'default'
-    match_key = next((k for k in PATHS if k in keyword), 'default')
-    path_nodes = PATHS[match_key]
-    steps = [{'step': i+1, 'node': n, 'action': 'review' if i == 0 else 'practice'} for i, n in enumerate(path_nodes)]
-    return success_response({
-        'agent': 'PathPlannerAgent', 'status': 'completed',
-        'path': {'title': 'Path for: ' + keyword, 'steps': steps, 'total_nodes': len(steps)},
-        'confidence': round(0.75 + random.random() * 0.2, 2),
-        'recommended_at': _now(),
-    })
+    return success_response(AgentOrchestrator.recommend_path(body))
 
 
 @agent_bp.post('/agent/analyze-code')
@@ -72,73 +80,65 @@ def recommend_path():
 def analyze_code():
     body = request.get_json(silent=True) or {}
     code = body.get('code', '')
-    error_message = body.get('error_message', '')
     if not code.strip():
         return error_response('code required', code=400)
-    error_type = next((k for k in ERROR_TIPS if k.lower() in (code + error_message).lower()), '')
-    return success_response({
-        'agent': 'CodeAnalyzerAgent', 'status': 'completed',
-        'error_type': error_type,
-        'explanation': ERROR_TIPS.get(error_type, 'Code structure seems OK, check boundary conditions.'),
-        'suggestions': ['Check loop boundary', 'Validate input before use', 'Use print() to debug'],
-        'analyzed_at': _now(),
-    })
+    return success_response(AgentOrchestrator.analyze_code(body))
 
 
 @agent_bp.post('/agent/generate-feedback')
 @jwt_required()
 def generate_feedback():
     body = request.get_json(silent=True) or {}
-    diagnosis = body.get('diagnosis', {})
-    weak_points = diagnosis.get('weak_points', ['loop boundary'])
-    point = weak_points[0] if weak_points else 'code logic'
-    encouragements = [
-        'Great first step! Keep going!',
-        'Every mistake is a chance to learn!',
-        'Your logic is on the right track, just fix the boundary!',
-    ]
-    return success_response({
-        'agent': 'FeedbackGeneratorAgent', 'status': 'completed',
-        'feedback': {
-            'summary': 'Need to strengthen: ' + point,
-            'encouragement': random.choice(encouragements),
-            'next_action': 'Complete targeted exercises for: ' + point,
-        },
-        'generated_at': _now(),
-    })
+    return success_response(AgentOrchestrator.generate_feedback(body))
 
 
 @agent_bp.post('/agent/teacher-suggestion')
 @jwt_required()
-def teacher_suggestion():
-    weak_topics = ['loop boundary', 'recursion', 'list ops']
-    risk_count = random.randint(2, 5)
+def teacher_suggestion_legacy():
+    body = request.get_json(silent=True) or {}
+    user_id = _user_id()
+    legacy = AgentOrchestrator.teacher_suggestion(user_id, body)
     return success_response({
-        'agent': 'TeacherAssistantAgent', 'status': 'completed',
+        'agent': 'TeacherAssistantAgent',
+        'status': 'completed',
         'class_overview': {
-            'active_students': random.randint(15, 28),
-            'avg_accuracy': round(0.65 + random.random() * 0.2, 2),
-            'weak_topics': weak_topics, 'risk_students_count': risk_count,
+            'active_students': 0,
+            'avg_accuracy': 0,
+            'weak_topics': [
+                w.get('knowledgePoint', '')
+                for w in body.get('weakPointStats', [])
+            ],
+            'risk_students_count': len(legacy.get('interventionGroups', [])),
         },
         'suggestions': [
-            {'priority': 'high', 'type': 'lecture', 'content': 'Focus on: ' + weak_topics[0]},
-            {'priority': 'medium', 'type': 'tutoring', 'content': str(risk_count) + ' students need follow-up'},
+            {'priority': 'high', 'type': 'lecture', 'content': s}
+            for s in legacy.get('teachingSuggestions', [])
         ],
-        'generated_at': _now(),
+        'teacher': legacy,
+        'generated_at': legacy.get('generatedAt'),
+        'backend': legacy.get('backend'),
     })
 
 
 @agent_bp.get('/agent/status')
 @jwt_required()
-def agent_status():
+def agent_status_legacy():
+    status = AgentOrchestrator.agents_status()
     agents = [
-        {'id': 'diagnose', 'name': 'DiagnosisAgent', 'status': 'idle', 'calls_today': random.randint(5, 50)},
-        {'id': 'path', 'name': 'PathPlannerAgent', 'status': 'idle', 'calls_today': random.randint(5, 50)},
-        {'id': 'code', 'name': 'CodeAnalyzerAgent', 'status': 'idle', 'calls_today': random.randint(5, 50)},
-        {'id': 'feedback', 'name': 'FeedbackGeneratorAgent', 'status': 'idle', 'calls_today': random.randint(5, 50)},
-        {'id': 'teacher', 'name': 'TeacherAssistantAgent', 'status': 'idle', 'calls_today': random.randint(2, 20)},
+        {
+            'id': a['id'],
+            'name': a['name'],
+            'status': a['status'],
+            'calls_today': 0,
+            'avgLatency': a.get('avgLatency'),
+            'lastRunAt': a.get('lastRunAt'),
+        }
+        for a in status['agents']
     ]
     return success_response({
-        'service': 'plex-agent-service', 'version': '0.1.0-mock',
-        'agents': agents, 'checked_at': _now(),
+        'service': 'plex-agent-service',
+        'version': '1.0.0',
+        'backend': status['backend'],
+        'agents': agents,
+        'checked_at': _now(),
     })

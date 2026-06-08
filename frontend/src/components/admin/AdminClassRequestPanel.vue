@@ -55,7 +55,7 @@ onMounted(() => {
   <article class="gov-class-panel panel" aria-label="班级变更审批">
     <header class="panel-head">
       <h2>班级变更审批</h2>
-      <button type="button" @click="load()">刷新</button>
+      <n-button quaternary size="small" class="gov-refresh-btn" :loading="loading" @click="load()">刷新</n-button>
     </header>
     <p class="governance-hint">
       教师提交的新建/删除班级申请在此处理；通过后系统自动执行。教师可直接编辑本班信息，无需审批。

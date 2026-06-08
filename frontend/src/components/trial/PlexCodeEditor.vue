@@ -1,20 +1,19 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { VueMonacoEditor, useMonaco } from '@guolao/vue-monaco-editor'
+import { useThemeStore } from '../../stores/theme'
 
 const props = withDefaults(
   defineProps<{
     modelValue: string
     language?: string
     readonly?: boolean
-    theme?: 'plex-dark' | 'vs-dark' | 'light'
     height?: string
     filename?: string
   }>(),
   {
     language: 'python',
     readonly: false,
-    theme: 'plex-dark',
     height: '100%',
     filename: 'main.py',
   },
@@ -25,17 +24,18 @@ const emit = defineEmits<{
   ready: []
 }>()
 
+const themeStore = useThemeStore()
 const { monacoRef } = useMonaco()
 const editorRef = ref()
 const isReady = ref(false)
 
-const editorTheme = computed(() => {
-  if (props.theme === 'plex-dark') return 'plex-dark'
-  return props.theme
-})
+// 自动跟随主题
+const editorTheme = computed(() =>
+  themeStore.isDark ? 'plex-dark' : 'vs',
+)
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function defineTheme(monaco: any) {
+function defineCustomTheme(monaco: any) {
   monaco.editor.defineTheme('plex-dark', {
     base: 'vs-dark',
     inherit: true,
@@ -74,7 +74,7 @@ function handleMount(editor: any) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function handleBeforeMount(monaco: any) {
-  defineTheme(monaco)
+  defineCustomTheme(monaco)
 }
 
 function handleChange(value: string | undefined) {
@@ -84,12 +84,16 @@ function handleChange(value: string | undefined) {
 watch(
   () => monacoRef.value,
   (monaco: unknown) => {
-    if (monaco) defineTheme(monaco)
+    if (monaco) defineCustomTheme(monaco)
   },
 )
 
-onBeforeUnmount(() => {
-  editorRef.value?.dispose()
+// 主题切换时实时更新 Monaco
+watch(editorTheme, (theme) => {
+  if (monacoRef.value) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(monacoRef.value as any).editor.setTheme(theme)
+  }
 })
 </script>
 
@@ -140,8 +144,8 @@ onBeforeUnmount(() => {
   height: 100%;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(74, 222, 128, 0.15);
-  background: #050e1a;
+  border: 1px solid var(--plex-code-border, rgba(74, 222, 128, 0.15));
+  background: var(--plex-code-bg, #050e1a);
 }
 
 .plex-code-editor__topbar {
@@ -149,8 +153,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.45rem;
   padding: 0.55rem 0.85rem;
-  background: #060f1c;
-  border-bottom: 1px solid rgba(74, 222, 128, 0.1);
+  background: var(--plex-code-topbar-bg, #060f1c);
+  border-bottom: 1px solid var(--plex-code-topbar-border, rgba(74, 222, 128, 0.1));
   flex-shrink: 0;
 }
 
@@ -167,7 +171,7 @@ onBeforeUnmount(() => {
 
 .plex-code-editor__filename {
   margin-left: 0.35rem;
-  color: rgba(226, 232, 240, 0.6);
+  color: var(--plex-text-muted, rgba(226, 232, 240, 0.6));
   font-family: 'Consolas', monospace;
   font-size: 0.78rem;
 }

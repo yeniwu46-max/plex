@@ -147,9 +147,16 @@ class TrialService(BaseService):
         elif payload.get('knowledge_key'):
             trial.knowledge_key = payload.get('knowledge_key')
         db.session.add(trial)
+        db.session.flush()
+        custom_questions = payload.get('custom_questions') or payload.get('draft_questions') or []
+        if custom_questions:
+            trial.set_draft_questions(custom_questions)
         db.session.commit()
         if trial.status in ('running', 'scheduled'):
-            QuestionGenerator.ensure_for_trial(trial)
+            if custom_questions:
+                QuestionGenerator.ensure_from_payload(trial, custom_questions)
+            else:
+                QuestionGenerator.ensure_for_trial(trial)
         result = trial.to_dict(
             include_stats=True,
             effective_status=TrialService.effective_status(trial),
@@ -207,8 +214,12 @@ class TrialService(BaseService):
             if not trial.ends_at:
                 trial.ends_at = trial.starts_at + timedelta(minutes=trial.duration_minutes or 60)
         db.session.commit()
+        draft = trial.draft_questions()
         if trial.status in ('running', 'scheduled'):
-            QuestionGenerator.ensure_for_trial(trial)
+            if draft:
+                QuestionGenerator.ensure_from_payload(trial, draft)
+            else:
+                QuestionGenerator.ensure_for_trial(trial)
         student_count = TrialService._class_student_count(trial.class_id) if notify_students else 0
         notifications_sent = 0
         if notify_students and trial.status == 'running':
@@ -241,6 +252,13 @@ class TrialService(BaseService):
                 trial.starts_at = datetime.utcnow()
         if 'title' in payload and payload['title']:
             trial.title = str(payload['title']).strip()[:120]
+        draft_questions = payload.get('draft_questions')
+        if draft_questions is None and payload.get('custom_questions') is not None:
+            draft_questions = payload.get('custom_questions')
+        if draft_questions is not None:
+            if trial.status != 'draft':
+                raise ValueError('仅草稿试炼可编辑试卷题目')
+            trial.set_draft_questions(draft_questions if isinstance(draft_questions, list) else [])
         if 'starts_at' in payload:
             trial.starts_at = TrialService._parse_datetime(payload.get('starts_at'))
         if 'ends_at' in payload:
@@ -253,6 +271,20 @@ class TrialService(BaseService):
             include_stats=True,
             effective_status=TrialService.effective_status(trial),
         )
+
+    @staticmethod
+    def delete_trial(current_user_id, trial_id, role_name):
+        trial = Trial.query.get(trial_id)
+        if not trial:
+            raise ValueError('试炼不存在')
+        TrialService._get_teacher_class(trial.class_id, current_user_id, role_name)
+        if role_name == 'teacher' and trial.teacher_id != current_user_id:
+            raise PermissionError('不能删除他人创建的试炼')
+        if trial.status not in ('draft', 'ended'):
+            raise ValueError('仅草稿或已结束试炼可删除')
+        db.session.delete(trial)
+        db.session.commit()
+        return {'deleted': True, 'trial_id': trial_id}
 
     @staticmethod
     def list_student_trials(user_id, include_scheduled=False):
@@ -420,6 +452,72 @@ class TrialService(BaseService):
                 'joined': len(joined),
                 'avg_score': avg_score,
             },
+        }
+
+    @staticmethod
+    def get_student_trial_stats(user_id: int):
+        from datetime import date, datetime, timedelta
+
+        user = User.query.get(user_id)
+        if not user:
+            raise ValueError('用户不存在')
+
+        parts = (
+            TrialParticipation.query.filter_by(user_id=user_id)
+            .order_by(TrialParticipation.joined_at.desc())
+            .all()
+        )
+        completed = [p for p in parts if p.status == 'completed']
+        joined = [p for p in parts if p.status == 'joined']
+        avg_score = round(sum(p.score or 0 for p in completed) / len(completed)) if completed else 0
+
+        weekday_labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        x_data = []
+        completed_counts = []
+        avg_scores = []
+        today = date.today()
+        for offset in range(6, -1, -1):
+            day = today - timedelta(days=offset)
+            x_data.append(weekday_labels[day.weekday()] if offset < 6 else weekday_labels[day.weekday()])
+            day_start = datetime.combine(day, datetime.min.time())
+            day_end = datetime.combine(day, datetime.max.time())
+            day_parts = [
+                p
+                for p in completed
+                if p.completed_at and day_start <= p.completed_at <= day_end
+            ]
+            completed_counts.append(len(day_parts))
+            if day_parts:
+                avg_scores.append(round(sum(p.score or 0 for p in day_parts) / len(day_parts)))
+            else:
+                avg_scores.append(0)
+
+        recent = []
+        for part in completed[:8]:
+            trial = part.trial
+            recent.append(
+                {
+                    'trial_id': part.trial_id,
+                    'title': trial.title if trial else '',
+                    'score': part.score,
+                    'knowledge_key': trial.knowledge_key if trial else None,
+                    'completed_at': part.completed_at.isoformat() if part.completed_at else None,
+                }
+            )
+
+        return {
+            'summary': {
+                'total_participations': len(parts),
+                'completed_count': len(completed),
+                'active_count': len(joined),
+                'avg_score': avg_score,
+            },
+            'trend': {
+                'x_data': x_data,
+                'completed_count': completed_counts,
+                'avg_score': avg_scores,
+            },
+            'recent_completions': recent,
         }
 
     @staticmethod

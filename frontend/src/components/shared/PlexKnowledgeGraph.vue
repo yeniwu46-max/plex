@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Graph, type GraphData } from '@antv/g6'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { GraphData } from '@antv/g6'
 import type { KgEdge, KgEdgeType, KgNode, KgNodeStatus } from '../../data/knowledgeGraphData'
 import { KG_NODE_STATUS_COLOR, KG_NODE_STATUS_LABEL } from '../../data/knowledgeGraphData'
+import { useThemeStore } from '../../stores/theme'
+import { getG6Tokens, buildG6TooltipHtml } from '../../theme/g6Theme'
+
+type G6Graph = import('@antv/g6').Graph
 
 const props = withDefaults(
   defineProps<{
@@ -21,8 +25,13 @@ const emit = defineEmits<{
   nodeClick: [node: KgNode]
 }>()
 
+const themeStore = useThemeStore()
+const g6Tokens = computed(() => getG6Tokens(themeStore.resolvedTheme))
+
 const containerRef = ref<HTMLDivElement>()
-let graphInstance: Graph | null = null
+let graphInstance: G6Graph | null = null
+let destroyed = false
+const graphLoading = ref(true)
 
 const selectedNode = ref<KgNode | null>(null)
 
@@ -48,6 +57,7 @@ const MODE_ACCENT: Record<string, string> = {
 
 function buildGraphData(): GraphData {
   const accent = MODE_ACCENT[props.mode] ?? '#22c55e'
+  const tk = g6Tokens.value
   return {
     nodes: props.nodes.map((n) => ({
       id: n.id,
@@ -67,7 +77,7 @@ function buildGraphData(): GraphData {
         stroke: KG_NODE_STATUS_COLOR[n.status as KgNodeStatus],
         lineWidth: n.status === 'recommended' ? 2.5 : 1.5,
         labelText: n.label,
-        labelFill: '#e2e8f0',
+        labelFill: tk.labelFill,
         labelFontSize: 12,
         labelFontFamily: 'Microsoft YaHei, sans-serif',
         labelOffsetY: 4,
@@ -88,7 +98,7 @@ function buildGraphData(): GraphData {
         endArrow: true,
         endArrowType: 'vee',
         endArrowSize: 8,
-        opacity: 0.65,
+        opacity: tk.edgeOpacity,
         labelText: e.label ?? '',
         labelFill: EDGE_LABEL_COLOR[e.type],
         labelFontSize: 10,
@@ -104,7 +114,11 @@ async function initGraph() {
     graphInstance = null
   }
 
-  graphInstance = new Graph({
+  graphLoading.value = true
+  try {
+    const { Graph } = await import('@antv/g6')
+
+    graphInstance = new Graph({
     container: containerRef.value,
     width: containerRef.value.clientWidth,
     height: containerRef.value.clientHeight,
@@ -131,28 +145,33 @@ async function initGraph() {
           if (!node) return ''
           const statusLabel = KG_NODE_STATUS_LABEL[node.status as KgNodeStatus]
           const color = KG_NODE_STATUS_COLOR[node.status as KgNodeStatus]
-          return `<div style="padding:8px 12px;background:#0a1628;border:1px solid ${color}33;border-radius:8px;max-width:220px;">
-            <strong style="color:${color};font-size:13px;">${node.label}</strong>
-            <div style="color:#94a3b8;font-size:11px;margin-top:4px;">${node.domain} · ${statusLabel}</div>
-            <div style="color:#cbd5e1;font-size:12px;margin-top:6px;line-height:1.5;">${node.description}</div>
-          </div>`
+          return buildG6TooltipHtml(node.label, node.domain, statusLabel, node.description, color, g6Tokens.value)
         },
       },
     ],
     data: buildGraphData(),
-  })
+    })
 
-  await graphInstance.render()
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  graphInstance.on('node:click', (evt: any) => {
-    const nodeId = evt?.target?.id ?? evt?.itemId ?? evt?.item?.getID?.()
-    const node = props.nodes.find((n) => n.id === nodeId)
-    if (node) {
-      selectedNode.value = node
-      emit('nodeClick', node)
+    try {
+      await graphInstance.render()
+    } catch {
+      return
     }
-  })
+
+    if (destroyed || !graphInstance) return
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    graphInstance.on('node:click', (evt: any) => {
+      const nodeId = evt?.target?.id ?? evt?.itemId ?? evt?.item?.getID?.()
+      const node = props.nodes.find((n) => n.id === nodeId)
+      if (node) {
+        selectedNode.value = node
+        emit('nodeClick', node)
+      }
+    })
+  } finally {
+    graphLoading.value = false
+  }
 }
 
 onMounted(() => {
@@ -162,15 +181,27 @@ onMounted(() => {
 watch(
   () => [props.nodes, props.edges],
   () => {
-    if (graphInstance) {
+    if (graphInstance && !destroyed) {
       graphInstance.setData(buildGraphData())
-      void graphInstance.render()
+      graphInstance.render().catch(() => {})
     }
   },
   { deep: true },
 )
 
+// 主题切换时重绘图谱
+watch(
+  () => themeStore.resolvedTheme,
+  () => {
+    if (graphInstance && !destroyed) {
+      graphInstance.setData(buildGraphData())
+      graphInstance.render().catch(() => {})
+    }
+  },
+)
+
 onBeforeUnmount(() => {
+  destroyed = true
   graphInstance?.destroy()
   graphInstance = null
 })
@@ -179,6 +210,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="plex-kg-wrap" :class="`plex-kg-wrap--${mode}`">
     <div ref="containerRef" class="plex-kg-canvas" :style="{ height }" />
+    <p v-if="graphLoading" class="plex-kg-loading">正在加载知识图谱…</p>
 
     <transition name="slide">
       <aside v-if="selectedNode" class="plex-kg-detail">
@@ -220,7 +252,7 @@ onBeforeUnmount(() => {
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(3, 10, 20, 0.96), rgba(5, 14, 26, 0.92));
+  background: var(--plex-kg-canvas-bg, linear-gradient(135deg, rgba(3, 10, 20, 0.96), rgba(5, 14, 26, 0.92)));
   border: 1px solid rgba(130, 212, 255, 0.1);
 }
 
@@ -232,6 +264,18 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
+.plex-kg-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: rgba(203, 213, 225, 0.75);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
 .plex-kg-detail {
   position: absolute;
   top: 12px;
@@ -239,8 +283,8 @@ onBeforeUnmount(() => {
   width: 220px;
   padding: 1rem;
   border-radius: 10px;
-  background: rgba(5, 14, 26, 0.92);
-  border: 1px solid rgba(130, 212, 255, 0.18);
+  background: var(--plex-kg-detail-bg, rgba(5, 14, 26, 0.92));
+  border: 1px solid var(--plex-kg-detail-border, rgba(130, 212, 255, 0.18));
   backdrop-filter: blur(8px);
 }
 
@@ -267,7 +311,7 @@ onBeforeUnmount(() => {
 
 .plex-kg-detail h3 {
   margin: 0 0 0.2rem;
-  color: #fff;
+  color: var(--plex-kg-label, #fff);
   font-size: 1rem;
 }
 
@@ -326,7 +370,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  color: rgba(203, 213, 225, 0.65);
+  color: var(--plex-text-muted, rgba(203, 213, 225, 0.65));
   font-size: 0.68rem;
 }
 

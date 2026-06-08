@@ -19,6 +19,10 @@ from .teacher_trial_template import TeacherTrialTemplate
 from .system_announcement import SystemAnnouncement
 from .student_notification import StudentNotification
 from .class_change_request import ClassChangeRequest
+from .student_mistake import StudentMistake
+from .learning_resource import LearningResource
+from .student_profile import StudentProfile, StudentProfileHistory
+from .personalized_resource import PersonalizedLearningResource, ResourceGenerationTask
 
 __all__ = [
     'db',
@@ -45,4 +49,10 @@ __all__ = [
     'SystemAnnouncement',
     'StudentNotification',
     'ClassChangeRequest',
+    'StudentMistake',
+    'LearningResource',
+    'StudentProfile',
+    'StudentProfileHistory',
+    'PersonalizedLearningResource',
+    'ResourceGenerationTask',
 ]

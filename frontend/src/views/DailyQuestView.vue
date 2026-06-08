@@ -166,6 +166,7 @@ async function claimBonus() {
   }
 }
 
+// @ts-expect-error function defined for future use in template
 async function advanceQuest(key: string) {
   const quest = quests.value.find((item) => item.key === key)
   if (!quest || quest.current >= quest.total || !isPersisted.value || savingKey.value) return
@@ -257,28 +258,26 @@ onMounted(loadTodayQuests)
                     class="quest-node"
                     :disabled="true"
                     :aria-label="`${quest.title} 进度 ${quest.current}/${quest.total}`"
-                    @click="quest.key !== 'morning-launch' && quest.key !== 'night-summary' ? advanceQuest(quest.key) : undefined"
                   >
                     <n-icon :component="quest.icon" />
                   </button>
 
-                  <button
-                    type="button"
+                  <div
                     class="quest-card"
-                    :disabled="loading || !isPersisted || Boolean(savingKey) || quest.current >= quest.total || quest.key === 'morning-launch' || quest.key === 'night-summary'"
-                    @click="quest.key !== 'morning-launch' && quest.key !== 'night-summary' ? advanceQuest(quest.key) : undefined"
+                    :class="{ 'quest-card--done': quest.current >= quest.total }"
                   >
                     <span class="quest-card__text">
                       <strong>{{ quest.title }}</strong>
                       <span v-if="quest.key === 'morning-launch'">进入探索舱即可自动完成</span>
                       <span v-else-if="quest.key === 'night-summary'">访问探索档案即可自动完成</span>
-                      <span v-else>{{ quest.description }}</span>
+                      <span v-else-if="quest.current >= quest.total">已完成 ✓</span>
+                      <span v-else>完成对应任务后自动更新</span>
                     </span>
                     <span class="quest-card__progress">+{{ quest.rewardXp }} XP · {{ quest.current }}/{{ quest.total }}</span>
                     <span class="quest-card__ring" :style="{ '--quest-ratio': quest.current / quest.total }">
                       <n-icon v-if="quest.current >= quest.total" :component="CheckmarkOutline" />
                     </span>
-                  </button>
+                  </div>
                 </article>
               </div>
 

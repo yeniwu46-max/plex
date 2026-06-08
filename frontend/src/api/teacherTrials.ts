@@ -38,6 +38,58 @@ export interface TeacherTrialsResult {
   summary: TeacherTrialSummary
 }
 
+export interface CustomTrialQuestion {
+  question_type?: 'mcq' | 'coding'
+  stem: string
+  options?: string[]
+  correct_index?: number
+  knowledge_key?: string
+  starter_code?: string
+  run_mode?: 'stdout' | 'expression'
+  hint?: string
+  test_cases?: Array<{
+    id: string
+    label: string
+    setup?: string
+    invoke?: string
+    expected: string
+  }>
+}
+
+export type TrialPaperQuestion =
+  | {
+      question_type: 'mcq'
+      stem: string
+      options: string[]
+      correct_index: number
+      knowledge_key?: string
+    }
+  | {
+      question_type: 'coding'
+      stem: string
+      starter_code: string
+      run_mode: 'stdout' | 'expression'
+      hint?: string
+      test_cases: Array<{
+        id: string
+        label: string
+        setup?: string
+        invoke?: string
+        expected: string
+      }>
+      knowledge_key?: string
+    }
+
+export interface CodingBankItem {
+  id: string
+  stem: string
+  knowledge_key?: string
+  starter_code: string
+  run_mode: string
+  hint?: string
+  test_cases: CustomTrialQuestion['test_cases']
+}
+
 export interface CreateTrialPayload {
   class_id: number
   title?: string
@@ -52,6 +104,17 @@ export interface CreateTrialPayload {
   starts_at?: string
   start_delay_minutes?: number
   notify_students?: boolean
+  custom_questions?: CustomTrialQuestion[]
+  draft_questions?: CustomTrialQuestion[]
+}
+
+export async function aiGenerateTrialQuestions(knowledgeKeys: string[], count = 3) {
+  const { data } = await http.post<ApiEnvelope<{ questions: CustomTrialQuestion[] }>>(
+    '/v1/teacher/trials/ai-generate-questions',
+    { knowledge_keys: knowledgeKeys, count },
+  )
+  if (data.code !== 0) throw new Error(data.message || 'AI 出题失败')
+  return data.data.questions
 }
 
 export interface PublishTrialResult {
@@ -83,10 +146,32 @@ export async function publishTeacherTrial(trialId: number, notifyStudents = true
   return data.data
 }
 
-export async function updateTeacherTrial(trialId: number, payload: { status?: string; title?: string }) {
+export async function updateTeacherTrial(
+  trialId: number,
+  payload: {
+    status?: string
+    title?: string
+    draft_questions?: CustomTrialQuestion[]
+    custom_questions?: CustomTrialQuestion[]
+  },
+) {
   const { data } = await http.patch<ApiEnvelope<TeacherTrial>>(`/v1/teacher/trials/${trialId}`, payload)
   if (data.code !== 0) throw new Error(data.message || '更新试炼失败')
   return data.data
+}
+
+export async function deleteTeacherTrial(trialId: number) {
+  const { data } = await http.delete<ApiEnvelope<{ deleted: boolean; trial_id: number }>>(
+    `/v1/teacher/trials/${trialId}`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '删除试炼失败')
+  return data.data
+}
+
+export async function fetchCodingQuestionBank() {
+  const { data } = await http.get<ApiEnvelope<{ items: CodingBankItem[] }>>('/v1/teacher/coding-question-bank')
+  if (data.code !== 0) throw new Error(data.message || '编程题库加载失败')
+  return data.data.items
 }
 
 export interface StudentTrialParticipation {
@@ -168,14 +253,17 @@ export interface TeacherTrialDetailResult {
   trial: TeacherTrial
   class_name: string
   teacher_name: string
+  draft_questions?: CustomTrialQuestion[]
   questions: Array<{
     id: number
     trial_id: number
     sort_order: number
+    question_type?: string
     stem: string
     options: string[]
     knowledge_key: string | null
     correct_index: number
+    coding_meta?: Record<string, unknown>
   }>
   students: TrialStudentProgressRow[]
   summary: {

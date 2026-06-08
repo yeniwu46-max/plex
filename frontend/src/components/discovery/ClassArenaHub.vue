@@ -827,13 +827,13 @@ onUnmounted(() => {
 .modal-list {
   margin: 0;
   padding-left: 1.2rem;
-  color: rgba(30, 41, 59, 0.88);
+  color: rgba(226, 232, 240, 0.88);
   line-height: 1.55;
 }
 
 .modal-lead {
   margin: 0 0 0.5rem;
-  color: rgba(30, 41, 59, 0.85);
+  color: rgba(200, 220, 235, 0.85);
 }
 
 @media (max-width: 1100px) {

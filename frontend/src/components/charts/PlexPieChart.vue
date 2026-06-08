@@ -5,6 +5,8 @@ import { use } from 'echarts/core'
 import { PieChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
+import { useThemeStore } from '../../stores/theme'
+import { getEchartsTokens, buildTooltip, buildLegend } from '../../theme/echartsTheme'
 
 use([CanvasRenderer, PieChart, TooltipComponent, LegendComponent])
 
@@ -20,52 +22,55 @@ const props = withDefaults(
   },
 )
 
+const themeStore = useThemeStore()
 const DEFAULT_COLORS = ['#38bdf8', '#818cf8', '#a78bfa', '#c084fc', '#fb923c', '#34d399']
 
-const option = computed(() => ({
-  backgroundColor: 'transparent',
-  tooltip: {
-    trigger: 'item' as const,
-    backgroundColor: 'rgba(5,14,26,0.92)',
-    borderColor: 'rgba(129,140,248,0.3)',
-    textStyle: { color: '#e2e8f0', fontSize: 12 },
-    formatter: '{b}: {c} ({d}%)',
-  },
-  legend: {
-    orient: 'vertical' as const,
-    right: 8,
-    top: 'center',
-    textStyle: { color: 'rgba(203,213,225,0.75)', fontSize: 11 },
-    icon: 'circle',
-    itemWidth: 8,
-    itemHeight: 8,
-    itemGap: 10,
-  },
-  series: [
-    {
-      type: 'pie',
-      radius: props.donut ? ['45%', '72%'] : ['0%', '72%'],
-      center: ['40%', '50%'],
-      data: props.data.map((item, i) => ({
-        name: item.name,
-        value: item.value,
-        itemStyle: {
-          color: item.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-          borderWidth: 2,
-          borderColor: 'rgba(5,14,26,0.9)',
-        },
-      })),
-      emphasis: {
-        itemStyle: {
-          shadowBlur: 12,
-          shadowColor: 'rgba(0,0,0,0.4)',
-        },
-      },
-      label: { show: false },
-      labelLine: { show: false },
+const option = computed(() => {
+  const tk = getEchartsTokens(themeStore.resolvedTheme)
+  const borderColor = themeStore.isDark ? 'rgba(5,14,26,0.9)' : 'rgba(255,255,255,0.9)'
+
+  return {
+    backgroundColor: tk.backgroundColor,
+    tooltip: {
+      trigger: 'item' as const,
+      ...buildTooltip(tk, {
+        borderColor: 'rgba(129,140,248,0.3)',
+        formatter: '{b}: {c} ({d}%)',
+      }),
     },
-  ],
-}))
+    legend: {
+      orient: 'vertical' as const,
+      right: 8,
+      top: 'center',
+      itemGap: 10,
+      ...buildLegend(tk),
+    },
+    series: [
+      {
+        type: 'pie',
+        radius: props.donut ? ['45%', '72%'] : ['0%', '72%'],
+        center: ['40%', '50%'],
+        data: props.data.map((item, i) => ({
+          name: item.name,
+          value: item.value,
+          itemStyle: {
+            color: item.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+            borderWidth: 2,
+            borderColor,
+          },
+        })),
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 12,
+            shadowColor: 'rgba(0,0,0,0.4)',
+          },
+        },
+        label: { show: false },
+        labelLine: { show: false },
+      },
+    ],
+  }
+})
 </script>
 
 <template>

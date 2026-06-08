@@ -72,6 +72,18 @@ const router = createRouter({
       component: () => import('../views/ExplorationArchivesView.vue'),
     },
     {
+      path: '/student/profile',
+      name: 'student-profile',
+      meta: { roles: ['student'] },
+      component: () => import('../views/StudentProfileView.vue'),
+    },
+    {
+      path: '/student/resources',
+      name: 'student-resources',
+      meta: { roles: ['student'] },
+      component: () => import('../views/StudentResourcesView.vue'),
+    },
+    {
       path: '/teacher',
       meta: { roles: ['teacher', 'admin'] },
       component: () => import('../layouts/TeacherOverviewLayout.vue'),
@@ -95,6 +107,11 @@ const router = createRouter({
           path: 'trials',
           name: 'teacher-trials',
           component: () => import('../views/TrialArenaView.vue'),
+        },
+        {
+          path: 'resources',
+          name: 'teacher-resource-review',
+          component: () => import('../views/TeacherResourceReviewView.vue'),
         },
       ],
     },

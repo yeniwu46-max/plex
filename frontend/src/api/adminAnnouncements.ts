@@ -16,3 +16,27 @@ export async function createAdminAnnouncement(payload: {
   if (data.code !== 0) throw new Error(data.message || '发布公告失败')
   return data.data
 }
+
+export async function updateAdminAnnouncement(
+  announcementId: number,
+  payload: {
+    title?: string
+    body?: string
+    target_role?: 'teacher' | 'student' | 'all'
+  },
+) {
+  const { data } = await http.patch<ApiEnvelope<SystemAnnouncement>>(
+    `/v1/admin/announcements/${announcementId}`,
+    payload,
+  )
+  if (data.code !== 0) throw new Error(data.message || '更新公告失败')
+  return data.data
+}
+
+export async function deleteAdminAnnouncement(announcementId: number) {
+  const { data } = await http.delete<ApiEnvelope<{ deleted: boolean; id: number }>>(
+    `/v1/admin/announcements/${announcementId}`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '删除公告失败')
+  return data.data
+}

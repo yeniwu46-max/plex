@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NInput, NCheckbox, NIcon, useMessage } from 'naive-ui'
+import { NInput, NCheckbox, NIcon, NModal, NButton, useMessage } from 'naive-ui'
 import { PersonOutline, LockClosedOutline, EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationStore } from '../stores/notifications'
@@ -17,6 +17,10 @@ const password = ref('')
 const remember = ref(false)
 const showPassword = ref(false)
 const loading = ref(false)
+const showForgotModal = ref(false)
+
+const ADMIN_RESET_EMAIL = '2720329167@qq.com'
+const adminMailto = `mailto:${ADMIN_RESET_EMAIL}?subject=${encodeURIComponent('密码重置申请')}`
 
 function togglePassword() {
   showPassword.value = !showPassword.value
@@ -56,12 +60,14 @@ async function onSubmit(e: Event) {
 
       <header class="hero__top">
         <div class="brand" aria-label="PLEX Universe">
-          <svg class="brand__mark" viewBox="0 0 48 48" width="36" height="36" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M24 4l5.2 14.8L44 24l-14.8 5.2L24 44l-5.2-14.8L4 24l14.8-5.2L24 4z"
-            />
-          </svg>
+          <img
+            class="brand__mark"
+            src="/assets/login-plex-mark.png"
+            width="64"
+            height="64"
+            alt=""
+            aria-hidden="true"
+          />
           <span class="brand__text">PLEX</span>
         </div>
       </header>
@@ -74,33 +80,10 @@ async function onSubmit(e: Event) {
         <p class="hero__desc">每一次探索，都是成长的轨迹。</p>
       </div>
 
-      <div class="hero__robot-wrap" aria-hidden="true">
-        <svg class="hero__robot" viewBox="0 0 120 140" width="120" height="140">
-          <ellipse cx="60" cy="128" rx="40" ry="8" fill="rgba(0,245,212,0.15)" />
-          <rect x="28" y="72" width="64" height="48" rx="16" fill="#f8fafc" />
-          <circle cx="44" cy="92" r="5" fill="#0f172a" />
-          <circle cx="76" cy="92" r="5" fill="#0f172a" />
-          <path d="M52 102h16" stroke="#0f172a" stroke-width="3" stroke-linecap="round" />
-          <rect x="48" y="48" width="24" height="28" rx="8" fill="#e2e8f0" />
-          <circle cx="60" cy="58" r="6" fill="#00f5d4" opacity="0.9" />
-          <path
-            d="M24 78 Q12 56 20 40 Q28 24 44 20"
-            fill="none"
-            stroke="#00f5d4"
-            stroke-width="4"
-            stroke-linecap="round"
-          />
-          <path
-            d="M96 78 Q108 56 100 40 Q92 24 76 20"
-            fill="none"
-            stroke="#00f5d4"
-            stroke-width="4"
-            stroke-linecap="round"
-          />
-        </svg>
-      </div>
-
       <footer class="hero__footer">
+        <div class="hero__robot-wrap" aria-hidden="true">
+          <img class="hero__robot" src="/assets/login-little-e.png" alt="" />
+        </div>
         <div class="hero__welcome">
           <div class="hero__progress" />
           <span>欢迎来到 PLEX 宇宙</span>
@@ -234,10 +217,31 @@ async function onSubmit(e: Event) {
 
         <div class="card__meta">
           <n-checkbox v-model:checked="remember" class="remember">记住我</n-checkbox>
-          <a href="#" class="forgot" @click.prevent>忘记密码？</a>
+          <button type="button" class="forgot" @click="showForgotModal = true">忘记密码？</button>
         </div>
       </div>
     </section>
+
+    <n-modal
+      v-model:show="showForgotModal"
+      preset="card"
+      title="找回 / 重置密码"
+      class="forgot-modal"
+      :style="{ maxWidth: '420px' }"
+    >
+      <p class="forgot-modal__lead">如需重置登录密码，可选择以下方式：</p>
+      <ol class="forgot-modal__list">
+        <li>通过下方按钮向管理员发送邮件，说明你的用户名与班级信息。</li>
+        <li>管理员核实身份后会为你重置密码。</li>
+      </ol>
+      <p class="forgot-modal__email">
+        管理员邮箱：<a :href="adminMailto">{{ ADMIN_RESET_EMAIL }}</a>
+      </p>
+      <template #footer>
+        <n-button quaternary @click="showForgotModal = false">返回登录</n-button>
+        <n-button type="primary" tag="a" :href="adminMailto">联系管理员重置</n-button>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -251,8 +255,8 @@ async function onSubmit(e: Event) {
     system-ui,
     -apple-system,
     sans-serif;
-  color: #f1f5f9;
-  background: #030712;
+  color: var(--plex-text, #f1f5f9);
+  background: var(--plex-bg, #030712);
 }
 
 /* —— 左侧 Hero —— */
@@ -270,55 +274,16 @@ async function onSubmit(e: Event) {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 120% 80% at 85% 45%, rgba(0, 180, 170, 0.22), transparent 55%),
-    radial-gradient(circle at 20% 20%, rgba(0, 245, 212, 0.08), transparent 40%),
-    radial-gradient(circle at 70% 80%, rgba(59, 130, 246, 0.06), transparent 45%),
-    linear-gradient(165deg, #020617 0%, #0a1628 45%, #030712 100%);
+    linear-gradient(105deg, rgba(2, 6, 23, 0.78) 0%, rgba(2, 6, 23, 0.42) 45%, rgba(2, 6, 23, 0.2) 100%),
+    url('/assets/login-hero-bg.png') center center / cover no-repeat;
 }
 
 .hero__bg::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(1.5px 1.5px at 10% 20%, rgba(255, 255, 255, 0.35), transparent),
-    radial-gradient(1px 1px at 30% 65%, rgba(255, 255, 255, 0.25), transparent),
-    radial-gradient(1px 1px at 70% 30%, rgba(255, 255, 255, 0.2), transparent),
-    radial-gradient(1.5px 1.5px at 85% 75%, rgba(255, 255, 255, 0.3), transparent),
-    radial-gradient(1px 1px at 50% 50%, rgba(255, 255, 255, 0.15), transparent);
-  background-size:
-    280px 280px,
-    320px 320px,
-    260px 260px,
-    300px 300px,
-    400px 400px;
-  opacity: 0.85;
+  content: none;
 }
 
 .hero__glow {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.hero__glow--planet {
-  width: min(72vw, 520px);
-  height: min(72vw, 520px);
-  right: -18%;
-  top: 18%;
-  background: radial-gradient(circle at 35% 35%, #1e3a5f 0%, #0c1929 45%, transparent 70%);
-  box-shadow:
-    inset -20px -20px 80px rgba(0, 245, 212, 0.12),
-    0 0 120px rgba(0, 245, 212, 0.08);
-}
-
-.hero__glow--ring {
-  width: min(90vw, 640px);
-  height: min(90vw, 640px);
-  right: -28%;
-  top: 8%;
-  border: 1px solid rgba(0, 245, 212, 0.12);
-  opacity: 0.6;
+  display: none;
 }
 
 .hero__top {
@@ -331,6 +296,14 @@ async function onSubmit(e: Event) {
   align-items: center;
   gap: 0.65rem;
   color: #00f5d4;
+}
+
+.brand__mark {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .brand__text {
@@ -377,16 +350,22 @@ async function onSubmit(e: Event) {
 .hero__robot-wrap {
   position: relative;
   z-index: 1;
-  margin-top: auto;
-  margin-bottom: 1rem;
+  margin: 1.25rem 0 0.35rem clamp(2rem, 7vw, 4.5rem);
   filter: drop-shadow(0 12px 24px rgba(0, 245, 212, 0.15));
+}
+
+.hero__robot {
+  display: block;
+  width: auto;
+  height: clamp(185px, 28vh, 240px);
+  object-fit: contain;
 }
 
 .hero__footer {
   position: relative;
   z-index: 1;
   margin-top: auto;
-  padding-top: 1rem;
+  padding-top: 0;
 }
 
 .hero__welcome {
@@ -420,6 +399,7 @@ async function onSubmit(e: Event) {
   justify-content: center;
   padding: clamp(1.5rem, 4vw, 3rem);
   background: linear-gradient(180deg, #020617 0%, #030712 100%);
+  transition: background 150ms ease;
 }
 
 .glass {
@@ -645,6 +625,10 @@ async function onSubmit(e: Event) {
 }
 
 .forgot {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
   font-size: 0.85rem;
   color: #00f5d4;
   text-decoration: none;
@@ -652,6 +636,33 @@ async function onSubmit(e: Event) {
 }
 
 .forgot:hover {
+  text-decoration: underline;
+}
+
+.forgot-modal__lead {
+  margin: 0 0 0.75rem;
+  color: rgba(226, 232, 240, 0.85);
+  line-height: 1.6;
+}
+
+.forgot-modal__list {
+  margin: 0 0 1rem 1.1rem;
+  padding: 0;
+  color: rgba(226, 232, 240, 0.72);
+  line-height: 1.65;
+}
+
+.forgot-modal__email {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+.forgot-modal__email a {
+  color: #4ade80;
+  text-decoration: none;
+}
+
+.forgot-modal__email a:hover {
   text-decoration: underline;
 }
 
@@ -667,7 +678,7 @@ async function onSubmit(e: Event) {
   }
 
   .hero__robot-wrap {
-    margin-top: 2rem;
+    margin: 1rem 0 0.35rem 1.5rem;
   }
 
   .panel {

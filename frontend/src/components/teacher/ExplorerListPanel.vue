@@ -29,10 +29,11 @@ const statusOptions: SelectOption[] = [
 ]
 
 const domainOptions: SelectOption[] = [
-  { label: '全部星域', value: 'all' },
-  { label: '算法基础', value: 'algo' },
-  { label: '数据结构', value: 'ds' },
-  { label: '数据库', value: 'db' },
+  { label: '全部阶段', value: 'all' },
+  { label: '第一段 Python', value: 'stage1' },
+  { label: '条件与循环', value: 'stage2' },
+  { label: '容器与函数', value: 'stage3' },
+  { label: '算法小任务', value: 'stage4' },
 ]
 
 const sortOptions: SelectOption[] = [

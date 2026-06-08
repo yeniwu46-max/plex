@@ -1,33 +1,164 @@
 /**
- * Shared Plex visual tokens for shells, panels, and page backgrounds.
+ * PLEX 全局主题变量 —— 单一来源
+ * 深色为默认；浅色通过 html[data-theme="light"] 覆盖。
+ * 角色主色通过 html[data-theme="light"][data-plex-persona="*"] 叠加覆盖。
  */
-:root {
+
+/* ─── 深色变量（默认） ───────────────────────────────────── */
+:root,
+html[data-theme='dark'] {
+  /* 背景层次 */
   --plex-space-bg-image: url('/assets/plex-space-bg.png');
   --plex-bg: #07111f;
   --plex-bg-elevated: #0b1628;
   --plex-bg-glass: rgba(11, 22, 40, 0.72);
+  --plex-bg-card: #0b1628;
+  --plex-bg-input: #0d1a2d;
+  --plex-bg-code: #050e1a;
+
+  /* 文字 */
+  --plex-text: #ffffff;
+  --plex-text-muted: #8ea3b8;
+  --plex-text-subtle: rgba(221, 230, 239, 0.58);
+
+  /* 主色 */
   --plex-accent: #10f0c0;
   --plex-accent-hover: #5fffe8;
   --plex-accent-pressed: #0d9a7f;
-  --plex-text: #ffffff;
-  --plex-muted: #8ea3b8;
+
+  /* 边框与阴影 */
   --plex-border: rgba(16, 240, 192, 0.18);
+  --plex-border-subtle: rgba(255, 255, 255, 0.06);
+  --plex-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+
+  /* 图表 */
+  --plex-chart-axis: rgba(203, 213, 225, 0.6);
+  --plex-chart-split: rgba(255, 255, 255, 0.05);
+  --plex-chart-tooltip-bg: rgba(5, 14, 26, 0.92);
+  --plex-chart-tooltip-border: rgba(130, 212, 255, 0.2);
+  --plex-chart-text: #e2e8f0;
+  --plex-chart-legend: rgba(203, 213, 225, 0.75);
+
+  /* 知识图谱 */
+  --plex-kg-canvas-bg: linear-gradient(135deg, rgba(3, 10, 20, 0.96), rgba(5, 14, 26, 0.92));
+  --plex-kg-label: #e2e8f0;
+  --plex-kg-detail-bg: rgba(5, 14, 26, 0.92);
+  --plex-kg-detail-border: rgba(130, 212, 255, 0.18);
+  --plex-kg-tooltip-bg: #0a1628;
+  --plex-kg-tooltip-text: #94a3b8;
+  --plex-kg-tooltip-desc: #cbd5e1;
+
+  /* 代码编辑器 */
+  --plex-code-bg: #050e1a;
+  --plex-code-topbar-bg: #060f1c;
+  --plex-code-border: rgba(74, 222, 128, 0.15);
+  --plex-code-topbar-border: rgba(74, 222, 128, 0.1);
+
+  /* 节点语义色（图谱） */
   --plex-node-teal: #10b9b1;
   --plex-node-green: #34d399;
   --plex-node-purple: #aa55f7;
   --plex-node-blue: #06b6d4;
   --plex-node-orange: #f59e0b;
   --plex-node-gray: #64748b;
+
+  /* 布局间距 */
   --plex-page-gutter-x: 2.75rem;
   --plex-page-gutter-bottom: 1.45rem;
+
+  /* Naive 弹层辅助 */
+  --plex-popover-bg: #0b1628;
+  --plex-modal-bg: #0b1628;
 }
 
+/* ─── 浅色变量覆盖 ──────────────────────────────────────── */
+html[data-theme='light'] {
+  --plex-space-bg-image: none;
+  --plex-bg: #f0f4f8;
+  --plex-bg-elevated: #ffffff;
+  --plex-bg-glass: rgba(255, 255, 255, 0.88);
+  --plex-bg-card: #ffffff;
+  --plex-bg-input: #f8fafc;
+  --plex-bg-code: #f8fafc;
+
+  --plex-text: #0f172a;
+  --plex-text-muted: #475569;
+  --plex-text-subtle: rgba(71, 85, 105, 0.65);
+
+  /* 浅色通用主色（被角色 persona 块再覆盖） */
+  --plex-accent: #0891b2;
+  --plex-accent-hover: #0e7490;
+  --plex-accent-pressed: #155e75;
+
+  --plex-border: rgba(8, 145, 178, 0.25);
+  --plex-border-subtle: rgba(0, 0, 0, 0.07);
+  --plex-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+
+  /* 图表 */
+  --plex-chart-axis: rgba(71, 85, 105, 0.7);
+  --plex-chart-split: rgba(0, 0, 0, 0.06);
+  --plex-chart-tooltip-bg: rgba(255, 255, 255, 0.97);
+  --plex-chart-tooltip-border: rgba(0, 0, 0, 0.1);
+  --plex-chart-text: #0f172a;
+  --plex-chart-legend: rgba(51, 65, 85, 0.85);
+
+  /* 知识图谱 */
+  --plex-kg-canvas-bg: linear-gradient(135deg, #f1f5f9, #e8edf2);
+  --plex-kg-label: #334155;
+  --plex-kg-detail-bg: rgba(255, 255, 255, 0.97);
+  --plex-kg-detail-border: rgba(0, 0, 0, 0.1);
+  --plex-kg-tooltip-bg: #ffffff;
+  --plex-kg-tooltip-text: #475569;
+  --plex-kg-tooltip-desc: #334155;
+
+  /* 代码编辑器 */
+  --plex-code-bg: #f8fafc;
+  --plex-code-topbar-bg: #f1f5f9;
+  --plex-code-border: rgba(148, 163, 184, 0.3);
+  --plex-code-topbar-border: rgba(148, 163, 184, 0.2);
+
+  /* Naive 弹层辅助 */
+  --plex-popover-bg: #ffffff;
+  --plex-modal-bg: #ffffff;
+}
+
+/* ─── 角色浅色主色覆盖 ──────────────────────────────────── */
+html[data-theme='light'][data-plex-persona='student'] {
+  --plex-accent: #16a34a;
+  --plex-accent-hover: #15803d;
+  --plex-accent-pressed: #166534;
+  --plex-border: rgba(22, 163, 74, 0.25);
+}
+
+html[data-theme='light'][data-plex-persona='teacher'] {
+  --plex-accent: #ea580c;
+  --plex-accent-hover: #c2410c;
+  --plex-accent-pressed: #9a3412;
+  --plex-border: rgba(234, 88, 12, 0.25);
+}
+
+html[data-theme='light'][data-plex-persona='admin'] {
+  --plex-accent: #6366f1;
+  --plex-accent-hover: #4f46e5;
+  --plex-accent-pressed: #4338ca;
+  --plex-border: rgba(99, 102, 241, 0.25);
+}
+
+/* ─── 全局基底 ──────────────────────────────────────────── */
 html,
 body,
 #app {
   background:
     linear-gradient(180deg, rgba(2, 8, 14, 0.22), rgba(1, 7, 13, 0.36)),
     var(--plex-space-bg-image) center top / cover fixed no-repeat;
+  color: var(--plex-text);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+html[data-theme='light'],
+html[data-theme='light'] body,
+html[data-theme='light'] #app {
+  background: var(--plex-bg);
   color: var(--plex-text);
 }
 
@@ -41,6 +172,7 @@ body {
     sans-serif;
 }
 
+/* ─── Shell / Main 类 ───────────────────────────────────── */
 .messenger-main,
 .daily-main,
 .cabin-main,
@@ -61,6 +193,200 @@ body {
     var(--plex-space-bg-image) center top / cover no-repeat !important;
 }
 
+html[data-theme='light'] .messenger-main,
+html[data-theme='light'] .daily-main,
+html[data-theme='light'] .cabin-main,
+html[data-theme='light'] .starpath-main,
+html[data-theme='light'] .main {
+  background: #eef2f7 !important;
+  color: var(--plex-text);
+}
+
+html[data-theme='light'] .messenger-shell,
+html[data-theme='light'] .daily-shell,
+html[data-theme='light'] .cabin-shell,
+html[data-theme='light'] .starpath-shell,
+html[data-theme='light'] .shell {
+  background: #f0f4f8 !important;
+  color: var(--plex-text);
+}
+
+/* ─── 通用卡片 / 面板 ───────────────────────────────────── */
+html[data-theme='light'] .panel {
+  background: var(--plex-bg-card) !important;
+  border-color: var(--plex-border-subtle) !important;
+  color: var(--plex-text) !important;
+  box-shadow: var(--plex-shadow) !important;
+}
+
+html[data-theme='light'] .panel h2,
+html[data-theme='light'] .panel h3,
+html[data-theme='light'] .panel strong {
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .panel p,
+html[data-theme='light'] .panel small,
+html[data-theme='light'] .panel em {
+  color: var(--plex-text-muted) !important;
+}
+
+/* ─── 150ms 主题切换过渡 ─────────────────────────────────── */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease !important;
+}
+
+/* ─── Naive UI 弹层 / 搜索框 浅色适配 ──────────────────── */
+html[data-theme='light'] .n-popover {
+  background-color: var(--plex-popover-bg) !important;
+  border-color: var(--plex-border-subtle) !important;
+}
+
+html[data-theme='light'] .n-modal {
+  background-color: var(--plex-modal-bg) !important;
+}
+
+html[data-theme='light'] .n-card {
+  background-color: var(--plex-bg-card) !important;
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .n-select-menu {
+  background-color: var(--plex-bg-elevated) !important;
+}
+
+html[data-theme='light'] .plex-topbar__input .n-input {
+  --n-color: rgba(248, 250, 252, 0.9) !important;
+  --n-color-focus: #ffffff !important;
+  --n-border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  --n-border-hover: 1px solid var(--plex-accent) !important;
+  --n-text-color: #0f172a !important;
+  --n-placeholder-color: rgba(71, 85, 105, 0.6) !important;
+}
+
+html[data-theme='light'] .search-input .n-input {
+  --n-color: rgba(248, 250, 252, 0.9) !important;
+  --n-border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  --n-border-hover: 1px solid var(--plex-accent) !important;
+  --n-text-color: #0f172a !important;
+  --n-placeholder-color: rgba(71, 85, 105, 0.6) !important;
+}
+
+/* ─── 通知弹层浅色 ──────────────────────────────────────── */
+html[data-theme='light'] .plex-notif-panel {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+html[data-theme='light'] .plex-notif-panel__head {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+}
+
+html[data-theme='light'] .plex-notif-item__title {
+  color: #0f172a;
+}
+
+html[data-theme='light'] .plex-notif-item__body {
+  color: rgba(51, 65, 85, 0.85);
+}
+
+html[data-theme='light'] .plex-notif-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme='light'] .plex-notif-item--unread {
+  background: rgba(var(--plex-accent), 0.06);
+}
+
+/* ─── DashboardShell 浅色适配 ───────────────────────────── */
+html[data-theme='light'] .sidebar {
+  background: linear-gradient(180deg, #f1f3f9 0%, #eceef5 100%) !important;
+  border-right-color: rgba(0, 0, 0, 0.07) !important;
+}
+
+html[data-theme='light'] .sidebar__brand {
+  color: var(--plex-accent) !important;
+}
+
+html[data-theme='light'] .sidebar__name {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .nav-item {
+  color: rgba(15, 23, 42, 0.65) !important;
+}
+
+html[data-theme='light'] .nav-item:hover {
+  background: rgba(8, 145, 178, 0.08) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .nav-item--active {
+  color: var(--plex-accent) !important;
+  background: rgba(8, 145, 178, 0.1) !important;
+}
+
+html[data-theme='light'] .nav-item--active .nav-item__accent {
+  background: linear-gradient(180deg, var(--plex-accent), var(--plex-accent-hover)) !important;
+  box-shadow: 0 0 10px var(--plex-border) !important;
+}
+
+html[data-theme='light'][data-plex-persona='student'] .nav-item--active {
+  background: rgba(22, 163, 74, 0.1) !important;
+}
+
+html[data-theme='light'][data-plex-persona='teacher'] .nav-item--active {
+  background: rgba(234, 88, 12, 0.1) !important;
+}
+
+html[data-theme='light'] .main {
+  background: #eef2f7 !important;
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .main::before {
+  display: none;
+}
+
+/* ─── LoginView 浅色适配 ────────────────────────────────── */
+html[data-theme='light'] .login-page {
+  background: #f0f4f8 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .login-page .panel {
+  background: linear-gradient(180deg, #f8fafc 0%, #f0f4f8 100%) !important;
+}
+
+html[data-theme='light'] .login-page .glass {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04) inset, 0 24px 80px rgba(0, 0, 0, 0.08) !important;
+}
+
+html[data-theme='light'] .login-page .card__title {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .login-page .hero__bg {
+  background:
+    linear-gradient(105deg, rgba(248, 250, 252, 0.88) 0%, rgba(248, 250, 252, 0.62) 45%, rgba(248, 250, 252, 0.35) 100%),
+    url('/assets/login-hero-bg.png') center center / cover no-repeat !important;
+}
+
+html[data-theme='light'] .login-page .hero__bg::before {
+  content: none !important;
+}
+
+/* ─── 响应式间距 ─────────────────────────────────────────── */
 @media (max-width: 768px) {
   :root {
     --plex-page-gutter-x: 1rem;

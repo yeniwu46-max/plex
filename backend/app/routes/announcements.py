@@ -31,7 +31,7 @@ def list_teacher_announcements():
 @role_required('admin')
 def list_admin_announcements():
     try:
-        return success_response(AnnouncementService.list_for_role('teacher', limit=50))
+        return success_response(AnnouncementService.list_all(limit=50))
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 
@@ -56,5 +56,36 @@ def create_admin_announcement():
         return success_response(AnnouncementService.create(admin_id, payload), '公告已发布')
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@announcements_bp.route('/admin/announcements/<int:announcement_id>', methods=['PATCH'])
+@jwt_required()
+@role_required('admin')
+def update_admin_announcement(announcement_id):
+    try:
+        payload = request.get_json() or {}
+        return success_response(
+            AnnouncementService.update(announcement_id, payload),
+            '公告已更新',
+        )
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@announcements_bp.route('/admin/announcements/<int:announcement_id>', methods=['DELETE'])
+@jwt_required()
+@role_required('admin')
+def delete_admin_announcement(announcement_id):
+    try:
+        return success_response(
+            AnnouncementService.delete(announcement_id),
+            '公告已删除',
+        )
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)

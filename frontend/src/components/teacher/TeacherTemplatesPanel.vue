@@ -141,7 +141,7 @@ watch(selectedClassId, () => {
 
 <template>
   <div class="templates-panel">
-    <div v-if="!hasSelectedClass" class="teacher-state-panel">请先在顶部选择班级。</div>
+    <div v-if="!hasSelectedClass" class="teacher-state-panel templates-panel__full">请先在顶部选择班级。</div>
     <template v-else>
       <div class="templates-panel__editor">
         <h3>新建作业模板</h3>
@@ -158,8 +158,8 @@ watch(selectedClassId, () => {
         <div class="templates-panel__selected" v-if="selectedKeys.length">
           已选 {{ selectedKeys.length }} 个：{{ selectedLabels.join('、') }}
         </div>
-        <n-checkbox v-model:checked="notifyStudents">发布时通知全班学生</n-checkbox>
-        <n-button type="primary" :loading="saving" @click="saveTemplate">保存为模板</n-button>
+        <n-checkbox v-model:checked="notifyStudents" class="templates-panel__notify">发布时通知全班学生</n-checkbox>
+        <n-button type="primary" class="templates-panel__save" :loading="saving" @click="saveTemplate">保存为模板</n-button>
       </div>
 
       <div class="templates-panel__list">
@@ -178,6 +178,7 @@ watch(selectedClassId, () => {
             <n-button
               type="primary"
               size="small"
+              class="templates-panel__publish"
               :loading="publishingId === row.id"
               @click="publishTemplate(row)"
             >
@@ -194,11 +195,19 @@ watch(selectedClassId, () => {
 <style scoped>
 .templates-panel {
   display: grid;
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+  gap: 1.1rem;
+  align-items: start;
+  padding: 0 1.35rem 1.25rem;
+}
+
+.templates-panel__full {
+  grid-column: 1 / -1;
 }
 
 .templates-panel__editor,
 .templates-panel__list {
+  min-width: 0;
   padding: 1rem 1.1rem;
   border: 1px solid rgba(251, 146, 60, 0.15);
   border-radius: 0.65rem;
@@ -267,5 +276,49 @@ watch(selectedClassId, () => {
   flex-direction: column;
   gap: 0.35rem;
   flex-shrink: 0;
+}
+
+.templates-panel__list .teacher-state-panel {
+  min-height: 120px;
+}
+
+.templates-panel__save,
+.templates-panel__publish {
+  --n-color: #ea580c !important;
+  --n-color-hover: #f97316 !important;
+  --n-color-pressed: #c2410c !important;
+  --n-color-focus: #ea580c !important;
+  --n-border: 1px solid rgba(251, 146, 60, 0.58) !important;
+  --n-border-hover: 1px solid rgba(251, 146, 60, 0.78) !important;
+  --n-border-pressed: 1px solid rgba(251, 146, 60, 0.78) !important;
+  --n-border-focus: 1px solid rgba(251, 146, 60, 0.78) !important;
+}
+
+.templates-panel__save {
+  margin-top: 0.35rem;
+}
+
+.templates-panel__notify :deep(.n-checkbox-box) {
+  --n-border-checked: 1px solid #fb923c;
+  --n-border-focus: 1px solid #fb923c;
+  --n-box-shadow-focus: 0 0 0 2px rgba(251, 146, 60, 0.25);
+}
+
+.templates-panel__notify :deep(.n-checkbox-box--checked) {
+  background-color: #fb923c;
+}
+
+.templates-panel__notify :deep(.n-checkbox-box--checked .n-checkbox-box__border) {
+  border-color: #fb923c;
+}
+
+.templates-panel__notify :deep(.n-checkbox__label) {
+  color: rgba(255, 237, 213, 0.82);
+}
+
+@media (max-width: 1100px) {
+  .templates-panel {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

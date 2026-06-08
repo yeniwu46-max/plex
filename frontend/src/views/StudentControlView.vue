@@ -1,11 +1,13 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { usePlexTour } from '../composables/usePlexTour'
 import { useRouter } from 'vue-router'
-import { NAvatar, NButton, NInput, NSwitch, NUpload, useMessage, type UploadFileInfo } from 'naive-ui'
+import { NAvatar, NButton, NInput, NRadio, NRadioGroup, NSwitch, NUpload, useMessage, type UploadFileInfo } from 'naive-ui'
+import { useThemeStore, type ColorMode } from '../stores/theme'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import { useAuthStore } from '../stores/auth'
 import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
-import { fetchAbilityStats, type AbilityStatsResult } from '../api/studentProgress'
+import { fetchStudentLearningReport, type LearningReportResult } from '../api/learningReport'
 import { resolveAvatarUrl, updateMyProfile, uploadMyAvatar } from '../api/studentProfile'
 import PlexRadarChart from '../components/charts/PlexRadarChart.vue'
 import PlexLineChart from '../components/charts/PlexLineChart.vue'
@@ -14,7 +16,7 @@ const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
 const overview = ref<StudentOverview | null>(null)
-const abilityStats = ref<AbilityStatsResult | null>(null)
+const learningReport = ref<LearningReportResult | null>(null)
 const loading = ref(true)
 const savingProfile = ref(false)
 const uploadingAvatar = ref(false)
@@ -38,6 +40,8 @@ const avatarSrc = computed(() => {
   return resolveAvatarUrl(url)
 })
 
+const themeStore = useThemeStore()
+
 const notifyTrial = ref(true)
 const notifyQuest = ref(true)
 const notifyRank = ref(false)
@@ -52,12 +56,12 @@ function syncFormFromProfile() {
 async function loadProfile() {
   loading.value = true
   try {
-    const [overviewResult, stats] = await Promise.all([
+    const [overviewResult, report] = await Promise.all([
       fetchStudentOverview(),
-      fetchAbilityStats().catch(() => null),
+      fetchStudentLearningReport('7d').catch(() => null),
     ])
     overview.value = overviewResult
-    abilityStats.value = stats
+    learningReport.value = report
     syncFormFromProfile()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '资料加载失败')
@@ -67,19 +71,21 @@ async function loadProfile() {
 }
 
 const radarDimensions = computed(
-  () => abilityStats.value?.radar.dimensions ?? ['抽象建模', '算法设计', '分解问题', '调试能力', '逻辑推理'],
+  () => learningReport.value?.radar.dimensions ?? ['抽象建模', '算法设计', '分解问题', '调试能力', '逻辑推理'],
 )
-const radarValues = computed(() => abilityStats.value?.radar.values ?? [0, 0, 0, 0, 0])
-const trendXData = computed(() => abilityStats.value?.trend.x_data ?? ['周一', '周二', '周三', '周四', '周五', '周六', '周日'])
+const radarValues = computed(() => learningReport.value?.radar.values ?? [0, 0, 0, 0, 0])
+const trendXData = computed(
+  () => learningReport.value?.trend.x_data ?? ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+)
 const trendSeries = computed(() => [
   {
     name: '正确率(%)',
-    data: abilityStats.value?.trend.correct_rate ?? [0, 0, 0, 0, 0, 0, 0],
+    data: learningReport.value?.trend.correct_rate ?? [0, 0, 0, 0, 0, 0, 0],
     color: '#22c55e',
   },
   {
     name: '练习次数',
-    data: abilityStats.value?.trend.practice_count ?? [0, 0, 0, 0, 0, 0, 0],
+    data: learningReport.value?.trend.practice_count ?? [0, 0, 0, 0, 0, 0, 0],
     color: '#38bdf8',
   },
 ])
@@ -134,6 +140,12 @@ async function onAvatarUpload(fileInfo: UploadFileInfo) {
   } finally {
     uploadingAvatar.value = false
   }
+}
+
+const { startTour, resetTour } = usePlexTour()
+async function restartStudentTour() {
+  resetTour('student')
+  await startTour('student')
 }
 
 function savePreferences() {
@@ -266,10 +278,36 @@ onMounted(() => {
             </li>
           </ul>
           <n-button type="primary" class="save-btn" :loading="loading" @click="savePreferences">保存偏好</n-button>
+          <n-button secondary class="tour-btn" style="margin-top:0.75rem;width:100%" @click="restartStudentTour">重新查看功能导览</n-button>
+        </article>
+
+        <article class="panel appearance-panel">
+          <header>
+            <h3>外观模式</h3>
+            <p>选择界面主题，保存到本地浏览器</p>
+          </header>
+          <n-radio-group
+            :value="themeStore.mode"
+            class="appearance-radio-group"
+            @update:value="(v: ColorMode) => themeStore.setMode(v)"
+          >
+            <n-radio value="dark" class="appearance-radio">
+              <span class="appearance-radio__icon">🌙</span>
+              <span>深色模式</span>
+            </n-radio>
+            <n-radio value="light" class="appearance-radio">
+              <span class="appearance-radio__icon">☀️</span>
+              <span>浅色模式</span>
+            </n-radio>
+            <n-radio value="auto" class="appearance-radio">
+              <span class="appearance-radio__icon">🖥️</span>
+              <span>跟随系统</span>
+            </n-radio>
+          </n-radio-group>
         </article>
       </div>
 
-      <div class="student-control__charts">
+      <div class="student-control__charts" data-tour="student-learning-report">
         <article class="panel">
           <header>
             <h3>能力画像</h3>
@@ -307,6 +345,12 @@ onMounted(() => {
 
 <style scoped>
 .student-control {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
   padding: 0 var(--plex-page-gutter-x) 2.5rem;
 }
 
@@ -387,6 +431,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
+  width: 100%;
 }
 
 .panel {
@@ -483,11 +528,38 @@ onMounted(() => {
   margin-top: 0.25rem;
 }
 
+.appearance-panel {
+  grid-column: 1 / -1;
+}
+
+.appearance-radio-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.appearance-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 1.1rem;
+  border: 1px solid var(--plex-border-subtle, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.appearance-radio__icon {
+  font-size: 1.1rem;
+}
+
 .student-control__charts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
   margin-top: 1.25rem;
+  width: 100%;
 }
 
 .student-control__chart-wrap {
@@ -503,7 +575,8 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
-  .student-control__grid {
+  .student-control__grid,
+  .student-control__charts {
     grid-template-columns: 1fr;
   }
 

@@ -6,8 +6,7 @@ import {
   getUnlockedStarPathNodes,
   isStarPathNodeUnlocked,
 } from '../data/starPathTrail'
-import { getActiveMistakeRecords, type TrialMistakeRecord } from './trialMistakeLog'
-import { mergeMistakesForRecommendation } from './studentMockMistakes'
+import { type TrialMistakeRecord } from './trialMistakeLog'
 
 export interface MessengerSuggestion {
   title: string
@@ -325,9 +324,11 @@ function buildDailySuggestion(recommended: RecommendedTrial | null) {
   }
 }
 
-export function analyzeMessengerWeakPoints(userId: number | string): MessengerWeakPointAnalysis {
-  const real = getActiveMistakeRecords(userId)
-  const records = mergeMistakesForRecommendation(userId, real)
+export function analyzeMessengerWeakPoints(
+  userId: number | string,
+  records: TrialMistakeRecord[] = [],
+): MessengerWeakPointAnalysis {
+  void userId
   const topTopics = aggregateTopics(records)
   const recommended = pickRecommendedTrial(records)
 

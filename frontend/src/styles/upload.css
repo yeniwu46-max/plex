@@ -1,0 +1,322 @@
+/* ─── PLEX Upload Module Styles ─────────────────────────────
+ * 全部使用 CSS 变量，通过 html[data-plex-persona] 自动切换角色主色。
+ * 不硬编码颜色，兼容浅色/深色模式。
+ */
+
+/* 上传面板主容器 */
+.plex-uploader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* 标题区 */
+.plex-uploader__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.plex-uploader__title {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--plex-text);
+  line-height: 1.3;
+}
+
+.plex-uploader__desc {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--plex-text-muted);
+  line-height: 1.5;
+}
+
+/* ─── Dropzone ────────────────────────────────────────────── */
+.plex-dropzone {
+  position: relative;
+  border: 1.5px dashed var(--plex-border, rgba(255,255,255,0.18));
+  border-radius: 10px;
+  background: var(--plex-bg-card);
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+  outline: none;
+}
+
+.plex-dropzone:hover,
+.plex-dropzone:focus-visible {
+  border-color: var(--plex-accent);
+  background: color-mix(in srgb, var(--plex-accent) 6%, var(--plex-bg-card));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--plex-accent) 15%, transparent);
+}
+
+.plex-dropzone--over {
+  border-color: var(--plex-accent);
+  background: color-mix(in srgb, var(--plex-accent) 10%, var(--plex-bg-card));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--plex-accent) 20%, transparent);
+}
+
+.plex-dropzone--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.plex-dropzone__icon {
+  font-size: 2rem;
+  color: var(--plex-accent);
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.plex-dropzone__text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--plex-text-muted);
+}
+
+.plex-dropzone__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--plex-text-subtle);
+}
+
+.plex-dropzone__btn {
+  margin-top: 0.25rem;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--plex-accent);
+  border-radius: 6px;
+  color: var(--plex-accent);
+  background: transparent;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.plex-dropzone__btn:hover {
+  background: var(--plex-accent);
+  color: #fff;
+}
+
+/* 隐藏原生 input */
+.plex-dropzone__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* ─── Progress Bar ────────────────────────────────────────── */
+.plex-upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plex-upload-progress__track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--plex-border-subtle);
+  overflow: hidden;
+}
+
+.plex-upload-progress__fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--plex-accent);
+  transition: width 200ms ease;
+}
+
+.plex-upload-progress__fill--error {
+  background: #ef4444;
+}
+
+.plex-upload-progress__fill--success {
+  background: #22c55e;
+}
+
+.plex-upload-progress__label {
+  font-size: 0.72rem;
+  color: var(--plex-text-muted);
+  white-space: nowrap;
+  min-width: 2.2rem;
+  text-align: right;
+}
+
+/* ─── File List ───────────────────────────────────────────── */
+.plex-upload-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.plex-upload-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 7px;
+  background: var(--plex-bg-elevated, var(--plex-bg-card));
+  border: 1px solid var(--plex-border-subtle);
+  font-size: 0.8rem;
+  transition: background 150ms ease;
+}
+
+.plex-upload-list__icon {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.plex-upload-list__info {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.plex-upload-list__name {
+  margin: 0;
+  font-weight: 500;
+  color: var(--plex-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plex-upload-list__meta {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--plex-text-muted);
+}
+
+.plex-upload-list__status {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.plex-upload-list__status--queued    { background: color-mix(in srgb, var(--plex-accent) 15%, transparent); color: var(--plex-accent); }
+.plex-upload-list__status--uploading { background: color-mix(in srgb, #3b82f6 15%, transparent); color: #60a5fa; }
+.plex-upload-list__status--success   { background: color-mix(in srgb, #22c55e 15%, transparent); color: #4ade80; }
+.plex-upload-list__status--error     { background: color-mix(in srgb, #ef4444 15%, transparent); color: #f87171; }
+.plex-upload-list__status--cancelled { background: color-mix(in srgb, #94a3b8 15%, transparent); color: #94a3b8; }
+
+.plex-upload-list__actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.plex-upload-list__action-btn {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  border: 1px solid var(--plex-border-subtle);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--plex-text-muted);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.plex-upload-list__action-btn:hover {
+  border-color: var(--plex-accent);
+  color: var(--plex-accent);
+}
+
+.plex-upload-list__action-btn--danger:hover {
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+/* ─── Panel ───────────────────────────────────────────────── */
+.plex-upload-panel__summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: var(--plex-text-muted);
+  padding: 0.3rem 0;
+}
+
+.plex-upload-panel__summary strong {
+  color: var(--plex-text);
+}
+
+.plex-upload-panel__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.plex-upload-panel__action-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: 1px solid var(--plex-border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--plex-text-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.plex-upload-panel__action-btn:hover {
+  border-color: var(--plex-accent);
+  color: var(--plex-accent);
+}
+
+.plex-upload-panel__action-btn--primary {
+  border-color: var(--plex-accent);
+  color: var(--plex-accent);
+  font-weight: 600;
+}
+
+.plex-upload-panel__action-btn--primary:hover {
+  background: var(--plex-accent);
+  color: #fff;
+}
+
+/* ─── Follow-up Stubs ─────────────────────────────────────── */
+.plex-upload-followup {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0 0;
+}
+
+.plex-upload-followup__btn {
+  padding: 0.28rem 0.7rem;
+  font-size: 0.74rem;
+  border: 1px dashed var(--plex-border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--plex-text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ─── Error message ───────────────────────────────────────── */
+.plex-upload-error {
+  font-size: 0.75rem;
+  color: #f87171;
+  margin: 0;
+}

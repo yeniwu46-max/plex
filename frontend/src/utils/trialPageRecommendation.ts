@@ -1,10 +1,7 @@
 import type { PythonTrialQuestion } from '../data/pythonTrialQuestions'
 import { formatStarPathNodeLabel, getStarPathNode, getNodeOrderBonus } from '../data/starPathTrail'
 import { getActiveMistakeRecords, type TrialMistakeRecord } from './trialMistakeLog'
-import {
-  filterMistakesByQuestionIds,
-  mergeMistakesForRecommendation,
-} from './studentMockMistakes'
+import { filterMistakesByQuestionIds } from './studentMockMistakes'
 
 export interface TrialRecommendationStep {
   label: string
@@ -45,10 +42,13 @@ function mistakeUrgency(record: TrialMistakeRecord | undefined) {
   return Math.min(100, recency * 0.45 + record.failCount * 16 + record.failedCaseLabels.length * 12)
 }
 
-function getMistakesForNode(userId: number | string, questionIds: string[]) {
-  const real = getActiveMistakeRecords(userId)
-  const merged = mergeMistakesForRecommendation(userId, real)
-  return filterMistakesByQuestionIds(merged, questionIds)
+function getMistakesForNode(
+  userId: number | string,
+  questionIds: string[],
+  serverRecords?: TrialMistakeRecord[],
+) {
+  const records = serverRecords?.length ? serverRecords : getActiveMistakeRecords(userId)
+  return filterMistakesByQuestionIds(records, questionIds)
 }
 
 function computeRanked(
@@ -76,6 +76,7 @@ export function buildTrialPageRecommendation(
   userId: number | string,
   nodeId: string,
   questions: PythonTrialQuestion[],
+  serverRecords?: TrialMistakeRecord[],
 ): TrialPageRecommendation {
   if (!questions.length) {
     return {
@@ -92,6 +93,7 @@ export function buildTrialPageRecommendation(
   const mistakes = getMistakesForNode(
     userId,
     questions.map((q) => q.id),
+    serverRecords,
   )
   const ranked = computeRanked(nodeId, questions, mistakes)
   const top = ranked[0]

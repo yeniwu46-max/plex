@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, h, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -8,33 +8,40 @@ import {
   NDropdown,
   NEmpty,
   NIcon,
-  NInput,
   NPopover,
   type DropdownOption,
 } from 'naive-ui'
-import { ChevronDownOutline, ExitOutline, NotificationsOutline, SearchOutline } from '@vicons/ionicons5'
+import { ChevronDownOutline, ExitOutline, NotificationsOutline, RefreshOutline } from '@vicons/ionicons5'
+import { usePlexTour, type TourRole } from '../../composables/usePlexTour'
 import { useAuthStore } from '../../stores/auth'
 import { useNotificationStore } from '../../stores/notifications'
 import { useTeacherNotificationStore } from '../../stores/teacherNotifications'
 import { useStudentNotificationSync } from '../../composables/useStudentNotificationSync'
 import { useTeacherNotificationSync } from '../../composables/useTeacherNotificationSync'
+import PlexThemeSwitcher from '../shared/PlexThemeSwitcher.vue'
+import PlexLocalSearch from '../search/PlexLocalSearch.vue'
+import { useSearchScope } from '../../composables/useSearchScope'
 
 withDefaults(
   defineProps<{
     title: string
     subtitle: string
     placeholder?: string
-    keyboardHint?: string
     hideSearch?: boolean
   }>(),
   {
-    placeholder: '搜索知识点、试炼或星域',
-    keyboardHint: '',
+    placeholder: '搜索当前页面内容…',
     hideSearch: false,
   },
 )
 
 const search = defineModel<string>('search', { default: '' })
+
+const emit = defineEmits<{
+  searchSubmit: [query: string]
+}>()
+
+const scope = useSearchScope()
 
 const auth = useAuthStore()
 const studentNotifications = useNotificationStore()
@@ -53,13 +60,40 @@ useTeacherNotificationSync()
 
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || '张子轩')
 const userLevel = computed(() => auth.profile?.level ?? 18)
-const userOptions: DropdownOption[] = [
-  {
+const { startTour, resetTour } = usePlexTour()
+
+const tourRoleForUser = computed<TourRole | null>(() => {
+  const role = auth.profile?.role
+  if (role === 'student') return 'student'
+  if (role === 'teacher') return 'teacher'
+  if (role === 'admin') return 'admin'
+  return null
+})
+
+async function restartTourFromMenu() {
+  const role = tourRoleForUser.value
+  if (!role) return
+  resetTour(role)
+  await startTour(role)
+}
+
+const userOptions = computed<DropdownOption[]>(() => {
+  const items: DropdownOption[] = []
+  if (tourRoleForUser.value) {
+    items.push({
+      label: '重新查看功能导览',
+      key: 'restart-tour',
+      icon: () => h(RefreshOutline),
+    })
+    items.push({ type: 'divider', key: 'd1' })
+  }
+  items.push({
     label: '退出登录',
     key: 'logout',
     icon: () => h(ExitOutline),
-  },
-]
+  })
+  return items
+})
 
 const notificationItems = computed(() => {
   if (isStudent.value) return studentNotifications.items
@@ -100,12 +134,17 @@ function onNotificationClick(id: string) {
 }
 
 async function handleUserSelect(key: string) {
+  if (key === 'restart-tour') {
+    await restartTourFromMenu()
+    return
+  }
   if (key !== 'logout') return
   studentNotifications.clearForLogout()
   teacherNotifications.clearForLogout()
   await auth.logout()
   await router.replace({ name: 'login' })
 }
+
 </script>
 
 <template>
@@ -116,14 +155,12 @@ async function handleUserSelect(key: string) {
     </div>
 
     <div v-if="!hideSearch" class="plex-topbar__search">
-      <n-input v-model:value="search" round :placeholder="placeholder" clearable class="plex-topbar__input">
-        <template #prefix>
-          <n-icon :component="SearchOutline" class="plex-topbar__search-icon" />
-        </template>
-        <template v-if="keyboardHint" #suffix>
-          <span class="plex-topbar__kbd">{{ keyboardHint }}</span>
-        </template>
-      </n-input>
+      <PlexLocalSearch
+        v-model="search"
+        :variant="scope"
+        :placeholder="placeholder"
+        @search-submit="emit('searchSubmit', $event)"
+      />
     </div>
 
     <div class="plex-topbar__userbar">
@@ -176,6 +213,7 @@ async function handleUserSelect(key: string) {
           <n-icon :component="NotificationsOutline" :size="25" />
         </button>
       </n-badge>
+      <plex-theme-switcher />
       <span class="plex-topbar__divider" />
       <n-dropdown trigger="click" :options="userOptions" @select="handleUserSelect">
         <button type="button" class="plex-topbar__user" aria-label="打开用户菜单">
@@ -249,29 +287,7 @@ async function handleUserSelect(key: string) {
   font-size: 0.98rem;
 }
 
-.plex-topbar__input :deep(.n-input) {
-  font-size: 0.96rem;
-  --n-height: 58px !important;
-  --n-color: rgba(6, 18, 31, 0.66) !important;
-  --n-color-focus: rgba(8, 24, 39, 0.86) !important;
-  --n-border: 1px solid rgba(130, 212, 255, 0.12) !important;
-  --n-border-hover: 1px solid rgba(37, 245, 238, 0.32) !important;
-  --n-text-color: #edf7ff !important;
-  --n-placeholder-color: rgba(210, 225, 238, 0.55) !important;
-}
-
-.plex-topbar__search-icon {
-  color: #e8f9ff;
-  font-size: 1.35rem;
-}
-
-.plex-topbar__kbd {
-  color: rgba(221, 230, 239, 0.58);
-  border: 1px solid rgba(221, 230, 239, 0.16);
-  border-radius: 0.35rem;
-  padding: 0.08rem 0.35rem;
-  font-size: 0.75rem;
-}
+/* PlexLocalSearch fills the topbar search slot via local-search.css */
 
 .plex-topbar__userbar {
   justify-self: end;

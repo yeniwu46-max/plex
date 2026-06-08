@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { NButton, NIcon, NSelect, type SelectOption } from 'naive-ui'
 import { CompassOutline, InformationCircleOutline } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
 import KnowledgeOrbitMap from '../components/teacher/KnowledgeOrbitMap.vue'
+import PlexKnowledgeGraph from '../components/shared/PlexKnowledgeGraph.vue'
 import SparklineCard from '../components/teacher/SparklineCard.vue'
 import StarfieldDomainDrawer from '../components/teacher/StarfieldDomainDrawer.vue'
 import TeacherInsightCard from '../components/teacher/TeacherInsightCard.vue'
+import { fetchTeacherClassStats } from '../api/teacherOverview'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
+import { STAR_PATH_TABS } from '../data/starPathDomains'
 import {
   buildClassStarfieldNodes,
   buildRiskCopy,
@@ -17,25 +20,67 @@ import {
   polylineFromPoints,
   type OrbitNode,
 } from '../data/teacherStarfield'
+import { fetchClassKnowledgeGraph } from '../api/knowledgeGraph'
+import { KG_NODES, KG_EDGES, type KgEdge, type KgNode } from '../data/knowledgeGraphData'
 
 const domainFilter = ref<string | null>(null)
 const drawerOpen = ref(false)
 const selectedNode = ref<OrbitNode | null>(null)
 
-const { overview, loading, errorMessage, hasSelectedClass, attentionStudents, loadOverview } =
+const { overview, loading, errorMessage, hasSelectedClass, attentionStudents, loadOverview, selectedClassId } =
   useTeacherOverviewInjected()
+
+const classStats = ref<Awaited<ReturnType<typeof fetchTeacherClassStats>> | null>(null)
+const kgNodes = ref<KgNode[]>(KG_NODES)
+const kgEdges = ref<KgEdge[]>(KG_EDGES)
+const kgLoading = ref(false)
+
+async function loadClassKnowledgeGraph() {
+  if (!selectedClassId.value) return
+  kgLoading.value = true
+  try {
+    const data = await fetchClassKnowledgeGraph(selectedClassId.value)
+    kgNodes.value = data.nodes
+    kgEdges.value = data.edges
+  } catch {
+    kgNodes.value = KG_NODES
+    kgEdges.value = KG_EDGES
+  } finally {
+    kgLoading.value = false
+  }
+}
+
+async function loadClassStats() {
+  if (!selectedClassId.value) {
+    classStats.value = null
+    return
+  }
+  try {
+    classStats.value = await fetchTeacherClassStats(selectedClassId.value)
+  } catch {
+    classStats.value = null
+  }
+}
+
+onMounted(() => {
+  void loadClassStats()
+  void loadClassKnowledgeGraph()
+})
+
+watch(selectedClassId, () => {
+  void loadClassStats()
+  void loadClassKnowledgeGraph()
+})
 
 const regionOptions: SelectOption[] = [
   { label: '全部星域', value: 'all' },
-  { label: '算法基础', value: 'algo' },
-  { label: '数据结构', value: 'ds' },
-  { label: '前端开发', value: 'fe' },
-  { label: '后端开发', value: 'be' },
-  { label: '数据库', value: 'db' },
-  { label: '计算机基础', value: 'cs' },
+  ...STAR_PATH_TABS.filter((tab) => tab.key !== 'all').map((tab) => ({
+    label: tab.label,
+    value: tab.key,
+  })),
 ]
 
-const allNodes = computed(() => buildClassStarfieldNodes(overview.value))
+const allNodes = computed(() => buildClassStarfieldNodes(overview.value, classStats.value))
 const orbitNodes = computed(() => {
   if (!domainFilter.value || domainFilter.value === 'all') return allNodes.value
   return allNodes.value.filter((node) => node.domainKey === domainFilter.value)
@@ -115,6 +160,14 @@ function onNodeSelect(node: OrbitNode) {
           </svg>
         </section>
 
+        <section class="starfield-page__kg teacher-panel teacher-quad-layout__full-row">
+          <header class="teacher-panel__head">
+            <h2 class="teacher-panel__title">班级知识图谱</h2>
+            <span v-if="kgLoading" class="starfield-page__kg-loading">同步中…</span>
+          </header>
+          <plex-knowledge-graph :nodes="kgNodes" :edges="kgEdges" mode="teacher" height="420px" />
+        </section>
+
         <div class="starfield-page__kpis teacher-quad-layout__full-row">
           <sparkline-card
             v-for="item in kpis"
@@ -139,7 +192,7 @@ function onNodeSelect(node: OrbitNode) {
 
 <style scoped>
 .starfield-page {
-  grid-template-rows: minmax(480px, 1fr) auto auto;
+  grid-template-rows: minmax(480px, 1fr) minmax(280px, auto) auto auto;
 }
 
 .starfield-page__state {
@@ -155,7 +208,53 @@ function onNodeSelect(node: OrbitNode) {
 }
 
 .starfield-page__risk {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
   padding: 1.25rem;
+  overflow: visible;
+}
+
+.starfield-page__risk.teacher-panel {
+  overflow: visible;
+}
+
+.starfield-page__risk .teacher-panel__head {
+  flex-shrink: 0;
+  overflow: visible;
+  margin-bottom: 0.35rem;
+}
+
+.starfield-page__risk .teacher-panel__title {
+  white-space: nowrap;
+  overflow: visible;
+  line-height: 1.35;
+}
+
+.starfield-page__kg {
+  grid-row: 3;
+  padding: 1rem 1.25rem 1.25rem;
+  overflow: visible;
+}
+
+.starfield-page__kg.teacher-panel {
+  overflow: visible;
+}
+
+.starfield-page__kg .teacher-panel__head {
+  overflow: visible;
+  margin-bottom: 0.75rem;
+}
+
+.starfield-page__kg .teacher-panel__title {
+  white-space: nowrap;
+  overflow: visible;
+  line-height: 1.35;
+}
+
+.starfield-page__kg-loading {
+  color: var(--teacher-muted);
+  font-size: 0.78rem;
 }
 
 .starfield-page__risk-copy {
@@ -163,10 +262,15 @@ function onNodeSelect(node: OrbitNode) {
   color: var(--teacher-muted);
   font-size: 0.88rem;
   line-height: 1.6;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .starfield-page__risk-chart {
+  display: block;
   width: 100%;
+  height: 96px;
+  flex-shrink: 0;
   margin-top: auto;
 }
 
@@ -185,12 +289,20 @@ function onNodeSelect(node: OrbitNode) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--teacher-quad-gap, 1.1rem);
-  grid-row: 3;
+  grid-row: 4;
 }
 
 @media (max-width: 1100px) {
   .starfield-page {
     grid-template-rows: auto;
+  }
+
+  .starfield-page__kg {
+    grid-row: auto;
+  }
+
+  .starfield-page__risk {
+    min-height: 240px;
   }
 
   .starfield-page__kpis {

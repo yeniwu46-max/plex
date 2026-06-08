@@ -1,0 +1,20 @@
+/* PlexLocalSearch — 页面内局部搜索（轻量，无全屏弹层） */
+
+.plex-topbar__search .plex-local-search,
+.admin-topbar .plex-local-search {
+  max-width: 540px;
+}
+
+.plex-local-search-empty {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.35);
+  color: rgba(203, 213, 225, 0.82);
+  font-size: 0.85rem;
+}
+
+html[data-theme='light'] .plex-local-search-empty {
+  background: rgba(241, 245, 249, 0.95);
+  color: #64748b;
+}

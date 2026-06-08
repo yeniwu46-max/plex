@@ -3,30 +3,40 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from app.models import Trial, TrialParticipation, TrialQuestionProgress, User, UserDailyQuest, db
+from app.models import PersonalizedLearningResource, StudentProfile
 
 DOMAIN_CATALOG = [
-    {'key': 'lang', 'title': '语言基础', 'knowledge_keys': ['lang', 'python', 'syntax', 'basic']},
-    {'key': 'algo', 'title': '算法基础', 'knowledge_keys': ['algo', 'greedy', 'sort', 'complexity']},
-    {'key': 'dp', 'title': '动态规划', 'knowledge_keys': ['dp']},
-    {'key': 'geom', 'title': '计算几何', 'knowledge_keys': ['geom', 'geometry']},
-    {'key': 'graph', 'title': '图论', 'knowledge_keys': ['graph', 'tree']},
-    {'key': 'ds', 'title': '数据结构', 'knowledge_keys': ['data', 'ds', 'stack', 'heap']},
+    {'key': 'stage1', 'title': '会写第一段 Python', 'knowledge_keys': ['intro', 'comment', 'python', 'lang', 'syntax', 'basic', 'var', 'io', 'input']},
+    {'key': 'stage2', 'title': '条件与循环', 'knowledge_keys': ['ops', 'cond', 'condition', 'loop', 'range']},
+    {'key': 'stage3', 'title': '容器、字符串与函数', 'knowledge_keys': ['list', 'tuple', 'set', 'dict', 'str', 'string', 'func', 'function']},
+    {'key': 'stage4', 'title': '简单算法小任务', 'knowledge_keys': ['file', 'except', 'exception', 'algo', 'algo-sum', 'algo-search', 'algo-sort', 'algo-dedup', 'nested']},
 ]
 
 KNOWLEDGE_LABELS = {
-    'lang': '语言基础',
+    'stage1': '会写第一段 Python',
+    'stage2': '条件与循环',
+    'stage3': '容器、字符串与函数',
+    'stage4': '简单算法小任务',
+    'intro': 'Python 入门',
+    'comment': '注释',
+    'var': '变量与类型',
+    'io': '输入输出',
+    'input': '输入',
+    'ops': '运算与表达式',
+    'cond': '条件分支',
+    'loop': '循环结构',
+    'range': 'range 与控制',
+    'list': '列表',
+    'dict': '字典',
+    'str': '字符串',
+    'func': '函数',
+    'file': '文件操作',
+    'except': '异常处理',
+    'algo': '算法入门',
+    'algo-sum': '求和统计',
+    'algo-search': '线性查找',
     'python': 'Python',
-    'dp': '动态规划',
-    'graph': '图论',
-    'geom': '计算几何',
-    'geometry': '计算几何',
-    'algo': '算法综合',
-    'greedy': '贪心',
-    'tree': '树结构',
-    'data': '数据结构',
-    'ds': '数据结构',
-    'stack': '栈',
-    'heap': '堆',
+    'lang': 'Python 基础',
 }
 
 
@@ -61,7 +71,7 @@ class StudentProgressService:
                     domain_scores[domain['key']].append(score)
                     break
             else:
-                domain_scores['lang'].append(score)
+                domain_scores['stage1'].append(score)
             skill_scores[key].append(score)
 
         level_boost = min(30, (user.level or 1) * 4)
@@ -91,7 +101,31 @@ class StudentProgressService:
                     item['active'] = True
                     break
 
-        return {'domains': domains, 'active_domain_key': next((d['key'] for d in domains if d.get('active')), 'lang')}
+        resources = PersonalizedLearningResource.query.filter_by(
+            user_id=user_id,
+            review_status='approved',
+        ).order_by(PersonalizedLearningResource.created_at.desc()).all()
+        resources_by_domain = defaultdict(list)
+        for resource in resources:
+            for domain in DOMAIN_CATALOG:
+                if resource.knowledge_key in domain['knowledge_keys']:
+                    resources_by_domain[domain['key']].append(resource)
+                    break
+        profile = StudentProfile.query.filter_by(user_id=user_id).first()
+        for domain in domains:
+            matched = resources_by_domain.get(domain['key'], [])[:3]
+            domain['recommended_resource_ids'] = [item.id for item in matched]
+            domain['recommendation_reason'] = (
+                f"结合画像版本 {profile.version if profile else 0} 与当前学习进度，"
+                f"优先学习 {matched[0].knowledge_label}。"
+                if matched else '完成当前节点练习后，系统会生成对应的个性化资源。'
+            )
+
+        return {
+            'domains': domains,
+            'active_domain_key': next((d['key'] for d in domains if d.get('active')), 'stage1'),
+            'profile_version': profile.version if profile else 0,
+        }
 
     @staticmethod
     def get_archive_insights(user_id):
@@ -160,11 +194,11 @@ class StudentProgressService:
         return {'running_trials': running}
 
     RADAR_DIMENSIONS = [
-        ('抽象建模', ['geom', 'geometry', 'graph', 'tree']),
-        ('算法设计', ['algo', 'greedy', 'sort', 'complexity']),
-        ('分解问题', ['dp']),
-        ('调试能力', ['lang', 'python', 'syntax', 'basic']),
-        ('逻辑推理', ['data', 'ds', 'stack', 'heap']),
+        ('语法基础', ['intro', 'comment', 'var', 'io', 'python', 'lang', 'syntax', 'basic']),
+        ('控制结构', ['ops', 'cond', 'condition', 'loop', 'range']),
+        ('数据组织', ['list', 'tuple', 'dict', 'str', 'string', 'func', 'function']),
+        ('调试能力', ['except', 'exception', 'file']),
+        ('算法思维', ['algo', 'algo-sum', 'algo-search', 'algo-sort', 'algo-dedup', 'nested']),
     ]
 
     @staticmethod

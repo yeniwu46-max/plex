@@ -183,6 +183,9 @@ def create_app(config_name='development'):
         from app.services.daily_quest import DailyQuestService
 
         DailyQuestService.ensure_default_quests()
+        from app.services.learning_resource import LearningResourceService
+
+        LearningResourceService.ensure_seed()
 
     return app
 

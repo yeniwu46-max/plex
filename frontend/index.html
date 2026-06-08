@@ -13,6 +13,22 @@
     <title>PLEX Universe — 登录</title>
   </head>
   <body>
+    <script>
+      // 防闪烁：Vue 挂载前提前写入主题 class/属性
+      ;(function () {
+        var stored = localStorage.getItem('plex-color-mode') || 'dark'
+        var resolved = stored
+        if (stored === 'auto') {
+          resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        if (resolved !== 'light') resolved = 'dark'
+        var el = document.documentElement
+        el.setAttribute('data-theme', resolved)
+        el.setAttribute('data-plex-theme', resolved)
+        if (resolved === 'dark') el.classList.add('dark')
+        else el.classList.remove('dark')
+      })()
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

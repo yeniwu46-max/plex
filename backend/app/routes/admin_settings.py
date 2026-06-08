@@ -4,6 +4,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import User
 from app.services.admin_dashboard import AdminDashboardService
+from app.services.learning_resource import LearningResourceService
 from app.services.system_setting import SystemSettingService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -59,5 +60,38 @@ def save_admin_settings():
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/learning-resources', methods=['GET'])
+@jwt_required()
+@role_required('admin', 'teacher')
+def list_learning_resources():
+    try:
+        return success_response(LearningResourceService.list_all(active_only=False))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/learning-resources/import', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def import_learning_resources():
+    try:
+        payload = request.get_json() or {}
+        return success_response(LearningResourceService.import_json(payload), '资源已导入')
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/backup', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def admin_backup():
+    try:
+        return success_response(AdminDashboardService.export_backup_snapshot())
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)

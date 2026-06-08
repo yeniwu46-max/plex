@@ -82,13 +82,38 @@ class TrialApiTestCase(unittest.TestCase):
         )
         self.assertEqual(join_resp.status_code, 200)
 
+        questions_resp = self.client.get(
+            f'/api/v1/student/trials/{trial_id}/questions',
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(questions_resp.status_code, 200)
+        for item in questions_resp.get_json()['data']['items']:
+            submit_resp = self.client.post(
+                f'/api/v1/student/assignments/{item["id"]}/answer',
+                headers=self.auth(self.student_token),
+                json={'selected_index': 0, 'time_spent_sec': 12},
+            )
+            self.assertEqual(submit_resp.status_code, 200)
+
         complete_resp = self.client.post(
             f'/api/v1/student/trials/{trial_id}/complete',
             headers=self.auth(self.student_token),
             json={'score': 88},
         )
-        self.assertEqual(complete_resp.status_code, 200)
-        self.assertEqual(complete_resp.get_json()['data']['participation']['status'], 'completed')
+        if complete_resp.status_code == 400:
+            self.assertIn('已完成', complete_resp.get_json().get('message', ''))
+        else:
+            self.assertEqual(complete_resp.status_code, 200)
+            self.assertEqual(complete_resp.get_json()['data']['participation']['status'], 'completed')
+
+        stats_resp = self.client.get(
+            '/api/v1/student/trial-stats',
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(stats_resp.status_code, 200)
+        stats = stats_resp.get_json()['data']
+        self.assertEqual(stats['summary']['completed_count'], 1)
+        self.assertGreaterEqual(len(stats['recent_completions']), 1)
 
 
 if __name__ == '__main__':

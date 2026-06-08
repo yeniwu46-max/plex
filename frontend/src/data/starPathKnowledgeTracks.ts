@@ -1,25 +1,10 @@
 import { getKnowledgePointsForDomain, type StarPathKnowledgePoint } from './starPathDomains'
-import { STAR_PATH_ALGO_NODES, type StarPathNode, type StarPathNodeStatus } from './starPathTrail'
+import type { StarPathNode, StarPathNodeStatus } from './starPathTrail'
+
+export const ALL_STAGE_KEYS = ['stage1', 'stage2', 'stage3', 'stage4'] as const
 
 const FOUR_NODE_POSITIONS: StarPathNode['position'][] = ['center', 'n2', 'n4', 'n5']
 const FOUR_NODE_ANCHORS: Array<StarPathNode['anchor'] | undefined> = [undefined, 'left', 'right', 'right']
-
-/** 算法域 4 个知识点 → 7 星轨节点题目合并 */
-const ALGO_KP_QUESTION_IDS: Record<string, string[]> = {
-  'algo-01': ['01'],
-  'algo-02': ['02'],
-  'algo-03': ['03'],
-  'algo-04': ['05', '06', '07'],
-}
-
-function nodeIdsToQuestionIds(nodeIds: string[]): string[] {
-  const ids: string[] = []
-  for (const nid of nodeIds) {
-    const node = STAR_PATH_ALGO_NODES.find((n) => n.id === nid)
-    if (node) ids.push(...node.questionIds)
-  }
-  return ids
-}
 
 function mockStatus(index: number, total: number): StarPathNodeStatus {
   if (index === 0) return 'current'
@@ -36,11 +21,7 @@ function mockGems(status: StarPathNodeStatus): StarPathNode['gems'] {
 
 function kpToNode(kp: StarPathKnowledgePoint, index: number, total: number): StarPathNode {
   const status = mockStatus(index, total)
-  const questionIds = kp.questionId
-    ? [kp.questionId]
-    : ALGO_KP_QUESTION_IDS[kp.id]
-      ? nodeIdsToQuestionIds(ALGO_KP_QUESTION_IDS[kp.id])
-      : []
+  const questionIds = kp.questionId ? [kp.questionId] : []
 
   return {
     id: kp.id,
@@ -62,6 +43,14 @@ function kpToNode(kp: StarPathKnowledgePoint, index: number, total: number): Sta
 export function buildKnowledgeTrack(domainKey: string): StarPathNode[] {
   const points = getKnowledgePointsForDomain(domainKey)
   return points.map((kp, i) => kpToNode(kp, i, points.length))
+}
+
+export function getStageTrackNodes(domainKey: string): StarPathNode[] {
+  return buildKnowledgeTrack(domainKey)
+}
+
+export function getAllStageTrackNodes(): StarPathNode[] {
+  return ALL_STAGE_KEYS.flatMap((key) => buildKnowledgeTrack(key))
 }
 
 export function getKnowledgePointIdFromNodeId(nodeId: string): string | null {

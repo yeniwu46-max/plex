@@ -14,7 +14,14 @@ EMERGENCY_QUESTION_COUNT = 3
 class EmergencyMissionService:
     @staticmethod
     def _pick_focus_knowledge(user_id: int) -> tuple[str, str]:
-        """根据近期掌握情况选薄弱知识点；无数据则随机。"""
+        """优先错题本薄弱点，再回退试炼均分。"""
+        from app.services.mistake import MistakeService
+
+        weak = MistakeService.list_weak_knowledge(user_id, limit=1)
+        if weak:
+            key = weak[0]['knowledge_key']
+            return key, QuestionGenerator.label_for_key(key)
+
         completed = StudentProgressService._completed_trials(user_id)
         skill_map: dict[str, list[int]] = defaultdict(list)
         for part in completed:
@@ -25,7 +32,7 @@ class EmergencyMissionService:
             weakest = min(skill_map.items(), key=lambda item: sum(item[1]) / len(item[1]))
             key = weakest[0]
         else:
-            key = random.choice(['dp', 'graph', 'ds', 'frontend', 'algo'])
+            key = random.choice(['intro', 'var', 'cond', 'loop', 'list', 'algo'])
 
         label = QuestionGenerator.label_for_key(key)
         return key, label
@@ -51,7 +58,7 @@ class EmergencyMissionService:
                 picked.append({**item, 'knowledge_key': QuestionGenerator._normalize_key(focus_key)})
 
         while len(picked) < EMERGENCY_QUESTION_COUNT:
-            extra_bank = QuestionGenerator.bank_for_key(random.choice(['dp', 'graph', 'ds', 'frontend']))
+            extra_bank = QuestionGenerator.bank_for_key(random.choice(['intro', 'var', 'loop', 'list', 'algo']))
             item = random.choice(extra_bank)
             if item['stem'] not in {p['stem'] for p in picked}:
                 picked.append({**item, 'knowledge_key': focus_key})
@@ -151,6 +158,12 @@ class EmergencyMissionService:
         session.all_correct = correct_count == len(session.questions)
         session.status = 'submitted'
         session.submitted_at = datetime.utcnow()
+
+        if not session.all_correct:
+            from app.services.mistake import MistakeService
+
+            wrong_stems = [q.stem for q in session.questions if not q.is_correct]
+            MistakeService.record_emergency_wrong(user_id, session.focus_knowledge_key, wrong_stems)
 
         incentive = None
         if session.all_correct:

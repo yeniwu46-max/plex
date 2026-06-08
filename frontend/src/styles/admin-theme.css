@@ -1,0 +1,174 @@
+/**
+ * 管理员端浅色模式覆盖 —— 蓝紫科技主题
+ */
+html[data-theme='light'] .admin-shell {
+  background: #f5f6fa !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .admin-sidebar {
+  background: linear-gradient(180deg, #f1f3f9 0%, #eceef5 100%) !important;
+  border-right-color: rgba(0, 0, 0, 0.07) !important;
+}
+
+html[data-theme='light'] .admin-sidebar .brand {
+  color: #6366f1 !important;
+}
+
+html[data-theme='light'] .admin-sidebar .nav-item {
+  color: rgba(15, 23, 42, 0.65) !important;
+}
+
+html[data-theme='light'] .admin-sidebar .nav-item:hover {
+  background: rgba(99, 102, 241, 0.08) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .admin-sidebar .nav-item.active {
+  background: rgba(99, 102, 241, 0.12) !important;
+  color: #6366f1 !important;
+}
+
+html[data-theme='light'] .admin-sidebar .overseer-card {
+  background: rgba(99, 102, 241, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .admin-main {
+  background: #f5f6fa !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .admin-topbar {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.07) !important;
+  color: #0f172a !important;
+  backdrop-filter: blur(12px);
+}
+
+html[data-theme='light'] .admin-topbar .title-block h1 {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .admin-topbar .title-block p {
+  color: rgba(71, 85, 105, 0.75) !important;
+}
+
+html[data-theme='light'] .metric-card {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.07) !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+html[data-theme='light'] .metric-card small {
+  color: rgba(71, 85, 105, 0.7) !important;
+}
+
+html[data-theme='light'] .metric-card strong {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .metric-card em {
+  color: rgba(71, 85, 105, 0.65) !important;
+}
+
+html[data-theme='light'] .admin-section {
+  background: transparent !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .governance-settings-panel,
+html[data-theme='light'] .gov-settings-section {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .gov-field span,
+html[data-theme='light'] .gov-field label {
+  color: #334155 !important;
+}
+
+html[data-theme='light'] .icon-button {
+  background: rgba(99, 102, 241, 0.08) !important;
+  color: #6366f1 !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+}
+
+html[data-theme='light'] .profile-button {
+  background: rgba(99, 102, 241, 0.06) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .search-input .n-input {
+  --n-color: #ffffff !important;
+  --n-border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  --n-border-hover: 1px solid rgba(99, 102, 241, 0.5) !important;
+  --n-text-color: #0f172a !important;
+  --n-placeholder-color: rgba(71, 85, 105, 0.55) !important;
+}
+
+html[data-theme='light'] .current-time {
+  color: rgba(71, 85, 105, 0.6) !important;
+}
+
+/* 管理员音调颜色 */
+html[data-theme='light'] .tone-purple .metric-icon { color: #7c3aed !important; }
+html[data-theme='light'] .tone-amber .metric-icon  { color: #d97706 !important; }
+html[data-theme='light'] .tone-green .metric-icon  { color: #16a34a !important; }
+html[data-theme='light'] .tone-red .metric-icon    { color: #dc2626 !important; }
+
+/* 管理员导航栏亮色点 */
+html[data-theme='light'] .admin-topbar .nexus-globe {
+  color: #6366f1 !important;
+}
+
+html[data-theme='light'] .admin-footer {
+  color: rgba(71, 85, 105, 0.5) !important;
+}
+
+/* 治理中心按钮 */
+.gov-primary-btn.n-button {
+  --n-color: #8b5cf6 !important;
+  --n-color-hover: #a78bfa !important;
+  --n-color-pressed: #7c3aed !important;
+  --n-color-focus: #8b5cf6 !important;
+  --n-border: 1px solid rgba(167, 139, 250, 0.55) !important;
+  --n-border-hover: 1px solid rgba(167, 139, 250, 0.75) !important;
+  --n-border-pressed: 1px solid rgba(124, 58, 237, 0.85) !important;
+  --n-border-focus: 1px solid rgba(167, 139, 250, 0.75) !important;
+}
+
+.gov-refresh-btn.n-button {
+  --n-height: 30px !important;
+  --n-padding: 0 12px !important;
+  --n-font-size: 0.82rem !important;
+  --n-text-color: #c4b5fd !important;
+  --n-text-color-hover: #ede9fe !important;
+  --n-text-color-pressed: #a78bfa !important;
+  --n-text-color-focus: #ddd6fe !important;
+  --n-border: 1px solid rgba(167, 139, 250, 0.32) !important;
+  --n-border-hover: 1px solid rgba(167, 139, 250, 0.55) !important;
+  --n-border-pressed: 1px solid rgba(139, 92, 246, 0.65) !important;
+  --n-color: rgba(139, 92, 246, 0.1) !important;
+  --n-color-hover: rgba(139, 92, 246, 0.18) !important;
+  --n-color-pressed: rgba(124, 58, 237, 0.22) !important;
+  --n-border-radius: 999px !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme='light'] .gov-primary-btn.n-button {
+  --n-color: #7c3aed !important;
+  --n-color-hover: #8b5cf6 !important;
+  --n-color-pressed: #6d28d9 !important;
+}
+
+html[data-theme='light'] .gov-refresh-btn.n-button {
+  --n-text-color: #6d28d9 !important;
+  --n-text-color-hover: #5b21b6 !important;
+  --n-color: rgba(99, 102, 241, 0.08) !important;
+  --n-color-hover: rgba(99, 102, 241, 0.14) !important;
+  --n-border: 1px solid rgba(99, 102, 241, 0.25) !important;
+  --n-border-hover: 1px solid rgba(99, 102, 241, 0.45) !important;
+}

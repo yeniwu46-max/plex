@@ -5,6 +5,8 @@ import { use } from 'echarts/core'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
+import { useThemeStore } from '../../stores/theme'
+import { getEchartsTokens, buildCategoryAxis, buildValueAxis, buildTooltip, buildLegend } from '../../theme/echartsTheme'
 
 use([CanvasRenderer, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
@@ -21,45 +23,28 @@ const props = withDefaults(
   },
 )
 
+const themeStore = useThemeStore()
 const DEFAULT_COLORS = ['#f97316', '#fb923c', '#fdba74', '#fde68a']
 
 const option = computed(() => {
-  const axis = {
-    type: 'category' as const,
-    data: props.xData,
-    axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
-    axisTick: { show: false },
-    axisLabel: { color: 'rgba(203,213,225,0.65)', fontSize: 11 },
-    splitLine: { show: false },
-  }
-  const valueAxis = {
-    type: 'value' as const,
-    axisLine: { show: false },
-    axisTick: { show: false },
-    axisLabel: { color: 'rgba(203,213,225,0.65)', fontSize: 11 },
-    splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)', type: 'dashed' as const } },
-  }
+  const tk = getEchartsTokens(themeStore.resolvedTheme)
+  const catAxis = { type: 'category' as const, data: props.xData, ...buildCategoryAxis(tk) }
+  const valAxis = { type: 'value' as const, ...buildValueAxis(tk) }
 
   return {
-    backgroundColor: 'transparent',
+    backgroundColor: tk.backgroundColor,
     tooltip: {
       trigger: 'axis' as const,
-      backgroundColor: 'rgba(5,14,26,0.92)',
-      borderColor: 'rgba(249,115,22,0.3)',
-      textStyle: { color: '#e2e8f0', fontSize: 12 },
-      axisPointer: { type: 'shadow' as const },
+      ...buildTooltip(tk, { axisPointer: { type: 'shadow' as const } }),
     },
     legend: {
       top: 4,
       right: 10,
-      textStyle: { color: 'rgba(203,213,225,0.75)', fontSize: 11 },
-      icon: 'roundRect',
-      itemWidth: 10,
-      itemHeight: 6,
+      ...buildLegend(tk, { icon: 'roundRect', itemWidth: 10, itemHeight: 6 }),
     },
     grid: { top: 36, left: 12, right: 12, bottom: 16, containLabel: true },
-    xAxis: props.horizontal ? valueAxis : axis,
-    yAxis: props.horizontal ? axis : valueAxis,
+    xAxis: props.horizontal ? valAxis : catAxis,
+    yAxis: props.horizontal ? catAxis : valAxis,
     series: props.series.map((s, i) => {
       const color = s.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length]
       return {

@@ -67,6 +67,7 @@ function iconForTone(tone: OrbitNode['tone']) {
   position: relative;
   height: 100%;
   min-height: 420px;
+  overflow: visible;
 }
 
 .orbit-panel--compact {
@@ -82,12 +83,12 @@ function iconForTone(tone: OrbitNode['tone']) {
 
 .orbit-map {
   position: absolute;
-  inset: 2.5rem 0.5rem 0.5rem;
-  overflow: hidden;
+  inset: 2.5rem 0.75rem 3.75rem;
+  overflow: visible;
 }
 
 .orbit-panel:not(:has(.orbit-panel__head)) .orbit-map {
-  inset: 0.5rem;
+  inset: 0.75rem 0.75rem 3.75rem;
 }
 
 .orbit-map::before {
@@ -139,8 +140,9 @@ function iconForTone(tone: OrbitNode['tone']) {
   position: absolute;
   z-index: 3;
   display: grid;
-  min-width: 126px;
-  gap: 0.14rem;
+  width: max-content;
+  max-width: 148px;
+  gap: 0.18rem;
   padding: 0;
   border: 0;
   background: transparent;
@@ -177,7 +179,10 @@ function iconForTone(tone: OrbitNode['tone']) {
 .orbit-node strong {
   margin-top: 0.45rem;
   color: rgba(255, 247, 237, 0.82);
+  font-size: 0.88rem;
   font-weight: 620;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .orbit-node em {
@@ -226,10 +231,12 @@ function iconForTone(tone: OrbitNode['tone']) {
 .orbit-legend {
   position: absolute;
   left: 50%;
-  bottom: 0.4rem;
+  bottom: 0.15rem;
   z-index: 4;
   display: flex;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.85rem 1.25rem;
   transform: translateX(-50%);
   padding: 0.55rem 1rem;
   border: 1px solid rgba(130, 212, 255, 0.08);

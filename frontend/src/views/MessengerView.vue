@@ -8,6 +8,9 @@ import {
   analyzeMessengerWeakPoints,
   type MessengerSuggestion,
 } from '../utils/messengerWeakPointAnalysis'
+import { fetchServerMistakeRecords } from '../utils/trialMistakeLog'
+import { postMessengerChat } from '../api/messenger'
+import { fetchStudentRecommendations } from '../api/recommendations'
 import {
   AnalyticsOutline,
   BarbellOutline,
@@ -27,12 +30,14 @@ const router = useRouter()
 const sidebarCollapsed = ref(false)
 const prompt = ref('')
 const analyzing = ref(false)
+const chatLoading = ref(false)
+const chatMessages = ref<Array<{ role: 'user' | 'assistant'; text: string }>>([])
 
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Explorer')
 
 const userId = computed(() => auth.profile?.id ?? 'guest')
 
-const analysis = ref(analyzeMessengerWeakPoints(userId.value))
+const analysis = ref(analyzeMessengerWeakPoints(userId.value, []))
 
 const suggestionIcons = [AnalyticsOutline, BarbellOutline, PulseOutline, SparklesOutline] as const
 
@@ -55,12 +60,14 @@ const analysisHeadline = computed(() =>
       : '小E 等待你的试炼数据',
 )
 
-function refreshAnalysis() {
+async function refreshAnalysis() {
   analyzing.value = true
-  window.setTimeout(() => {
-    analysis.value = analyzeMessengerWeakPoints(userId.value)
+  try {
+    const records = await fetchServerMistakeRecords(userId.value)
+    analysis.value = analyzeMessengerWeakPoints(userId.value, records)
+  } finally {
     analyzing.value = false
-  }, 420)
+  }
 }
 
 function onAnalyzeWeakPoints() {
@@ -96,8 +103,39 @@ const actions = [
   { label: '查看最近成长', icon: TrendingUpOutline, handler: goToArchives },
 ] as const
 
+async function sendChat() {
+  const text = prompt.value.trim()
+  if (!text || chatLoading.value) return
+  chatMessages.value.push({ role: 'user', text })
+  prompt.value = ''
+  chatLoading.value = true
+  try {
+    const result = await postMessengerChat(text)
+    const sourceLabel =
+      result.source === 'llm'
+        ? result.rag_used
+          ? '（LLM + 知识库）'
+          : ''
+        : result.source === 'rag'
+          ? '（知识库 + 学情）'
+          : '（规则分析）'
+    chatMessages.value.push({
+      role: 'assistant',
+      text: `${result.reply}${sourceLabel}`,
+    })
+  } catch (error) {
+    chatMessages.value.push({
+      role: 'assistant',
+      text: error instanceof Error ? error.message : '对话失败，请稍后重试',
+    })
+  } finally {
+    chatLoading.value = false
+  }
+}
+
 onMounted(() => {
   refreshAnalysis()
+  void fetchStudentRecommendations('7d').catch(() => undefined)
 })
 
 watch(userId, (id) => {
@@ -208,6 +246,12 @@ watch(userId, (id) => {
               </div>
             </article>
           </div>
+          <div v-if="chatMessages.length" class="chat-thread" aria-label="与小E对话">
+            <article v-for="(msg, idx) in chatMessages" :key="idx" :class="`chat-thread__item chat-thread__item--${msg.role}`">
+              <p>{{ msg.text }}</p>
+            </article>
+            <p v-if="chatLoading" class="chat-thread__loading">小E 正在思考…</p>
+          </div>
           <button type="button" class="all-advice" @click="onAnalyzeWeakPoints">
             根据错题刷新分析
             <n-icon :component="NavigateOutline" />
@@ -221,8 +265,9 @@ watch(userId, (id) => {
               placeholder="向小E提问，或让小E帮你分析学习情况..."
               class="prompt-input"
               :bordered="false"
+              @keydown.enter.prevent="sendChat"
             />
-            <button type="button" aria-label="发送">
+            <button type="button" aria-label="发送" :disabled="chatLoading" @click="sendChat">
               <n-icon :component="PaperPlaneOutline" />
             </button>
           </div>
@@ -1174,6 +1219,36 @@ watch(userId, (id) => {
 .all-advice .n-icon {
   color: #25f5ee;
   font-size: 1.4rem;
+}
+
+.chat-thread {
+  max-height: 160px;
+  overflow-y: auto;
+  margin-bottom: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(4, 18, 30, 0.72);
+  border: 1px solid rgba(110, 228, 255, 0.12);
+}
+
+.chat-thread__item {
+  margin: 0 0 0.5rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.chat-thread__item--user p {
+  color: #a5f3fc;
+}
+
+.chat-thread__item--assistant p {
+  color: rgba(237, 247, 255, 0.88);
+}
+
+.chat-thread__loading {
+  margin: 0;
+  color: rgba(237, 247, 255, 0.55);
+  font-size: 0.82rem;
 }
 
 .prompt-dock {

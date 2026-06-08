@@ -75,6 +75,33 @@ export async function joinStudentTrial(trialId: number) {
   return data.data
 }
 
+export interface StudentTrialStatsResult {
+  summary: {
+    total_participations: number
+    completed_count: number
+    active_count: number
+    avg_score: number
+  }
+  trend: {
+    x_data: string[]
+    completed_count: number[]
+    avg_score: number[]
+  }
+  recent_completions: Array<{
+    trial_id: number
+    title: string
+    score: number
+    knowledge_key: string | null
+    completed_at: string | null
+  }>
+}
+
+export async function fetchStudentTrialStats() {
+  const { data } = await http.get<ApiEnvelope<StudentTrialStatsResult>>('/v1/student/trial-stats')
+  if (data.code !== 0) throw new Error(data.message || '战绩加载失败')
+  return data.data
+}
+
 export async function completeStudentTrial(trialId: number, score?: number) {
   const { data } = await http.post<ApiEnvelope<CompleteTrialResult>>(`/v1/student/trials/${trialId}/complete`, {
     score,

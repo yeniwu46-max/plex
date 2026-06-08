@@ -8,11 +8,13 @@ import {
   CalendarOutline,
   GitNetworkOutline,
   MailOutline,
+  PersonCircleOutline,
+  LibraryOutline,
   RocketOutline,
   SettingsOutline,
 } from '@vicons/ionicons5'
 
-type NavKey = 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'control'
+type NavKey = 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'profile' | 'resources' | 'control'
 
 const props = withDefaults(
   defineProps<{
@@ -29,13 +31,15 @@ const emit = defineEmits<{
 }>()
 
 const navItems = computed(() => [
-  { key: 'cabin' as const, label: '探索舱', sub: 'EXPLORER', icon: RocketOutline, to: '/student/discovery' },
-  { key: 'track' as const, label: '星轨路径', sub: 'STARPATH', icon: GitNetworkOutline, to: '/student/star-path' },
-  { key: 'trial' as const, label: '试炼关卡', sub: 'TRIAL ARENA', icon: BarbellOutline, to: '/student/trials' },
-  { key: 'messenger' as const, label: '驿站使者', sub: 'MESSENGER', icon: MailOutline, to: '/student/messenger' },
-  { key: 'daily' as const, label: '今日委托', sub: 'DAILY QUEST', icon: CalendarOutline, to: '/student/daily' },
-  { key: 'archive' as const, label: '探索档案', sub: 'ARCHIVES', icon: ArchiveOutline, to: '/student/archives' },
-  { key: 'control' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/student/control' },
+  { key: 'cabin' as const, label: '探索舱', sub: 'EXPLORER', icon: RocketOutline, to: '/student/discovery', tour: '' },
+  { key: 'track' as const, label: '星轨路径', sub: 'STARPATH', icon: GitNetworkOutline, to: '/student/star-path', tour: 'student-learning-path' },
+  { key: 'trial' as const, label: '试炼关卡', sub: 'TRIAL ARENA', icon: BarbellOutline, to: '/student/trials', tour: 'student-code-practice' },
+  { key: 'messenger' as const, label: '驿站使者', sub: 'MESSENGER', icon: MailOutline, to: '/student/messenger', tour: 'student-ai-assistant' },
+  { key: 'daily' as const, label: '今日委托', sub: 'DAILY QUEST', icon: CalendarOutline, to: '/student/daily', tour: '' },
+  { key: 'archive' as const, label: '探索档案', sub: 'ARCHIVES', icon: ArchiveOutline, to: '/student/archives', tour: '' },
+  { key: 'profile' as const, label: '学习画像', sub: 'LEARNING PROFILE', icon: PersonCircleOutline, to: '/student/profile', tour: '' },
+  { key: 'resources' as const, label: '资源中心', sub: 'AI RESOURCES', icon: LibraryOutline, to: '/student/resources', tour: '' },
+  { key: 'control' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/student/control', tour: '' },
 ])
 
 function toggleCollapsed() {
@@ -60,6 +64,7 @@ function toggleCollapsed() {
         :to="item.to"
         class="plex-nav"
         :class="{ 'plex-nav--active': item.key === activeKey }"
+        v-bind="item.tour ? { 'data-tour': item.tour } : {}"
       >
         <span class="plex-nav__bar" aria-hidden="true" />
         <n-icon :component="item.icon" class="plex-nav__icon" />

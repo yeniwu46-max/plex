@@ -7,11 +7,14 @@ export interface LearningDomain {
   state: string
   locked?: boolean
   active?: boolean
+  recommended_resource_ids?: number[]
+  recommendation_reason?: string
 }
 
 export interface LearningPathResult {
   domains: LearningDomain[]
   active_domain_key: string
+  profile_version?: number
 }
 
 export interface ArchiveSkill {

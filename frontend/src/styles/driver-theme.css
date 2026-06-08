@@ -1,0 +1,178 @@
+/*
+ * PLEX Driver.js 自定义主题
+ * 遮罩、弹窗、按钮与 PLEX 品牌视觉对齐；支持深色/浅色与三角色主色。
+ */
+
+/* ─── 遮罩层 ─── */
+.driver-overlay {
+  background: rgba(3, 10, 18, 0.72) !important;
+}
+
+/* ─── 弹窗基础 ─── */
+.driver-popover {
+  background: #0b1628 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  color: #e2e8f0 !important;
+  font-family: 'Outfit', 'Noto Sans SC', system-ui, sans-serif !important;
+  max-width: calc(100vw - 32px) !important;
+  min-width: 280px !important;
+  padding: 1.25rem 1.4rem 1rem !important;
+}
+
+.driver-popover-title {
+  color: #ffffff !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.driver-popover-description {
+  color: rgba(200, 215, 230, 0.88) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.65 !important;
+}
+
+.driver-popover-progress-text {
+  color: rgba(170, 190, 210, 0.72) !important;
+  font-size: 0.75rem !important;
+}
+
+/* ─── 箭头 ─── */
+.driver-popover-arrow-side-left.driver-popover-arrow::before,
+.driver-popover-arrow-side-right.driver-popover-arrow::before,
+.driver-popover-arrow-side-top.driver-popover-arrow::before,
+.driver-popover-arrow-side-bottom.driver-popover-arrow::before {
+  border-color: #0b1628 transparent transparent transparent !important;
+}
+
+/* ─── 按钮公共样式 ─── */
+.driver-popover-footer {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  margin-top: 1rem !important;
+  flex-wrap: wrap !important;
+}
+
+.driver-popover-prev-btn,
+.driver-popover-next-btn,
+.driver-popover-close-btn {
+  border-radius: 8px !important;
+  font-family: 'Outfit', 'Noto Sans SC', system-ui, sans-serif !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: opacity 0.18s ease, background 0.18s ease !important;
+  border: none !important;
+  padding: 0.4rem 0.9rem !important;
+}
+
+.driver-popover-prev-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(200, 215, 230, 0.82) !important;
+}
+.driver-popover-prev-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.driver-popover-close-btn {
+  background: transparent !important;
+  color: rgba(170, 190, 210, 0.6) !important;
+  margin-left: auto !important;
+  font-size: 1rem !important;
+  padding: 0.25rem 0.5rem !important;
+}
+.driver-popover-close-btn:hover {
+  color: #ffffff !important;
+}
+
+/* ─── 高亮边框 ─── */
+.driver-active-element {
+  border-radius: 8px !important;
+  outline-offset: 4px !important;
+}
+
+/* ─── 角色主色：学生（绿色）─── */
+html[data-plex-persona='student'] .driver-popover-next-btn,
+body[data-plex-persona='student'] .driver-popover-next-btn {
+  background: #16a34a !important;
+  color: #ffffff !important;
+}
+html[data-plex-persona='student'] .driver-popover-next-btn:hover,
+body[data-plex-persona='student'] .driver-popover-next-btn:hover {
+  background: #15803d !important;
+}
+
+/* ─── 角色主色：教师（橙色）─── */
+html[data-plex-persona='teacher'] .driver-popover-next-btn,
+body[data-plex-persona='teacher'] .driver-popover-next-btn {
+  background: #ea580c !important;
+  color: #ffffff !important;
+}
+html[data-plex-persona='teacher'] .driver-popover-next-btn:hover,
+body[data-plex-persona='teacher'] .driver-popover-next-btn:hover {
+  background: #c2410c !important;
+}
+
+/* ─── 角色主色：管理员（蓝紫）─── */
+html[data-plex-persona='admin'] .driver-popover-next-btn,
+body[data-plex-persona='admin'] .driver-popover-next-btn {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+}
+html[data-plex-persona='admin'] .driver-popover-next-btn:hover,
+body[data-plex-persona='admin'] .driver-popover-next-btn:hover {
+  background: #4f46e5 !important;
+}
+
+/* ─── 默认主色（未识别角色）─── */
+.driver-popover-next-btn {
+  background: #0891b2 !important;
+  color: #ffffff !important;
+}
+.driver-popover-next-btn:hover {
+  background: #0e7490 !important;
+}
+
+/* ─── 浅色模式适配 ─── */
+html[data-theme='light'] .driver-popover {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+html[data-theme='light'] .driver-popover-title {
+  color: #0f172a !important;
+}
+html[data-theme='light'] .driver-popover-description {
+  color: #475569 !important;
+}
+html[data-theme='light'] .driver-popover-progress-text {
+  color: #64748b !important;
+}
+html[data-theme='light'] .driver-popover-prev-btn {
+  background: rgba(0, 0, 0, 0.07) !important;
+  color: #475569 !important;
+}
+html[data-theme='light'] .driver-popover-close-btn {
+  color: #94a3b8 !important;
+}
+html[data-theme='light'] .driver-overlay {
+  background: rgba(0, 0, 0, 0.45) !important;
+}
+
+/* ─── 移动端兜底 ─── */
+@media (max-width: 600px) {
+  .driver-popover {
+    max-width: calc(100vw - 24px) !important;
+    min-width: 220px !important;
+    padding: 1rem 1rem 0.85rem !important;
+  }
+}

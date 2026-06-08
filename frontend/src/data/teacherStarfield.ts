@@ -1,4 +1,5 @@
-import type { TeacherOverview } from '../api/teacherOverview'
+import type { TeacherClassStatsResult, TeacherOverview } from '../api/teacherOverview'
+import { STAR_PATH_TABS } from './starPathDomains'
 import { TEACHER_KNOWLEDGE_UNIVERSE } from './teacherKnowledgeCatalog'
 
 export type OrbitNodeTone = 'amber' | 'gold' | 'teal' | 'red'
@@ -14,6 +15,10 @@ export interface OrbitNode {
 }
 
 const ORBIT_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
+  stage1: { tone: 'teal', x: 11, y: 30 },
+  stage2: { tone: 'amber', x: 34, y: 10 },
+  stage3: { tone: 'gold', x: 72, y: 18 },
+  stage4: { tone: 'teal', x: 86, y: 62 },
   algo: { tone: 'amber', x: 43, y: 16 },
   fe: { tone: 'gold', x: 72, y: 26 },
   be: { tone: 'red', x: 73, y: 70 },
@@ -36,7 +41,52 @@ export const STARFIELD_DOMAINS: Omit<OrbitNode, 'score' | 'delta'>[] = TEACHER_K
 
 const DELTA_CYCLE: OrbitNode['delta'][] = ['上升', '稳定', '下降']
 
-export function buildClassStarfieldNodes(overview: TeacherOverview | null): OrbitNode[] {
+const STUDENT_DOMAIN_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
+  stage1: { tone: 'teal', x: 11, y: 30 },
+  stage2: { tone: 'amber', x: 34, y: 10 },
+  stage3: { tone: 'gold', x: 72, y: 18 },
+  stage4: { tone: 'teal', x: 86, y: 62 },
+  lang: { tone: 'teal', x: 18, y: 28 },
+  algo: { tone: 'amber', x: 43, y: 16 },
+  dp: { tone: 'gold', x: 68, y: 24 },
+  geom: { tone: 'teal', x: 78, y: 52 },
+  graph: { tone: 'red', x: 58, y: 76 },
+  ds: { tone: 'amber', x: 24, y: 72 },
+}
+
+/** 与学生端六大学域标签一致的星域节点（有 class-stats 时优先） */
+export function buildStudentDomainStarfieldNodes(
+  overview: TeacherOverview | null,
+  classStats: TeacherClassStatsResult | null,
+): OrbitNode[] {
+  const avg = overview?.metrics?.avg_today_completion ?? 72
+  const attention = overview?.metrics?.attention_count ?? 0
+  const masteryMap = new Map(
+    (classStats?.domain_mastery ?? []).map((item) => [item.label, item.mastery_rate]),
+  )
+  const tabs = STAR_PATH_TABS.filter((tab) => tab.key !== 'all')
+  return tabs.map((tab, index) => {
+    const layout = STUDENT_DOMAIN_LAYOUT[tab.key] ?? { tone: 'amber' as const, x: 50, y: 50 }
+    const score = masteryMap.get(tab.label) ?? Math.max(42, Math.min(98, Math.round(avg + index * 2)))
+    let delta: OrbitNode['delta'] = score >= 75 ? '上升' : score < 50 ? '下降' : '稳定'
+    if (attention > 2 && layout.tone === 'red') delta = '下降'
+    return {
+      label: tab.label,
+      domainKey: tab.key,
+      ...layout,
+      score,
+      delta,
+    }
+  })
+}
+
+export function buildClassStarfieldNodes(
+  overview: TeacherOverview | null,
+  classStats?: TeacherClassStatsResult | null,
+): OrbitNode[] {
+  if (classStats?.domain_mastery?.length) {
+    return buildStudentDomainStarfieldNodes(overview, classStats)
+  }
   const avg = overview?.metrics?.avg_today_completion ?? 72
   const attention = overview?.metrics?.attention_count ?? 0
   return STARFIELD_DOMAINS.map((item, index) => {

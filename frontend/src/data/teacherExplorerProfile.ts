@@ -147,7 +147,7 @@ export function buildRiskTodos(student: TeacherStudentRow): RiskTodoItem[] {
 export function buildAiObservation(student: TeacherStudentRow, radar: RadarDimension[]): string {
   const top = [...radar].sort((a, b) => b.value - a.value)[0]
   const name = student.real_name || student.username
-  return `${name} 在「${top?.label ?? '动态规划'}」领域表现突出，建议挑战更高难度试炼。`
+  return `${name} 在「${top?.label ?? 'Python 入门'}」领域表现突出，建议继续巩固当前阶段试炼。`
 }
 
 export function explorerDisplayId(student: TeacherStudentRow): string {

@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain } from '../api/studentProgress'
 import type { LearningRecommendation } from '../api/learningReport'
-import { fetchStudentRecommendations } from '../api/recommendations'
 import type { PersonalizedResource } from '../api/personalizedResources'
 import { fetchStudentLearningResources, type LearningResourceItem } from '../api/learningResources'
 import { getPythonTrialQuestion, type PythonTrialQuestion } from '../data/pythonTrialQuestions'
@@ -24,31 +23,28 @@ import {
   type StarPathNode,
 } from '../data/starPathTrail'
 import {
-  ChevronDownOutline,
   ChevronForwardOutline,
   LockClosedOutline,
   MapOutline,
 } from '@vicons/ionicons5'
-import PlexSidebar from '../components/layout/PlexSidebar.vue'
-import PlexTopbar from '../components/layout/PlexTopbar.vue'
+import DashboardShell from '../components/layout/DashboardShell.vue'
 import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
+import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
+import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 
-const PythonTrialWorkspace = defineAsyncComponent(
-  () => import('../components/trial/PythonTrialWorkspace.vue'),
-)
 const PlexKnowledgeGraph = defineAsyncComponent(
   () => import('../components/shared/PlexKnowledgeGraph.vue'),
 )
 import type { KgEdge, KgNode } from '../data/knowledgeGraphData'
 import { fetchStudentKnowledgeGraph } from '../api/knowledgeGraph'
 import {
-  clearStarPathQuestionCache,
   resolveQuestionById,
   resolveStarPathQuestion,
 } from '../utils/starPathQuestionGenerator'
 
 const router = useRouter()
 const route = useRoute()
+const workspace = useStudentWorkspaceStore()
 
 type Domain = {
   key: string
@@ -59,7 +55,6 @@ type Domain = {
   locked?: boolean
 }
 
-const sidebarCollapsed = ref(false)
 const loading = ref(true)
 const errorMessage = ref('')
 const domains = ref<Domain[]>([])
@@ -67,9 +62,7 @@ const activeTabKey = ref<string>(STAR_PATH_TAB_ALL)
 const activeDomainKey = ref('stage1')
 const selectedKnowledgeId = ref<string | null>(null)
 const selectedNodeId = ref('stage1-intro')
-const viewMode = ref<'track' | 'map' | 'practice'>('track')
-const activeQuestion = ref<PythonTrialQuestion | null>(null)
-const activeQuestionId = ref<string | null>(null)
+const viewMode = ref<'track' | 'map'>('track')
 const pathRecommendations = ref<LearningRecommendation[]>([])
 const knowledgeResources = ref<LearningResourceItem[]>([])
 const personalizedResources = ref<PersonalizedResource[]>([])
@@ -144,7 +137,6 @@ const selectedNode = computed(
 )
 
 const selectedQuestion = computed(() => {
-  if (activeQuestion.value) return activeQuestion.value
   const kp = selectedKnowledge.value?.point
   if (kp) return resolveStarPathQuestion(kp)
   const qid = selectedNode.value ? getPrimaryQuestionId(selectedNode.value) : null
@@ -184,10 +176,7 @@ function openPractice(questionId?: string) {
     if (kp) {
       const generated = resolveStarPathQuestion(kp)
       if (generated) {
-        activeQuestion.value = generated
-        activeQuestionId.value = generated.id
-        viewMode.value = 'practice'
-        syncPracticeQuery()
+        launchPractice(generated)
         return
       }
     }
@@ -196,58 +185,28 @@ function openPractice(questionId?: string) {
   const kp = selectedKnowledge.value?.point
   const question = questionForNode(node, qid) ?? (kp ? resolveStarPathQuestion(kp) : null)
   if (!question) return
-  activeQuestion.value = question
-  activeQuestionId.value = question.id
-  viewMode.value = 'practice'
-  syncPracticeQuery()
+  launchPractice(question)
 }
 
-function closePractice() {
-  viewMode.value = 'track'
-  activeQuestion.value = null
-  activeQuestionId.value = null
-  const q: Record<string, string | undefined> = {}
-  if (activeTabKey.value !== STAR_PATH_TAB_ALL) {
-    q.domain = activeDomainKey.value
-    if (selectedKnowledgeId.value) q.kp = selectedKnowledgeId.value
-  }
-  void router.replace({ path: '/student/star-path', query: q })
-}
-
-function syncPracticeQuery() {
-  const q: Record<string, string> = { practice: '1' }
-  if (activeTabKey.value !== STAR_PATH_TAB_ALL) {
-    q.domain = activeDomainKey.value
-    if (selectedKnowledgeId.value) q.kp = selectedKnowledgeId.value
-  }
-  if (activeQuestionId.value) q.q = activeQuestionId.value
-  void router.replace({ path: '/student/star-path', query: q })
+function launchPractice(question: PythonTrialQuestion) {
+  sessionStorage.setItem('plex:active-practice-question', JSON.stringify(question))
+  void router.push(`/student/trials/practice/${encodeURIComponent(question.id)}`)
 }
 
 function rerollQuestion() {
   const kp = selectedKnowledge.value?.point
   if (kp) {
-    clearStarPathQuestionCache(kp.id)
     const generated = resolveStarPathQuestion(kp, { reroll: true })
-    if (!generated) return
-    activeQuestion.value = generated
-    activeQuestionId.value = generated.id
-    viewMode.value = 'practice'
-    syncPracticeQuery()
+    if (generated) launchPractice(generated)
     return
   }
-  // node 模式：从节点 questionIds 中随机选一道不同的题
   const ids = nodeQuestionIds.value
-  if (!ids.length) return
-  const currentId = activeQuestionId.value
-  const pool = ids.length > 1 ? ids.filter((id) => id !== currentId) : ids
-  const nextId = pool[Math.floor(Math.random() * pool.length)]
-  const question = questionForNode(selectedNode.value, nextId)
-  if (!question) return
-  activeQuestion.value = question
-  activeQuestionId.value = question.id
-  viewMode.value = 'practice'
-  syncPracticeQuery()
+  if (!ids.length || !selectedNode.value) return
+  const question = questionForNode(
+    selectedNode.value,
+    ids[Math.floor(Math.random() * ids.length)],
+  )
+  if (question) launchPractice(question)
 }
 
 function continueExplore() {
@@ -263,7 +222,6 @@ function isTabActive(tabKey: string) {
 }
 
 function selectTab(tabKey: string) {
-  if (viewMode.value === 'practice') closePractice()
   activeTabKey.value = tabKey
   if (tabKey === STAR_PATH_TAB_ALL) {
     const first = STAR_PATH_DOMAINS[0]?.knowledgePoints[0]
@@ -289,7 +247,6 @@ function selectDomainCard(domain: Domain) {
 }
 
 function jumpToKnowledge(kp: StarPathKnowledgePoint) {
-  if (viewMode.value === 'practice') closePractice()
   activeTabKey.value = kp.domainKey
   activeDomainKey.value = kp.domainKey
   selectedKnowledgeId.value = kp.id
@@ -300,8 +257,6 @@ function jumpToKnowledge(kp: StarPathKnowledgePoint) {
 function applyRouteQuery() {
   const domain = typeof route.query.domain === 'string' ? route.query.domain : null
   const kp = typeof route.query.kp === 'string' ? route.query.kp : null
-  const practice = route.query.practice === '1'
-  const q = typeof route.query.q === 'string' ? route.query.q : null
 
   if (domain && getStarPathDomain(domain)) {
     activeTabKey.value = domain
@@ -317,30 +272,12 @@ function applyRouteQuery() {
     }
   } else {
     activeTabKey.value = STAR_PATH_TAB_ALL
-  }
-
-  if (practice) {
-    const kpMeta = kp ? getStarPathKnowledgePoint(kp) : selectedKnowledge.value
-    const node = starPathNodes.value.find((n) => n.id === selectedNodeId.value) ?? starPathNodes.value[0]
-    let question: PythonTrialQuestion | null = null
-    if (q) {
-      question = resolveQuestionById(q, kpMeta?.point ?? null) ?? getPythonTrialQuestion(q)
-    } else if (kpMeta?.point) {
-      question = resolveStarPathQuestion(kpMeta.point)
-    } else if (node) {
-      question = questionForNode(node)
-    }
-    if (question) {
-      activeQuestion.value = question
-      activeQuestionId.value = question.id
-      viewMode.value = 'practice'
-    }
-    return
+    const first = STAR_PATH_DOMAINS[0]?.knowledgePoints[0]
+    selectedKnowledgeId.value = first?.id ?? null
+    selectedNodeId.value = first?.id ?? 'stage1-intro'
   }
 
   viewMode.value = 'track'
-  activeQuestion.value = null
-  activeQuestionId.value = null
 }
 
 function continueKnowledgeTrial() {
@@ -388,7 +325,7 @@ async function loadPath() {
   try {
     const [data, rec] = await Promise.all([
       fetchLearningPath(),
-      fetchStudentRecommendations('7d').catch(() => null),
+      workspace.loadRecommendations('7d').catch(() => null),
     ])
     pathRecommendations.value = rec?.recommendations ?? []
     personalizedResources.value = rec?.personalized_resources ?? []
@@ -406,7 +343,7 @@ async function loadPath() {
 }
 
 watch(
-  () => [route.query.domain, route.query.kp, route.query.practice, route.query.q],
+  () => [route.query.domain, route.query.kp],
   () => applyRouteQuery(),
 )
 
@@ -433,16 +370,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="starpath-shell">
-    <PlexSidebar v-model:collapsed="sidebarCollapsed" active-key="track" />
-
+  <DashboardShell
+    active-nav="track"
+    page-title="星轨学习"
+    page-subtitle="探索编程知识宇宙，点亮你的能力星图"
+    search-placeholder="搜索当前星轨知识点…"
+    @search-submit="pageSearch = $event"
+  >
     <main class="starpath-main">
-      <PlexTopbar
-        v-model:search="pageSearch"
-        title="星轨路径"
-        subtitle="探索编程知识宇宙，点亮你的能力星图"
-        placeholder="搜索当前星轨知识点…"
-      />
+      <StudentSectionTabs area="learning" />
 
       <section class="starpath-tabs" aria-label="星域分类">
         <button
@@ -456,9 +392,9 @@ onMounted(() => {
           {{ tab.label }}
         </button>
         <div class="view-actions">
-          <button type="button" class="view-select">
-            切换视图
-            <n-icon :component="ChevronDownOutline" />
+          <button type="button" class="view-select" @click="viewMode = 'map'">
+            查看星图
+            <n-icon :component="MapOutline" />
           </button>
           <button type="button" class="map-button" aria-label="知识图谱" @click="viewMode = viewMode === 'map' ? 'track' : 'map'">
             <n-icon :component="MapOutline" />
@@ -475,20 +411,9 @@ onMounted(() => {
       <section
         v-else
         class="starpath-content"
-        :class="{ 'starpath-content--practice': viewMode === 'practice' }"
-        :aria-label="viewMode === 'practice' ? '编程试炼' : `${activeDomain?.title ?? '星域'}星轨`"
+        :aria-label="`${activeDomain?.title ?? '星域'}星轨`"
       >
-        <div v-if="viewMode === 'practice' && activeQuestion" class="practice-shell">
-          <PythonTrialWorkspace
-            embedded
-            :question="activeQuestion"
-            back-label="返回星轨"
-            @back="closePractice"
-            @change-question="rerollQuestion"
-          />
-        </div>
-
-        <template v-else-if="viewMode === 'map'">
+        <template v-if="viewMode === 'map'">
           <div class="starpath-kg-section" data-tour="student-knowledge-graph">
             <header class="starpath-kg-head">
               <h2>知识地图</h2>
@@ -615,7 +540,6 @@ onMounted(() => {
                     :key="qid"
                     type="button"
                     class="sub-trials__chip"
-                    :class="{ 'sub-trials__chip--active': activeQuestionId === qid }"
                     :disabled="!selectedNode || !isStarPathNodeUnlocked(selectedNode)"
                     @click="openPractice(qid)"
                   >
@@ -699,7 +623,9 @@ onMounted(() => {
               建议先通读「{{ selectedKnowledge.point.title }}」要点，再在试炼中验证理解。
             </p>
             <p v-else-if="selectedNode">{{ starPathAdviceText || selectedNode.advice }}</p>
-            <a href="#" @click.prevent="goToMessenger">前往驿站使者 <n-icon :component="ChevronForwardOutline" /></a>
+            <button type="button" class="advice-link" @click="goToMessenger">
+              前往驿站使者 <n-icon :component="ChevronForwardOutline" />
+            </button>
           </div>
 
             <div v-if="detailMode === 'node' && selectedNode" class="rewards">
@@ -732,7 +658,7 @@ onMounted(() => {
         </template>
       </section>
     </main>
-  </div>
+  </DashboardShell>
 </template>
 
 <style scoped>
@@ -1943,12 +1869,16 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-.advice a {
+.advice-link {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
   margin-top: 0.9rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #23ffde;
+  cursor: pointer;
   font-size: 0.9rem;
   font-weight: 720;
   text-decoration: none;
@@ -2017,7 +1947,7 @@ onMounted(() => {
   }
 
   .detail-panel {
-    min-height: 760px;
+    min-height: 520px;
   }
 }
 
@@ -2090,6 +2020,21 @@ onMounted(() => {
     left: 1rem;
     right: auto;
     flex-wrap: wrap;
+  }
+
+  .detail-panel {
+    min-height: 0;
+    height: auto;
+    padding: 1.1rem;
+  }
+
+  .panel-bot {
+    display: none;
+  }
+
+  .continue-btn {
+    position: sticky;
+    bottom: 0.75rem;
   }
 }
 

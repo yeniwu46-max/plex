@@ -266,11 +266,14 @@ async function handleUserSelect(key: string) {
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  min-width: 0;
   margin: 0;
   color: #ffffff;
   font-size: clamp(1.7rem, 2.2vw, 2.25rem);
   font-weight: 740;
   line-height: 1.1;
+  white-space: normal;
+  word-break: keep-all;
 }
 
 .plex-topbar__heading h1 span {
@@ -466,7 +469,59 @@ async function handleUserSelect(key: string) {
 
 @media (max-width: 900px) {
   .plex-topbar {
-    padding-inline: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.9rem 1rem 0;
+    gap: 0.75rem;
+  }
+
+  .plex-topbar--compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plex-topbar--compact .plex-topbar__heading,
+  .plex-topbar--compact .plex-topbar__userbar {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .plex-topbar__heading {
+    min-width: 0;
+  }
+
+  .plex-topbar__heading h1 {
+    font-size: 1.45rem;
+    line-height: 1.2;
+  }
+
+  .plex-topbar__heading p {
+    margin-top: 0.35rem;
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .plex-topbar__userbar {
+    justify-self: stretch;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+  }
+
+  .plex-topbar__divider {
+    display: none;
+  }
+
+  .plex-topbar__user {
+    gap: 0.55rem;
+  }
+
+  .plex-topbar__avatar {
+    --n-size: 42px !important;
+  }
+
+  .plex-topbar__icon-btn {
+    width: 40px;
+    height: 40px;
   }
 }
 </style>

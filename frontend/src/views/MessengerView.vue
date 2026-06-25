@@ -4,13 +4,13 @@ import { useRouter } from 'vue-router'
 import { NIcon, NInput } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 import { getStarPathNodeByQuestionId } from '../data/starPathTrail'
-import {
-  analyzeMessengerWeakPoints,
-  type MessengerSuggestion,
-} from '../utils/messengerWeakPointAnalysis'
-import { fetchServerMistakeRecords } from '../utils/trialMistakeLog'
 import { postMessengerChat } from '../api/messenger'
-import { fetchStudentRecommendations } from '../api/recommendations'
+import {
+  generateStudentPhaseReport,
+  type GeneratedPhaseReportResult,
+  type PhaseLearningReport,
+} from '../api/learningReport'
+import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import {
   AnalyticsOutline,
   BarbellOutline,
@@ -22,60 +22,120 @@ import {
   TelescopeOutline,
   TrendingUpOutline,
 } from '@vicons/ionicons5'
-import PlexSidebar from '../components/layout/PlexSidebar.vue'
-import PlexTopbar from '../components/layout/PlexTopbar.vue'
+import DashboardShell from '../components/layout/DashboardShell.vue'
 
 const auth = useAuthStore()
+const workspace = useStudentWorkspaceStore()
 const router = useRouter()
-const sidebarCollapsed = ref(false)
 const prompt = ref('')
 const analyzing = ref(false)
 const chatLoading = ref(false)
 const chatMessages = ref<Array<{ role: 'user' | 'assistant'; text: string }>>([])
+const phaseReport = ref<PhaseLearningReport | null>(null)
+const phaseReportStatus = ref<GeneratedPhaseReportResult['status'] | null>(null)
+const phaseReportRemainingSeconds = ref(0)
+const phaseReportError = ref('')
 
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Explorer')
 
 const userId = computed(() => auth.profile?.id ?? 'guest')
 
-const analysis = ref(analyzeMessengerWeakPoints(userId.value, []))
+type AssistantSuggestion = { title: string; desc: string }
+type AssistantRecommendation = {
+  questionId: string
+  label: string
+  matchPercent: number
+  summary: string
+  decisionSteps: Array<{ label: string; detail: string }>
+}
+
+const assistantSuggestions = ref<AssistantSuggestion[]>([])
+const recommendedTrial = ref<AssistantRecommendation | null>(null)
+const mistakeCount = ref(0)
 
 const suggestionIcons = [AnalyticsOutline, BarbellOutline, PulseOutline, SparklesOutline] as const
 
 const suggestions = computed(() =>
-  analysis.value.suggestions.map((item: MessengerSuggestion, index: number) => ({
+  assistantSuggestions.value.map((item, index) => ({
     ...item,
     icon: suggestionIcons[index] ?? AnalyticsOutline,
   })),
 )
 
-const fragmentCount = computed(() => analysis.value.fragmentCount)
-const recommended = computed(() => analysis.value.recommended)
+const fragmentCount = computed(() => mistakeCount.value)
+const recommended = computed(() => recommendedTrial.value)
 const showDecisionDetail = ref(false)
 
 const analysisHeadline = computed(() =>
   analyzing.value
     ? '小E 正在根据你的错题分析'
-    : analysis.value.hasMistakeData
+    : phaseReport.value
+      ? phaseReport.value.headline
+    : mistakeCount.value > 0
       ? '小E 已根据错题更新分析'
       : '小E 等待你的试炼数据',
 )
 
+const phaseReportCooldownText = computed(() => {
+  if (phaseReportStatus.value !== 'cooldown' || phaseReportRemainingSeconds.value <= 0) return ''
+  const hours = Math.floor(phaseReportRemainingSeconds.value / 3600)
+  const minutes = Math.ceil((phaseReportRemainingSeconds.value % 3600) / 60)
+  return hours > 0 ? `距离下次生成约 ${hours} 小时 ${minutes} 分钟` : `距离下次生成约 ${minutes} 分钟`
+})
+
 async function refreshAnalysis() {
   analyzing.value = true
   try {
-    const records = await fetchServerMistakeRecords(userId.value)
-    analysis.value = analyzeMessengerWeakPoints(userId.value, records)
+    const result = await workspace.loadRecommendations('7d', true)
+    const firstMistake = result.mistake_highlights[0]
+    const firstRecommendation = result.recommendations[0]
+    mistakeCount.value = result.mistake_highlights.length
+    recommendedTrial.value = firstMistake
+      ? {
+          questionId: firstMistake.question_id,
+          label: firstMistake.question_title,
+          matchPercent: Math.min(98, 70 + firstMistake.fail_count * 5),
+          summary: firstRecommendation?.detail || `优先修复 ${firstMistake.knowledge_label || firstMistake.topic} 的近期错题。`,
+          decisionSteps: [
+            { label: '薄弱知识', detail: firstMistake.knowledge_label || firstMistake.topic },
+            { label: '错误证据', detail: `累计失败 ${firstMistake.fail_count} 次，最近失败于 ${firstMistake.last_failed_at.slice(0, 10)}。` },
+            { label: '推荐依据', detail: firstRecommendation?.detail || '根据服务端错题权重与画像上下文生成。' },
+          ],
+        }
+      : null
+    assistantSuggestions.value = [
+      ...result.recommendations.slice(0, 3).map((item) => ({ title: item.title, desc: item.detail })),
+      {
+        title: '画像与资源',
+        desc: `当前画像版本 v${result.profile_version}，已匹配 ${result.personalized_resources.length} 个个性化资源。`,
+      },
+    ]
   } finally {
     analyzing.value = false
   }
 }
 
-function onAnalyzeWeakPoints() {
-  refreshAnalysis()
+async function onAnalyzeWeakPoints() {
+  if (analyzing.value) return
+  analyzing.value = true
+  phaseReportError.value = ''
+  try {
+    const [reportResult] = await Promise.all([
+      generateStudentPhaseReport('7d'),
+      refreshAnalysis(),
+    ])
+    phaseReport.value = reportResult.report
+    phaseReportStatus.value = reportResult.status
+    phaseReportRemainingSeconds.value = reportResult.remaining_seconds
+  } catch (error) {
+    phaseReportError.value = error instanceof Error ? error.message : '阶段报告生成失败'
+  } finally {
+    analyzing.value = false
+  }
 }
 
 function goToRecommendedTrial() {
-  const rec = analysis.value.recommended
+  const rec = recommendedTrial.value
   const node = rec?.questionId ? getStarPathNodeByQuestionId(rec.questionId) : null
   if (node) {
     void router.push({ path: '/student/trials', query: { node: node.id } })
@@ -93,7 +153,7 @@ function goToRepairRoute() {
 }
 
 function goToArchives() {
-  void router.push('/student/archives')
+  void router.push('/student/me/growth')
 }
 
 const actions = [
@@ -135,21 +195,22 @@ async function sendChat() {
 
 onMounted(() => {
   refreshAnalysis()
-  void fetchStudentRecommendations('7d').catch(() => undefined)
 })
 
-watch(userId, (id) => {
-  analysis.value = analyzeMessengerWeakPoints(id)
+watch(userId, () => {
+  void refreshAnalysis()
 })
 </script>
 
 <template>
-  <div class="messenger-shell" :class="{ 'messenger-shell--collapsed': sidebarCollapsed }">
-    <PlexSidebar v-model:collapsed="sidebarCollapsed" active-key="messenger" />
-
+  <DashboardShell
+    active-nav="messenger"
+    page-title="驿站助手"
+    page-subtitle="结合错题、画像与推荐结果提供学习建议"
+    search-placeholder=""
+    hide-search
+  >
     <main class="messenger-main">
-      <PlexTopbar title="驿站使者" subtitle="你的专属驿站，知识与成长的陪伴者" />
-
       <section class="messenger-stage" aria-label="驿站使者">
         <div class="station-bg" aria-hidden="true">
           <span class="station-bg__planet" />
@@ -171,7 +232,9 @@ watch(userId, (id) => {
           <article class="float-card float-card--fragment">
             <p>待修复知识碎片</p>
             <strong>{{ fragmentCount }} <span>题</span></strong>
-            <a href="#" @click.prevent="goToTrialList">去修复 <n-icon :component="NavigateOutline" /></a>
+            <button type="button" class="float-card__action" @click="goToTrialList">
+              去修复 <n-icon :component="NavigateOutline" />
+            </button>
             <n-icon :component="GitNetworkOutline" class="float-card__watermark" />
           </article>
 
@@ -215,9 +278,9 @@ watch(userId, (id) => {
               </li>
             </ol>
 
-            <a href="#" class="trial-start-link" @click.prevent="goToRecommendedTrial">
+            <button type="button" class="trial-start-link" @click="goToRecommendedTrial">
               查看试炼推荐 <n-icon :component="NavigateOutline" />
-            </a>
+            </button>
             <span class="radar" aria-hidden="true" />
           </article>
 
@@ -235,6 +298,29 @@ watch(userId, (id) => {
           <header>
             <h2>{{ analysisHeadline }} <span aria-hidden="true">▮▮</span></h2>
           </header>
+          <article v-if="phaseReport || phaseReportError" class="phase-report">
+            <header>
+              <strong>阶段性薄弱点报告</strong>
+              <span v-if="phaseReportStatus === 'cooldown'">{{ phaseReportCooldownText }}</span>
+              <span v-else-if="phaseReportStatus === 'generated'">已生成</span>
+            </header>
+            <p v-if="phaseReportError" class="phase-report__error">{{ phaseReportError }}</p>
+            <template v-else-if="phaseReport">
+              <ul class="phase-report__summary">
+                <li v-for="item in phaseReport.summary" :key="item">{{ item }}</li>
+              </ul>
+              <div v-if="phaseReport.focus_items.length" class="phase-report__focus">
+                <strong>优先修复</strong>
+                <p v-for="item in phaseReport.focus_items" :key="item.label">
+                  {{ item.label }}：{{ item.reason }}
+                </p>
+              </div>
+              <div v-if="phaseReport.next_actions.length" class="phase-report__actions">
+                <strong>下一步</strong>
+                <p v-for="item in phaseReport.next_actions" :key="item">{{ item }}</p>
+              </div>
+            </template>
+          </article>
           <div class="analysis-list">
             <article v-for="item in suggestions" :key="item.title" class="analysis-card">
               <span class="analysis-card__icon">
@@ -253,7 +339,7 @@ watch(userId, (id) => {
             <p v-if="chatLoading" class="chat-thread__loading">小E 正在思考…</p>
           </div>
           <button type="button" class="all-advice" @click="onAnalyzeWeakPoints">
-            根据错题刷新分析
+            生成阶段报告
             <n-icon :component="NavigateOutline" />
           </button>
         </aside>
@@ -280,7 +366,7 @@ watch(userId, (id) => {
         </section>
       </section>
     </main>
-  </div>
+  </DashboardShell>
 </template>
 
 <style scoped>
@@ -821,12 +907,16 @@ watch(userId, (id) => {
   font-size: 1rem;
 }
 
-.float-card a {
+.float-card__action {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
   margin-top: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #25f5ee;
+  cursor: pointer;
   font-size: 0.92rem;
   font-weight: 650;
   text-decoration: none;
@@ -936,7 +1026,16 @@ watch(userId, (id) => {
 
 .trial-start-link {
   display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   margin-top: 0.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #25f5ee;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
 }
 
 .radar {
@@ -1165,6 +1264,65 @@ watch(userId, (id) => {
   display: grid;
   gap: 1.25rem;
   margin-top: 1.55rem;
+}
+
+.phase-report {
+  margin-top: 1.2rem;
+  padding: 1rem;
+  border: 1px solid rgba(37, 245, 238, 0.14);
+  border-radius: 0.85rem;
+  background: rgba(5, 21, 34, 0.64);
+}
+
+.phase-report header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.phase-report header strong {
+  color: #f8fbff;
+  font-size: 0.96rem;
+}
+
+.phase-report header span {
+  color: rgba(165, 243, 252, 0.78);
+  font-size: 0.78rem;
+}
+
+.phase-report__summary {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.85rem 0 0;
+  padding-left: 1rem;
+  color: rgba(221, 232, 241, 0.78);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.phase-report__focus,
+.phase-report__actions {
+  margin-top: 0.8rem;
+}
+
+.phase-report__focus strong,
+.phase-report__actions strong {
+  color: #25f5ee;
+  font-size: 0.82rem;
+}
+
+.phase-report__focus p,
+.phase-report__actions p,
+.phase-report__error {
+  margin: 0.35rem 0 0;
+  color: rgba(221, 232, 241, 0.74);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.phase-report__error {
+  color: #fca5a5;
 }
 
 .analysis-card {

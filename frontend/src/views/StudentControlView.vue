@@ -5,9 +5,11 @@ import { useRouter } from 'vue-router'
 import { NAvatar, NButton, NInput, NRadio, NRadioGroup, NSwitch, NUpload, useMessage, type UploadFileInfo } from 'naive-ui'
 import { useThemeStore, type ColorMode } from '../stores/theme'
 import DashboardShell from '../components/layout/DashboardShell.vue'
+import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import { useAuthStore } from '../stores/auth'
-import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
-import { fetchStudentLearningReport, type LearningReportResult } from '../api/learningReport'
+import type { StudentOverview } from '../api/studentOverview'
+import type { LearningReportResult } from '../api/learningReport'
+import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import { resolveAvatarUrl, updateMyProfile, uploadMyAvatar } from '../api/studentProfile'
 import PlexRadarChart from '../components/charts/PlexRadarChart.vue'
 import PlexLineChart from '../components/charts/PlexLineChart.vue'
@@ -15,6 +17,7 @@ import PlexLineChart from '../components/charts/PlexLineChart.vue'
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
+const workspace = useStudentWorkspaceStore()
 const overview = ref<StudentOverview | null>(null)
 const learningReport = ref<LearningReportResult | null>(null)
 const loading = ref(true)
@@ -57,8 +60,8 @@ async function loadProfile() {
   loading.value = true
   try {
     const [overviewResult, report] = await Promise.all([
-      fetchStudentOverview(),
-      fetchStudentLearningReport('7d').catch(() => null),
+      workspace.loadOverview(),
+      workspace.loadLearningReport('7d').catch(() => null),
     ])
     overview.value = overviewResult
     learningReport.value = report
@@ -149,7 +152,7 @@ async function restartStudentTour() {
 }
 
 function savePreferences() {
-  message.success('个人偏好已保存（本地演示）')
+  message.success('偏好已保存到当前浏览器')
 }
 
 async function logout() {
@@ -164,13 +167,14 @@ onMounted(() => {
 
 <template>
   <DashboardShell
-    active-nav="control"
-    page-title="控制中枢"
-    page-subtitle="管理你的探索偏好与账号信息"
+    active-nav="me"
+    page-title="账号设置"
+    page-subtitle="管理个人资料、外观偏好与账号状态"
     search-placeholder="搜索设置项…"
     hide-search
   >
-    <section class="student-control" aria-label="学生控制中枢">
+    <template #toolbar><StudentSectionTabs area="me" /></template>
+    <section class="student-control" aria-label="学生账号设置">
       <div class="student-control__hero">
         <div class="student-control__hero-main">
           <n-upload
@@ -245,7 +249,7 @@ onMounted(() => {
         <article class="panel">
           <header>
             <h3>探索偏好</h3>
-            <p>通知与专注模式（本地保存演示）</p>
+            <p>通知开关与专注模式会保存到当前浏览器</p>
           </header>
           <ul class="pref-list">
             <li>
@@ -284,7 +288,7 @@ onMounted(() => {
         <article class="panel appearance-panel">
           <header>
             <h3>外观模式</h3>
-            <p>选择界面主题，保存到本地浏览器</p>
+            <p>界面主题会保存到当前浏览器，可随时切换</p>
           </header>
           <n-radio-group
             :value="themeStore.mode"

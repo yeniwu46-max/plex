@@ -3,22 +3,19 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import {
-  ArchiveOutline,
   BarbellOutline,
-  CalendarOutline,
   GitNetworkOutline,
+  GridOutline,
   MailOutline,
   PersonCircleOutline,
-  LibraryOutline,
   RocketOutline,
-  SettingsOutline,
 } from '@vicons/ionicons5'
 
-type NavKey = 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'profile' | 'resources' | 'control'
+export type StudentNavKey = 'home' | 'cabin' | 'track' | 'trial' | 'messenger' | 'me'
 
 const props = withDefaults(
   defineProps<{
-    activeKey: NavKey
+    activeKey: StudentNavKey
     collapsed?: boolean
   }>(),
   {
@@ -31,15 +28,12 @@ const emit = defineEmits<{
 }>()
 
 const navItems = computed(() => [
+  { key: 'home' as const, label: '总览', sub: 'OVERVIEW', icon: GridOutline, to: '/student', tour: '' },
   { key: 'cabin' as const, label: '探索舱', sub: 'EXPLORER', icon: RocketOutline, to: '/student/discovery', tour: '' },
-  { key: 'track' as const, label: '星轨路径', sub: 'STARPATH', icon: GitNetworkOutline, to: '/student/star-path', tour: 'student-learning-path' },
-  { key: 'trial' as const, label: '试炼关卡', sub: 'TRIAL ARENA', icon: BarbellOutline, to: '/student/trials', tour: 'student-code-practice' },
-  { key: 'messenger' as const, label: '驿站使者', sub: 'MESSENGER', icon: MailOutline, to: '/student/messenger', tour: 'student-ai-assistant' },
-  { key: 'daily' as const, label: '今日委托', sub: 'DAILY QUEST', icon: CalendarOutline, to: '/student/daily', tour: '' },
-  { key: 'archive' as const, label: '探索档案', sub: 'ARCHIVES', icon: ArchiveOutline, to: '/student/archives', tour: '' },
-  { key: 'profile' as const, label: '学习画像', sub: 'LEARNING PROFILE', icon: PersonCircleOutline, to: '/student/profile', tour: '' },
-  { key: 'resources' as const, label: '资源中心', sub: 'AI RESOURCES', icon: LibraryOutline, to: '/student/resources', tour: '' },
-  { key: 'control' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/student/control', tour: '' },
+  { key: 'track' as const, label: '星轨学习', sub: 'STARPATH', icon: GitNetworkOutline, to: '/student/star-path', tour: 'student-learning-path' },
+  { key: 'trial' as const, label: '试炼中心', sub: 'TRIAL ARENA', icon: BarbellOutline, to: '/student/trials', tour: 'student-code-practice' },
+  { key: 'messenger' as const, label: '驿站助手', sub: 'MESSENGER', icon: MailOutline, to: '/student/messenger', tour: 'student-ai-assistant' },
+  { key: 'me' as const, label: '我的', sub: 'MY SPACE', icon: PersonCircleOutline, to: '/student/me/growth', tour: '' },
 ])
 
 function toggleCollapsed() {
@@ -64,6 +58,7 @@ function toggleCollapsed() {
         :to="item.to"
         class="plex-nav"
         :class="{ 'plex-nav--active': item.key === activeKey }"
+        :aria-label="`${item.label} ${item.sub}`"
         v-bind="item.tour ? { 'data-tour': item.tour } : {}"
       >
         <span class="plex-nav__bar" aria-hidden="true" />
@@ -224,30 +219,47 @@ function toggleCollapsed() {
   .plex-sidebar--collapsed {
     width: 100%;
     min-height: auto;
-    padding: 1rem 1rem 0.75rem;
+    padding: 0.75rem 0.8rem 0.65rem;
     border-right: 0;
     border-bottom: 1px solid rgba(110, 228, 255, 0.12);
   }
 
   .plex-sidebar__brand {
     justify-content: center;
-    padding: 0 0 0.9rem;
+    padding: 0 0 0.65rem;
   }
 
   .plex-sidebar__nav {
     flex: 0 0 auto;
+    width: 100%;
     flex-direction: row;
     gap: 0.35rem;
     overflow-x: auto;
     padding-bottom: 0.35rem;
+    justify-content: space-between;
   }
 
   .plex-nav,
   .plex-sidebar--collapsed .plex-nav {
-    min-width: 120px;
-    min-height: 54px;
+    min-width: 48px;
+    flex: 1 0 48px;
+    min-height: 48px;
     justify-content: center;
-    padding: 0.55rem 0.75rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 0.45rem;
+  }
+
+  .plex-nav__icon {
+    font-size: 1.45rem;
+  }
+
+  .plex-nav__bar {
+    top: auto;
+    right: 18%;
+    bottom: 0;
+    left: 18%;
+    width: auto;
+    height: 2px;
   }
 
   .plex-nav__copy {

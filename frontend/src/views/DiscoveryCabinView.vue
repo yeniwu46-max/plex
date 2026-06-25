@@ -1,29 +1,27 @@
 <script setup lang="ts">
 import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { advanceDailyQuest } from '../api/studentOverview'
 import { NIcon } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 import {
   ChevronForwardOutline,
-  DiamondOutline,
   ExtensionPuzzleOutline,
-  KeyOutline,
   SparklesOutline,
-  TrophyOutline,
 } from '@vicons/ionicons5'
 import StarFieldMap from '../components/discovery/StarFieldMap.vue'
 import ClassArenaHub from '../components/discovery/ClassArenaHub.vue'
 import { fetchStudentArenaTrials } from '../api/studentTrials'
 import { mapApiTrialsToArenaModes, type TrialMode } from '../data/trialArena'
-import PlexSidebar from '../components/layout/PlexSidebar.vue'
-import PlexTopbar from '../components/layout/PlexTopbar.vue'
-import { fetchCurrentStudent, type CurrentStudent } from '../api/studentOverview'
+import DashboardShell from '../components/layout/DashboardShell.vue'
+import type { CurrentStudent } from '../api/studentOverview'
 import { fetchStudentAssignments } from '../api/studentAssignments'
 import { useStudentNotificationSync } from '../composables/useStudentNotificationSync'
 import { fetchEmergencyTodayStatus } from '../api/emergencyMission'
+import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 
 const auth = useAuthStore()
-const sidebarCollapsed = ref(false)
+const workspace = useStudentWorkspaceStore()
 const profile = ref<CurrentStudent | null>(null)
 const mapMode = ref<'starfield' | 'trial'>('starfield')
 const arenaTrials = ref<TrialMode[]>([])
@@ -33,6 +31,7 @@ const selectedArenaKey = ref<string | null>(null)
 const classArenaInWorkspace = ref(false)
 const pendingFragmentCount = ref(0)
 const emergencyDoneToday = ref(false)
+const classOnlineCount = ref(0)
 const { syncTeacherAssignments } = useStudentNotificationSync()
 
 const displayName = computed(
@@ -49,18 +48,15 @@ const xpRatio = computed(() => Math.min(1, xpCurrent.value / xpTarget))
 
 
 const resources = computed(() => [
-  { key: 'xp', label: '能量', value: String(xpCurrent.value), icon: 'XP', color: '#2efff1' },
-  { key: 'dust', label: '星尘', value: String(Math.floor(xpCurrent.value * 0.4)), icon: SparklesOutline, color: '#61f7ff' },
-  { key: 'key', label: '星钥', value: String(Math.max(1, Math.floor(userLevel.value / 2))), icon: KeyOutline, color: '#58d7ff' },
+  { key: 'xp', label: '累计 XP', value: String(xpCurrent.value), icon: 'XP', color: '#2efff1' },
   {
     key: 'fragment',
-    label: '修复碎片',
-    value: String(pendingFragmentCount.value > 0 ? pendingFragmentCount.value : Math.max(1, streakDays.value % 5)),
+    label: '待完成任务',
+    value: String(pendingFragmentCount.value),
     icon: ExtensionPuzzleOutline,
     color: '#ffc86b',
   },
-  { key: 'core', label: '修复核心', value: String(Math.max(1, Math.floor(userLevel.value / 5))), icon: DiamondOutline, color: '#ffd47a' },
-  { key: 'crystal', label: '试炼结晶', value: String(Math.floor(xpCurrent.value / 90) + 12), icon: TrophyOutline, color: '#c765ff' },
+  { key: 'streak', label: '连续探索', value: `${streakDays.value} 天`, icon: SparklesOutline, color: '#61f7ff' },
 ])
 
 async function loadAssignments() {
@@ -75,7 +71,9 @@ async function loadAssignments() {
 
 async function loadProfile() {
   try {
-    profile.value = await fetchCurrentStudent()
+    const overview = await workspace.loadOverview()
+    profile.value = overview.profile
+    classOnlineCount.value = overview.class_online_count ?? 0
     auth.syncProfile({
       id: profile.value.id,
       username: profile.value.username,
@@ -153,9 +151,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="cabin-shell" :class="{ 'cabin-shell--collapsed': sidebarCollapsed }">
-    <PlexSidebar v-model:collapsed="sidebarCollapsed" active-key="cabin" />
-
+  <DashboardShell
+    active-nav="cabin"
+    page-title="探索舱"
+    page-subtitle="你的探索起点，连接知识星域与成长路线"
+    search-placeholder="搜索知识点…"
+    hide-search
+  >
     <main class="cabin-main" :class="{ 'cabin-main--trial': mapMode === 'trial' }">
       <div class="cabin-space" aria-hidden="true">
         <span class="cabin-space__planet" />
@@ -163,8 +165,6 @@ onBeforeUnmount(() => {
         <span class="cabin-space__star cabin-space__star--two" />
         <span class="cabin-space__star cabin-space__star--three" />
       </div>
-
-      <PlexTopbar title="探索舱" subtitle="你的探索起点，连接知识星域与成长路线" />
 
       <section class="cabin-map-wrap" aria-label="探索舱">
         <div class="cabin-map-tabs" role="tablist" aria-label="地图模式">
@@ -189,6 +189,7 @@ onBeforeUnmount(() => {
             :class-rank="classRank"
             :user-name="displayName"
             :user-level="userLevel"
+            :class-online-count="classOnlineCount"
             :trials="arenaTrials"
             :trials-loading="arenaLoading"
             :trials-error="arenaError"
@@ -229,14 +230,14 @@ onBeforeUnmount(() => {
               <strong>{{ item.value }}</strong>
             </div>
           </div>
-          <a href="#" class="resource-bank__more" @click.prevent>
+          <RouterLink to="/student/star-path/resources" class="resource-bank__more">
             更多
             <n-icon :component="ChevronForwardOutline" />
-          </a>
+          </RouterLink>
         </section>
       </footer>
     </main>
-  </div>
+  </DashboardShell>
 </template>
 
 <style scoped>

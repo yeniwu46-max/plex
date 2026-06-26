@@ -1,5 +1,5 @@
 """班级模型"""
-from datetime import datetime
+from app.utils.time import utc_now
 from . import db
 
 
@@ -14,8 +14,8 @@ class Class(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     student_count = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     # 关系
     teacher = db.relationship('User', backref='teaching_classes', foreign_keys=[teacher_id])

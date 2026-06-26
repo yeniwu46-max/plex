@@ -20,6 +20,8 @@ export interface StarPathNode {
   mastery: number
   rewardCrystal: number
   rewardStardust: number
+  locked?: boolean
+  kgId?: string
 }
 
 /** 旧星轨 01–07 深链映射到四阶段节点 */
@@ -79,7 +81,7 @@ export function starPathNodeTrackClass(node: StarPathNode) {
 }
 
 export function isStarPathNodeUnlocked(node: StarPathNode | null | undefined) {
-  return node != null && node.status !== 'locked'
+  return node != null && node.status !== 'locked' && !node.locked
 }
 
 export function formatStarPathNodeLabel(node: StarPathNode) {

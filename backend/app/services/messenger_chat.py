@@ -3,6 +3,7 @@ import os
 
 import requests
 
+from app.services.course_safety import CourseSafetyService
 from app.services.evaluation import EvaluationService
 from app.services.rag_service import RagService
 from app.services.recommendation import RecommendationService
@@ -90,6 +91,7 @@ class MessengerChatService:
         text = (message or '').strip()
         if not text:
             raise ValueError('消息不能为空')
+        CourseSafetyService.ensure_safe(text, enforce_course_scope=True)
         llm = MessengerChatService._llm_reply(user_id, text)
         if llm:
             return llm

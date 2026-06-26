@@ -1,5 +1,5 @@
 """用户模型"""
-from datetime import datetime
+from app.utils.time import utc_now
 from . import db
 
 
@@ -33,8 +33,8 @@ class User(db.Model):
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'))
 
     # 时间戳
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     deleted_at = db.Column(db.DateTime)
 
     # 关系

@@ -14,10 +14,16 @@ const props = withDefaults(
     edges: KgEdge[]
     mode?: 'student' | 'teacher' | 'admin'
     height?: string
+    pathNodeIds?: string[]
+    remediationNodeIds?: string[]
+    activePathNodeId?: string | null
   }>(),
   {
     mode: 'student',
     height: '480px',
+    pathNodeIds: () => [],
+    remediationNodeIds: () => [],
+    activePathNodeId: null,
   },
 )
 
@@ -58,52 +64,73 @@ const MODE_ACCENT: Record<string, string> = {
 function buildGraphData(): GraphData {
   const accent = MODE_ACCENT[props.mode] ?? '#22c55e'
   const tk = g6Tokens.value
+  const pathSet = new Set(props.pathNodeIds ?? [])
+  const remediationSet = new Set(props.remediationNodeIds ?? [])
+  const pathOrder = props.pathNodeIds ?? []
+
   return {
-    nodes: props.nodes.map((n) => ({
-      id: n.id,
-      data: {
-        label: n.label,
-        status: n.status,
-        domain: n.domain,
-        description: n.description,
-        level: n.level,
-        originalNode: n,
-      },
-      style: {
-        x: n.x ?? Math.random() * 800,
-        y: n.y ?? Math.random() * 480,
-        size: n.level === 'advanced' ? 48 : n.level === 'intermediate' ? 42 : 36,
-        fill: KG_NODE_STATUS_COLOR[n.status as KgNodeStatus] + '22',
-        stroke: KG_NODE_STATUS_COLOR[n.status as KgNodeStatus],
-        lineWidth: n.status === 'recommended' ? 2.5 : 1.5,
-        labelText: n.label,
-        labelFill: tk.labelFill,
-        labelFontSize: 12,
-        labelFontFamily: 'Microsoft YaHei, sans-serif',
-        labelOffsetY: 4,
-        shadowColor: KG_NODE_STATUS_COLOR[n.status as KgNodeStatus],
-        shadowBlur: n.status === 'mastered' || n.status === 'recommended' ? 10 : 0,
-        cursor: 'pointer',
-        badgeFill: accent,
-      },
-    })),
-    edges: props.edges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      data: { type: e.type, label: e.label },
-      style: {
-        stroke: EDGE_COLOR[e.type],
-        lineWidth: 1.5,
-        endArrow: true,
-        endArrowType: 'vee',
-        endArrowSize: 8,
-        opacity: tk.edgeOpacity,
-        labelText: e.label ?? '',
-        labelFill: EDGE_LABEL_COLOR[e.type],
-        labelFontSize: 10,
-      },
-    })),
+    nodes: props.nodes.map((n) => {
+      const onPath = pathSet.has(n.id)
+      const isActive = props.activePathNodeId === n.id
+      const isRemediation = remediationSet.has(n.id)
+      const statusColor = KG_NODE_STATUS_COLOR[n.status as KgNodeStatus]
+      const stroke = isActive ? '#22c55e' : isRemediation ? '#f97316' : statusColor
+      const lineWidth = isActive ? 3 : onPath ? 2.2 : n.status === 'recommended' ? 2.5 : 1.5
+      const labelSuffix = isRemediation ? ' · 补救' : isActive ? ' · 下一步' : onPath ? ' · 路径' : ''
+      return {
+        id: n.id,
+        data: {
+          label: n.label,
+          status: n.status,
+          domain: n.domain,
+          description: n.description,
+          level: n.level,
+          originalNode: n,
+        },
+        style: {
+          x: n.x ?? Math.random() * 800,
+          y: n.y ?? Math.random() * 480,
+          size: n.level === 'advanced' ? 48 : n.level === 'intermediate' ? 42 : 36,
+          fill: statusColor + (onPath ? '33' : '22'),
+          stroke,
+          lineWidth,
+          labelText: n.label + labelSuffix,
+          labelFill: tk.labelFill,
+          labelFontSize: 12,
+          labelFontFamily: 'Microsoft YaHei, sans-serif',
+          labelOffsetY: 4,
+          shadowColor: stroke,
+          shadowBlur: isActive || n.status === 'mastered' || n.status === 'recommended' ? 12 : onPath ? 8 : 0,
+          cursor: 'pointer',
+          badgeFill: accent,
+        },
+      }
+    }),
+    edges: props.edges.map((e) => {
+      const onPath =
+        pathSet.has(e.source) &&
+        pathSet.has(e.target) &&
+        pathOrder.indexOf(e.source) >= 0 &&
+        pathOrder.indexOf(e.target) > pathOrder.indexOf(e.source)
+      const edgeType = onPath ? 'path' : e.type
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        data: { type: edgeType, label: e.label },
+        style: {
+          stroke: EDGE_COLOR[edgeType],
+          lineWidth: onPath ? 2.5 : 1.5,
+          endArrow: true,
+          endArrowType: 'vee',
+          endArrowSize: 8,
+          opacity: onPath ? 1 : tk.edgeOpacity,
+          labelText: e.label ?? '',
+          labelFill: EDGE_LABEL_COLOR[edgeType],
+          labelFontSize: 10,
+        },
+      }
+    }),
   }
 }
 
@@ -179,7 +206,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.nodes, props.edges],
+  () => [props.nodes, props.edges, props.pathNodeIds, props.activePathNodeId, props.remediationNodeIds],
   () => {
     if (graphInstance && !destroyed) {
       graphInstance.setData(buildGraphData())

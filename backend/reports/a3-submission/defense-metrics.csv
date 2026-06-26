@@ -1,0 +1,16 @@
+﻿group,metric,value,unit
+personalization,task_success_rate,100.0,percent
+personalization,schema_pass_rate,100.0,percent
+personalization,citation_valid_rate,100.0,percent
+profile,balanced_field_accuracy,100.0,percent
+knowledge_base,coverage_rate,100.0,percent
+feedback_loop,rounds_passed,3,rounds
+learning_effect,correct_rate_delta,100.0,percentage_points
+learning_effect,mistake_count_delta,-3,records
+security,validation_pass_rate,100.0,percent
+performance,success_rate,100.0,percent
+performance,idempotency_rate,100.0,percent
+performance,p95_latency,173.79,ms
+engineering,project_deprecated_calls,0,calls
+frontend,initial_gzip,109.27,KiB
+frontend,largest_lazy_gzip,390.5,KiB

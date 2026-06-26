@@ -13,13 +13,16 @@ import {
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import { useAuthStore } from '../stores/auth'
-import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
-import { fetchDashboardExtras } from '../api/studentProgress'
+import { claimDailyQuestBonus, type StudentOverview } from '../api/studentOverview'
 import { DAILY_QUESTS } from '../data/dailyQuests'
+import TeacherAssignmentPanel from '../components/student/TeacherAssignmentPanel.vue'
+import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
+import { useMessage } from 'naive-ui'
 
 const auth = useAuthStore()
+const workspace = useStudentWorkspaceStore()
+const message = useMessage()
 const overview = ref<StudentOverview | null>(null)
-const runningTrials = ref(0)
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -38,6 +41,8 @@ const rankTitle = computed(() => profile.value?.title || profile.value?.level_pr
 const weekPoints = computed(() => profile.value?.incentive?.week_points ?? 0)
 const nextAchievement = computed(() => profile.value?.incentive?.next_achievements?.[0])
 const daily = computed(() => overview.value?.daily)
+const teacherAssignments = computed(() => daily.value?.teacher_assignments ?? { pending_count: 0, total_count: 0, items: [] })
+const runningTrials = computed(() => overview.value?.running_trials ?? 0)
 const completedQuests = computed(() => daily.value?.completed_count ?? 0)
 const totalQuests = computed(() => daily.value?.total_count ?? DAILY_QUESTS.length)
 const totalQuestReward = computed(
@@ -82,8 +87,8 @@ const statCards = computed(() => [
 
 const quickLinks = computed(() => [
   { title: '探索舱', desc: '查看学习星域与资源状态', to: '/student/discovery', icon: RocketOutline },
-  { title: '今日委托', desc: '完成今日任务并领取反馈', to: '/student/daily', icon: CalendarOutline },
-  { title: '探索档案', desc: '查看成长轨迹与成就收藏', to: '/student/archives', icon: ArchiveOutline },
+  { title: '今日委托', desc: '完成今日任务并领取反馈', to: '/student#daily', icon: CalendarOutline },
+  { title: '成长档案', desc: '查看成长轨迹与成就收藏', to: '/student/me/growth', icon: ArchiveOutline },
   {
     title: '试炼关卡',
     desc:
@@ -99,12 +104,7 @@ async function loadOverview() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const [overviewResult, extras] = await Promise.all([
-      fetchStudentOverview(),
-      fetchDashboardExtras().catch(() => ({ running_trials: 0 })),
-    ])
-    overview.value = overviewResult
-    runningTrials.value = extras.running_trials
+    overview.value = await workspace.loadOverview(true)
     auth.syncProfile({
       id: overview.value.profile.id,
       username: overview.value.profile.username,
@@ -121,12 +121,28 @@ async function loadOverview() {
   }
 }
 
+async function claimBonus() {
+  try {
+    const result = await claimDailyQuestBonus()
+    if (overview.value) overview.value.daily = result
+    workspace.invalidateOverview()
+    message.success('今日委托奖励已领取')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '领取奖励失败')
+  }
+}
+
+function onAssignmentsUpdated(payload: { daily: StudentOverview['daily'] }) {
+  if (overview.value && payload.daily) overview.value.daily = payload.daily
+  workspace.invalidateOverview()
+}
+
 onMounted(loadOverview)
 </script>
 
 <template>
   <DashboardShell
-    active-nav="cabin"
+    active-nav="home"
     page-title="学生首页"
     page-subtitle="今日主线总览，连接探索、委托、档案与试炼"
     search-placeholder="搜索课程、任务、知识点…"
@@ -147,7 +163,7 @@ onMounted(loadOverview)
               完成全部可获得 {{ totalQuestReward }} XP 反馈。
             </p>
             <div class="hero-band__actions">
-              <RouterLink to="/student/daily" class="primary-link">继续今日委托</RouterLink>
+              <a href="#daily" class="primary-link">继续今日委托</a>
               <RouterLink to="/student/discovery" class="ghost-link">进入探索舱</RouterLink>
             </div>
           </div>
@@ -178,10 +194,17 @@ onMounted(loadOverview)
         </section>
 
         <section class="home-grid">
-          <div class="mission-panel">
+          <div id="daily" class="mission-panel">
             <div class="section-head">
               <h2>今日委托</h2>
-              <RouterLink to="/student/daily">查看全部</RouterLink>
+              <button
+                v-if="daily?.all_completed && !daily?.bonus_claimed"
+                type="button"
+                class="section-action"
+                @click="claimBonus"
+              >
+                领取全部完成奖励
+              </button>
             </div>
             <div class="quest-mini-list">
               <article v-for="quest in dailyQuestItems" :key="quest.key" class="quest-mini">
@@ -198,7 +221,7 @@ onMounted(loadOverview)
           <div class="mission-panel">
             <div class="section-head">
               <h2>成长摘要</h2>
-              <RouterLink to="/student/archives">打开档案</RouterLink>
+              <RouterLink to="/student/me/growth">打开档案</RouterLink>
             </div>
             <dl class="summary-list">
               <div>
@@ -220,6 +243,12 @@ onMounted(loadOverview)
             </div>
           </div>
         </section>
+
+        <TeacherAssignmentPanel
+          :assignments="teacherAssignments"
+          :loading="loading"
+          @updated="onAssignmentsUpdated"
+        />
 
         <section class="quick-entry" aria-label="快捷入口">
           <RouterLink v-for="item in quickLinks" :key="item.to" :to="item.to" class="entry-tile">
@@ -257,6 +286,13 @@ onMounted(loadOverview)
 
 .state-panel--error {
   color: #fecaca;
+}
+
+.section-action {
+  border: 0;
+  background: transparent;
+  color: #52fff1;
+  cursor: pointer;
 }
 
 .state-panel button,

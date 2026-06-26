@@ -53,7 +53,7 @@ class SystemSettingService(BaseService):
             return
         if not class_id:
             raise PermissionError('仅管理员可修改全局默认配置')
-        cls = Class.query.get(class_id)
+        cls = db.session.get(Class, class_id)
         if not cls:
             raise ValueError('班级不存在')
         if cls.teacher_id != user_id:

@@ -4,14 +4,17 @@
 
 ### Windows 用户
 
-双击运行：**`start.bat`** 文件
+完整前后端一键启动请双击仓库根目录的 **`start.bat`**。
+
+当前目录的 **`backend/start.bat`** 仅启动 Flask 后端。
 
 这个脚本会自动：
-1. ✅ 安装所有依赖
-2. ✅ 初始化数据库
-3. ✅ 启动应用
+1. ✅ 检查并安装前后端依赖
+2. ✅ 非破坏性初始化数据库
+3. ✅ 启动 Flask 与 Vue
+4. ✅ 打开前端页面
 
-然后在浏览器中打开：**http://localhost:5000**
+然后在浏览器中打开：**http://localhost:5173**
 
 ### macOS / Linux 用户
 
@@ -49,6 +52,14 @@ python manage.py seed-demo
 ```
 
 `init_db.py` 会删除所有表，仅限明确需要重置本地演示库时手工执行。
+
+运行两组学生画像、错题反馈、资源生成和教师审核的 API 彩排：
+
+```bash
+python scripts/verify_demo_readiness.py
+```
+
+脚本使用现有本地数据库并保留彩排记录，不会删除已有数据。
 
 ### 第 3 步：启动应用
 
@@ -204,6 +215,39 @@ python seed_trials_demo.py
 cd backend
 python -m unittest tests.test_trials tests.test_admin_settings tests.test_teacher_student_trials tests.test_student_progress -v
 ```
+
+### A3 知识库与个性化评测
+
+验证 16 个课程知识点、唯一引用 ID、章节必填项及源文件映射：
+
+```bash
+cd backend
+python manage.py knowledge-check
+python scripts/verify_knowledge_base.py
+```
+
+使用固定双画像生成 32 个资源包、160 份本地规则资源，并输出 JSON/CSV：
+
+```bash
+python scripts/evaluate_personalization.py --output reports/a3-personalization-local
+python scripts/evaluate_profile_extraction.py --output reports/a3-personalization-local/profile-extraction-evaluation.json
+python scripts/verify_feedback_loop.py --output reports/a3-personalization-local/feedback-loop-three-rounds.json
+```
+
+报告中的 `backend` 固定为 `local_rules`，不得作为真实讯飞模型质量证据。
+
+## 下一阶段证据验证
+
+```bash
+python scripts/verify_learning_effect.py
+python scripts/verify_security.py
+python scripts/verify_performance_recovery.py
+python scripts/verify_clean_environment.py
+```
+
+报告写入 `reports/a3-next-stage/`。前三项使用隔离测试数据库，不修改演示数据库；干净环境检查读取当前开发数据库并验证健康接口及三个演示账号。
+
+仓库根目录运行 `start.bat --check` 会优先使用 `.venv`，执行数据库升级、演示数据写入和就绪检查，成功返回退出码 `0`，且不会启动服务。
 
 本地若已有旧库，执行 `python manage.py init` 完成非破坏性升级。
 

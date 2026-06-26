@@ -45,7 +45,7 @@ class AnnouncementService:
 
     @staticmethod
     def update(announcement_id: int, payload: dict):
-        row = SystemAnnouncement.query.get(announcement_id)
+        row = db.session.get(SystemAnnouncement, announcement_id)
         if not row:
             raise ValueError('公告不存在')
         if 'title' in payload and payload['title']:
@@ -61,7 +61,7 @@ class AnnouncementService:
 
     @staticmethod
     def delete(announcement_id: int):
-        row = SystemAnnouncement.query.get(announcement_id)
+        row = db.session.get(SystemAnnouncement, announcement_id)
         if not row:
             raise ValueError('公告不存在')
         row.is_active = False

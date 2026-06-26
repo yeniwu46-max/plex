@@ -46,6 +46,7 @@ const props = defineProps<{
   classRank: number | null
   userName: string
   userLevel: number
+  classOnlineCount: number
   trials: TrialMode[]
   trialsLoading: boolean
   trialsError: string
@@ -78,7 +79,7 @@ const gladiatorTotalQuestions = GLADIATOR_DUEL_QUESTIONS.length
 const gladiatorTimerText = computed(() => formatTimer(gladiatorRemainingSec.value))
 const gladiatorTimerUrgent = computed(() => gladiatorRemainingSec.value <= 60)
 
-const onlineMock = computed(() => Math.max(2, (props.classRank ?? 3) % 5 + 2))
+const onlineCount = computed(() => Math.max(0, props.classOnlineCount || 0))
 const activeTrialCount = computed(() => props.trials.length)
 const rivalName = computed(() => `探索者-${String((props.classRank ?? 2) + 1).padStart(2, '0')}`)
 
@@ -201,6 +202,10 @@ async function onEnterTrial(trial: TrialMode) {
 }
 
 function startGladiatorMatch() {
+  if (onlineCount.value < 2) {
+    message.info('当前同班在线人数不足，等待其他 Explorer 上线后再匹配')
+    return
+  }
   duelMatching.value = true
   window.setTimeout(() => {
     duelMatching.value = false
@@ -299,7 +304,7 @@ onUnmounted(() => {
         <dl class="class-arena__stats">
           <div>
             <dt><n-icon :component="PeopleOutline" /> 同班在线</dt>
-            <dd>{{ onlineMock }} 人</dd>
+            <dd>{{ onlineCount }} 人</dd>
           </div>
           <div>
             <dt><n-icon :component="TrophyOutline" /> 进行中试炼</dt>
@@ -383,7 +388,7 @@ onUnmounted(() => {
               <article class="duel-player duel-player--rival" :class="{ 'duel-player--matched': duelMatched }">
                 <span class="duel-player__avatar">{{ duelMatched ? rivalName.slice(0, 1) : '?' }}</span>
                 <strong>{{ duelMatched ? rivalName : '等待匹配' }}</strong>
-                <em>{{ duelMatched ? '已匹配 · 在线' : `同班在线 ${onlineMock} 人` }}</em>
+                <em>{{ duelMatched ? '已匹配 · 在线' : `同班在线 ${onlineCount} 人` }}</em>
               </article>
             </div>
             <article class="duel-problem">

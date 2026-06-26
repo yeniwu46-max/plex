@@ -315,12 +315,23 @@ const liveProgressMetrics = computed<ProgressMetric[]>(() => {
   ]
 })
 
-const observerMetricCards: MetricCard[] = [
-  { label: '平台活跃度', value: '78.6%', sub: '较昨日 ↑ 8.6%', icon: AnalyticsOutline, tone: 'purple' },
-  { label: '系统健康度', value: '96.2%', sub: '较昨日 ↑ 1.3%', icon: ShieldCheckmarkOutline, tone: 'purple' },
-  { label: '实时风险信号', value: '7', sub: '较昨日 ↓ 1', icon: AlertCircleOutline, tone: 'purple' },
-  { label: '在线智能体数量', value: '2,456', sub: '较昨日 ↑ 128', icon: HardwareChipOutline, tone: 'purple' },
-]
+const observerMetricCards = computed<MetricCard[]>(() => {
+  const ops = dashboardData.value?.resource_operations
+  if (!ops) {
+    return [
+      { label: '资源任务成功率', value: '—', sub: '等待运行数据', icon: AnalyticsOutline, tone: 'purple' },
+      { label: '平均任务耗时', value: '—', sub: '等待运行数据', icon: HardwareChipOutline, tone: 'purple' },
+      { label: '降级后端占比', value: '—', sub: '等待运行数据', icon: AlertCircleOutline, tone: 'purple' },
+      { label: '待审核资源', value: '—', sub: '等待运行数据', icon: ShieldCheckmarkOutline, tone: 'purple' },
+    ]
+  }
+  return [
+    { label: '资源任务成功率', value: `${ops.success_rate}%`, sub: `${ops.completed_count}/${ops.task_count} 已完成`, icon: AnalyticsOutline, tone: 'purple' },
+    { label: '平均任务耗时', value: ops.average_latency_ms == null ? '—' : `${ops.average_latency_ms}ms`, sub: '生成任务端到端耗时', icon: HardwareChipOutline, tone: 'purple' },
+    { label: '降级后端占比', value: `${ops.fallback_rate}%`, sub: ops.backend_distribution.map((item) => `${item.backend} ${item.count}`).join(' · '), icon: AlertCircleOutline, tone: ops.fallback_rate > 50 ? 'amber' : 'purple' },
+    { label: '待审核资源', value: String(ops.pending_review_count), sub: `${ops.failed_count} 个失败任务`, icon: ShieldCheckmarkOutline, tone: ops.pending_review_count ? 'amber' : 'green' },
+  ]
+})
 
 const agentsMetricCards: MetricCard[] = [
   { label: '运行智能体', value: '24', sub: '较昨日 ↑ 9.1%', icon: HardwareChipOutline, tone: 'purple' },
@@ -378,7 +389,7 @@ const pageSubtitle = computed(() => {
   return '实时掌控 PLEX 宇宙的运行状态与关键指标'
 })
 const visibleMetrics = computed(() => {
-  if (activeNav.value === 'observer') return observerMetricCards
+  if (activeNav.value === 'observer') return observerMetricCards.value
   if (activeNav.value === 'agents') return agentsMetricCards
   if (activeNav.value === 'knowledge') return knowledgeMetricCards
   return liveMetricCards.value
@@ -412,6 +423,9 @@ function setActiveNav(key: NavKey) {
     void loadSettings()
   }
   if (key === 'nexus') {
+    void loadDashboard()
+  }
+  if (key === 'observer') {
     void loadDashboard()
   }
 }

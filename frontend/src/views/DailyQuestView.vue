@@ -212,7 +212,7 @@ onMounted(loadTodayQuests)
 
 <template>
   <div class="daily-shell" :class="{ 'daily-shell--collapsed': sidebarCollapsed }">
-    <PlexSidebar v-model:collapsed="sidebarCollapsed" active-key="daily" />
+    <PlexSidebar v-model:collapsed="sidebarCollapsed" active-key="home" />
 
     <main class="daily-main">
       <PlexTopbar title="今日委托" subtitle="每一步探索，都是成长的轨迹" />

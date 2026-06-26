@@ -5,7 +5,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.data.knowledge_catalog import KNOWLEDGE_UNIVERSE
 from app.services.teacher_template import TeacherTemplateService
 from app.services.trial import TrialService
-from app.models import User
+from app.models import User, db
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
 
@@ -13,7 +13,7 @@ teacher_resources_bp = Blueprint('teacher_resources', __name__, url_prefix='/api
 
 
 def _role_name(user_id: int) -> str:
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     return user.role.name if user and user.role else ''
 
 

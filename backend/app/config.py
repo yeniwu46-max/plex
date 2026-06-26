@@ -2,9 +2,11 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+load_dotenv()
+# Local provider overrides are ignored by git and intentionally take precedence
+# over the shared development .env file.
+load_dotenv(os.path.join(BACKEND_ROOT, '.env.spark.local'), override=True)
 INSTANCE_DIR = os.path.join(BACKEND_ROOT, 'instance')
 os.makedirs(INSTANCE_DIR, exist_ok=True)
 DEFAULT_SQLITE_URI = 'sqlite:///' + os.path.join(INSTANCE_DIR, 'learning_system.db').replace('\\', '/')
@@ -59,6 +61,16 @@ class Config:
     # ============ 日志配置 ============
     LOG_LEVEL = 'INFO'
     LOG_FILE = 'logs/app.log'
+
+    # OAuth login configuration. Set these in the backend environment before
+    # enabling the Google/GitHub buttons in production.
+    FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:5173')
+    GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+    GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+    GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI')
+    GITHUB_CLIENT_ID = os.getenv('GITHUB_CLIENT_ID')
+    GITHUB_CLIENT_SECRET = os.getenv('GITHUB_CLIENT_SECRET')
+    GITHUB_REDIRECT_URI = os.getenv('GITHUB_REDIRECT_URI')
 
 
 class DevelopmentConfig(Config):

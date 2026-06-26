@@ -18,7 +18,12 @@ import GrowthLineChart from '../components/teacher/GrowthLineChart.vue'
 import { fetchStudentAchievements } from '../api/teacherStudentDetail'
 import type { UserAchievementRecord } from '../api/studentOverview'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
-import { fetchTeacherStudentLearningReport, type LearningReportResult } from '../api/learningReport'
+import {
+  fetchTeacherStudentLearningEffect,
+  fetchTeacherStudentLearningReport,
+  type LearningEffectResult,
+  type LearningReportResult,
+} from '../api/learningReport'
 import {
   buildAiObservation,
   buildExplorerRadarFromStudent,
@@ -55,6 +60,7 @@ const achievementsError = ref('')
 let achievementsRequestId = 0
 
 const learningReport = ref<LearningReportResult | null>(null)
+const learningEffect = ref<LearningEffectResult | null>(null)
 const learningReportLoading = ref(false)
 const learningReportError = ref('')
 let learningReportRequestId = 0
@@ -146,12 +152,17 @@ async function loadLearningReport(userId: number) {
   learningReportLoading.value = true
   learningReportError.value = ''
   try {
-    const result = await fetchTeacherStudentLearningReport(userId, '7d')
+    const [result, effect] = await Promise.all([
+      fetchTeacherStudentLearningReport(userId, '7d'),
+      fetchTeacherStudentLearningEffect(userId).catch(() => null),
+    ])
     if (requestId !== learningReportRequestId) return
     learningReport.value = result
+    learningEffect.value = effect
   } catch (error) {
     if (requestId !== learningReportRequestId) return
     learningReport.value = null
+    learningEffect.value = null
     learningReportError.value = error instanceof Error ? error.message : '学情报告加载失败'
   } finally {
     if (requestId === learningReportRequestId) {
@@ -167,6 +178,7 @@ watch(
       achievements.value = []
       achievementsError.value = ''
       learningReport.value = null
+      learningEffect.value = null
       learningReportError.value = ''
       return
     }
@@ -318,6 +330,7 @@ if (shellSearch) {
             :report="learningReport"
             :report-loading="learningReportLoading"
             :report-error="learningReportError"
+            :effect="learningEffect"
             :student-id="selectedStudent?.id ?? null"
           />
           <explorer-trial-panel v-else-if="detailTab === 'trial' && selectedStudent" :student-id="selectedStudent.id" />

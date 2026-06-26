@@ -4,9 +4,21 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy import func
 
-from app.models import Class, Role, StudentMistake, Trial, TrialParticipation, TrialQuestionProgress, User, db
+from app.models import (
+    Class,
+    PersonalizedLearningResource,
+    ResourceGenerationTask,
+    Role,
+    StudentMistake,
+    Trial,
+    TrialParticipation,
+    TrialQuestionProgress,
+    User,
+    db,
+)
 from app.services.mistake import MistakeService
 from app.services.question_generator import QuestionGenerator
+from app.utils.time import utc_now
 
 
 class AdminDashboardService:
@@ -22,7 +34,7 @@ class AdminDashboardService:
             User.query.filter_by(role_id=teacher_role.id).count() if teacher_role else 0
         )
 
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        week_ago = utc_now() - timedelta(days=7)
         active_students = (
             db.session.query(func.count(func.distinct(TrialQuestionProgress.user_id)))
             .filter(TrialQuestionProgress.answered_at >= week_ago)
@@ -93,6 +105,23 @@ class AdminDashboardService:
                 'rate': round((completed / len(parts)) * 100),
             })
 
+        resource_tasks = ResourceGenerationTask.query.all()
+        completed_tasks = [row for row in resource_tasks if row.status == 'completed']
+        failed_tasks = [row for row in resource_tasks if row.status == 'failed']
+        task_durations = [
+            (row.completed_at - row.started_at).total_seconds() * 1000
+            for row in completed_tasks
+            if row.started_at and row.completed_at
+        ]
+        backend_counts: dict[str, int] = defaultdict(int)
+        for row in resource_tasks:
+            backend_counts[row.backend or 'unknown'] += 1
+        fallback_count = sum(1 for row in resource_tasks if row.fallback_reason)
+        pending_review_count = PersonalizedLearningResource.query.filter_by(
+            review_status='pending_review'
+        ).count()
+        total_resource_tasks = len(resource_tasks)
+
         return {
             'metrics': {
                 'active_students': active_students,
@@ -110,6 +139,28 @@ class AdminDashboardService:
                 'activity_rate': activity_rate,
             },
             'weak_knowledge_top': weak_knowledge_top,
+            'resource_operations': {
+                'task_count': total_resource_tasks,
+                'completed_count': len(completed_tasks),
+                'failed_count': len(failed_tasks),
+                'success_rate': (
+                    round(len(completed_tasks) / total_resource_tasks * 100, 1)
+                    if total_resource_tasks else 0
+                ),
+                'average_latency_ms': (
+                    round(sum(task_durations) / len(task_durations))
+                    if task_durations else None
+                ),
+                'fallback_rate': (
+                    round(fallback_count / total_resource_tasks * 100, 1)
+                    if total_resource_tasks else 0
+                ),
+                'pending_review_count': pending_review_count,
+                'backend_distribution': [
+                    {'backend': backend, 'count': count}
+                    for backend, count in sorted(backend_counts.items())
+                ],
+            },
             'charts': {
                 'activity_trend': {
                     'x_data': x_data,
@@ -129,7 +180,7 @@ class AdminDashboardService:
             User.query.filter_by(role_id=student_role.id).all() if student_role else []
         )
         return {
-            'exported_at': datetime.utcnow().isoformat(),
+            'exported_at': utc_now().isoformat(),
             'classes': [row.to_dict() for row in Class.query.all()],
             'students': [
                 {

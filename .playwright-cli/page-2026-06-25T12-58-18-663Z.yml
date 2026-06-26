@@ -1,0 +1,170 @@
+- generic [ref=e2030]:
+  - complementary "主导航" [ref=e2031]:
+    - generic [ref=e2032]:
+      - img [ref=e2033]
+      - generic [ref=e2036]: PLEX
+    - navigation [ref=e2037]:
+      - link "总览 OVERVIEW" [ref=e2038] [cursor=pointer]:
+        - /url: /student
+        - img [ref=e2040]:
+          - img [ref=e2041]
+        - generic [ref=e2046]:
+          - generic [ref=e2047]: 总览
+          - generic [ref=e2048]: OVERVIEW
+      - link "探索舱 EXPLORER" [ref=e2049] [cursor=pointer]:
+        - /url: /student/discovery
+        - img [ref=e2051]:
+          - img [ref=e2052]
+        - generic [ref=e2055]:
+          - generic [ref=e2056]: 探索舱
+          - generic [ref=e2057]: EXPLORER
+      - link "星轨学习 STARPATH" [ref=e2058] [cursor=pointer]:
+        - /url: /student/star-path
+        - img [ref=e2060]:
+          - img [ref=e2061]
+        - generic [ref=e2067]:
+          - generic [ref=e2068]: 星轨学习
+          - generic [ref=e2069]: STARPATH
+      - link "试炼中心 TRIAL ARENA" [ref=e2070] [cursor=pointer]:
+        - /url: /student/trials
+        - img [ref=e2072]:
+          - img [ref=e2073]
+        - generic [ref=e2078]:
+          - generic [ref=e2079]: 试炼中心
+          - generic [ref=e2080]: TRIAL ARENA
+      - link "驿站助手 MESSENGER" [ref=e2081] [cursor=pointer]:
+        - /url: /student/messenger
+        - img [ref=e2083]:
+          - img [ref=e2084]
+        - generic [ref=e2087]:
+          - generic [ref=e2088]: 驿站助手
+          - generic [ref=e2089]: MESSENGER
+      - link "我的 MY SPACE" [ref=e2090] [cursor=pointer]:
+        - /url: /student/me/growth
+        - img [ref=e2092]:
+          - img [ref=e2093]
+        - generic [ref=e2096]:
+          - generic [ref=e2097]: 我的
+          - generic [ref=e2098]: MY SPACE
+    - button "收起侧栏" [ref=e2099] [cursor=pointer]: «
+  - generic [ref=e2100]:
+    - banner [ref=e2101]:
+      - generic [ref=e2102]:
+        - heading "学习画像" [level=1] [ref=e2103]: 学习画像
+        - paragraph [ref=e2105]: 对话构建七维动态画像
+      - generic [ref=e2106]:
+        - generic [ref=e2107]:
+          - button "通知" [ref=e2108] [cursor=pointer]:
+            - img [ref=e2109]:
+              - img [ref=e2110]
+          - superscript [ref=e2113]:
+            - generic [ref=e2116]:
+              - generic [ref=e2117]: "7"
+              - generic [ref=e2119]: "7"
+              - generic [ref=e2120]: "7"
+        - button "当前外观：深色模式，点击切换" [ref=e2121] [cursor=pointer]:
+          - img [ref=e2122]:
+            - img [ref=e2123]
+        - button "打开用户菜单" [ref=e2126] [cursor=pointer]:
+          - generic [ref=e2131]:
+            - strong [ref=e2132]: 学生1
+            - emphasis [ref=e2133]: Lv.2
+          - img [ref=e2134]:
+            - img [ref=e2135]
+    - navigation "我的导航" [ref=e2138]:
+      - link "成长档案" [ref=e2139] [cursor=pointer]:
+        - /url: /student/me/growth
+      - link "学习画像" [ref=e2140] [cursor=pointer]:
+        - /url: /student/me/profile
+      - link "账号设置" [ref=e2141] [cursor=pointer]:
+        - /url: /student/me/settings
+    - main [ref=e2143]:
+      - generic [ref=e2144]:
+        - generic [ref=e2145]:
+          - paragraph [ref=e2146]: PROFILE VERSION 11
+          - heading "七维动态学习画像" [level=2] [ref=e2147]
+          - text: 每个结论都保留置信度和证据，你可以随时修正。
+        - progressbar [ref=e2148]:
+          - img [ref=e2151]
+          - generic:
+            - generic [ref=e2156]: "100"
+            - generic [ref=e2157]: "%"
+      - generic [ref=e2158]:
+        - generic [ref=e2160]:
+          - textbox "介绍你的专业、基础、目标、讲解偏好、易错点、学习节奏和兴趣方向。" [ref=e2161]
+          - generic: 介绍你的专业、基础、目标、讲解偏好、易错点、学习节奏和兴趣方向。
+        - button "分析并更新画像" [ref=e2163] [cursor=pointer]:
+          - generic [ref=e2164]: 分析并更新画像
+      - generic [ref=e2165]:
+        - article [ref=e2166]:
+          - generic [ref=e2167]:
+            - heading "讲解偏好" [level=3] [ref=e2168]
+            - generic [ref=e2170]: confirmed
+          - paragraph [ref=e2171]: 代码案例优先、分步骤讲解
+          - progressbar [ref=e2172]
+          - list [ref=e2177]:
+            - listitem [ref=e2178]: 学生人工修正
+          - button "人工修正" [ref=e2179] [cursor=pointer]:
+            - generic [ref=e2180]: 人工修正
+        - article [ref=e2181]:
+          - generic [ref=e2182]:
+            - heading "兴趣方向" [level=3] [ref=e2183]
+            - generic [ref=e2185]: confirmed
+          - paragraph [ref=e2186]: 数据处理与校园项目
+          - progressbar [ref=e2187]
+          - list [ref=e2192]:
+            - listitem [ref=e2193]: 学生人工修正
+          - button "人工修正" [ref=e2194] [cursor=pointer]:
+            - generic [ref=e2195]: 人工修正
+        - article [ref=e2196]:
+          - generic [ref=e2197]:
+            - heading "知识基础" [level=3] [ref=e2198]
+            - generic [ref=e2200]: confirmed
+          - paragraph [ref=e2201]: Python 零基础
+          - progressbar [ref=e2202]
+          - list [ref=e2207]:
+            - listitem [ref=e2208]: 学生人工修正
+          - button "人工修正" [ref=e2209] [cursor=pointer]:
+            - generic [ref=e2210]: 人工修正
+        - article [ref=e2211]:
+          - generic [ref=e2212]:
+            - heading "学习目标" [level=3] [ref=e2213]
+            - generic [ref=e2215]: confirmed
+          - paragraph [ref=e2216]: 掌握 Python 基础并完成校园工具
+          - progressbar [ref=e2217]
+          - list [ref=e2222]:
+            - listitem [ref=e2223]: 学生人工修正
+          - button "人工修正" [ref=e2224] [cursor=pointer]:
+            - generic [ref=e2225]: 人工修正
+        - article [ref=e2226]:
+          - generic [ref=e2227]:
+            - heading "学习节奏" [level=3] [ref=e2228]
+            - generic [ref=e2230]: confirmed
+          - paragraph [ref=e2231]: 每天 30 分钟
+          - progressbar [ref=e2232]
+          - list [ref=e2237]:
+            - listitem [ref=e2238]: 学生人工修正
+          - button "人工修正" [ref=e2239] [cursor=pointer]:
+            - generic [ref=e2240]: 人工修正
+        - article [ref=e2241]:
+          - generic [ref=e2242]:
+            - heading "专业背景" [level=3] [ref=e2243]
+            - generic [ref=e2245]: confirmed
+          - paragraph [ref=e2246]: 计算机专业大一
+          - progressbar [ref=e2247]
+          - list [ref=e2252]:
+            - listitem [ref=e2253]: 学生人工修正
+          - button "人工修正" [ref=e2254] [cursor=pointer]:
+            - generic [ref=e2255]: 人工修正
+        - article [ref=e2256]:
+          - generic [ref=e2257]:
+            - heading "易错模式" [level=3] [ref=e2258]
+            - generic [ref=e2260]: confirmed
+          - paragraph [ref=e2261]: 近期薄弱点：Python 与 print、循环结构、Python 入门
+          - progressbar [ref=e2262]
+          - list [ref=e2267]:
+            - listitem [ref=e2268]: Python 与 print失败权重 42.25
+            - listitem [ref=e2269]: 循环结构失败权重 9.95
+            - listitem [ref=e2270]: Python 入门失败权重 5.0
+          - button "人工修正" [ref=e2271] [cursor=pointer]:
+            - generic [ref=e2272]: 人工修正

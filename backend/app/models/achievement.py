@@ -1,5 +1,5 @@
 """成就/勋章模型"""
-from datetime import datetime
+from app.utils.time import utc_now
 from . import db
 
 
@@ -15,7 +15,7 @@ class Achievement(db.Model):
     condition_type = db.Column(db.String(50))  # 获取条件类型
     condition_value = db.Column(db.Integer)  # 条件数值
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     # 关系
     users = db.relationship('UserAchievement', backref='achievement', cascade='all, delete-orphan')

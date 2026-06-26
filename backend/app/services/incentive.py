@@ -15,6 +15,7 @@ from app.models import (
 )
 
 from .base import BaseService
+from app.utils.time import utc_now
 
 # 累计 XP 阈值：Lv1..Lv5
 LEVEL_THRESHOLDS = [0, 500, 1500, 3000, 5000, 10_000]
@@ -31,7 +32,7 @@ LEVEL_TITLES = {
 class IncentiveService(BaseService):
     @staticmethod
     def current_week_key(moment=None):
-        moment = moment or datetime.utcnow()
+        moment = moment or utc_now()
         return f'{moment.year}-w{moment.isocalendar()[1]:02d}'
 
     @staticmethod
@@ -71,7 +72,7 @@ class IncentiveService(BaseService):
 
     @staticmethod
     def _metric_value(user_id, condition_type):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return 0
         if condition_type == 'total_points':
@@ -196,7 +197,7 @@ class IncentiveService(BaseService):
 
     @staticmethod
     def process_user_incentive(user_id, refresh_ranking=True):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 
@@ -240,7 +241,7 @@ class IncentiveService(BaseService):
         if not points:
             return IncentiveService.process_user_incentive(user_id, refresh_ranking=refresh_ranking)
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 
@@ -265,7 +266,7 @@ class IncentiveService(BaseService):
 
     @staticmethod
     def incentive_summary(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
         profile = IncentiveService.level_profile(user)

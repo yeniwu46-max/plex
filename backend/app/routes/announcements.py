@@ -2,7 +2,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.models import User
+from app.models import User, db
 from app.services.announcement import AnnouncementService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -11,7 +11,7 @@ announcements_bp = Blueprint('announcements', __name__, url_prefix='/api/v1')
 
 
 def _role_name(user_id: int) -> str:
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     return user.role.name if user and user.role else ''
 
 

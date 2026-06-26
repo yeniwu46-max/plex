@@ -42,6 +42,34 @@ KNOWLEDGE_LABELS = {
 
 class StudentProgressService:
     @staticmethod
+    def get_overview(user_id):
+        """Return the data shared by the student landing pages in one request."""
+        from app.services.achievement import AchievementService
+        from app.services.class_service import ClassService
+        from app.services.daily_quest import DailyQuestService
+        from app.services.user import UserService
+        from app.services.presence import PresenceService
+
+        profile = UserService.get_current_user_info(user_id)
+        ranking = (
+            ClassService.get_class_ranking(profile['class']['id'])
+            if profile.get('class')
+            else None
+        )
+        daily = DailyQuestService.get_today(user_id)
+
+        extras = StudentProgressService.get_student_dashboard_extras(user_id)
+        return {
+            'profile': profile,
+            'achievements': AchievementService.get_user_achievements(user_id),
+            'pointsLog': AchievementService.get_points_log(user_id, page=1, limit=6),
+            'ranking': ranking,
+            'daily': daily,
+            'running_trials': extras['running_trials'],
+            'class_online_count': PresenceService.class_presence(user_id)['online_count'],
+        }
+
+    @staticmethod
     def _completed_trials(user_id):
         return (
             TrialParticipation.query.join(Trial)
@@ -54,7 +82,7 @@ class StudentProgressService:
 
     @staticmethod
     def get_learning_path(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 
@@ -112,24 +140,43 @@ class StudentProgressService:
                     resources_by_domain[domain['key']].append(resource)
                     break
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
+        from app.services.recommendation import RecommendationService
+
         for domain in domains:
-            matched = resources_by_domain.get(domain['key'], [])[:3]
+            matched = RecommendationService.sort_personalized_resources(
+                resources_by_domain.get(domain['key'], []),
+                profile,
+            )[:3]
             domain['recommended_resource_ids'] = [item.id for item in matched]
+            mistake_pattern = (
+                ((profile.dimensions or {}).get('mistake_pattern') or {}).get('value')
+                if profile else None
+            )
             domain['recommendation_reason'] = (
                 f"结合画像版本 {profile.version if profile else 0} 与当前学习进度，"
-                f"优先学习 {matched[0].knowledge_label}。"
+                f"优先学习 {matched[0].knowledge_label}"
+                f"{'，并针对' + mistake_pattern if mistake_pattern and '近期薄弱点' in mistake_pattern else ''}。"
                 if matched else '完成当前节点练习后，系统会生成对应的个性化资源。'
             )
+
+        from app.services.learning_path import LearningPathService
+
+        path_plan = LearningPathService.plan(user_id)
 
         return {
             'domains': domains,
             'active_domain_key': next((d['key'] for d in domains if d.get('active')), 'stage1'),
             'profile_version': profile.version if profile else 0,
+            'ordered_nodes': path_plan.get('ordered_nodes', []),
+            'active_node_id': path_plan.get('active_node_id'),
+            'next_best_action': path_plan.get('next_best_action'),
+            'remediation_paths': path_plan.get('remediation_paths', []),
+            'graph_backend': path_plan.get('graph_backend'),
         }
 
     @staticmethod
     def get_archive_insights(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 
@@ -187,11 +234,16 @@ class StudentProgressService:
 
     @staticmethod
     def get_student_dashboard_extras(user_id):
+        from app.services.presence import PresenceService
+
         running = 0
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if user and user.class_id:
             running = Trial.query.filter_by(class_id=user.class_id, status='running').count()
-        return {'running_trials': running}
+        return {
+            'running_trials': running,
+            'class_online_count': PresenceService.class_presence(user_id)['online_count'],
+        }
 
     RADAR_DIMENSIONS = [
         ('语法基础', ['intro', 'comment', 'var', 'io', 'python', 'lang', 'syntax', 'basic']),
@@ -203,7 +255,7 @@ class StudentProgressService:
 
     @staticmethod
     def get_ability_stats(user_id: int):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 

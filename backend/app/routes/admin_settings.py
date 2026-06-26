@@ -2,7 +2,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.models import User
+from app.models import User, db
 from app.services.admin_dashboard import AdminDashboardService
 from app.services.learning_resource import LearningResourceService
 from app.services.system_setting import SystemSettingService
@@ -13,7 +13,7 @@ admin_settings_bp = Blueprint('admin_settings', __name__, url_prefix='/api/v1/ad
 
 
 def _role_name(user_id):
-    user = User.query.get(int(user_id))
+    user = db.session.get(User, int(user_id))
     return user.role.name if user and user.role else None
 
 

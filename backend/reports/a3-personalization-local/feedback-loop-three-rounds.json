@@ -1,0 +1,201 @@
+{
+  "run_at": "2026-06-11T13:41:07+00:00",
+  "round_count": 3,
+  "rounds": [
+    {
+      "round": 1,
+      "knowledge_key": "loop",
+      "profile_version_before_accept": 6,
+      "profile_version_after_accept": 7,
+      "profile_version_after_reject": 7,
+      "recommendation_ids_before": [
+        30,
+        25,
+        5,
+        26,
+        21,
+        1,
+        28,
+        23,
+        3,
+        27
+      ],
+      "recommendation_ids_after": [
+        28,
+        23,
+        3,
+        30,
+        25,
+        5,
+        26,
+        21,
+        1,
+        27
+      ],
+      "preferred_types_after": [
+        "exercise_set",
+        "coding_lab",
+        "lesson_document",
+        "mind_map",
+        "extended_reading"
+      ],
+      "path_resource_ids_before": [
+        30,
+        25,
+        20
+      ],
+      "path_resource_ids_after": [
+        28,
+        23,
+        18
+      ],
+      "path_reason_after": "结合画像版本 7 与当前学习进度，优先学习 循环结构，并针对近期薄弱点：Python 与 print、Python 入门、算法入门。",
+      "suggestion_accepted_id": 4,
+      "suggestion_rejected_id": 5,
+      "task_id": "rg_c24a21426b1040c3b514",
+      "task_backend": "local_rules",
+      "task_persisted": true,
+      "approved_resource_id": 29,
+      "approved_resource_visible": true,
+      "timings_ms": {
+        "profile_reset_ms": 12,
+        "resource_generation_ms": 90,
+        "suggestion_accept_ms": 14,
+        "teacher_review_ms": 10
+      }
+    },
+    {
+      "round": 2,
+      "knowledge_key": "range",
+      "profile_version_before_accept": 8,
+      "profile_version_after_accept": 9,
+      "profile_version_after_reject": 9,
+      "recommendation_ids_before": [
+        30,
+        25,
+        5,
+        26,
+        21,
+        1,
+        28,
+        23,
+        3,
+        27
+      ],
+      "recommendation_ids_after": [
+        28,
+        23,
+        3,
+        30,
+        25,
+        5,
+        26,
+        21,
+        1,
+        27
+      ],
+      "preferred_types_after": [
+        "exercise_set",
+        "coding_lab",
+        "lesson_document",
+        "mind_map",
+        "extended_reading"
+      ],
+      "path_resource_ids_before": [
+        35,
+        30,
+        25
+      ],
+      "path_resource_ids_after": [
+        33,
+        28,
+        23
+      ],
+      "path_reason_after": "结合画像版本 9 与当前学习进度，优先学习 range / break / continue，并针对近期薄弱点：Python 与 print、循环结构、Python 入门。",
+      "suggestion_accepted_id": 6,
+      "suggestion_rejected_id": 7,
+      "task_id": "rg_a231de1de6c54ce2b25c",
+      "task_backend": "local_rules",
+      "task_persisted": true,
+      "approved_resource_id": 34,
+      "approved_resource_visible": true,
+      "timings_ms": {
+        "profile_reset_ms": 9,
+        "resource_generation_ms": 80,
+        "suggestion_accept_ms": 14,
+        "teacher_review_ms": 7
+      }
+    },
+    {
+      "round": 3,
+      "knowledge_key": "cond",
+      "profile_version_before_accept": 10,
+      "profile_version_after_accept": 11,
+      "profile_version_after_reject": 11,
+      "recommendation_ids_before": [
+        40,
+        30,
+        25,
+        20,
+        5,
+        36,
+        26,
+        21,
+        16,
+        1
+      ],
+      "recommendation_ids_after": [
+        38,
+        28,
+        23,
+        18,
+        3,
+        40,
+        30,
+        25,
+        20,
+        5
+      ],
+      "preferred_types_after": [
+        "exercise_set",
+        "coding_lab",
+        "lesson_document",
+        "mind_map",
+        "extended_reading"
+      ],
+      "path_resource_ids_before": [
+        40,
+        35,
+        30
+      ],
+      "path_resource_ids_after": [
+        38,
+        33,
+        28
+      ],
+      "path_reason_after": "结合画像版本 11 与当前学习进度，优先学习 if 分支，并针对近期薄弱点：Python 与 print、循环结构、Python 入门。",
+      "suggestion_accepted_id": 8,
+      "suggestion_rejected_id": 9,
+      "task_id": "rg_4011926a7b544c0e897d",
+      "task_backend": "local_rules",
+      "task_persisted": true,
+      "approved_resource_id": 39,
+      "approved_resource_visible": true,
+      "timings_ms": {
+        "profile_reset_ms": 8,
+        "resource_generation_ms": 87,
+        "suggestion_accept_ms": 12,
+        "teacher_review_ms": 10
+      }
+    }
+  ],
+  "summary": {
+    "rounds_passed": 3,
+    "all_profile_versions_incremented": true,
+    "all_rejections_preserved_profile": true,
+    "all_recommendations_changed": true,
+    "all_paths_changed": true,
+    "all_tasks_persisted": true,
+    "all_reviews_visible": true
+  }
+}

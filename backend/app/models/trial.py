@@ -1,6 +1,6 @@
 """试炼业务模型"""
 import json
-from datetime import datetime
+from app.utils.time import utc_now
 
 from . import db
 
@@ -21,10 +21,10 @@ class Trial(db.Model):
     duration_minutes = db.Column(db.Integer, default=60)
     status = db.Column(db.String(20), nullable=False, default='running')  # draft | scheduled | running | ended
     reward_points = db.Column(db.Integer, default=35)
-    starts_at = db.Column(db.DateTime, default=datetime.utcnow)
+    starts_at = db.Column(db.DateTime, default=utc_now)
     ends_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     draft_questions_json = db.Column(db.Text)
 
     class_rel = db.relationship('Class', backref='trials')
@@ -109,7 +109,7 @@ class TrialParticipation(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     status = db.Column(db.String(20), nullable=False, default='joined')  # joined | completed | abandoned
     score = db.Column(db.Integer, default=0)
-    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    joined_at = db.Column(db.DateTime, default=utc_now)
     completed_at = db.Column(db.DateTime)
 
     __table_args__ = (db.UniqueConstraint('trial_id', 'user_id', name='unique_trial_user'),)

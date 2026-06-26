@@ -1,0 +1,226 @@
+- generic [ref=e285]:
+  - complementary "主导航" [ref=e286]:
+    - generic [ref=e287]:
+      - img [ref=e288]
+      - generic [ref=e291]: PLEX
+    - navigation [ref=e292]:
+      - link "总览 OVERVIEW" [ref=e293] [cursor=pointer]:
+        - /url: /student
+        - img [ref=e295]:
+          - img [ref=e296]
+        - generic [ref=e301]:
+          - generic [ref=e302]: 总览
+          - generic [ref=e303]: OVERVIEW
+      - link "探索舱 EXPLORER" [ref=e304] [cursor=pointer]:
+        - /url: /student/discovery
+        - img [ref=e306]:
+          - img [ref=e307]
+        - generic [ref=e310]:
+          - generic [ref=e311]: 探索舱
+          - generic [ref=e312]: EXPLORER
+      - link "星轨学习 STARPATH" [ref=e313] [cursor=pointer]:
+        - /url: /student/star-path
+        - img [ref=e315]:
+          - img [ref=e316]
+        - generic [ref=e322]:
+          - generic [ref=e323]: 星轨学习
+          - generic [ref=e324]: STARPATH
+      - link "试炼中心 TRIAL ARENA" [ref=e325] [cursor=pointer]:
+        - /url: /student/trials
+        - img [ref=e327]:
+          - img [ref=e328]
+        - generic [ref=e333]:
+          - generic [ref=e334]: 试炼中心
+          - generic [ref=e335]: TRIAL ARENA
+      - link "驿站助手 MESSENGER" [ref=e336] [cursor=pointer]:
+        - /url: /student/messenger
+        - img [ref=e338]:
+          - img [ref=e339]
+        - generic [ref=e342]:
+          - generic [ref=e343]: 驿站助手
+          - generic [ref=e344]: MESSENGER
+      - link "我的 MY SPACE" [ref=e345] [cursor=pointer]:
+        - /url: /student/me/growth
+        - img [ref=e347]:
+          - img [ref=e348]
+        - generic [ref=e351]:
+          - generic [ref=e352]: 我的
+          - generic [ref=e353]: MY SPACE
+    - button "收起侧栏" [ref=e354] [cursor=pointer]: «
+  - generic [ref=e355]:
+    - banner [ref=e356]:
+      - generic [ref=e357]:
+        - heading "星轨学习" [level=1] [ref=e358]: 星轨学习
+        - paragraph [ref=e360]: 探索编程知识宇宙，点亮你的能力星图
+      - generic [ref=e364]:
+        - img [ref=e366]:
+          - img [ref=e367]
+        - generic [ref=e370]:
+          - textbox "搜索当前星轨知识点…" [ref=e371]
+          - generic:
+            - generic: 搜索当前星轨知识点…
+      - generic [ref=e374]:
+        - generic [ref=e375]:
+          - button "通知" [ref=e376] [cursor=pointer]:
+            - img [ref=e377]:
+              - img [ref=e378]
+          - superscript [ref=e381]:
+            - generic [ref=e384]:
+              - generic [ref=e385]: "7"
+              - generic [ref=e387]: "7"
+              - generic [ref=e388]: "7"
+        - button "当前外观：深色模式，点击切换" [ref=e389] [cursor=pointer]:
+          - img [ref=e390]:
+            - img [ref=e391]
+        - button "打开用户菜单" [ref=e394] [cursor=pointer]:
+          - generic [ref=e399]:
+            - strong [ref=e400]: 学生1
+            - emphasis [ref=e401]: Lv.2
+          - img [ref=e402]:
+            - img [ref=e403]
+    - main [ref=e406]:
+      - navigation "星轨学习导航" [ref=e407]:
+        - link "学习路径" [ref=e408] [cursor=pointer]:
+          - /url: /student/star-path
+        - link "个性化资源" [ref=e409] [cursor=pointer]:
+          - /url: /student/star-path/resources
+      - region "星域分类" [ref=e410]:
+        - button "全部阶段" [ref=e411] [cursor=pointer]
+        - button "第一段 Python" [ref=e412] [cursor=pointer]
+        - button "条件与循环" [ref=e413] [cursor=pointer]
+        - button "容器与函数" [ref=e414] [cursor=pointer]
+        - button "算法小任务" [ref=e415] [cursor=pointer]
+        - generic [ref=e416]:
+          - button "查看星图" [ref=e417] [cursor=pointer]:
+            - text: 查看星图
+            - img [ref=e418]:
+              - img [ref=e419]
+          - button "知识图谱" [ref=e421] [cursor=pointer]:
+            - img [ref=e422]:
+              - img [ref=e423]
+      - region "会写第一段 Python星轨" [ref=e425]:
+        - generic:
+          - generic [ref=e426]:
+            - generic [ref=e427]:
+              - generic [ref=e428]:
+                - heading "会写第一段 Python星域" [level=2] [ref=e429]
+                - generic [ref=e430]: 进行中
+              - paragraph [ref=e431]: 星域探索进度
+              - strong [ref=e432]: 51%
+              - paragraph [ref=e435]:
+                - text: 从 print 输出、注释到变量与 input，完成第一个可运行程序。
+                - generic [ref=e436]: 重点：print · 注释 · 变量 · input
+            - generic "星轨节点图" [ref=e437]:
+              - generic "全部星域知识点" [ref=e438]:
+                - button "入门 Python 与 print 认识 Python 并用 print 输出文本。 会写第一段 Python" [ref=e439] [cursor=pointer]:
+                  - generic [ref=e440]: 入门
+                  - strong [ref=e441]: Python 与 print
+                  - paragraph [ref=e442]: 认识 Python 并用 print 输出文本。
+                  - emphasis [ref=e443]: 会写第一段 Python
+                - 'button "入门 注释 用 # 与三引号写注释，提升代码可读性。 会写第一段 Python" [ref=e444] [cursor=pointer]':
+                  - generic [ref=e445]: 入门
+                  - strong [ref=e446]: 注释
+                  - paragraph [ref=e447]: "用 # 与三引号写注释，提升代码可读性。"
+                  - emphasis [ref=e448]: 会写第一段 Python
+                - button "入门 变量与类型 声明变量并理解 int/float/str/bool。 会写第一段 Python" [ref=e449] [cursor=pointer]:
+                  - generic [ref=e450]: 入门
+                  - strong [ref=e451]: 变量与类型
+                  - paragraph [ref=e452]: 声明变量并理解 int/float/str/bool。
+                  - emphasis [ref=e453]: 会写第一段 Python
+                - button "入门 输入 input 用 input 读取用户输入并处理字符串。 会写第一段 Python" [ref=e454] [cursor=pointer]:
+                  - generic [ref=e455]: 入门
+                  - strong [ref=e456]: 输入 input
+                  - paragraph [ref=e457]: 用 input 读取用户输入并处理字符串。
+                  - emphasis [ref=e458]: 会写第一段 Python
+                - button "入门 运算与表达式 算术、比较与逻辑运算组合判断。 条件与循环" [ref=e459] [cursor=pointer]:
+                  - generic [ref=e460]: 入门
+                  - strong [ref=e461]: 运算与表达式
+                  - paragraph [ref=e462]: 算术、比较与逻辑运算组合判断。
+                  - emphasis [ref=e463]: 条件与循环
+                - button "入门 if 分支 用 if/elif/else 处理多路分支。 条件与循环" [ref=e464] [cursor=pointer]:
+                  - generic [ref=e465]: 入门
+                  - strong [ref=e466]: if 分支
+                  - paragraph [ref=e467]: 用 if/elif/else 处理多路分支。
+                  - emphasis [ref=e468]: 条件与循环
+                - button "入门 循环结构 for 与 while 重复执行任务。 条件与循环" [ref=e469] [cursor=pointer]:
+                  - generic [ref=e470]: 入门
+                  - strong [ref=e471]: 循环结构
+                  - paragraph [ref=e472]: for 与 while 重复执行任务。
+                  - emphasis [ref=e473]: 条件与循环
+                - button "进阶 range 与控制 range、break 与 continue 精细控制循环。 条件与循环" [ref=e474] [cursor=pointer]:
+                  - generic [ref=e475]: 进阶
+                  - strong [ref=e476]: range 与控制
+                  - paragraph [ref=e477]: range、break 与 continue 精细控制循环。
+                  - emphasis [ref=e478]: 条件与循环
+                - button "入门 列表 list 创建列表、索引切片与遍历。 容器、字符串与函数" [ref=e479] [cursor=pointer]:
+                  - generic [ref=e480]: 入门
+                  - strong [ref=e481]: 列表 list
+                  - paragraph [ref=e482]: 创建列表、索引切片与遍历。
+                  - emphasis [ref=e483]: 容器、字符串与函数
+                - button "进阶 字典 dict 键值对存储与常见操作。 容器、字符串与函数" [ref=e484] [cursor=pointer]:
+                  - generic [ref=e485]: 进阶
+                  - strong [ref=e486]: 字典 dict
+                  - paragraph [ref=e487]: 键值对存储与常见操作。
+                  - emphasis [ref=e488]: 容器、字符串与函数
+                - button "入门 字符串处理 索引、切片与常用字符串方法。 容器、字符串与函数" [ref=e489] [cursor=pointer]:
+                  - generic [ref=e490]: 入门
+                  - strong [ref=e491]: 字符串处理
+                  - paragraph [ref=e492]: 索引、切片与常用字符串方法。
+                  - emphasis [ref=e493]: 容器、字符串与函数
+                - button "进阶 函数基础 定义函数、参数与返回值。 容器、字符串与函数" [ref=e494] [cursor=pointer]:
+                  - generic [ref=e495]: 进阶
+                  - strong [ref=e496]: 函数基础
+                  - paragraph [ref=e497]: 定义函数、参数与返回值。
+                  - emphasis [ref=e498]: 容器、字符串与函数
+                - button "进阶 文件读写 读取与写入文本文件。 简单算法小任务" [ref=e499] [cursor=pointer]:
+                  - generic [ref=e500]: 进阶
+                  - strong [ref=e501]: 文件读写
+                  - paragraph [ref=e502]: 读取与写入文本文件。
+                  - emphasis [ref=e503]: 简单算法小任务
+                - button "进阶 异常处理 try/except 捕获常见错误。 简单算法小任务" [ref=e504] [cursor=pointer]:
+                  - generic [ref=e505]: 进阶
+                  - strong [ref=e506]: 异常处理
+                  - paragraph [ref=e507]: try/except 捕获常见错误。
+                  - emphasis [ref=e508]: 简单算法小任务
+                - button "入门 求和与统计 累加、计数与最值统计。 简单算法小任务" [ref=e509] [cursor=pointer]:
+                  - generic [ref=e510]: 入门
+                  - strong [ref=e511]: 求和与统计
+                  - paragraph [ref=e512]: 累加、计数与最值统计。
+                  - emphasis [ref=e513]: 简单算法小任务
+                - button "入门 线性查找 在列表中查找目标元素。 简单算法小任务" [ref=e514] [cursor=pointer]:
+                  - generic [ref=e515]: 入门
+                  - strong [ref=e516]: 线性查找
+                  - paragraph [ref=e517]: 在列表中查找目标元素。
+                  - emphasis [ref=e518]: 简单算法小任务
+          - generic [ref=e519]:
+            - heading "星域概览" [level=2] [ref=e520]: 星域概览
+            - generic [ref=e522]:
+              - button "会写第一段 Python 51% 进行中" [ref=e523] [cursor=pointer]:
+                - generic [ref=e524]:
+                  - strong [ref=e525]: 会写第一段 Python
+                  - paragraph [ref=e526]: 51%
+                  - emphasis [ref=e527]: 进行中
+              - button "条件与循环 4% 进行中" [ref=e529] [cursor=pointer]:
+                - generic [ref=e530]:
+                  - strong [ref=e531]: 条件与循环
+                  - paragraph [ref=e532]: 4%
+                  - emphasis [ref=e533]: 进行中
+              - button "容器、字符串与函数 2% 进行中" [ref=e535] [cursor=pointer]:
+                - generic [ref=e536]:
+                  - strong [ref=e537]: 容器、字符串与函数
+                  - paragraph [ref=e538]: 2%
+                  - emphasis [ref=e539]: 进行中
+              - button "简单算法小任务 2% 进行中" [ref=e541] [cursor=pointer]:
+                - generic [ref=e542]:
+                  - strong [ref=e543]: 简单算法小任务
+                  - paragraph [ref=e544]: 2%
+                  - emphasis [ref=e545]: 进行中
+        - complementary "知识点详情" [ref=e547]:
+          - generic [ref=e554]:
+            - strong [ref=e555]: 驿站使者建议
+            - link "前往驿站使者" [ref=e556] [cursor=pointer]:
+              - /url: "#"
+              - text: 前往驿站使者
+              - img [ref=e557]:
+                - img [ref=e558]
+          - button "节点未解锁" [disabled] [ref=e560]

@@ -1,5 +1,5 @@
 """系统公告（管理员 → 教师等）"""
-from datetime import datetime
+from app.utils.time import utc_now
 
 from . import db
 
@@ -13,7 +13,7 @@ class SystemAnnouncement(db.Model):
     target_role = db.Column(db.String(20), nullable=False, default='teacher')  # teacher | student | all
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     author = db.relationship('User', foreign_keys=[created_by])
 

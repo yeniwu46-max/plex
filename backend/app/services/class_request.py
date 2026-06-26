@@ -1,15 +1,14 @@
 """班级变更审批服务。"""
-from datetime import datetime
-
 from app.models import Class, ClassChangeRequest, User, db
 from app.services.class_service import ClassService
 from app.utils.access import can_manage_classes, is_admin, teacher_owns_class
+from app.utils.time import utc_now
 
 
 class ClassRequestService:
     @staticmethod
     def create_request(requester_id: int, action: str, payload: dict, class_id: int | None = None, reason: str | None = None):
-        user = User.query.get(requester_id)
+        user = db.session.get(User, requester_id)
         if not user:
             raise ValueError('用户不存在')
 
@@ -67,19 +66,19 @@ class ClassRequestService:
 
     @staticmethod
     def review(request_id: int, reviewer_id: int, approve: bool, note: str | None = None):
-        row = ClassChangeRequest.query.get(request_id)
+        row = db.session.get(ClassChangeRequest, request_id)
         if not row:
             raise ValueError('申请不存在')
         if row.status != 'pending':
             raise ValueError('该申请已处理')
 
-        reviewer = User.query.get(reviewer_id)
+        reviewer = db.session.get(User, reviewer_id)
         if not reviewer or not is_admin(reviewer):
             raise PermissionError('仅管理员可审批')
 
         row.reviewer_id = reviewer_id
         row.review_note = note
-        row.reviewed_at = datetime.utcnow()
+        row.reviewed_at = utc_now()
 
         if not approve:
             row.status = 'rejected'

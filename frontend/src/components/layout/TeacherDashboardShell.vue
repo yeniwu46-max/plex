@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { inject, onMounted, provide, ref } from 'vue'
-import { NButton, NDropdown, NIcon, type DropdownOption } from 'naive-ui'
-import { ChevronDownOutline, MapOutline } from '@vicons/ionicons5'
+import { useRouter } from 'vue-router'
+import { NButton, NIcon } from 'naive-ui'
+import { MapOutline } from '@vicons/ionicons5'
 import TeacherSidebar, { type TeacherNavKey } from './TeacherSidebar.vue'
 import PlexTopbar from './PlexTopbar.vue'
 import TeacherToolbar from '../teacher/TeacherToolbar.vue'
@@ -38,6 +39,7 @@ const emit = defineEmits<{
   viewSwitch: [key: string]
 }>()
 
+const router = useRouter()
 const parentOverview = inject(TEACHER_OVERVIEW_KEY, null)
 const overview = parentOverview ?? useTeacherOverview()
 if (!parentOverview) {
@@ -48,13 +50,9 @@ const sidebarCollapsed = ref(false)
 const searchText = ref('')
 provide(TEACHER_SHELL_SEARCH_KEY, searchText)
 
-const viewOptions: DropdownOption[] = [
-  { label: '路线图', key: 'roadmap' },
-  { label: '列表视图', key: 'list' },
-]
-
-function onViewSelect(key: string) {
-  emit('viewSwitch', key)
+function goStarMap() {
+  emit('viewSwitch', 'star-map')
+  void router.push('/teacher/starfield')
 }
 
 onMounted(() => {
@@ -79,13 +77,10 @@ onMounted(() => {
         />
 
         <div v-if="showViewSwitcher" class="topbar-actions">
-          <n-dropdown trigger="click" :options="viewOptions" @select="onViewSelect">
-            <n-button secondary round size="small" class="view-switch">
-              <n-icon :component="MapOutline" :size="18" />
-              <span class="view-switch__text">切换视图</span>
-              <n-icon :component="ChevronDownOutline" :size="16" />
-            </n-button>
-          </n-dropdown>
+          <n-button secondary round size="small" class="view-switch" @click="goStarMap">
+            <n-icon :component="MapOutline" :size="18" />
+            <span class="view-switch__text">查看星图</span>
+          </n-button>
         </div>
 
         <div v-if="!hideToolbar" class="toolbar-slot">

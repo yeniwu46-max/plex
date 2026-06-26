@@ -11,7 +11,17 @@ const route = useRoute()
 const router = useRouter()
 
 const questionId = computed(() => String(route.params.questionId ?? ''))
-const question = computed(() => getPythonTrialQuestion(questionId.value))
+const storedQuestion = (() => {
+  try {
+    const raw = sessionStorage.getItem('plex:active-practice-question')
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+})()
+const question = computed(() => getPythonTrialQuestion(questionId.value) ?? (
+  storedQuestion?.id === questionId.value ? storedQuestion : null
+))
 const starPathNode = computed(() => getStarPathNodeByQuestionId(questionId.value))
 const pageSubtitle = computed(() => {
   if (!question.value) return 'Python 入门 · 代码试炼'

@@ -1,0 +1,8 @@
+- main [ref=e4]:
+  - generic [ref=e5]:
+    - img [ref=e6]:
+      - img [ref=e7]
+    - heading "登录失败" [level=1] [ref=e11]
+    - paragraph [ref=e12]: github 登录尚未配置 Client ID/Secret
+    - button "返回登录" [ref=e13] [cursor=pointer]:
+      - generic [ref=e14]: 返回登录

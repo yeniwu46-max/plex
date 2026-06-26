@@ -36,7 +36,7 @@ export interface ResourceTask {
   status: 'pending' | 'running' | 'completed' | 'failed'
   progress: number
   current_agent?: string | null
-  steps: Array<{ agent: string; status: string; latency_ms?: number | null }>
+  steps: AgentTraceStep[]
   resources: PersonalizedResource[]
   error?: string | null
   backend: string
@@ -47,6 +47,22 @@ export interface ResourceTask {
   recoverable: boolean
   created_at?: string | null
   completed_at?: string | null
+}
+
+export interface AgentTraceStep {
+  agent: string
+  name?: string
+  contract_version?: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  latency_ms?: number | null
+  backend?: string | null
+  model?: string | null
+  depends_on?: string | null
+  input_summary?: Record<string, unknown>
+  output_summary?: Record<string, unknown>
+  started_at?: string | null
+  completed_at?: string | null
+  error?: string | null
 }
 
 export async function createResourceTask(
@@ -99,6 +115,22 @@ export async function fetchReviewResources(reviewStatus = 'pending_review') {
     { params: { review_status: reviewStatus } },
   )
   if (data.code !== 0) throw new Error(data.message || '待审核资源加载失败')
+  return data.data
+}
+
+export interface ResourceReviewMetrics {
+  total_resources: number
+  status_counts: Record<'pending_review' | 'approved' | 'rejected', number>
+  pending_review_count: number
+  average_review_minutes: number | null
+  risk_reason_distribution: Array<{ reason: string; count: number }>
+}
+
+export async function fetchResourceReviewMetrics() {
+  const { data } = await http.get<ApiEnvelope<ResourceReviewMetrics>>(
+    '/v1/teacher/personalized-resources/metrics',
+  )
+  if (data.code !== 0) throw new Error(data.message || '审核指标加载失败')
   return data.data
 }
 

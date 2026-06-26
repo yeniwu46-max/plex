@@ -1,6 +1,6 @@
 """教师试炼作业模板"""
 import json
-from datetime import datetime
+from app.utils.time import utc_now
 
 from . import db
 
@@ -17,8 +17,8 @@ class TeacherTrialTemplate(db.Model):
     difficulty = db.Column(db.Integer, default=60)
     duration_minutes = db.Column(db.Integer, default=60)
     reward_points = db.Column(db.Integer, default=35)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     teacher = db.relationship('User', backref='trial_templates', foreign_keys=[teacher_id])
 

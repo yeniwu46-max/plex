@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.models import StudentMistake, TrialQuestion, User, db
 from app.services.question_generator import QuestionGenerator
+from app.utils.time import utc_now
 
 
 class MistakeService:
@@ -19,7 +20,7 @@ class MistakeService:
         meta: dict | None = None,
         passed: bool = False,
     ) -> StudentMistake | None:
-        now = datetime.utcnow()
+        now = utc_now()
         key = QuestionGenerator._normalize_key(knowledge_key)
         ref = str(question_ref)
         row = StudentMistake.query.filter_by(
@@ -88,7 +89,7 @@ class MistakeService:
 
     @staticmethod
     def record_mcq_correct(user_id: int, question_id: int):
-        question = TrialQuestion.query.get(question_id)
+        question = db.session.get(TrialQuestion, question_id)
         if not question:
             return None
         return MistakeService._upsert(
@@ -124,6 +125,11 @@ class MistakeService:
             'failed_case_labels': [item.get('label') for item in failed if item.get('label')],
             'error_types': error_types,
         }
+        # 诊断引擎可在记录错题时回填四层错因，供历史错因链使用（无需 DB 迁移，meta 为 JSON）。
+        if payload.get('error_layer'):
+            meta['error_layer'] = payload['error_layer']
+        if payload.get('error_subtype'):
+            meta['error_subtype'] = payload['error_subtype']
 
         if all_passed:
             return MistakeService._upsert(
@@ -182,6 +188,30 @@ class MistakeService:
         return [row.to_dict() for row in rows]
 
     @staticmethod
+    def list_recent_with_meta(user_id: int, limit: int = 8) -> list[dict]:
+        """返回最近活跃错题的结构化信息（含 error_layer），供诊断历史错因链使用。"""
+        rows = (
+            StudentMistake.query.filter_by(user_id=user_id)
+            .order_by(StudentMistake.last_failed_at.desc())
+            .all()
+        )
+        active = [row for row in rows if MistakeService._is_active(row)]
+        result: list[dict] = []
+        for row in active[:limit]:
+            data = row.to_dict()
+            meta = data.get('meta') or {}
+            result.append({
+                'knowledge_key': data.get('knowledge_key'),
+                'knowledge_label': data.get('knowledge_label'),
+                'error_type': data.get('error_type'),
+                'error_layer': meta.get('error_layer'),
+                'error_subtype': meta.get('error_subtype'),
+                'fail_count': data.get('fail_count', 1),
+                'meta': meta,
+            })
+        return result
+
+    @staticmethod
     def list_weak_knowledge(user_id: int, limit: int = 5) -> list[dict]:
         rows = StudentMistake.query.filter_by(user_id=user_id).all()
         active = [row for row in rows if MistakeService._is_active(row)]
@@ -189,7 +219,7 @@ class MistakeService:
             return []
 
         scores: dict[str, dict] = defaultdict(lambda: {'fail_count': 0, 'weight': 0.0})
-        now = datetime.utcnow()
+        now = utc_now()
         for row in active:
             key = row.knowledge_key or 'algo'
             bucket = scores[key]
@@ -214,7 +244,7 @@ class MistakeService:
     def list_for_teacher_student(current_user_id: int, student_id: int, role_name: str):
         from app.services.trial import TrialService
 
-        student = User.query.get(student_id)
+        student = db.session.get(User, student_id)
         if not student or not student.class_id:
             raise ValueError('学生不存在或未分班')
         if not student.role or student.role.name != 'student':
@@ -246,6 +276,6 @@ class MistakeService:
             .all()
         )
         for progress in rows:
-            question = TrialQuestion.query.get(progress.question_id)
+            question = db.session.get(TrialQuestion, progress.question_id)
             if question:
                 MistakeService.record_mcq_wrong(user_id, question)

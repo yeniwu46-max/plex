@@ -1,21 +1,20 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   NIcon,
   NButton,
-  NDropdown,
-  type DropdownOption,
 } from 'naive-ui'
 import {
-  ChevronDownOutline,
   MapOutline,
 } from '@vicons/ionicons5'
 import PlexSidebar from './PlexSidebar.vue'
+import type { StudentNavKey } from './PlexSidebar.vue'
 import PlexTopbar from './PlexTopbar.vue'
 
 const props = withDefaults(
   defineProps<{
-    activeNav: 'cabin' | 'track' | 'trial' | 'messenger' | 'daily' | 'archive' | 'profile' | 'resources' | 'control'
+    activeNav: StudentNavKey
     pageTitle: string
     pageSubtitle?: string
     searchPlaceholder: string
@@ -30,17 +29,13 @@ const emit = defineEmits<{
   searchSubmit: [query: string]
 }>()
 
+const router = useRouter()
 const sidebarCollapsed = ref(false)
 const searchText = ref('')
 
-const viewOptions: DropdownOption[] = [
-  { label: '路线图', key: 'roadmap' },
-  { label: '列表视图', key: 'list' },
-]
-
-
-function onViewSelect(key: string | number) {
-  emit('viewSwitch', String(key))
+function goStarMap() {
+  emit('viewSwitch', 'star-map')
+  void router.push('/student/star-path')
 }
 </script>
 
@@ -59,13 +54,10 @@ function onViewSelect(key: string | number) {
       />
 
       <div v-if="showViewSwitcher" class="topbar-actions">
-        <n-dropdown trigger="click" :options="viewOptions" @select="onViewSelect">
-          <n-button secondary round size="small" class="view-switch">
-            <n-icon :component="MapOutline" :size="18" />
-            <span class="view-switch__text">切换视图</span>
-            <n-icon :component="ChevronDownOutline" :size="16" />
-          </n-button>
-        </n-dropdown>
+        <n-button secondary round size="small" class="view-switch" @click="goStarMap">
+          <n-icon :component="MapOutline" :size="18" />
+          <span class="view-switch__text">查看星图</span>
+        </n-button>
       </div>
 
       <div v-if="$slots.toolbar" class="toolbar-slot">

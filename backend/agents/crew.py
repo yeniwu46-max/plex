@@ -8,15 +8,17 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
+
+from app.utils.time import utc_now
 
 from . import (
     code_analysis_agent,
     feedback_agent,
     knowledge_graph_agent,
     learning_diagnosis_agent,
+    learning_path_agent,
     path_recommendation_agent,
     teacher_assistant_agent,
 )
@@ -39,6 +41,12 @@ _AGENT_REGISTRY = [
         'name': '知识图谱智能体',
         'role': knowledge_graph_agent.ROLE,
         'module': knowledge_graph_agent,
+    },
+    {
+        'id': 'learning_path',
+        'name': '学习路径智能体',
+        'role': learning_path_agent.ROLE,
+        'module': learning_path_agent,
     },
     {
         'id': 'path_recommendation',
@@ -76,7 +84,7 @@ _STATUS: dict[str, dict[str, Any]] = {
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat() + 'Z'
+    return utc_now().isoformat() + 'Z'
 
 
 def _crewai_venv_python() -> Path | None:
@@ -133,7 +141,12 @@ def backend_name() -> str:
     return backend
 
 
-def _track(agent_id: str, fn: Callable[[], dict]) -> dict:
+def _track(
+    agent_id: str,
+    fn: Callable[[], dict],
+    trace: list[dict] | None = None,
+    summarize: Callable[[dict], str] | None = None,
+) -> dict:
     entry = _STATUS[agent_id]
     entry['status'] = 'running'
     started = time.perf_counter()
@@ -145,10 +158,34 @@ def _track(agent_id: str, fn: Callable[[], dict]) -> dict:
         entry['_runs'] += 1
         entry['_total_ms'] += elapsed_ms
         entry['avgLatency'] = round(entry['_total_ms'] / entry['_runs'], 1)
+        if trace is not None:
+            summary = ''
+            if summarize:
+                try:
+                    summary = summarize(result)
+                except Exception:
+                    summary = ''
+            trace.append({
+                'agentId': agent_id,
+                'name': entry['name'],
+                'role': entry['role'],
+                'status': 'success',
+                'latencyMs': round(elapsed_ms, 1),
+                'summary': summary,
+            })
         return result
     except Exception:
         entry['status'] = 'error'
         entry['lastRunAt'] = _now()
+        if trace is not None:
+            trace.append({
+                'agentId': agent_id,
+                'name': entry['name'],
+                'role': entry['role'],
+                'status': 'error',
+                'latencyMs': round((time.perf_counter() - started) * 1000, 1),
+                'summary': '执行出错',
+            })
         raise
 
 
@@ -168,7 +205,18 @@ def get_agents_status() -> list[dict]:
 
 
 def _run_mock_student_pipeline(payload: dict) -> dict:
-    diagnosis = _track('learning_diagnosis', lambda: learning_diagnosis_agent.execute(payload))
+    trace: list[dict] = []
+
+    diagnosis = _track(
+        'learning_diagnosis',
+        lambda: learning_diagnosis_agent.execute(payload),
+        trace=trace,
+        summarize=lambda r: '识别为{} · {} · 置信度 {}%'.format(
+            r.get('errorLayerLabel', r.get('errorType', '')),
+            r.get('proficiencyLabel', ''),
+            round(float(r.get('confidence', 0)) * 100),
+        ),
+    )
 
     code_payload = {
         'code': payload.get('code', ''),
@@ -177,16 +225,28 @@ def _run_mock_student_pipeline(payload: dict) -> dict:
         'stderr': payload.get('stderr'),
         'expectedOutput': payload.get('expectedOutput'),
         'errorMessage': payload.get('errorMessage') or payload.get('stderr'),
+        'diagnosis': diagnosis,
     }
-    code_analysis = _track('code_analysis', lambda: code_analysis_agent.execute(code_payload))
+    code_analysis = _track(
+        'code_analysis',
+        lambda: code_analysis_agent.execute(code_payload),
+        trace=trace,
+        summarize=lambda r: r.get('codeIssueSummary', '已生成代码问题解释'),
+    )
 
     graph_payload = {
         'currentKnowledgePoints': payload.get('knowledgePoints') or [],
         'weakPoints': diagnosis['weakPoints'],
         'errorType': diagnosis['errorType'],
+        'relatedKnowledgePoints': diagnosis.get('relatedKnowledgePoints') or [],
         'codeAnalysis': code_analysis,
     }
-    graph_insight = _track('knowledge_graph', lambda: knowledge_graph_agent.execute(graph_payload))
+    graph_insight = _track(
+        'knowledge_graph',
+        lambda: knowledge_graph_agent.execute(graph_payload),
+        trace=trace,
+        summarize=lambda r: '定位相关节点：{}'.format('、'.join(r.get('relatedNodes', [])[:3])),
+    )
 
     path_payload = {
         'weakPoints': diagnosis['weakPoints'],
@@ -194,15 +254,27 @@ def _run_mock_student_pipeline(payload: dict) -> dict:
         'graphInsight': graph_insight,
         'currentStage': payload.get('currentStage', 1),
         'completedExercises': payload.get('completedExercises') or [],
+        'user_id': payload.get('user_id'),
+        'diagnosis': diagnosis,
     }
-    recommendation = _track('path_recommendation', lambda: path_recommendation_agent.execute(path_payload))
+    recommendation = _track(
+        'learning_path',
+        lambda: learning_path_agent.execute(path_payload),
+        trace=trace,
+        summarize=lambda r: '下一步：{}'.format(r.get('nextKnowledgePoint', '')),
+    )
 
     feedback_payload = {
         'diagnosis': diagnosis,
         'codeAnalysis': code_analysis,
         'recommendation': recommendation,
     }
-    feedback = _track('feedback', lambda: feedback_agent.execute(feedback_payload))
+    feedback = _track(
+        'feedback',
+        lambda: feedback_agent.execute(feedback_payload),
+        trace=trace,
+        summarize=lambda r: '生成{}策略反馈'.format(r.get('strategyType', '')),
+    )
 
     return {
         'diagnosis': diagnosis,
@@ -210,6 +282,7 @@ def _run_mock_student_pipeline(payload: dict) -> dict:
         'graphInsight': graph_insight,
         'recommendation': recommendation,
         'feedback': feedback,
+        'pipelineTrace': trace,
         'backend': backend_name(),
         'completedAt': _now(),
     }
@@ -252,7 +325,7 @@ def _try_crewai_student_pipeline(payload: dict) -> dict | None:
 
         agents = []
         tasks = []
-        for spec in _AGENT_REGISTRY[:5]:
+        for spec in _AGENT_REGISTRY[:6]:
             mod = spec['module']
             agent = Agent(
                 role=mod.ROLE,
@@ -283,6 +356,18 @@ def run_student_diagnose(payload: dict) -> dict:
     except Exception:
         pass
     return _run_mock_student_pipeline(payload)
+
+
+def run_learning_path_plan(payload: dict) -> dict:
+    def _run():
+        return learning_path_agent.execute(payload)
+
+    result = _track('learning_path', _run)
+    return {
+        **result,
+        'backend': backend_name(),
+        'completedAt': _now(),
+    }
 
 
 def run_teacher_suggestion(payload: dict) -> dict:

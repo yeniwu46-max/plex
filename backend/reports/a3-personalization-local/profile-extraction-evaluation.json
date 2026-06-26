@@ -1,0 +1,253 @@
+{
+  "backend": "local_rules",
+  "case_count": 16,
+  "dimension_count": 7,
+  "confusion": {
+    "tp": 21,
+    "tn": 91,
+    "fp": 0,
+    "fn": 0
+  },
+  "summary": {
+    "field_presence_accuracy": 1.0,
+    "positive_recall": 1.0,
+    "negative_specificity": 1.0,
+    "balanced_field_accuracy": 1.0,
+    "exact_case_match_rate": 1.0,
+    "value_check_pass_rate": 1.0
+  },
+  "cases": [
+    {
+      "id": "complete-01",
+      "category": "complete",
+      "expected_dimensions": [
+        "explanation_preference",
+        "interest_direction",
+        "knowledge_foundation",
+        "learning_goal",
+        "learning_pace",
+        "major_background",
+        "mistake_pattern"
+      ],
+      "actual_dimensions": [
+        "explanation_preference",
+        "interest_direction",
+        "knowledge_foundation",
+        "learning_goal",
+        "learning_pace",
+        "major_background",
+        "mistake_pattern"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {
+        "learning_pace": true
+      },
+      "exact_match": true
+    },
+    {
+      "id": "major-01",
+      "category": "single",
+      "expected_dimensions": [
+        "major_background"
+      ],
+      "actual_dimensions": [
+        "major_background"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "foundation-zero",
+      "category": "single",
+      "expected_dimensions": [
+        "knowledge_foundation"
+      ],
+      "actual_dimensions": [
+        "knowledge_foundation"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "foundation-prior",
+      "category": "single",
+      "expected_dimensions": [
+        "knowledge_foundation"
+      ],
+      "actual_dimensions": [
+        "knowledge_foundation"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "goal-01",
+      "category": "single",
+      "expected_dimensions": [
+        "learning_goal"
+      ],
+      "actual_dimensions": [
+        "learning_goal"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "preference-01",
+      "category": "single",
+      "expected_dimensions": [
+        "explanation_preference"
+      ],
+      "actual_dimensions": [
+        "explanation_preference"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "mistake-01",
+      "category": "single",
+      "expected_dimensions": [
+        "mistake_pattern"
+      ],
+      "actual_dimensions": [
+        "mistake_pattern"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "pace-01",
+      "category": "single",
+      "expected_dimensions": [
+        "learning_pace"
+      ],
+      "actual_dimensions": [
+        "learning_pace"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "interest-01",
+      "category": "single",
+      "expected_dimensions": [
+        "interest_direction"
+      ],
+      "actual_dimensions": [
+        "interest_direction"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "pace-fuzzy",
+      "category": "fuzzy",
+      "expected_dimensions": [
+        "learning_pace"
+      ],
+      "actual_dimensions": [
+        "learning_pace"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "foundation-conflict",
+      "category": "conflict",
+      "expected_dimensions": [
+        "knowledge_foundation"
+      ],
+      "actual_dimensions": [
+        "knowledge_foundation"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "omitted-weather",
+      "category": "omitted",
+      "expected_dimensions": [],
+      "actual_dimensions": [],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "omitted-question",
+      "category": "omitted",
+      "expected_dimensions": [],
+      "actual_dimensions": [],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "preference-interest",
+      "category": "multi",
+      "expected_dimensions": [
+        "explanation_preference",
+        "interest_direction"
+      ],
+      "actual_dimensions": [
+        "explanation_preference",
+        "interest_direction"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "goal-finish",
+      "category": "single",
+      "expected_dimensions": [
+        "learning_goal"
+      ],
+      "actual_dimensions": [
+        "learning_goal"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    },
+    {
+      "id": "mistake-exception",
+      "category": "single",
+      "expected_dimensions": [
+        "mistake_pattern"
+      ],
+      "actual_dimensions": [
+        "mistake_pattern"
+      ],
+      "missing_dimensions": [],
+      "unexpected_dimensions": [],
+      "value_checks": {},
+      "exact_match": true
+    }
+  ]
+}

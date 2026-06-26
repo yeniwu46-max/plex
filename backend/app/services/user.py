@@ -1,10 +1,9 @@
 """User service."""
-from datetime import datetime
-
 from werkzeug.security import generate_password_hash
 
 from .base import BaseService
 from app.models import RankingCache, User, Role, db
+from app.utils.time import utc_now
 
 
 class UserService(BaseService):
@@ -12,7 +11,7 @@ class UserService(BaseService):
 
     @staticmethod
     def get_user(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
         return user
@@ -53,7 +52,7 @@ class UserService(BaseService):
 
     @staticmethod
     def get_current_user_info(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
 
@@ -137,7 +136,7 @@ class UserService(BaseService):
 
     @staticmethod
     def update_user(user_id, admin_edit=False, **kwargs):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
 
@@ -188,7 +187,7 @@ class UserService(BaseService):
 
     @staticmethod
     def delete_user(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
 
@@ -199,12 +198,12 @@ class UserService(BaseService):
             user.class_id = None
 
         user.status = 'deleted'
-        user.deleted_at = datetime.utcnow()
+        user.deleted_at = utc_now()
         db.session.commit()
 
     @staticmethod
     def freeze_user(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
 
@@ -213,7 +212,7 @@ class UserService(BaseService):
 
     @staticmethod
     def unfreeze_user(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
 
@@ -222,7 +221,7 @@ class UserService(BaseService):
 
     @staticmethod
     def get_user_permissions(user_id):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
 
@@ -267,7 +266,7 @@ class UserService(BaseService):
 
         from app.models import Class
 
-        class_obj = Class.query.get(class_id)
+        class_obj = db.session.get(Class, class_id)
         if required and not class_obj:
             raise Exception('班级不存在')
         return class_obj

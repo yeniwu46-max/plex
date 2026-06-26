@@ -36,6 +36,34 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
         self.assertEqual(task['status'], 'completed')
         self.assertEqual(task['progress'], 100)
         self.assertEqual(len(task['resources']), 5)
+        self.assertEqual(
+            [step['agent'] for step in task['steps']],
+            [
+                'profile_interpreter',
+                'knowledge_retriever',
+                'instructional_designer',
+                'resource_generator',
+                'quality_reviewer',
+                'path_planner',
+            ],
+        )
+        self.assertTrue(all(step['status'] == 'completed' for step in task['steps']))
+        self.assertTrue(all(step['contract_version'] == 'resource-pipeline-v1' for step in task['steps']))
+        self.assertTrue(all(step['input_summary'] for step in task['steps']))
+        self.assertTrue(all(step['output_summary'] for step in task['steps']))
+        self.assertEqual(task['steps'][1]['depends_on'], 'profile_interpreter')
+        self.assertEqual(task['steps'][3]['backend'], 'local_rules')
+        self.assertEqual(
+            task['steps'][4]['output_summary']['resource_count'],
+            5,
+        )
+        self.assertEqual(
+            task['steps'][5]['output_summary']['blocked_pending_review'],
+            1,
+        )
+        serialized_steps = str(task['steps'])
+        self.assertNotIn('evidence', serialized_steps)
+        self.assertNotIn('assistant_reply', serialized_steps)
         self.assertEqual({item['resource_type'] for item in task['resources']}, {
             'lesson_document', 'mind_map', 'exercise_set', 'extended_reading', 'coding_lab'
         })
@@ -44,15 +72,43 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
             item['citations'][0]['document_id'] == 'python-stage2-loop'
             for item in task['resources']
         ))
-        self.assertTrue(all(item['review_status'] == 'approved' for item in task['resources']))
+        statuses = {
+            item['resource_type']: item['review_status']
+            for item in task['resources']
+        }
+        self.assertEqual(statuses['extended_reading'], 'pending_review')
+        self.assertTrue(all(
+            status == 'approved'
+            for resource_type, status in statuses.items()
+            if resource_type != 'extended_reading'
+        ))
         self.assertTrue(all(item['backend'] == 'local_rules' for item in task['resources']))
+
+        metrics = self.client.get(
+            '/api/v1/teacher/personalized-resources/metrics',
+            headers=self.auth(self.teacher_token),
+        )
+        self.assertEqual(metrics.status_code, 200)
+        metric_data = metrics.get_json()['data']
+        self.assertEqual(metric_data['total_resources'], 5)
+        self.assertEqual(metric_data['pending_review_count'], 1)
+        self.assertEqual(metric_data['status_counts']['approved'], 4)
+        self.assertEqual(
+            metric_data['risk_reason_distribution'],
+            [{'reason': 'low_confidence', 'count': 1}],
+        )
+        denied_metrics = self.client.get(
+            '/api/v1/teacher/personalized-resources/metrics',
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(denied_metrics.status_code, 403)
 
         listing = self.client.get(
             '/api/v1/student/personalized-resources',
             headers=self.auth(self.student_token),
         )
         self.assertEqual(listing.status_code, 200)
-        self.assertEqual(listing.get_json()['data']['total'], 5)
+        self.assertEqual(listing.get_json()['data']['total'], 4)
 
     def test_scope_validation_and_teacher_review(self):
         invalid = self.client.post(

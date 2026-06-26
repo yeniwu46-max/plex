@@ -6,6 +6,7 @@ from datetime import date, datetime
 from app.models import EmergencyMissionQuestion, EmergencyMissionSession, User, db
 from app.services.question_generator import KNOWLEDGE_LABELS, QuestionGenerator
 from app.services.student_progress import StudentProgressService
+from app.utils.time import utc_now
 
 EMERGENCY_REWARD_XP = 55
 EMERGENCY_QUESTION_COUNT = 3
@@ -84,7 +85,7 @@ class EmergencyMissionService:
 
     @staticmethod
     def start_session(user_id: int):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 
@@ -134,7 +135,7 @@ class EmergencyMissionService:
 
     @staticmethod
     def submit_session(user_id: int, session_id: int, answers: list[dict]):
-        session = EmergencyMissionSession.query.get(session_id)
+        session = db.session.get(EmergencyMissionSession, session_id)
         if not session or session.user_id != user_id:
             raise ValueError('任务不存在')
         if session.status != 'in_progress':
@@ -157,7 +158,7 @@ class EmergencyMissionService:
         session.correct_count = correct_count
         session.all_correct = correct_count == len(session.questions)
         session.status = 'submitted'
-        session.submitted_at = datetime.utcnow()
+        session.submitted_at = utc_now()
 
         if not session.all_correct:
             from app.services.mistake import MistakeService

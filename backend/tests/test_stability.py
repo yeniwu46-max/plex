@@ -1,7 +1,7 @@
 import json
 import os
 import unittest
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import Mock, patch
 
 from flask_jwt_extended import create_access_token
@@ -12,6 +12,7 @@ from app.models import ResourceGenerationTask, StudentProfileSuggestion, User, d
 from app.services.iflytek_spark import IflytekSparkService, SparkServiceError
 from app.services.mistake import MistakeService
 from app.services.personalized_resource import PersonalizedResourceService
+from app.utils.time import utc_now
 
 
 class StabilityTestCase(unittest.TestCase):
@@ -57,6 +58,13 @@ class StabilityTestCase(unittest.TestCase):
                 result = IflytekSparkService.chat_json('system', 'user')
         self.assertTrue(result['ok'])
         self.assertEqual(IflytekSparkService.status()['request_id'], 'req-test')
+
+        response.json.return_value = {
+            'choices': [{'message': {'content': '结果如下：\n```json\n{"ok": true}\n```'}}],
+        }
+        with patch.dict(os.environ, {'IFLYTEK_SPARK_API_PASSWORD': 'test-only'}):
+            with patch('app.services.iflytek_spark.requests.post', return_value=response):
+                self.assertTrue(IflytekSparkService.chat_json('system', 'user')['ok'])
 
         response.status_code = 429
         with patch.dict(os.environ, {'IFLYTEK_SPARK_API_PASSWORD': 'test-only'}):
@@ -119,7 +127,7 @@ class StabilityTestCase(unittest.TestCase):
                 requested_types=['lesson_document'],
                 status='running',
                 progress=40,
-                updated_at=datetime.utcnow() - timedelta(minutes=20),
+                updated_at=utc_now() - timedelta(minutes=20),
             )
             db.session.add(row)
             db.session.commit()

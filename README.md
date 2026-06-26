@@ -62,18 +62,40 @@ PLEX Universe 是一个面向编程学习场景的个性化学习平台，项目
 
 ## 快速开始
 
-### 1. 启动后端
+### Windows 一键启动
+
+在仓库根目录双击 `start.bat`，脚本会：
+
+1. 检查 Python、Node.js 和 npm。
+2. 按需安装前后端依赖。
+3. 非破坏性初始化或升级数据库。
+4. 分别启动 Flask 后端和 Vue 前端。
+5. 自动打开 `http://localhost:5173`。
+
+只检查环境、不启动服务：
+
+```bat
+start.bat --check
+```
+
+启动服务但不自动打开浏览器：
+
+```bat
+start.bat --no-browser
+```
+
+### 手动启动后端
 
 ```bash
 cd backend
 pip install -r requirements.txt
-python init_db.py
+python manage.py init
 python run.py
 ```
 
 默认后端地址：`http://127.0.0.1:5000`
 
-### 2. 启动前端
+### 手动启动前端
 
 ```bash
 cd frontend
@@ -165,12 +187,24 @@ cd ../frontend && npm run build
 
 ## 文档入口
 
+- [A3 下一阶段路线图](docs/2026-06-11-A3-next-stage-roadmap.md)：从当前可演示基线推进到真实 AI、可审计智能体、量化评测和正式交付。
 - [技术选型与约定.md](技术选型与约定.md)：当前技术栈事实来源。
 - [TECH_PLAN.md](TECH_PLAN.md)：架构、阶段目标和模块总览。
 - [backend_api_design.md](backend_api_design.md)：API 与数据表设计。
 - [backend/QUICKSTART.md](backend/QUICKSTART.md)：后端本地启动、测试账号和种子脚本。
 - [frontend_design_v2.md](frontend_design_v2.md)：前端 UI/UX 与游戏化设计规范。
 - [docs/2026-05-26-teacher-workbench-summary.md](docs/2026-05-26-teacher-workbench-summary.md)：教师端、试炼与三端隔离阶段总结。
+
+## 2026-06-12 可信度冲刺
+
+- 已实现学生与教师学习效果接口，以资源生成任务时间为介入点；前后各少于 3 条有效作答时明确返回 `insufficient_evidence`。
+- 学生成长档案和教师 Explorer 档案展示同一后端事实源的“学习前 / 学习后 / 提升值”。
+- 画像对话、资源生成、驿站问答和知识库查询已统一课程安全检查；知识库管理仅允许教师或管理员。
+- 已加入恶意上传签名检查、并发幂等保护、过期任务恢复和机器可读报告。
+- `start.bat` 优先使用根目录 `.venv`；`start.bat --check` 只检查迁移、数据、健康与演示账号，不启动服务。
+- 证据和状态分级见 [A3 证据索引](docs/2026-06-12-A3-evidence-index.md)。
+
+真实讯飞调用、在线 GitHub Actions/MySQL 8 结果仍属于外部条件阻塞；TTS 尚未实现。
 
 ## 当前状态
 

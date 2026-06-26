@@ -1,5 +1,5 @@
 """用户成就关联表模型"""
-from datetime import datetime
+from app.utils.time import utc_now
 from . import db
 
 
@@ -10,7 +10,7 @@ class UserAchievement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     achievement_id = db.Column(db.Integer, db.ForeignKey('achievements.id', ondelete='CASCADE'), nullable=False)
-    unlocked_at = db.Column(db.DateTime, default=datetime.utcnow)
+    unlocked_at = db.Column(db.DateTime, default=utc_now)
 
     __table_args__ = (db.UniqueConstraint('user_id', 'achievement_id', name='unique_user_achievement'),)
 

@@ -39,7 +39,7 @@ def upload_avatar():
             return error_response('图片不能超过 2MB', 40001, None, 400)
 
         user_id = int(get_jwt_identity())
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return error_response('用户不存在', 40401, None, 404)
 
@@ -63,4 +63,3 @@ def serve_avatar(filename):
 
 
 # ─── 统一资料上传接口 ──────────────────────────────────────────
-

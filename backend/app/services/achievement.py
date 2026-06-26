@@ -38,11 +38,11 @@ class AchievementService(BaseService):
     @staticmethod
     def unlock_achievement(user_id, achievement_id):
         """解锁成就"""
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
         
-        achievement = Achievement.query.get(achievement_id)
+        achievement = db.session.get(Achievement, achievement_id)
         if not achievement:
             raise Exception('成就不存在')
         
@@ -62,7 +62,7 @@ class AchievementService(BaseService):
     @staticmethod
     def get_user_achievements(user_id):
         """获取用户成就"""
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
         
@@ -81,7 +81,7 @@ class AchievementService(BaseService):
 
         feedback = IncentiveService.record_points(user_id, points, reason, related_id=related_id)
         db.session.commit()
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         user.incentive_feedback = feedback
         return user
 

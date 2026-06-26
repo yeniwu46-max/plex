@@ -50,7 +50,7 @@ function openMessenger() {
 }
 
 function openDailyQuest() {
-  void router.push('/student/daily')
+  void router.push({ path: '/student', hash: '#daily' })
 }
 
 function openTrials() {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import type { LearningReportResult } from '../../api/learningReport'
+import type { LearningEffectResult, LearningReportResult } from '../../api/learningReport'
 import type { UserAchievementRecord } from '../../api/studentOverview'
 import PlexKnowledgeGraph from '../shared/PlexKnowledgeGraph.vue'
 import { KG_NODES, KG_EDGES, type KgEdge, type KgNode } from '../../data/knowledgeGraphData'
@@ -13,6 +13,7 @@ const props = defineProps<{
   report?: LearningReportResult | null
   reportLoading?: boolean
   reportError?: string
+  effect?: LearningEffectResult | null
   studentId?: number | null
 }>()
 
@@ -83,6 +84,33 @@ const rarityLabel: Record<string, string> = {
     <p v-else-if="reportError" class="explorer-knowledge__state explorer-knowledge__state--error">
       {{ reportError }}
     </p>
+
+    <div v-if="effect" class="explorer-knowledge__effect">
+      <h4>个性化学习效果 · {{ effect.task.knowledge_key }}</h4>
+      <div>
+        <article>
+          <small>学习前</small>
+          <strong>{{ effect.before.correct_rate }}%</strong>
+          <span>{{ effect.before.answered_count }} 次作答</span>
+        </article>
+        <article>
+          <small>学习后</small>
+          <strong>{{ effect.after.correct_rate }}%</strong>
+          <span>{{ effect.after.answered_count }} 次作答</span>
+        </article>
+        <article>
+          <small>提升值</small>
+          <strong v-if="effect.status === 'sufficient'">
+            {{ (effect.delta.correct_rate ?? 0) > 0 ? '+' : '' }}{{ effect.delta.correct_rate }}%
+          </strong>
+          <strong v-else>证据不足</strong>
+          <span>{{ effect.evidence_count }} 条可追溯记录</span>
+        </article>
+      </div>
+      <p>
+        画像 v{{ effect.task.profile_version }} · {{ effect.task.resource_types.join('、') || '未记录资源类型' }}
+      </p>
+    </div>
 
     <div v-if="loading" class="explorer-knowledge__state">正在加载成就数据…</div>
     <div v-else-if="error" class="explorer-knowledge__state explorer-knowledge__state--error">{{ error }}</div>
@@ -199,6 +227,45 @@ const rarityLabel: Record<string, string> = {
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
   color: #fecaca;
+}
+
+.explorer-knowledge__effect {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.07);
+}
+
+.explorer-knowledge__effect h4,
+.explorer-knowledge__effect p {
+  margin: 0;
+}
+
+.explorer-knowledge__effect > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0.65rem 0;
+}
+
+.explorer-knowledge__effect article {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.explorer-knowledge__effect small,
+.explorer-knowledge__effect span,
+.explorer-knowledge__effect p {
+  color: var(--teacher-muted);
+  font-size: 0.72rem;
+}
+
+.explorer-knowledge__effect strong {
+  color: #6ee7b7;
 }
 
 .explorer-knowledge__list p {

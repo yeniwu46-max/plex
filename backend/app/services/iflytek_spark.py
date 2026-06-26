@@ -4,10 +4,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from typing import Any
 
 import requests
+from flask import current_app, has_app_context
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,11 @@ class IflytekSparkService:
 
     @staticmethod
     def configured() -> bool:
+        # Unit/integration tests must not depend on a developer's local Spark
+        # credential or the provider's availability.  Explicit tests of this
+        # adapter call ``chat_json`` with a mocked transport directly.
+        if has_app_context() and current_app.config.get('TESTING') and not current_app.config.get('SPARK_ALLOW_IN_TESTS'):
+            return False
         return bool(os.getenv('IFLYTEK_SPARK_API_PASSWORD'))
 
     @classmethod
@@ -44,6 +51,24 @@ class IflytekSparkService:
     @classmethod
     def _record(cls, **values):
         cls._last_result = {**cls._last_result, **values}
+
+    @staticmethod
+    def _parse_json_object(text: str) -> dict[str, Any]:
+        """Accept JSON wrapped in a markdown fence or a short model preface."""
+        cleaned = text.strip()
+        fenced = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', cleaned, flags=re.IGNORECASE | re.DOTALL)
+        if fenced:
+            cleaned = fenced.group(1)
+        try:
+            parsed = json.loads(cleaned)
+        except json.JSONDecodeError:
+            start, end = cleaned.find('{'), cleaned.rfind('}')
+            if start < 0 or end <= start:
+                raise
+            parsed = json.loads(cleaned[start:end + 1])
+        if not isinstance(parsed, dict):
+            raise ValueError('spark_response_not_object')
+        return parsed
 
     @classmethod
     def chat_json(cls, system_prompt: str, user_prompt: str, timeout: int = 30) -> dict[str, Any]:
@@ -98,17 +123,12 @@ class IflytekSparkService:
                 text = message.get('content') if isinstance(message, dict) else None
                 if not isinstance(text, str) or not text.strip():
                     raise SparkServiceError('empty_response', 'spark_content_empty')
-                text = text.strip()
-                if text.startswith('```'):
-                    text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
-                result = json.loads(text)
+                result = cls._parse_json_object(text)
             except SparkServiceError:
                 raise
             except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
                 raise SparkServiceError('invalid_json', 'spark_response_invalid_json') from exc
 
-            if not isinstance(result, dict):
-                raise SparkServiceError('invalid_response', 'spark_response_not_object')
             cls._record(
                 status='available',
                 request_id=request_id,

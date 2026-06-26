@@ -43,6 +43,19 @@ class AdminSettingsTestCase(unittest.TestCase):
             payload = json.loads(row.payload_json)
             self.assertEqual(payload['rules']['daily_limit'], '5')
 
+    def test_dashboard_exposes_resource_operation_metrics(self):
+        response = self.client.get(
+            '/api/v1/admin/dashboard',
+            headers=self.auth(self.admin_token),
+        )
+        self.assertEqual(response.status_code, 200)
+        operations = response.get_json()['data']['resource_operations']
+        self.assertEqual(operations['task_count'], 0)
+        self.assertEqual(operations['success_rate'], 0)
+        self.assertEqual(operations['fallback_rate'], 0)
+        self.assertEqual(operations['pending_review_count'], 0)
+        self.assertEqual(operations['backend_distribution'], [])
+
 
 if __name__ == '__main__':
     unittest.main()

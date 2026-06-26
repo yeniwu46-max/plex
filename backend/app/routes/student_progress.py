@@ -3,16 +3,31 @@ from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.services.emergency_mission import EmergencyMissionService
+from app.services.course_safety import SafetyViolation
 from app.services.evaluation import EvaluationService
 from app.services.learning_resource import LearningResourceService
 from app.services.messenger_chat import MessengerChatService
 from app.services.mistake import MistakeService
 from app.services.recommendation import RecommendationService
+from app.services.presence import PresenceService
 from app.services.student_progress import StudentProgressService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
 
 student_progress_bp = Blueprint('student_progress', __name__, url_prefix='/api/v1/student')
+
+
+@student_progress_bp.route('/overview', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_overview():
+    try:
+        user_id = int(get_jwt_identity())
+        return success_response(StudentProgressService.get_overview(user_id))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
 
 
 @student_progress_bp.route('/learning-path', methods=['GET'])
@@ -99,6 +114,19 @@ def get_dashboard_extras():
         return error_response(str(exc), 50001, None, 500)
 
 
+@student_progress_bp.route('/presence/heartbeat', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def heartbeat_presence():
+    try:
+        user_id = int(get_jwt_identity())
+        return success_response(PresenceService.heartbeat(user_id), '在线状态已更新')
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @student_progress_bp.route('/ability-stats', methods=['GET'])
 @jwt_required()
 @role_required('student')
@@ -180,6 +208,8 @@ def messenger_chat():
         payload = request.get_json() or {}
         message = payload.get('message') or payload.get('content') or ''
         return success_response(MessengerChatService.chat(user_id, message))
+    except SafetyViolation as exc:
+        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
     except Exception as exc:
@@ -194,6 +224,35 @@ def get_learning_report():
         user_id = int(get_jwt_identity())
         period = request.args.get('period', '7d')
         return success_response(EvaluationService.get_student_learning_report(user_id, period))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/learning-report/generate', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def generate_learning_report():
+    try:
+        user_id = int(get_jwt_identity())
+        payload = request.get_json(silent=True) or {}
+        period = payload.get('period') or request.args.get('period', '7d')
+        return success_response(EvaluationService.generate_phase_report(user_id, period))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/learning-effect', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_learning_effect():
+    try:
+        user_id = int(get_jwt_identity())
+        task_id = request.args.get('task_id')
+        return success_response(EvaluationService.get_learning_effect(user_id, task_id))
     except ValueError as exc:
         return error_response(str(exc), 40401, None, 404)
     except Exception as exc:

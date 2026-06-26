@@ -22,8 +22,8 @@ def role_required(*roles):
             verify_jwt_in_request()
             user_id = get_jwt_identity()
 
-            from app.models import User
-            user = User.query.get(user_id)
+            from app.models import User, db
+            user = db.session.get(User, int(user_id))
 
             if not user or not user.role:
                 return error_response("用户信息获取失败或未设置角色", 40301, None, 403)
@@ -61,8 +61,8 @@ def permission_required(*permissions):
             verify_jwt_in_request()
             user_id = get_jwt_identity()
 
-            from app.models import User
-            user = User.query.get(user_id)
+            from app.models import User, db
+            user = db.session.get(User, int(user_id))
 
             if not user or not user.role:
                 return error_response("用户信息获取失败或未设置角色", 40301, None, 403)

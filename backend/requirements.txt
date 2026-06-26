@@ -11,3 +11,5 @@ Werkzeug==2.3.0
 requests==2.31.0
 alembic==1.13.1
 jsonschema==4.23.0
+pytest==8.3.5
+neo4j==5.28.1

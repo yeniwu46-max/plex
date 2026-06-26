@@ -5,7 +5,7 @@ from pathlib import Path
 from flask import Blueprint, current_app, request, send_from_directory
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.models import User
+from app.models import User, db
 from app.services.file_upload import UploadValidationError, validate_and_save
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -19,7 +19,7 @@ def upload_file():
     """三端结构化文件上传。"""
     try:
         user_id = int(get_jwt_identity())
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return error_response('用户不存在', 40401, None, 404)
 
@@ -55,7 +55,7 @@ def serve_upload_file(filepath: str):
     """下载/预览上传文件（本人文件；admin 可访问所有）。"""
     try:
         user_id = int(get_jwt_identity())
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return error_response('用户不存在', 40401, None, 404)
 

@@ -1,5 +1,5 @@
 """排名缓存模型"""
-from datetime import datetime
+from app.utils.time import utc_now
 from . import db
 
 
@@ -15,7 +15,7 @@ class RankingCache(db.Model):
     level = db.Column(db.Integer)
     week = db.Column(db.String(10))  # 2024-w20
 
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     __table_args__ = (
         db.UniqueConstraint('class_id', 'user_id', 'week', name='unique_ranking'),

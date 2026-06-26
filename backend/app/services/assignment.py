@@ -5,6 +5,7 @@ from app.models import Class, Trial, TrialParticipation, TrialQuestion, TrialQue
 from app.services.daily_quest import DailyQuestService
 from app.services.question_generator import QuestionGenerator
 from app.services.trial import TrialService
+from app.utils.time import utc_now
 
 
 class AssignmentService:
@@ -27,7 +28,7 @@ class AssignmentService:
     @staticmethod
     def _touch_question_start(progress: TrialQuestionProgress) -> None:
         if progress.status == 'pending' and not progress.started_at:
-            progress.started_at = datetime.utcnow()
+            progress.started_at = utc_now()
 
     @staticmethod
     def _build_answer_record(question: TrialQuestion, progress: TrialQuestionProgress | None) -> dict:
@@ -139,6 +140,14 @@ class AssignmentService:
             'sort_order': question.sort_order,
             'published_at': trial.starts_at.isoformat() if trial.starts_at else None,
         }
+        from app.services.learning_adaptation import LearningAdaptationService
+        adaptation = LearningAdaptationService.active_for_key(progress.user_id if progress else 0, question.knowledge_key)
+        if adaptation:
+            payload['adaptive_plan'] = adaptation['action_plan']
+            payload['effective_difficulty'] = 'lower'
+        else:
+            payload['adaptive_plan'] = None
+            payload['effective_difficulty'] = 'normal'
         return payload
 
     @staticmethod
@@ -217,7 +226,7 @@ class AssignmentService:
 
     @staticmethod
     def _maybe_auto_complete_trial(user_id: int, trial_id: int):
-        trial = Trial.query.get(trial_id)
+        trial = db.session.get(Trial, trial_id)
         if not trial:
             return None
         questions = AssignmentService._questions_for_trial(trial_id)
@@ -261,14 +270,14 @@ class AssignmentService:
         if row:
             return row
         row = TrialQuestionProgress(user_id=user_id, question_id=question_id, status='pending')
-        row.started_at = datetime.utcnow()
+        row.started_at = utc_now()
         db.session.add(row)
         db.session.flush()
         return row
 
     @staticmethod
     def list_for_student(user_id: int, include_completed: bool = False):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 
@@ -318,14 +327,14 @@ class AssignmentService:
 
     @staticmethod
     def submit_answer(user_id: int, question_id: int, selected_index: int, time_spent_sec: int | None = None):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
-        question = TrialQuestion.query.get(question_id)
+        question = db.session.get(TrialQuestion, question_id)
         if not question:
             raise ValueError('题目不存在')
 
-        trial = Trial.query.get(question.trial_id)
+        trial = db.session.get(Trial, question.trial_id)
         if not trial or trial.class_id != user.class_id:
             raise PermissionError('无权作答该题目')
         if TrialService.effective_status(trial) not in ('running', 'scheduled'):
@@ -336,7 +345,7 @@ class AssignmentService:
             raise ValueError('该题已完成')
 
         AssignmentService._touch_question_start(progress)
-        now = datetime.utcnow()
+        now = utc_now()
         selected = int(selected_index)
         is_correct = selected == int(question.correct_index)
         elapsed = time_spent_sec
@@ -359,6 +368,8 @@ class AssignmentService:
             MistakeService.record_mcq_correct(user_id, question_id)
         else:
             MistakeService.record_mcq_wrong(user_id, question)
+        from app.services.learning_adaptation import LearningAdaptationService
+        adaptation = LearningAdaptationService.record_answer(user_id, question, is_correct)
 
         daily_payload = None
         incentive = None
@@ -380,20 +391,21 @@ class AssignmentService:
             'daily': daily_payload,
             'incentive': incentive,
             'trial_complete': trial_complete,
+            'adaptation': adaptation,
         }
 
     @staticmethod
     def submit_code_answer(user_id: int, question_id: int, code: str, time_spent_sec: int | None = None):
         from app.services.code_execution import CodeExecutionService
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
-        question = TrialQuestion.query.get(question_id)
+        question = db.session.get(TrialQuestion, question_id)
         if not question or (question.question_type or 'mcq') != 'coding':
             raise ValueError('编程题目不存在')
 
-        trial = Trial.query.get(question.trial_id)
+        trial = db.session.get(Trial, question.trial_id)
         if not trial or trial.class_id != user.class_id:
             raise PermissionError('无权作答该题目')
         if TrialService.effective_status(trial) not in ('running', 'scheduled'):
@@ -409,7 +421,7 @@ class AssignmentService:
             raise ValueError('该题已完成')
 
         AssignmentService._touch_question_start(progress)
-        now = datetime.utcnow()
+        now = utc_now()
         elapsed = time_spent_sec
         if elapsed is None and progress.started_at:
             elapsed = max(1, int((now - progress.started_at).total_seconds()))
@@ -447,6 +459,8 @@ class AssignmentService:
                     'total_cases': submit_result.get('total', len(test_cases)),
                 },
             )
+        from app.services.learning_adaptation import LearningAdaptationService
+        adaptation = LearningAdaptationService.record_answer(user_id, question, all_passed)
 
         trial_complete = AssignmentService._maybe_auto_complete_trial(user_id, trial.id)
         return {
@@ -457,12 +471,13 @@ class AssignmentService:
             'time_spent_sec': progress.time_spent_sec,
             'answered_at': progress.answered_at.isoformat() if progress.answered_at else None,
             'trial_complete': trial_complete,
+            'adaptation': adaptation,
         }
 
     @staticmethod
     def list_for_trial(user_id: int, trial_id: int):
-        user = User.query.get(user_id)
-        trial = Trial.query.get(trial_id)
+        user = db.session.get(User, user_id)
+        trial = db.session.get(Trial, trial_id)
         if not user or not trial:
             raise ValueError('试炼或用户不存在')
         if not user.class_id or user.class_id != trial.class_id:
@@ -548,7 +563,7 @@ class AssignmentService:
 
     @staticmethod
     def get_trial_detail_for_teacher(current_user_id: int, trial_id: int, role_name: str):
-        trial = Trial.query.get(trial_id)
+        trial = db.session.get(Trial, trial_id)
         if not trial:
             raise ValueError('试炼不存在')
         TrialService._get_teacher_class(trial.class_id, current_user_id, role_name)
@@ -563,7 +578,7 @@ class AssignmentService:
             questions = AssignmentService._questions_for_trial(trial_id)
             questions_payload = [q.to_dict(include_answer=True) for q in questions]
 
-        cls = Class.query.get(trial.class_id)
+        cls = db.session.get(Class, trial.class_id)
         student_rows = (
             AssignmentService._student_progress_rows_for_trial(
                 trial, AssignmentService._class_students(trial.class_id)
@@ -592,7 +607,7 @@ class AssignmentService:
     @staticmethod
     def get_class_answer_board(current_user_id: int, class_id: int, role_name: str):
         TrialService._get_teacher_class(class_id, current_user_id, role_name)
-        cls = Class.query.get(class_id)
+        cls = db.session.get(Class, class_id)
         if not cls:
             raise ValueError('班级不存在')
 
@@ -643,7 +658,7 @@ class AssignmentService:
 
     @staticmethod
     def get_student_answer_board(current_user_id: int, student_id: int, role_name: str):
-        student = User.query.get(student_id)
+        student = db.session.get(User, student_id)
         if not student or not student.class_id:
             raise ValueError('学生不存在或未分班')
         if not student.role or student.role.name != 'student':
@@ -708,7 +723,7 @@ class AssignmentService:
 
         rows = []
         for trial in trials:
-            cls = Class.query.get(trial.class_id)
+            cls = db.session.get(Class, trial.class_id)
             summary = AssignmentService.trial_answer_summary(trial.id)
             row = trial.to_dict(
                 include_stats=True,

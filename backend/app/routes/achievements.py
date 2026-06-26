@@ -64,8 +64,8 @@ def unlock_achievement():
 
         # 如果为其他用户解锁，需要权限
         if user_id != current_user_id:
-            from app.models import User
-            current_user = User.query.get(current_user_id)
+            from app.models import User, db
+            current_user = db.session.get(User, current_user_id)
             if not current_user or not current_user.role:
                 return error_response("权限检查失败", 40301, None, 403)
 

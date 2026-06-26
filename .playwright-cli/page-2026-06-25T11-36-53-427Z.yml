@@ -1,0 +1,231 @@
+- generic [ref=e1]:
+  - generic:
+    - generic:
+      - generic:
+        - complementary "主导航":
+          - generic:
+            - img
+            - generic: PLEX
+          - navigation:
+            - link "总览 OVERVIEW":
+              - /url: /student
+              - img:
+                - img
+              - generic:
+                - generic: 总览
+                - generic: OVERVIEW
+            - link "探索舱 EXPLORER":
+              - /url: /student/discovery
+              - img:
+                - img
+              - generic:
+                - generic: 探索舱
+                - generic: EXPLORER
+            - link "星轨学习 STARPATH" [expanded] [ref=e133] [cursor=pointer]:
+              - /url: /student/star-path
+              - img [ref=e135]:
+                - img [ref=e136]
+              - generic [ref=e142]:
+                - generic [ref=e143]: 星轨学习
+                - generic [ref=e144]: STARPATH
+            - link "试炼中心 TRIAL ARENA":
+              - /url: /student/trials
+              - img:
+                - img
+              - generic:
+                - generic: 试炼中心
+                - generic: TRIAL ARENA
+            - link "驿站助手 MESSENGER":
+              - /url: /student/messenger
+              - img:
+                - img
+              - generic:
+                - generic: 驿站助手
+                - generic: MESSENGER
+            - link "我的 MY SPACE":
+              - /url: /student/me/growth
+              - img:
+                - img
+              - generic:
+                - generic: 我的
+                - generic: MY SPACE
+          - button "收起侧栏": «
+        - generic:
+          - banner:
+            - generic:
+              - heading "学生首页" [level=1]: 学生首页
+              - paragraph: 今日主线总览，连接探索、委托、档案与试炼
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img:
+                        - img
+                    - generic:
+                      - textbox "搜索课程、任务、知识点…"
+                      - generic:
+                        - generic: 搜索课程、任务、知识点…
+            - generic:
+              - generic:
+                - button "通知":
+                  - img:
+                    - img
+              - button "当前外观：深色模式，点击切换":
+                - img:
+                  - img
+              - button "打开用户菜单":
+                - generic:
+                  - strong: ui_goal_193650
+                  - emphasis: Lv.1
+                - img:
+                  - img
+          - generic:
+            - region "学生端总览":
+              - generic:
+                - generic:
+                  - paragraph: Explorer · ui_goal_193650
+                  - heading "今天从一条清晰的学习主线开始" [level=2]
+                  - paragraph: 你当前累计 0 XP，今日委托已开启 0/4， 完成全部可获得 120 XP 反馈。
+                  - generic:
+                    - link "继续今日委托":
+                      - /url: "#daily"
+                    - link "进入探索舱":
+                      - /url: /student/discovery
+                - generic "等级进度":
+                  - generic:
+                    - strong: "0"
+                    - emphasis: "%"
+                  - paragraph: 见习 Explorer
+                  - generic: 0 / 500 XP · 本周 +0
+              - region "学习状态":
+                - article:
+                  - img:
+                    - img
+                  - generic: 当前等级
+                  - strong: Lv.1
+                - article:
+                  - img:
+                    - img
+                  - generic: 累计 XP
+                  - strong: "0"
+                - article:
+                  - img:
+                    - img
+                  - generic: 连续探索
+                  - strong: 0 天
+                - article:
+                  - img:
+                    - img
+                  - generic: 班级排名
+                  - strong: 暂未加入班级
+                - article:
+                  - img:
+                    - img
+                  - generic: 今日委托
+                  - strong: 0/4
+              - generic:
+                - generic:
+                  - generic:
+                    - heading "今日委托" [level=2]
+                  - generic:
+                    - article:
+                      - generic: 08:00
+                      - generic:
+                        - strong: 晨间启动
+                        - paragraph: 查看今日推荐路线，开启探索之旅
+                      - emphasis: +20 XP 0/1
+                    - article:
+                      - generic: 10:00
+                      - generic:
+                        - strong: 修复知识碎片
+                        - paragraph: 修复 2 个知识碎片，填补认知缺口
+                      - emphasis: +40 XP 0/2
+                    - article:
+                      - generic: 14:00
+                      - generic:
+                        - strong: 试炼挑战
+                        - paragraph: 完成 1 次试炼关卡挑战
+                      - emphasis: +35 XP 0/1
+                    - article:
+                      - generic: 21:00
+                      - generic:
+                        - strong: 夜间总结
+                        - paragraph: 生成今日成长报告，记录进步
+                      - emphasis: +25 XP 0/1
+                - generic:
+                  - generic:
+                    - heading "成长摘要" [level=2]
+                    - link "打开档案":
+                      - /url: /student/me/growth
+                  - generic:
+                    - generic:
+                      - term: 所属班级
+                      - definition: 暂未加入班级
+                    - generic:
+                      - term: 已解锁成就
+                      - definition: 0 枚
+                    - generic:
+                      - term: 最近积分记录
+                      - definition: 暂无记录
+                  - generic:
+                    - img:
+                      - img
+                    - generic: 见习 Explorer
+              - region "教师布置题目":
+                - generic:
+                  - generic:
+                    - heading "教师布置 · 知识碎片" [level=2]
+                    - paragraph: 完成试炼配套题目，同步推进「修复知识碎片」委托
+                - paragraph: 暂无待完成题目。教师发布试炼后，题目会出现在这里。
+              - region "快捷入口":
+                - link "探索舱查看学习星域与资源状态":
+                  - /url: /student/discovery
+                  - img:
+                    - img
+                  - generic:
+                    - strong: 探索舱
+                    - text: 查看学习星域与资源状态
+                  - emphasis: ›
+                - link "今日委托完成今日任务并领取反馈":
+                  - /url: /student#daily
+                  - img:
+                    - img
+                  - generic:
+                    - strong: 今日委托
+                    - text: 完成今日任务并领取反馈
+                  - emphasis: ›
+                - link "成长档案查看成长轨迹与成就收藏":
+                  - /url: /student/me/growth
+                  - img:
+                    - img
+                  - generic:
+                    - strong: 成长档案
+                    - text: 查看成长轨迹与成就收藏
+                  - emphasis: ›
+                - link "试炼关卡选择适合你的挑战入口":
+                  - /url: /student/trials
+                  - img:
+                    - img
+                  - generic:
+                    - strong: 试炼关卡
+                    - text: 选择适合你的挑战入口
+                  - emphasis: ›
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - img
+        - generic: 注册成功
+  - dialog "学习路径" [ref=e145]:
+    - button "Close" [active] [ref=e146] [cursor=pointer]: ×
+    - banner [ref=e148]: 学习路径
+    - generic [ref=e149]:
+      - generic [ref=e150]: 1 / 5
+      - text: 这里展示你的个性化学习路线，系统会根据掌握情况推荐下一步学习内容。
+    - contentinfo [ref=e151]:
+      - generic [ref=e152]:
+        - button "上一步" [disabled]
+        - button "下一步" [ref=e153] [cursor=pointer]
+  - img

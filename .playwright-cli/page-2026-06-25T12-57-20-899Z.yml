@@ -1,0 +1,161 @@
+- generic [ref=e1348]:
+  - complementary "主导航" [ref=e1349]:
+    - generic [ref=e1350]:
+      - img [ref=e1351]
+      - generic [ref=e1354]: PLEX
+    - navigation [ref=e1355]:
+      - link "总览 OVERVIEW" [ref=e1356] [cursor=pointer]:
+        - /url: /student
+        - img [ref=e1358]:
+          - img [ref=e1359]
+        - generic [ref=e1364]:
+          - generic [ref=e1365]: 总览
+          - generic [ref=e1366]: OVERVIEW
+      - link "探索舱 EXPLORER" [ref=e1367] [cursor=pointer]:
+        - /url: /student/discovery
+        - img [ref=e1369]:
+          - img [ref=e1370]
+        - generic [ref=e1373]:
+          - generic [ref=e1374]: 探索舱
+          - generic [ref=e1375]: EXPLORER
+      - link "星轨学习 STARPATH" [ref=e1376] [cursor=pointer]:
+        - /url: /student/star-path
+        - img [ref=e1378]:
+          - img [ref=e1379]
+        - generic [ref=e1385]:
+          - generic [ref=e1386]: 星轨学习
+          - generic [ref=e1387]: STARPATH
+      - link "试炼中心 TRIAL ARENA" [ref=e1388] [cursor=pointer]:
+        - /url: /student/trials
+        - img [ref=e1390]:
+          - img [ref=e1391]
+        - generic [ref=e1396]:
+          - generic [ref=e1397]: 试炼中心
+          - generic [ref=e1398]: TRIAL ARENA
+      - link "驿站助手 MESSENGER" [ref=e1399] [cursor=pointer]:
+        - /url: /student/messenger
+        - img [ref=e1401]:
+          - img [ref=e1402]
+        - generic [ref=e1405]:
+          - generic [ref=e1406]: 驿站助手
+          - generic [ref=e1407]: MESSENGER
+      - link "我的 MY SPACE" [ref=e1408] [cursor=pointer]:
+        - /url: /student/me/growth
+        - img [ref=e1410]:
+          - img [ref=e1411]
+        - generic [ref=e1414]:
+          - generic [ref=e1415]: 我的
+          - generic [ref=e1416]: MY SPACE
+    - button "收起侧栏" [ref=e1417] [cursor=pointer]: «
+  - generic [ref=e1418]:
+    - banner [ref=e1419]:
+      - generic [ref=e1420]:
+        - heading "驿站助手" [level=1] [ref=e1421]: 驿站助手
+        - paragraph [ref=e1423]: 结合错题、画像与推荐结果提供学习建议
+      - generic [ref=e1424]:
+        - generic [ref=e1425]:
+          - button "通知" [ref=e1426] [cursor=pointer]:
+            - img [ref=e1427]:
+              - img [ref=e1428]
+          - superscript [ref=e1431]:
+            - generic [ref=e1434]:
+              - generic [ref=e1435]: "7"
+              - generic [ref=e1437]: "7"
+              - generic [ref=e1438]: "7"
+        - button "当前外观：深色模式，点击切换" [ref=e1439] [cursor=pointer]:
+          - img [ref=e1440]:
+            - img [ref=e1441]
+        - button "打开用户菜单" [ref=e1444] [cursor=pointer]:
+          - generic [ref=e1449]:
+            - strong [ref=e1450]: 学生1
+            - emphasis [ref=e1451]: Lv.2
+          - img [ref=e1452]:
+            - img [ref=e1453]
+    - main [ref=e1456]:
+      - region "驿站使者" [ref=e1457]:
+        - generic [ref=e1458]:
+          - article [ref=e1459]:
+            - heading "晚上好，学生1" [level=2] [ref=e1460]
+            - paragraph [ref=e1461]: 今天也在不断探索与成长呢
+          - article [ref=e1468]:
+            - paragraph [ref=e1469]: 待修复知识碎片
+            - strong [ref=e1470]: 5 题
+            - link "去修复" [ref=e1471] [cursor=pointer]:
+              - /url: "#"
+              - text: 去修复
+              - img [ref=e1472]:
+                - img [ref=e1473]
+            - img [ref=e1475]:
+              - img [ref=e1476]
+          - article [ref=e1482]:
+            - heading "推荐下一试炼" [level=2] [ref=e1483]
+            - strong [ref=e1484]: 算力输出
+            - paragraph [ref=e1485]: 匹配度 75%
+            - paragraph [ref=e1486]: 建议巩固「Python 与 print」，完成今日紧急任务。
+            - button "查看推荐逻辑" [ref=e1487] [cursor=pointer]:
+              - text: 查看推荐逻辑
+              - img [ref=e1488]:
+                - img [ref=e1489]
+            - link "查看试炼推荐" [ref=e1491] [cursor=pointer]:
+              - /url: "#"
+              - text: 查看试炼推荐
+              - img [ref=e1492]:
+                - img [ref=e1493]
+          - article [ref=e1496]:
+            - heading "最近成长" [level=2] [ref=e1497]
+            - paragraph [ref=e1498]:
+              - text: 连续探索
+              - strong [ref=e1499]: "5"
+            - paragraph [ref=e1500]: 击败了 80% 的 Explorer
+            - img [ref=e1501]
+        - complementary "学习分析建议" [ref=e1503]:
+          - heading "小E 已根据错题更新分析" [level=2] [ref=e1505]: 小E 已根据错题更新分析 ▮▮
+          - generic [ref=e1506]:
+            - article [ref=e1507]:
+              - img [ref=e1509]:
+                - img [ref=e1510]
+              - generic [ref=e1518]:
+                - strong [ref=e1519]: 边界条件补给站
+                - paragraph [ref=e1520]: 建议巩固「Python 与 print」，完成今日紧急任务。
+            - article [ref=e1521]:
+              - img [ref=e1523]:
+                - img [ref=e1524]
+              - generic [ref=e1529]:
+                - strong [ref=e1530]: 星轨复习
+                - paragraph [ref=e1531]: 在星轨路径中回顾「Python 与 print」相关知识点。
+            - article [ref=e1532]:
+              - img [ref=e1534]:
+                - img [ref=e1535]
+              - generic [ref=e1538]:
+                - strong [ref=e1539]: 画像与资源
+                - paragraph [ref=e1540]: 当前画像版本 v11，已匹配 10 个个性化资源。
+          - button "生成阶段报告" [ref=e1541] [cursor=pointer]:
+            - text: 生成阶段报告
+            - img [ref=e1542]:
+              - img [ref=e1543]
+        - region "向小E提问" [ref=e1545]:
+          - generic [ref=e1546]:
+            - generic [ref=e1549]:
+              - textbox "向小E提问，或让小E帮你分析学习情况..." [ref=e1550]
+              - generic:
+                - generic: 向小E提问，或让小E帮你分析学习情况...
+            - button "发送" [ref=e1551] [cursor=pointer]:
+              - img [ref=e1552]:
+                - img [ref=e1553]
+          - generic [ref=e1556]:
+            - button "分析我的薄弱点" [ref=e1557] [cursor=pointer]:
+              - img [ref=e1558]:
+                - img [ref=e1559]
+              - text: 分析我的薄弱点
+            - button "推荐下一试炼" [ref=e1565] [cursor=pointer]:
+              - img [ref=e1566]:
+                - img [ref=e1567]
+              - text: 推荐下一试炼
+            - button "生成修复路线" [ref=e1572] [cursor=pointer]:
+              - img [ref=e1573]:
+                - img [ref=e1574]
+              - text: 生成修复路线
+            - button "查看最近成长" [ref=e1580] [cursor=pointer]:
+              - img [ref=e1581]:
+                - img [ref=e1582]
+              - text: 查看最近成长

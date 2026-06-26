@@ -62,10 +62,28 @@ class StudentProgressTestCase(unittest.TestCase):
         self.assertEqual(path_resp.status_code, 200)
         domains = path_resp.get_json()['data']['domains']
         self.assertGreaterEqual(len(domains), 1)
+        data = path_resp.get_json()['data']
+        self.assertIn('ordered_nodes', data)
+        self.assertIsInstance(data['ordered_nodes'], list)
 
         archive_resp = self.client.get('/api/v1/student/archive-insights', headers=self.auth(self.student_token))
         self.assertEqual(archive_resp.status_code, 200)
         self.assertIn('tendency', archive_resp.get_json()['data'])
+
+    def test_student_overview_aggregates_landing_page_data(self):
+        response = self.client.get(
+            '/api/v1/student/overview',
+            headers=self.auth(self.student_token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['profile']['id'], self.student.id)
+        self.assertIn('achievements', data)
+        self.assertIn('pointsLog', data)
+        self.assertIn('daily', data)
+        self.assertIn('running_trials', data)
+        self.assertIn('teacher_assignments', data['daily'])
 
 
 if __name__ == '__main__':

@@ -1,0 +1,208 @@
+{
+  "run_at": "2026-06-12T07:11:56+00:00",
+  "local_passed": true,
+  "submission_ready": false,
+  "evidence": {
+    "personalization": {
+      "path": "backend/reports/a3-personalization-local/personalization-evaluation.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "profile_extraction": {
+      "path": "backend/reports/a3-personalization-local/profile-extraction-evaluation.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "knowledge_base": {
+      "path": "backend/reports/a3-personalization-local/knowledge-base-validation.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "feedback_loop": {
+      "path": "backend/reports/a3-personalization-local/feedback-loop-three-rounds.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "learning_effect": {
+      "path": "backend/reports/a3-next-stage/learning-effect.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "security": {
+      "path": "backend/reports/a3-next-stage/security-validation.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "performance_recovery": {
+      "path": "backend/reports/a3-next-stage/performance-recovery.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "clean_environment": {
+      "path": "backend/reports/a3-next-stage/clean-environment.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "dependency_inventory": {
+      "path": "backend/reports/a3-submission/dependency-inventory.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "deprecation_budget": {
+      "path": "backend/reports/a3-submission/deprecation-budget.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "release_manifest": {
+      "path": "backend/reports/a3-submission/release-manifest.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "defense_metrics": {
+      "path": "backend/reports/a3-submission/defense-metrics.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    },
+    "frontend_bundle": {
+      "path": "frontend/reports/bundle-budget.json",
+      "present": true,
+      "passed": true,
+      "error": null
+    }
+  },
+  "documents": {
+    "requirements": {
+      "path": "docs/submission/01-requirements.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1004
+    },
+    "system_design": {
+      "path": "docs/submission/02-system-design.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1015
+    },
+    "multi_agent_design": {
+      "path": "docs/submission/03-multi-agent-design.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1067
+    },
+    "knowledge_and_evaluation": {
+      "path": "docs/submission/04-knowledge-and-evaluation.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1036
+    },
+    "testing": {
+      "path": "docs/submission/05-testing.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1573
+    },
+    "deployment": {
+      "path": "docs/submission/06-deployment.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 935
+    },
+    "user_manual": {
+      "path": "docs/submission/07-user-manual.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1102
+    },
+    "open_source_and_ai": {
+      "path": "docs/submission/08-open-source-and-ai-tools.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1074
+    },
+    "innovation": {
+      "path": "docs/submission/09-innovation-and-value.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1020
+    },
+    "demo_script": {
+      "path": "docs/submission/10-demo-script.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1259
+    },
+    "external_acceptance": {
+      "path": "docs/submission/11-external-acceptance-checklist.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1958
+    },
+    "defense_deck_spec": {
+      "path": "docs/submission/12-defense-deck-spec.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 3971
+    },
+    "recording_runbook": {
+      "path": "docs/submission/13-recording-runbook.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 1990
+    },
+    "freeze_file_groups": {
+      "path": "docs/submission/14-freeze-file-groups.md",
+      "present": true,
+      "non_empty": true,
+      "bytes": 2472
+    }
+  },
+  "entrypoints": {
+    "start_script": true,
+    "ci_workflow": true,
+    "environment_template": true
+  },
+  "external_gates": {
+    "iflytek_spark": false,
+    "github_ci": false,
+    "mysql_8": false
+  },
+  "freeze_gates": {
+    "manifest_matches_worktree": true,
+    "manifest_commit_matches_head": true,
+    "worktree_clean_at_manifest": false
+  },
+  "delivery_gates": {
+    "defense_pptx": false,
+    "demo_video": false
+  },
+  "deliverables": {
+    "defense_pptx": "docs/submission/artifacts/PLEX-A3-defense.pptx",
+    "demo_video": "docs/submission/artifacts/PLEX-A3-demo.mp4"
+  },
+  "manifest_verification": {
+    "passed": true,
+    "missing": [],
+    "unexpected": [],
+    "changed": []
+  },
+  "blocked": [
+    "iflytek_spark",
+    "github_ci",
+    "mysql_8",
+    "worktree_clean_at_manifest",
+    "defense_pptx",
+    "demo_video"
+  ]
+}

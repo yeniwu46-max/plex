@@ -36,7 +36,7 @@ class TeacherTemplateService:
 
     @staticmethod
     def delete(teacher_id: int, template_id: int):
-        row = TeacherTrialTemplate.query.get(template_id)
+        row = db.session.get(TeacherTrialTemplate, template_id)
         if not row:
             raise ValueError('模板不存在')
         if row.teacher_id != teacher_id:
@@ -46,7 +46,7 @@ class TeacherTemplateService:
 
     @staticmethod
     def publish_template(teacher_id: int, role_name: str, template_id: int, class_id: int, notify: bool = True):
-        row = TeacherTrialTemplate.query.get(template_id)
+        row = db.session.get(TeacherTrialTemplate, template_id)
         if not row:
             raise ValueError('模板不存在')
         if row.teacher_id != teacher_id:

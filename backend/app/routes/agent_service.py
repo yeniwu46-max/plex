@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 """Multi-agent collaboration routes."""
-from datetime import datetime
-
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from ..services.agent_orchestrator import AgentOrchestrator
 from ..utils.response import error_response, success_response
+from ..utils.time import utc_now
 
 agent_bp = Blueprint('agent_service', __name__, url_prefix='/api/v1')
 
 
 def _now():
-    return datetime.utcnow().isoformat() + 'Z'
+    return utc_now().isoformat() + 'Z'
 
 
 def _user_id() -> int | None:
@@ -20,6 +19,14 @@ def _user_id() -> int | None:
     if identity is None:
         return None
     return int(identity)
+
+
+@agent_bp.post('/agents/plan-learning-path')
+@jwt_required()
+def plan_learning_path():
+    body = request.get_json(silent=True) or {}
+    user_id = _user_id()
+    return success_response(AgentOrchestrator.plan_learning_path(user_id, body))
 
 
 @agent_bp.post('/agents/student-diagnose')
@@ -36,6 +43,27 @@ def student_diagnose():
         'studentId': student_id or str(user_id),
     }
     return success_response(AgentOrchestrator.student_diagnose(user_id, payload))
+
+
+@agent_bp.post('/agents/code-learning-cycle')
+@jwt_required()
+def code_learning_cycle():
+    """Run the sandbox and all student-facing agents as one stable workflow."""
+    body = request.get_json(silent=True) or {}
+    try:
+        return success_response(AgentOrchestrator.run_code_learning_cycle(_user_id(), body))
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+
+
+@agent_bp.post('/agents/code-hint')
+@jwt_required()
+def code_hint():
+    body = request.get_json(silent=True) or {}
+    code = (body.get('code') or '').strip()
+    if not code:
+        return error_response('code required', code=400)
+    return success_response(AgentOrchestrator.code_hint(body))
 
 
 @agent_bp.post('/agents/teacher-suggestion')

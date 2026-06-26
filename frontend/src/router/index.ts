@@ -18,16 +18,22 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue'),
     },
     {
+      path: '/register',
+      name: 'register',
+      meta: { public: true },
+      component: () => import('../views/RegisterView.vue'),
+    },
+    {
+      path: '/oauth/callback',
+      name: 'oauth-callback',
+      meta: { public: true },
+      component: () => import('../views/OAuthCallbackView.vue'),
+    },
+    {
       path: '/student',
       name: 'student-home',
       meta: { roles: ['student'] },
       component: () => import('../views/StudentHomeView.vue'),
-    },
-    {
-      path: '/student/control',
-      name: 'student-control',
-      meta: { roles: ['student'] },
-      component: () => import('../views/StudentControlView.vue'),
     },
     {
       path: '/student/discovery',
@@ -40,6 +46,12 @@ const router = createRouter({
       name: 'student-star-path-lab',
       meta: { roles: ['student'] },
       component: () => import('../views/StarPathLabView.vue'),
+    },
+    {
+      path: '/student/star-path/resources',
+      name: 'student-star-path-resources',
+      meta: { roles: ['student'] },
+      component: () => import('../views/StudentResourcesView.vue'),
     },
     {
       path: '/student/trials',
@@ -59,30 +71,30 @@ const router = createRouter({
       meta: { roles: ['student'] },
       component: () => import('../views/MessengerView.vue'),
     },
+    { path: '/student/me', redirect: '/student/me/growth' },
     {
-      path: '/student/daily',
-      name: 'student-daily-quest',
-      meta: { roles: ['student'] },
-      component: () => import('../views/DailyQuestView.vue'),
-    },
-    {
-      path: '/student/archives',
-      name: 'student-archives',
+      path: '/student/me/growth',
+      name: 'student-growth',
       meta: { roles: ['student'] },
       component: () => import('../views/ExplorationArchivesView.vue'),
     },
     {
-      path: '/student/profile',
+      path: '/student/me/profile',
       name: 'student-profile',
       meta: { roles: ['student'] },
       component: () => import('../views/StudentProfileView.vue'),
     },
     {
-      path: '/student/resources',
-      name: 'student-resources',
+      path: '/student/me/settings',
+      name: 'student-settings',
       meta: { roles: ['student'] },
-      component: () => import('../views/StudentResourcesView.vue'),
+      component: () => import('../views/StudentControlView.vue'),
     },
+    { path: '/student/daily', redirect: { path: '/student', hash: '#daily' } },
+    { path: '/student/archives', redirect: '/student/me/growth' },
+    { path: '/student/profile', redirect: '/student/me/profile' },
+    { path: '/student/control', redirect: '/student/me/settings' },
+    { path: '/student/resources', redirect: '/student/star-path/resources' },
     {
       path: '/teacher',
       meta: { roles: ['teacher', 'admin'] },
@@ -143,11 +155,11 @@ const router = createRouter({
     },
     {
       path: '/daily',
-      redirect: '/student/daily',
+      redirect: { path: '/student', hash: '#daily' },
     },
     {
       path: '/archives',
-      redirect: '/student/archives',
+      redirect: '/student/me/growth',
     },
   ],
 })
@@ -163,7 +175,7 @@ function roleAllowed(required: string[] | undefined, role?: string) {
 router.beforeEach((to) => {
   const auth = useAuthStore()
   if (to.meta.public) {
-    if (to.name === 'login' && auth.isAuthenticated) {
+    if ((to.name === 'login' || to.name === 'register') && auth.isAuthenticated) {
       return auth.homePathForRole(auth.profile?.role)
     }
     return true

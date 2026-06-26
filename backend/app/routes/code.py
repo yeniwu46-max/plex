@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """Code execution route - Mock / Judge0 / E2B."""
-from datetime import datetime
-
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
 from ..services.code_execution import CodeExecutionService, LANGUAGE_IDS
 from ..utils.response import success_response, error_response
+from ..utils.time import utc_now
 
 code_bp = Blueprint('code', __name__, url_prefix='/api/v1')
 
@@ -44,7 +43,7 @@ def submit_code():
             'passed_count': 1 if run_result['status']['id'] == 3 else 0,
             'total': 1,
             'results': [],
-            'submitted_at': datetime.utcnow().isoformat(),
+            'submitted_at': utc_now().isoformat(),
             'backend': run_result.get('backend', CodeExecutionService.backend_name()),
         })
     return success_response(CodeExecutionService.submit(language, code, test_cases, run_mode))
@@ -56,7 +55,7 @@ def get_result(submission_id):
     return success_response({
         'submission_id': submission_id,
         'status': {'id': 3, 'description': 'Accepted'},
-        'created_at': datetime.utcnow().isoformat(),
+        'created_at': utc_now().isoformat(),
         'backend': CodeExecutionService.backend_name(),
     })
 

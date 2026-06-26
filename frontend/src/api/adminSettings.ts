@@ -67,6 +67,16 @@ export interface AdminDashboardResult {
     activity_rate: number
   }
   weak_knowledge_top?: WeakKnowledgeTopItem[]
+  resource_operations?: {
+    task_count: number
+    completed_count: number
+    failed_count: number
+    success_rate: number
+    average_latency_ms: number | null
+    fallback_rate: number
+    pending_review_count: number
+    backend_distribution: Array<{ backend: string; count: number }>
+  }
   charts?: {
     activity_trend: {
       x_data: string[]

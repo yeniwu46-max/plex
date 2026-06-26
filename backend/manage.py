@@ -10,7 +10,7 @@ from flask import Flask
 from sqlalchemy import inspect, text
 
 from app.config import DevelopmentConfig
-from app.models import StudentProfile, User, db
+from app.models import Role, StudentProfile, User, db
 
 
 ROOT = Path(__file__).resolve().parent
@@ -112,9 +112,20 @@ def migration_smoke() -> None:
 def seed_demo() -> None:
     from app import create_app
     from app.services.student_profile import StudentProfileService
+    from werkzeug.security import generate_password_hash
 
     app = create_app('development')
     with app.app_context():
+        student_role = Role.query.filter_by(name='student').first()
+        if not User.query.filter_by(username='student002').first():
+            db.session.add(User(
+                username='student002',
+                email='student002@example.com',
+                password_hash=generate_password_hash('student123'),
+                real_name='学生2',
+                role_id=student_role.id,
+            ))
+            db.session.commit()
         profiles = {
             'student001': {
                 'major_background': '计算机专业大一',
@@ -146,15 +157,40 @@ def seed_demo() -> None:
         print('demo profiles seeded idempotently')
 
 
+def knowledge_check() -> None:
+    from app.data.course_knowledge import validate_course_knowledge
+
+    report = validate_course_knowledge()
+    if report['status'] != 'passed':
+        raise RuntimeError('; '.join(report['errors']))
+    print(
+        'knowledge base validated: '
+        f"{report['valid_knowledge_point_count']}/"
+        f"{report['knowledge_point_count']} points, "
+        f"{report['document_id_count']} unique document IDs"
+    )
+
+
+def seed_neo4j_graph() -> None:
+    import runpy
+
+    runpy.run_path(str(ROOT / 'scripts' / 'seed_neo4j_knowledge_graph.py'), run_name='__main__')
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=('init', 'upgrade', 'migration-smoke', 'seed-demo'))
+    parser.add_argument(
+        'command',
+        choices=('init', 'upgrade', 'migration-smoke', 'seed-demo', 'knowledge-check', 'seed-neo4j-graph'),
+    )
     args = parser.parse_args()
     {
         'init': init_database,
         'upgrade': upgrade_database,
         'migration-smoke': migration_smoke,
         'seed-demo': seed_demo,
+        'knowledge-check': knowledge_check,
+        'seed-neo4j-graph': seed_neo4j_graph,
     }[args.command]()
 
 

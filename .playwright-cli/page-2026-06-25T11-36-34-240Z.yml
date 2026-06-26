@@ -1,0 +1,27 @@
+- generic [ref=e98]:
+  - button "返回登录" [ref=e99] [cursor=pointer]:
+    - img [ref=e100]:
+      - img [ref=e101]
+  - generic [ref=e103]:
+    - img [ref=e105]:
+      - img [ref=e106]
+    - heading "创建 Explorer 账号" [level=1] [ref=e109]
+    - paragraph [ref=e110]: 加入 PLEX 探索网络
+  - generic [ref=e111]:
+    - generic [ref=e113]:
+      - img [ref=e115]:
+        - img [ref=e116]
+      - generic [ref=e119]:
+        - textbox "用户名或邮箱" [ref=e120]
+        - generic:
+          - generic: 用户名或邮箱
+    - generic [ref=e122]:
+      - img [ref=e124]:
+        - img [ref=e125]
+      - generic [ref=e128]:
+        - textbox "登录密码" [ref=e129]
+        - generic:
+          - generic: 登录密码
+    - button "注册并进入" [ref=e130] [cursor=pointer]
+  - button "已有账号，返回登录" [ref=e131] [cursor=pointer]:
+    - generic [ref=e132]: 已有账号，返回登录

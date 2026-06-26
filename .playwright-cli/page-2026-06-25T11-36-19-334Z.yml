@@ -1,0 +1,53 @@
+- generic [ref=e15]:
+  - region "品牌与视觉" [ref=e16]:
+    - generic "PLEX Universe" [ref=e19]:
+      - img [ref=e20]
+      - generic [ref=e21]: PLEX
+    - generic [ref=e22]:
+      - heading "探索编程知识宇宙" [level=1] [ref=e23]
+      - paragraph [ref=e24]: 点亮属于你的能力星图
+      - paragraph [ref=e25]: 每一次探索，都是成长的轨迹。
+    - generic [ref=e26]:
+      - generic [ref=e30]: 欢迎来到 PLEX 宇宙
+      - paragraph [ref=e31]: © 2026 PLEX Universe. All rights reserved.
+  - region "登录" [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - heading "欢迎回来，Explorer" [level=2] [ref=e35]
+        - paragraph [ref=e36]: 继续你的探索之旅
+      - img [ref=e40]
+      - generic [ref=e42]:
+        - generic [ref=e44]:
+          - img [ref=e46]:
+            - img [ref=e47]
+          - generic [ref=e50]:
+            - textbox "邮箱 / 用户名" [ref=e51]
+            - generic:
+              - generic: 邮箱 / 用户名
+        - generic [ref=e53]:
+          - img [ref=e55]:
+            - img [ref=e56]
+          - generic [ref=e59]:
+            - textbox "密码" [ref=e60]
+            - generic:
+              - generic: 密码
+          - button "显示或隐藏密码" [ref=e62] [cursor=pointer]:
+            - img [ref=e63]:
+              - img [ref=e64]
+        - button "进入探索" [ref=e67] [cursor=pointer]:
+          - generic [ref=e68]: 进入探索
+          - img [ref=e69]
+      - generic [ref=e71]:
+        - generic [ref=e73]: 或使用以下方式登录
+        - generic [ref=e74]:
+          - button "使用 Google 登录" [ref=e75] [cursor=pointer]:
+            - img [ref=e76]
+          - button "使用 GitHub 登录" [ref=e81] [cursor=pointer]:
+            - img [ref=e82]
+          - button "注册 PLEX 账号" [ref=e84] [cursor=pointer]:
+            - img [ref=e85]
+      - generic [ref=e87]:
+        - checkbox "记住我" [ref=e88] [cursor=pointer]:
+          - img [ref=e92]
+          - generic [ref=e95]: 记住我
+        - button "忘记密码？" [ref=e96] [cursor=pointer]

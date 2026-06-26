@@ -1,0 +1,39 @@
+{
+  "run_at": "2026-06-26T13:53:25+00:00",
+  "passed": true,
+  "checks": {
+    "python": {
+      "passed": true,
+      "version": "3.12.13"
+    },
+    "node": {
+      "passed": true,
+      "version": "v24.14.1"
+    },
+    "npm": {
+      "passed": true,
+      "version": "11.11.0"
+    },
+    "database": {
+      "passed": true,
+      "backend": "sqlite"
+    },
+    "health": {
+      "passed": true,
+      "response_code": 0
+    },
+    "demo_accounts": {
+      "passed": true,
+      "accounts": {
+        "student001": true,
+        "teacher001": true,
+        "admin": true
+      }
+    }
+  },
+  "external_conditions": {
+    "docker": "available",
+    "github_cli": "blocked_not_authenticated",
+    "iflytek_spark": "credential_configured"
+  }
+}

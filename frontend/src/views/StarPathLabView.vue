@@ -2,7 +2,8 @@
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
-import { fetchLearningPath, type LearningDomain } from '../api/studentProgress'
+import { fetchLearningPath, type LearningDomain, type LearningPathOrderedNode, type NextBestAction, type RemediationPath } from '../api/studentProgress'
+import { planLearningPath } from '../api/agentService'
 import type { LearningRecommendation } from '../api/learningReport'
 import type { PersonalizedResource } from '../api/personalizedResources'
 import { fetchStudentLearningResources, type LearningResourceItem } from '../api/learningResources'
@@ -30,12 +31,14 @@ import {
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
+import PlexLearningPathPanel from '../components/agent/PlexLearningPathPanel.vue'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 
 const PlexKnowledgeGraph = defineAsyncComponent(
   () => import('../components/shared/PlexKnowledgeGraph.vue'),
 )
 import type { KgEdge, KgNode } from '../data/knowledgeGraphData'
+import { kgIdFromStarPath } from '../data/knowledgeNodeRegistry'
 import { fetchStudentKnowledgeGraph } from '../api/knowledgeGraph'
 import {
   resolveQuestionById,
@@ -69,6 +72,13 @@ const personalizedResources = ref<PersonalizedResource[]>([])
 const kgNodes = ref<KgNode[]>([])
 const kgEdges = ref<KgEdge[]>([])
 const kgLoading = ref(false)
+const orderedNodes = ref<LearningPathOrderedNode[]>([])
+const activePathNodeId = ref<string | null>(null)
+const nextBestAction = ref<NextBestAction | null>(null)
+const remediationPaths = ref<RemediationPath[]>([])
+const pathAgentTrace = ref<{ backend?: string; steps?: Array<{ agentId: string; name: string; latencyMs: number; summary: string }> } | null>(null)
+const graphBackend = ref<string | undefined>()
+const pathPanelLoading = ref(false)
 const pageSearch = ref('')
 
 const activeDomain = computed(() => domains.value.find((item) => item.key === activeDomainKey.value) ?? domains.value[0])
@@ -78,8 +88,13 @@ const showDomainTrack = computed(() => activeTabKey.value !== STAR_PATH_TAB_ALL)
 
 const starPathNodes = computed<StarPathNode[]>(() => {
   if (!showDomainTrack.value) return []
-  return buildKnowledgeTrack(activeDomainKey.value)
+  return buildKnowledgeTrack(activeDomainKey.value, orderedNodes.value, activePathNodeId.value)
 })
+
+const pathKgNodeIds = computed(() => orderedNodes.value.map((n) => n.id))
+const remediationKgIds = computed(() =>
+  remediationPaths.value.map((p) => p.trigger_node).filter(Boolean),
+)
 
 const trackVariant = computed<'seven' | 'four'>(() =>
   starPathNodes.value.length > 5 ? 'seven' : 'four',
@@ -246,6 +261,45 @@ function selectDomainCard(domain: Domain) {
   selectTab(domain.key)
 }
 
+async function refreshPathPlan(focusNode?: string | null) {
+  pathPanelLoading.value = true
+  try {
+    const plan = await planLearningPath({
+      focus_node_id: focusNode ?? activePathNodeId.value ?? undefined,
+    })
+    orderedNodes.value = plan.ordered_nodes ?? orderedNodes.value
+    activePathNodeId.value = plan.active_node_id ?? activePathNodeId.value
+    nextBestAction.value = plan.next_best_action ?? nextBestAction.value
+    remediationPaths.value = plan.remediation_paths ?? remediationPaths.value
+    pathAgentTrace.value = plan.agent_trace ?? null
+    graphBackend.value = plan.graph_backend
+  } catch {
+    /* 保留 learning-path GET 已返回的数据 */
+  } finally {
+    pathPanelLoading.value = false
+  }
+}
+
+async function onPathNodeSelect(node: LearningPathOrderedNode) {
+  if (node.star_path_id) {
+    jumpToKnowledgeById(node.star_path_id)
+  }
+  await refreshPathPlan(node.id)
+}
+
+function jumpToKnowledgeById(kpId: string) {
+  const found = getStarPathKnowledgePoint(kpId)
+  if (found) jumpToKnowledge(found.point)
+}
+
+function onKgNodeClick(node: KgNode) {
+  const starId = orderedNodes.value.find((n) => n.id === node.id)?.star_path_id
+  if (starId) {
+    jumpToKnowledgeById(starId)
+  }
+  void refreshPathPlan(node.id)
+}
+
 function jumpToKnowledge(kp: StarPathKnowledgePoint) {
   activeTabKey.value = kp.domainKey
   activeDomainKey.value = kp.domainKey
@@ -330,6 +384,11 @@ async function loadPath() {
     pathRecommendations.value = rec?.recommendations ?? []
     personalizedResources.value = rec?.personalized_resources ?? []
     domains.value = data.domains.map(mapDomain)
+    orderedNodes.value = data.ordered_nodes ?? []
+    activePathNodeId.value = data.active_node_id ?? null
+    nextBestAction.value = data.next_best_action ?? null
+    remediationPaths.value = data.remediation_paths ?? []
+    graphBackend.value = data.graph_backend
     if (!route.query.domain) {
       activeDomainKey.value = data.active_domain_key
     }
@@ -348,14 +407,15 @@ watch(
 )
 
 watch(
-  () => selectedKnowledge.value?.domain.key,
-  async (key) => {
-    if (!key) {
+  () => selectedKnowledge.value?.point,
+  async (point) => {
+    if (!point) {
       knowledgeResources.value = []
       return
     }
+    const knowledgeKey = point.tags[0] ?? kgIdFromStarPath(point.id) ?? point.id
     try {
-      const data = await fetchStudentLearningResources(key)
+      const data = await fetchStudentLearningResources(knowledgeKey)
       knowledgeResources.value = data.items
     } catch {
       knowledgeResources.value = []
@@ -426,6 +486,10 @@ onMounted(() => {
               :edges="kgEdges"
               mode="student"
               height="500px"
+              :path-node-ids="pathKgNodeIds"
+              :remediation-node-ids="remediationKgIds"
+              :active-path-node-id="activePathNodeId"
+              @node-click="onKgNodeClick"
             />
             <p v-if="kgLoading" class="starpath-kg-loading">正在同步学情知识地图…</p>
             <p v-else-if="filteredKgNodes.length === 0" class="starpath-kg-loading">暂无知识地图数据，请稍后重试</p>
@@ -515,6 +579,16 @@ onMounted(() => {
         </div>
 
         <aside class="detail-panel" aria-label="知识点详情">
+          <PlexLearningPathPanel
+            :ordered-nodes="orderedNodes"
+            :active-node-id="activePathNodeId"
+            :next-best-action="nextBestAction"
+            :remediation-paths="remediationPaths"
+            :agent-trace="pathAgentTrace"
+            :graph-backend="graphBackend"
+            :loading="pathPanelLoading"
+            @select-node="onPathNodeSelect"
+          />
           <div class="detail-panel__body">
             <template v-if="detailMode === 'knowledge' && selectedKnowledge">
               <div class="detail-panel__head">

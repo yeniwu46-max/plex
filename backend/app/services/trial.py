@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 
 from app.models import Class, PointsLog, Trial, TrialParticipation, User, db
+from app.utils.time import utc_now
 
 from .base import BaseService
 from .question_generator import QuestionGenerator
@@ -27,7 +28,7 @@ class TrialService(BaseService):
     @staticmethod
     def _sync_trial_status(trial, commit=False):
         """按时间推进 scheduled→running、running→ended。"""
-        now = datetime.utcnow()
+        now = utc_now()
         changed = False
         if trial.status == 'scheduled' and trial.starts_at and trial.starts_at <= now:
             trial.status = 'running'
@@ -49,14 +50,14 @@ class TrialService(BaseService):
         if trial.status == 'scheduled':
             return 'scheduled'
         if trial.status == 'running':
-            if trial.starts_at and trial.starts_at > datetime.utcnow():
+            if trial.starts_at and trial.starts_at > utc_now():
                 return 'scheduled'
             return 'running'
         return trial.status
 
     @staticmethod
     def _get_teacher_class(class_id, teacher_id, role_name):
-        cls = Class.query.get(class_id)
+        cls = db.session.get(Class, class_id)
         if not cls:
             raise ValueError('班级不存在')
         if role_name == 'teacher' and cls.teacher_id != teacher_id:
@@ -107,7 +108,7 @@ class TrialService(BaseService):
         starts_at = TrialService._parse_datetime(payload.get('starts_at'))
         start_delay = payload.get('start_delay_minutes')
         if start_delay is not None and starts_at is None:
-            starts_at = datetime.utcnow() + timedelta(minutes=int(start_delay))
+            starts_at = utc_now() + timedelta(minutes=int(start_delay))
 
         if publish_mode == 'draft':
             status = 'draft'
@@ -116,16 +117,16 @@ class TrialService(BaseService):
         elif publish_mode == 'scheduled':
             status = 'scheduled'
             if not starts_at:
-                starts_at = datetime.utcnow() + timedelta(minutes=30)
+                starts_at = utc_now() + timedelta(minutes=30)
         else:
             status = 'running'
-            starts_at = starts_at or datetime.utcnow()
+            starts_at = starts_at or utc_now()
 
         ends_at = TrialService._parse_datetime(payload.get('ends_at'))
         if not ends_at and starts_at:
             ends_at = starts_at + timedelta(minutes=duration)
 
-        if status == 'scheduled' and starts_at and starts_at <= datetime.utcnow():
+        if status == 'scheduled' and starts_at and starts_at <= utc_now():
             status = 'running'
 
         trial = Trial(
@@ -195,7 +196,7 @@ class TrialService(BaseService):
 
     @staticmethod
     def publish_trial(current_user_id, trial_id, role_name, notify_students: bool = True):
-        trial = Trial.query.get(trial_id)
+        trial = db.session.get(Trial, trial_id)
         if not trial:
             raise ValueError('试炼不存在')
         TrialService._get_teacher_class(trial.class_id, current_user_id, role_name)
@@ -204,7 +205,7 @@ class TrialService(BaseService):
         if trial.status not in ('draft', 'scheduled'):
             raise ValueError('仅草稿或定时试炼可发布')
 
-        now = datetime.utcnow()
+        now = utc_now()
         if not trial.starts_at:
             trial.starts_at = now
         if trial.starts_at > now:
@@ -236,7 +237,7 @@ class TrialService(BaseService):
 
     @staticmethod
     def update_trial(current_user_id, trial_id, role_name, payload):
-        trial = Trial.query.get(trial_id)
+        trial = db.session.get(Trial, trial_id)
         if not trial:
             raise ValueError('试炼不存在')
         TrialService._get_teacher_class(trial.class_id, current_user_id, role_name)
@@ -247,9 +248,9 @@ class TrialService(BaseService):
             new_status = payload['status']
             trial.status = new_status
             if new_status == 'ended':
-                trial.ends_at = trial.ends_at or datetime.utcnow()
+                trial.ends_at = trial.ends_at or utc_now()
             if new_status == 'running' and not trial.starts_at:
-                trial.starts_at = datetime.utcnow()
+                trial.starts_at = utc_now()
         if 'title' in payload and payload['title']:
             trial.title = str(payload['title']).strip()[:120]
         draft_questions = payload.get('draft_questions')
@@ -264,7 +265,7 @@ class TrialService(BaseService):
         if 'ends_at' in payload:
             trial.ends_at = TrialService._parse_datetime(payload.get('ends_at'))
         if 'start_delay_minutes' in payload and payload['start_delay_minutes'] is not None:
-            trial.starts_at = datetime.utcnow() + timedelta(minutes=int(payload['start_delay_minutes']))
+            trial.starts_at = utc_now() + timedelta(minutes=int(payload['start_delay_minutes']))
         db.session.commit()
         TrialService._sync_trial_status(trial, commit=True)
         return trial.to_dict(
@@ -274,7 +275,7 @@ class TrialService(BaseService):
 
     @staticmethod
     def delete_trial(current_user_id, trial_id, role_name):
-        trial = Trial.query.get(trial_id)
+        trial = db.session.get(Trial, trial_id)
         if not trial:
             raise ValueError('试炼不存在')
         TrialService._get_teacher_class(trial.class_id, current_user_id, role_name)
@@ -288,7 +289,7 @@ class TrialService(BaseService):
 
     @staticmethod
     def list_student_trials(user_id, include_scheduled=False):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user or not user.class_id:
             return {'trials': [], 'participations': []}
 
@@ -327,8 +328,8 @@ class TrialService(BaseService):
 
     @staticmethod
     def join_trial(user_id, trial_id):
-        user = User.query.get(user_id)
-        trial = Trial.query.get(trial_id)
+        user = db.session.get(User, user_id)
+        trial = db.session.get(Trial, trial_id)
         if not user or not trial:
             raise ValueError('试炼或用户不存在')
         if not user.class_id or user.class_id != trial.class_id:
@@ -350,8 +351,8 @@ class TrialService(BaseService):
 
     @staticmethod
     def complete_trial(user_id, trial_id, score=None):
-        user = User.query.get(user_id)
-        trial = Trial.query.get(trial_id)
+        user = db.session.get(User, user_id)
+        trial = db.session.get(Trial, trial_id)
         if not user or not trial:
             raise ValueError('试炼或用户不存在')
         if not user.class_id or user.class_id != trial.class_id:
@@ -378,7 +379,7 @@ class TrialService(BaseService):
 
         part.status = 'completed'
         part.score = final_score
-        part.completed_at = datetime.utcnow()
+        part.completed_at = utc_now()
 
         incentive_feedback = None
         if trial.reward_points:
@@ -413,13 +414,13 @@ class TrialService(BaseService):
 
     @staticmethod
     def list_student_trials_for_teacher(teacher_id, student_user_id, role_name):
-        student = User.query.get(student_user_id)
+        student = db.session.get(User, student_user_id)
         if not student:
             raise ValueError('学生不存在')
         if not student.class_id:
             return {'participations': [], 'summary': {'completed': 0, 'joined': 0, 'avg_score': 0}}
 
-        cls = Class.query.get(student.class_id)
+        cls = db.session.get(Class, student.class_id)
         if not cls:
             raise ValueError('班级不存在')
         if role_name == 'teacher' and cls.teacher_id != teacher_id:
@@ -458,7 +459,7 @@ class TrialService(BaseService):
     def get_student_trial_stats(user_id: int):
         from datetime import date, datetime, timedelta
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 

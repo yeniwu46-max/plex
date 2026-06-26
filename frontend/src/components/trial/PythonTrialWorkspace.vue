@@ -6,6 +6,7 @@ import PlexCodeEditor from './PlexCodeEditor.vue'
 import {
   ArrowBackOutline,
   BulbOutline,
+  ChatbubbleEllipsesOutline,
   CheckmarkCircleOutline,
   CloseCircleOutline,
   CloudUploadOutline,
@@ -18,12 +19,13 @@ import type { PythonTrialQuestion } from '../../data/pythonTrialQuestions'
 import { useAuthStore } from '../../stores/auth'
 import { useNotificationStore } from '../../stores/notifications'
 import { getTrialMistakeRecords, recordTrialRun } from '../../utils/trialMistakeLog'
-import { submitCode } from '../../api/codeRunner'
 import { submitTrialCodeAnswer } from '../../api/studentAssignments'
 import { advanceDailyQuest } from '../../api/studentOverview'
-import { studentDiagnose, type StudentDiagnoseResult } from '../../api/agentService'
+import { codeHint, runCodeLearningCycle, studentDiagnose, type LearningCycleResult, type StudentDiagnoseResult } from '../../api/agentService'
 import PlexDiagnosisPanel from '../agent/PlexDiagnosisPanel.vue'
 import PlexLearningAdvicePanel from '../agent/PlexLearningAdvicePanel.vue'
+import PlexAgentTracePanel from '../agent/PlexAgentTracePanel.vue'
+import PlexLearningCyclePanel from '../agent/PlexLearningCyclePanel.vue'
 // recordTrialRun 会写入 localStorage 并异步同步 POST /student/code-trial/runs
 
 const props = withDefaults(
@@ -77,7 +79,9 @@ const caseResults = ref<CaseResult[]>([])
 const executionBackend = ref<'api' | 'pyodide' | null>(null)
 const agentLoading = ref(false)
 const agentResult = ref<StudentDiagnoseResult | null>(null)
+const learningCycle = ref<LearningCycleResult | null>(null)
 const agentError = ref('')
+const aiHintLoading = ref(false)
 let agentRequestId = 0
 const passedCount = computed(() => caseResults.value.filter((item) => item.passed).length)
 const allPassed = computed(
@@ -242,7 +246,7 @@ function applyRunResults(results: CaseResult[], backend: 'api' | 'pyodide') {
 }
 
 async function runViaApi(): Promise<CaseResult[]> {
-  const payload = await submitCode({
+  const payload = await runCodeLearningCycle({
     language: 'python',
     code: code.value,
     run_mode: props.question.runMode,
@@ -254,8 +258,17 @@ async function runViaApi(): Promise<CaseResult[]> {
       setup: tc.setup,
       invoke: tc.invoke,
     })),
+    exerciseId: props.question.id,
+    questionTitle: props.question.title,
+    questionPrompt: props.question.description,
+    topic: props.question.topic,
+    knowledgePoints: [props.question.topic, ...props.question.tags],
+    attemptCount: answerHistory.value.length + 1,
   })
-  return payload.results.map((item) => ({
+  learningCycle.value = payload
+  agentResult.value = payload
+  agentError.value = ''
+  return payload.execution.results.map((item) => ({
     id: item.case_id || item.label,
     label: item.label,
     expected: item.expected,
@@ -331,6 +344,9 @@ function onReset() {
   code.value = props.question.starterCode || 'print("Hello, PLEX!")'
   caseResults.value = []
   showHint.value = false
+  agentResult.value = null
+  learningCycle.value = null
+  agentError.value = ''
 }
 
 function revealHint() {
@@ -366,9 +382,42 @@ watch(
     caseResults.value = []
     showHint.value = false
     agentResult.value = null
+    learningCycle.value = null
     agentError.value = ''
   },
 )
+
+async function askAiForHint() {
+  if (!code.value.trim() || aiHintLoading.value) return
+  aiHintLoading.value = true
+  const failedCases = caseResults.value
+    .filter((item) => !item.passed)
+    .map((item) => ({
+      label: item.label,
+      expected: item.expected,
+      actual: item.actual,
+      error: item.error,
+    }))
+  const failedCase = failedCases[0]
+  try {
+    const result = await codeHint({
+      exerciseId: props.question.id,
+      questionTitle: props.question.title,
+      topic: props.question.topic,
+      code: code.value,
+      stdout: failedCase?.actual,
+      stderr: failedCase?.error,
+      expectedOutput: failedCase?.expected,
+      failedCases,
+    })
+    code.value = result.annotated_code
+    message.success('AI 已把提示写入代码注释')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : 'AI 提示生成失败')
+  } finally {
+    aiHintLoading.value = false
+  }
+}
 
 async function fetchAiFeedback() {
   if (!code.value.trim() || agentLoading.value) return
@@ -390,6 +439,8 @@ async function fetchAiFeedback() {
       knowledgePoints: [props.question.topic, ...props.question.tags],
       attemptCount,
       answerStatus: allPassed.value ? 'correct' : failedCase ? 'wrong' : 'partial',
+      questionTitle: props.question.title,
+      questionPrompt: props.question.description,
     })
     if (requestId !== agentRequestId || !isMounted.value) return
     agentResult.value = result
@@ -425,6 +476,15 @@ async function fetchAiFeedback() {
         <n-button quaternary :disabled="running" @click="onReset">
           <template #icon><n-icon :component="RefreshOutline" /></template>
           重置代码
+        </n-button>
+        <n-button
+          secondary
+          :loading="aiHintLoading"
+          :disabled="running || !code.trim()"
+          @click="askAiForHint"
+        >
+          <template #icon><n-icon :component="ChatbubbleEllipsesOutline" /></template>
+          询问AI
         </n-button>
         <n-button type="primary" :loading="running || pyodideLoading" @click="onRun">
           <template #icon><n-icon :component="PlayOutline" /></template>
@@ -548,6 +608,10 @@ async function fetchAiFeedback() {
           </p>
           <p v-else-if="agentError" class="py-ai-block__error">{{ agentError }}</p>
           <template v-else-if="agentResult || agentLoading">
+            <plex-agent-trace-panel
+              :trace="agentResult?.pipelineTrace"
+              :loading="agentLoading && !agentResult"
+            />
             <plex-diagnosis-panel
               :result="agentResult ?? agentPreview"
               :loading="agentLoading && !agentResult"
@@ -556,6 +620,10 @@ async function fetchAiFeedback() {
               v-if="agentResult"
               :result="agentResult"
               :loading="false"
+            />
+            <plex-learning-cycle-panel
+              v-if="learningCycle"
+              :result="learningCycle"
             />
           </template>
         </section>

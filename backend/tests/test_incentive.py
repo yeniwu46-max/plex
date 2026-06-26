@@ -57,7 +57,7 @@ class IncentiveTestCase(unittest.TestCase):
             self.assertEqual(feedback['level'], 2)
             self.assertGreaterEqual(len(feedback['unlocked_achievements']), 1)
 
-            user = User.query.get(self.student_id)
+            user = db.session.get(User, self.student_id)
             self.assertEqual(user.level, 2)
             unlocked = UserAchievement.query.filter_by(user_id=self.student_id).count()
             self.assertGreaterEqual(unlocked, 1)

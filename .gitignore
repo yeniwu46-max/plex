@@ -1,4 +1,9 @@
 node_modules/
+.npm-cache/
+.venv*/
+.codegraph/
+.cursor/
+outputs/
 dist/
 output/
 test-results/

@@ -1,5 +1,6 @@
 """每日委托模型"""
-from datetime import date, datetime
+from datetime import date
+from app.utils.time import utc_now
 from . import db
 
 
@@ -18,8 +19,8 @@ class DailyQuest(db.Model):
     bonus_eligible = db.Column(db.Boolean, default=True, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     sort_order = db.Column(db.Integer, default=0, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     user_progress = db.relationship('UserDailyQuest', backref='quest', cascade='all, delete-orphan')
 
@@ -50,8 +51,8 @@ class UserDailyQuest(db.Model):
     current = db.Column(db.Integer, default=0, nullable=False)
     completed_at = db.Column(db.DateTime)
     reward_claimed_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'quest_id', 'quest_date', name='unique_user_daily_quest'),

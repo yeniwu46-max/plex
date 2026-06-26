@@ -2,7 +2,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.models import User
+from app.models import User, db
 from app.services.assignment import AssignmentService
 from app.services.evaluation import EvaluationService
 from app.services.mistake import MistakeService
@@ -14,7 +14,7 @@ teacher_bp = Blueprint('teacher', __name__, url_prefix='/api/v1/teacher')
 
 
 def _role_name(user_id):
-    user = User.query.get(int(user_id))
+    user = db.session.get(User, int(user_id))
     return user.role.name if user and user.role else None
 
 
@@ -122,6 +122,44 @@ def get_student_learning_report(student_id):
                 student_id,
                 _role_name(current_user_id),
                 period,
+            )
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/students/<int:student_id>/learning-adaptations', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_student_learning_adaptations(student_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        MistakeService.list_for_teacher_student(current_user_id, student_id, _role_name(current_user_id))
+        from app.services.learning_adaptation import LearningAdaptationService
+        return success_response(LearningAdaptationService.teacher_summary(student_id))
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+
+
+@teacher_bp.route('/students/<int:student_id>/learning-effect', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_student_learning_effect(student_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        task_id = request.args.get('task_id')
+        return success_response(
+            EvaluationService.get_teacher_learning_effect(
+                current_user_id,
+                student_id,
+                _role_name(current_user_id),
+                task_id,
             )
         )
     except PermissionError as exc:

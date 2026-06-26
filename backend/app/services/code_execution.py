@@ -5,9 +5,9 @@ import subprocess
 import sys
 import tempfile
 import uuid
-from datetime import datetime
-
 import requests
+
+from app.utils.time import utc_now
 
 LANGUAGE_IDS = {
     'python': 71,
@@ -271,6 +271,6 @@ class CodeExecutionService:
             'passed_count': sum(1 for x in results if x['passed']),
             'total': len(results),
             'results': results,
-            'submitted_at': datetime.utcnow().isoformat(),
+            'submitted_at': utc_now().isoformat(),
             'backend': cls.backend_name(),
         }

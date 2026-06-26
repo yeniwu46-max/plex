@@ -3,6 +3,7 @@ from datetime import date, datetime, time
 
 from .base import BaseService
 from app.models import DailyQuest, PointsLog, User, UserDailyQuest, db
+from app.utils.time import utc_now
 
 
 DAILY_BONUS_XP = 120
@@ -83,7 +84,7 @@ class DailyQuestService(BaseService):
         if record.current < quest.total:
             record.current += 1
             if record.current >= quest.total and not record.completed_at:
-                record.completed_at = datetime.utcnow()
+                record.completed_at = utc_now()
                 if not record.reward_claimed_at:
                     incentive_feedback = DailyQuestService._add_points(
                         user_id=user_id,
@@ -91,7 +92,7 @@ class DailyQuestService(BaseService):
                         reason=f'daily_quest:{quest.key}',
                         related_id=quest.id,
                     )
-                    record.reward_claimed_at = datetime.utcnow()
+                    record.reward_claimed_at = utc_now()
             db.session.commit()
 
         if not incentive_feedback:
@@ -128,7 +129,7 @@ class DailyQuestService(BaseService):
 
     @staticmethod
     def _ensure_today_records(user_id, target_date):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
 

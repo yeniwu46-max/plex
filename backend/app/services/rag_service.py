@@ -3,6 +3,8 @@
 import os
 from datetime import datetime
 
+from app.services.course_safety import CourseSafetyService
+from app.utils.time import utc_now
 MOCK_DOCUMENTS = [
     {
         'id': 'doc_001',
@@ -56,7 +58,7 @@ class RagService:
 
     @staticmethod
     def upload(filename: str) -> dict:
-        task_id = 'task_' + datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        task_id = 'task_' + utc_now().strftime('%Y%m%d%H%M%S')
         return {
             'task_id': task_id,
             'filename': filename,
@@ -67,6 +69,7 @@ class RagService:
 
     @staticmethod
     def query(question: str) -> dict:
+        CourseSafetyService.ensure_safe(question, enforce_course_scope=True)
         backend = RagService.backend_name()
         if backend == 'llamaindex':
             try:
@@ -121,7 +124,7 @@ class RagService:
             'indexed_documents': indexed,
             'processing_documents': len(MOCK_DOCUMENTS) - indexed,
             'total_chunks': sum(d['chunk_count'] for d in MOCK_DOCUMENTS),
-            'last_sync': datetime.utcnow().isoformat(),
+            'last_sync': utc_now().isoformat(),
         }
 
     @staticmethod

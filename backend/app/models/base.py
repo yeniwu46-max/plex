@@ -2,7 +2,7 @@
 数据库模型基类
 """
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from app.utils.time import utc_now
 
 db = SQLAlchemy()
 
@@ -15,8 +15,8 @@ class BaseModel(db.Model):
     __abstract__ = True
 
     id = db.Column(db.Integer, primary_key=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     def to_dict(self):
         """

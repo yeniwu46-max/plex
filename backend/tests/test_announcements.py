@@ -74,7 +74,7 @@ class AnnouncementTestCase(unittest.TestCase):
         self.assertEqual(delete_resp.status_code, 200)
 
         with self.app.app_context():
-            row = SystemAnnouncement.query.get(ann_id)
+            row = db.session.get(SystemAnnouncement, ann_id)
             self.assertIsNotNone(row)
             self.assertFalse(row.is_active)
 

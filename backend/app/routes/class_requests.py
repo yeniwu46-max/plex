@@ -15,10 +15,10 @@ class_requests_bp = Blueprint('class_requests', __name__, url_prefix='/api/v1/cl
 @role_required('teacher', 'admin')
 def list_class_requests():
     try:
-        from app.models import User
+        from app.models import User, db
 
         user_id = int(get_jwt_identity())
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         status = request.args.get('status')
         if is_admin(user):
             rows = ClassRequestService.list_requests(status=status)

@@ -1,0 +1,186 @@
+- generic [ref=e1109]:
+  - complementary "主导航" [ref=e1110]:
+    - generic [ref=e1111]:
+      - img [ref=e1112]
+      - generic [ref=e1115]: PLEX
+    - navigation [ref=e1116]:
+      - link "总览 OVERVIEW" [ref=e1117] [cursor=pointer]:
+        - /url: /student
+        - img [ref=e1119]:
+          - img [ref=e1120]
+        - generic [ref=e1125]:
+          - generic [ref=e1126]: 总览
+          - generic [ref=e1127]: OVERVIEW
+      - link "探索舱 EXPLORER" [ref=e1128] [cursor=pointer]:
+        - /url: /student/discovery
+        - img [ref=e1130]:
+          - img [ref=e1131]
+        - generic [ref=e1134]:
+          - generic [ref=e1135]: 探索舱
+          - generic [ref=e1136]: EXPLORER
+      - link "星轨学习 STARPATH" [ref=e1137] [cursor=pointer]:
+        - /url: /student/star-path
+        - img [ref=e1139]:
+          - img [ref=e1140]
+        - generic [ref=e1146]:
+          - generic [ref=e1147]: 星轨学习
+          - generic [ref=e1148]: STARPATH
+      - link "试炼中心 TRIAL ARENA" [ref=e1149] [cursor=pointer]:
+        - /url: /student/trials
+        - img [ref=e1151]:
+          - img [ref=e1152]
+        - generic [ref=e1157]:
+          - generic [ref=e1158]: 试炼中心
+          - generic [ref=e1159]: TRIAL ARENA
+      - link "驿站助手 MESSENGER" [ref=e1160] [cursor=pointer]:
+        - /url: /student/messenger
+        - img [ref=e1162]:
+          - img [ref=e1163]
+        - generic [ref=e1166]:
+          - generic [ref=e1167]: 驿站助手
+          - generic [ref=e1168]: MESSENGER
+      - link "我的 MY SPACE" [ref=e1169] [cursor=pointer]:
+        - /url: /student/me/growth
+        - img [ref=e1171]:
+          - img [ref=e1172]
+        - generic [ref=e1175]:
+          - generic [ref=e1176]: 我的
+          - generic [ref=e1177]: MY SPACE
+    - button "收起侧栏" [ref=e1178] [cursor=pointer]: «
+  - generic [ref=e1179]:
+    - banner [ref=e1180]:
+      - generic [ref=e1181]:
+        - heading "试炼关卡" [level=1] [ref=e1182]: 试炼关卡
+        - paragraph [ref=e1184]: Python 入门代码试炼 · 参与班级任务赢取探索积分
+      - generic [ref=e1188]:
+        - img [ref=e1190]:
+          - img [ref=e1191]
+        - generic [ref=e1194]:
+          - textbox "搜索试炼、题目或知识点…" [ref=e1195]
+          - generic:
+            - generic: 搜索试炼、题目或知识点…
+      - generic [ref=e1198]:
+        - generic [ref=e1199]:
+          - button "通知" [ref=e1200] [cursor=pointer]:
+            - img [ref=e1201]:
+              - img [ref=e1202]
+          - superscript [ref=e1205]:
+            - generic [ref=e1208]:
+              - generic [ref=e1209]: "7"
+              - generic [ref=e1211]: "7"
+              - generic [ref=e1212]: "7"
+        - button "当前外观：深色模式，点击切换" [ref=e1213] [cursor=pointer]:
+          - img [ref=e1214]:
+            - img [ref=e1215]
+        - button "打开用户菜单" [ref=e1218] [cursor=pointer]:
+          - generic [ref=e1223]:
+            - strong [ref=e1224]: 学生1
+            - emphasis [ref=e1225]: Lv.2
+          - img [ref=e1226]:
+            - img [ref=e1227]
+    - button "查看星图" [ref=e1230] [cursor=pointer]:
+      - generic [ref=e1231]:
+        - img [ref=e1232]:
+          - img [ref=e1233]
+        - generic [ref=e1235]: 查看星图
+    - region "学生试炼关卡" [ref=e1237]:
+      - paragraph [ref=e1238]: 你好，学生1 — 从 Python 入门题开始试炼，或参与班级任务。
+      - region "试炼战绩" [ref=e1239]:
+        - generic [ref=e1240]:
+          - article [ref=e1241]:
+            - generic [ref=e1242]: 已完成
+            - strong [ref=e1243]: "1"
+          - article [ref=e1244]:
+            - generic [ref=e1245]: 进行中
+            - strong [ref=e1246]: "1"
+          - article [ref=e1247]:
+            - generic [ref=e1248]: 均分
+            - strong [ref=e1249]: "0"
+          - article [ref=e1250]:
+            - generic [ref=e1251]: 累计参与
+            - strong [ref=e1252]: "2"
+        - list [ref=e1253]:
+          - listitem [ref=e1254]:
+            - generic [ref=e1255]: 栈与队列、树与二叉树、图的表示 · 个人挑战
+            - emphasis [ref=e1256]: 0 分
+      - generic [ref=e1257]:
+        - region "Python 入门试炼" [ref=e1258]:
+          - generic [ref=e1259]:
+            - generic [ref=e1260]:
+              - heading "Python 入门试炼" [level=2] [ref=e1261]
+              - paragraph [ref=e1262]: 选择已解锁的星轨板块，完成该节点下的全部代码试炼。
+            - generic [ref=e1263]:
+              - generic [ref=e1264]: 星轨板块
+              - generic [ref=e1267] [cursor=pointer]:
+                - generic "Python 与 print" [ref=e1268]:
+                  - generic [ref=e1269]: Python 与 print
+                - img "loading" [ref=e1270]:
+                  - img [ref=e1275]
+              - generic [ref=e1277]:
+                - img [ref=e1278]:
+                  - img [ref=e1279]
+                - text: 1 题
+          - list [ref=e1283]:
+            - listitem [ref=e1284]:
+              - button "01 星际问候 推荐优先 print 与字符串 · 入门 · 约 5 分钟 输出 字符串 +20 XP" [ref=e1285] [cursor=pointer]:
+                - generic [ref=e1286]: "01"
+                - generic [ref=e1287]:
+                  - strong [ref=e1288]:
+                    - text: 星际问候
+                    - generic [ref=e1289]: 推荐优先
+                  - generic [ref=e1290]: print 与字符串 · 入门 · 约 5 分钟
+                  - generic [ref=e1291]:
+                    - generic [ref=e1292]: 输出
+                    - generic [ref=e1293]: 字符串
+                - generic [ref=e1294]:
+                  - emphasis [ref=e1295]: +20 XP
+                  - img [ref=e1296]:
+                    - img [ref=e1297]
+        - complementary "题目推荐逻辑" [ref=e1299]:
+          - generic [ref=e1300]:
+            - heading "小E · 推荐逻辑" [level=2] [ref=e1301]
+            - generic [ref=e1302]: Python 与 print
+          - paragraph [ref=e1303]:
+            - text: 当前优先：
+            - strong [ref=e1304]: 星际问候
+            - emphasis [ref=e1305]: 匹配 63%
+          - paragraph [ref=e1306]: 根据你的错题记录，优先推荐「星际问候」：26 天前曾未通过（基础输出 等），建议先巩固再往后做。
+          - list [ref=e1307]:
+            - listitem [ref=e1308]:
+              - strong [ref=e1309]: ① 错题来源
+              - generic [ref=e1310]: 本题记录在案：累计未通过 2 次，最近一次为 26 天前。
+            - listitem [ref=e1311]:
+              - strong [ref=e1312]: ② 未通过测试点
+              - generic [ref=e1313]: 基础输出
+            - listitem [ref=e1314]:
+              - strong [ref=e1315]: ③ 错误类型
+              - generic [ref=e1316]: 输出与预期不符
+            - listitem [ref=e1317]:
+              - strong [ref=e1318]: ④ 知识点
+              - generic [ref=e1319]: 所属「print 与字符串」，相关标签：输出、字符串。
+            - listitem [ref=e1320]:
+              - strong [ref=e1321]: ⑤ 紧迫度
+              - generic [ref=e1322]: 错题紧迫度 53 分（近期出错越频繁、未通过用例越多，分数越高）。
+            - listitem [ref=e1323]:
+              - strong [ref=e1324]: ⑥ 星轨顺序
+              - generic [ref=e1325]: 在「Python 与 print」中排第 1 题，顺序加权 90 分。
+            - listitem [ref=e1326]:
+              - strong [ref=e1327]: ⑦ 推荐结论
+              - generic [ref=e1328]: 综合错题紧迫度与做题顺序，优先推荐复习「星际问候」。
+      - region "班级试炼" [ref=e1329]:
+        - generic [ref=e1331]:
+          - heading "班级试炼" [level=2] [ref=e1332]
+          - paragraph [ref=e1333]: 教师发布的进行中任务，完成后可获得班级积分奖励。
+        - paragraph [ref=e1334]: 当前没有进行中的班级试炼，可先完成上方 Python 入门题。
+      - region "代码文件上传" [ref=e1335]:
+        - article [ref=e1336]:
+          - generic [ref=e1337]:
+            - generic [ref=e1339]:
+              - heading "上传代码文件" [level=4] [ref=e1340]
+              - paragraph [ref=e1341]: 支持上传 .py、.txt 文件，用于代码记录与 AI 分析。
+            - button "拖拽代码文件、学习报告或截图到这里" [ref=e1342] [cursor=pointer]:
+              - button "Choose File" [ref=e1343]
+              - generic [ref=e1344]: ⬆
+              - paragraph [ref=e1345]: 拖拽代码文件、学习报告或截图到这里
+              - paragraph [ref=e1346]: 支持 .py、.txt
+              - button "选择文件" [ref=e1347]

@@ -1,6 +1,6 @@
 """控制中枢 / 平台配置（JSON 文档 per scope）"""
 import json
-from datetime import datetime
+from app.utils.time import utc_now
 
 from . import db
 
@@ -14,7 +14,7 @@ class SystemSetting(db.Model):
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=True, unique=True, index=True)
     payload_json = db.Column(db.Text, nullable=False, default='{}')
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     class_rel = db.relationship('Class', backref=db.backref('system_setting', uselist=False))
     editor = db.relationship('User', foreign_keys=[updated_by])

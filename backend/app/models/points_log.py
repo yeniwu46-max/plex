@@ -1,5 +1,5 @@
 """积分日志模型"""
-from datetime import datetime
+from app.utils.time import utc_now
 from . import db
 
 
@@ -13,7 +13,7 @@ class PointsLog(db.Model):
     reason = db.Column(db.String(100))  # complete_course, daily_task, submission
     related_id = db.Column(db.Integer)  # 关联的课程/任务ID
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     def __repr__(self):
         return f'<PointsLog user_id={self.user_id} points={self.points}>'

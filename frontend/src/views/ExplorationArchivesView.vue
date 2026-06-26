@@ -10,22 +10,28 @@ import GrowthTrajectory from '../components/archives/GrowthTrajectory.vue'
 import SkillDistribution from '../components/archives/SkillDistribution.vue'
 import AchievementCollection from '../components/archives/AchievementCollection.vue'
 import EmergencyMissionRecords from '../components/archives/EmergencyMissionRecords.vue'
-import PlexSidebar from '../components/layout/PlexSidebar.vue'
-import PlexTopbar from '../components/layout/PlexTopbar.vue'
-import { fetchStudentOverview, type StudentOverview } from '../api/studentOverview'
+import DashboardShell from '../components/layout/DashboardShell.vue'
+import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
+import type { StudentOverview } from '../api/studentOverview'
 import { fetchArchiveInsights, type EmergencyMissionArchiveRecord } from '../api/studentProgress'
-import { fetchStudentLearningReport, type LearningReportResult } from '../api/learningReport'
+import {
+  fetchStudentLearningEffect,
+  type LearningEffectResult,
+  type LearningReportResult,
+} from '../api/learningReport'
+import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import PlexLearningDashboard from '../components/charts/PlexLearningDashboard.vue'
 import type { AchievementItem, GrowthEvent, SkillItem } from '../data/archivesMock'
 
 const auth = useAuthStore()
-const sidebarCollapsed = ref(false)
+const workspace = useStudentWorkspaceStore()
 const overview = ref<StudentOverview | null>(null)
 const tendencyLabel = ref('探索起步型')
 const tendencyDescription = ref('完成试炼与今日委托后，这里会展示你的探索倾向分析。')
 const skillItemsFromApi = ref<SkillItem[]>([])
 const emergencyRecords = ref<EmergencyMissionArchiveRecord[]>([])
 const learningReport = ref<LearningReportResult | null>(null)
+const learningEffect = ref<LearningEffectResult | null>(null)
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -129,12 +135,14 @@ async function loadArchive() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const [overviewResult, insights, report] = await Promise.all([
-      fetchStudentOverview(),
+    const [overviewResult, insights, report, effect] = await Promise.all([
+      workspace.loadOverview(),
       fetchArchiveInsights(),
-      fetchStudentLearningReport('7d').catch(() => null),
+      workspace.loadLearningReport('7d').catch(() => null),
+      fetchStudentLearningEffect().catch(() => null),
     ])
     learningReport.value = report
+    learningEffect.value = effect
     overview.value = overviewResult
     tendencyLabel.value = insights.tendency.label
     tendencyDescription.value = insights.tendency.description
@@ -176,13 +184,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="shell" :class="{ 'shell--collapsed': sidebarCollapsed }">
-    <PlexSidebar v-model:collapsed="sidebarCollapsed" active-key="archive" />
-
-    <div class="main">
-      <PlexTopbar title="探索档案" subtitle="你的成长，被记录在每一段星轨里" />
-
-      <div class="content">
+  <DashboardShell
+    active-nav="me"
+    page-title="成长档案"
+    page-subtitle="你的成长，被记录在每一段星轨里"
+    search-placeholder=""
+    hide-search
+  >
+    <template #toolbar><StudentSectionTabs area="me" /></template>
+    <div class="content">
         <div v-if="loading" class="archive-state">正在整理你的探索档案…</div>
         <div v-else-if="errorMessage" class="archive-state archive-state--error">
           <span>{{ errorMessage }}</span>
@@ -232,6 +242,38 @@ onMounted(() => {
               关注：{{ learningReport.risk_tags.join(' · ') }}
             </p>
           </section>
+          <section v-if="learningEffect" class="archives-grid__effect learning-effect">
+            <header>
+              <div>
+                <h3>个性化学习效果</h3>
+                <p>{{ learningEffect.task.knowledge_key }} · 画像 v{{ learningEffect.task.profile_version }}</p>
+              </div>
+              <span>{{ learningEffect.evidence_count }} 条证据</span>
+            </header>
+            <div class="learning-effect__cards">
+              <article>
+                <small>学习前</small>
+                <strong>{{ learningEffect.before.correct_rate }}%</strong>
+                <span>{{ learningEffect.before.answered_count }} 次作答 · {{ learningEffect.before.mistake_count }} 道错题</span>
+              </article>
+              <article>
+                <small>学习后</small>
+                <strong>{{ learningEffect.after.correct_rate }}%</strong>
+                <span>{{ learningEffect.after.answered_count }} 次作答 · {{ learningEffect.after.mistake_count }} 道错题</span>
+              </article>
+              <article>
+                <small>提升值</small>
+                <strong v-if="learningEffect.status === 'sufficient'">
+                  {{ (learningEffect.delta.correct_rate ?? 0) > 0 ? '+' : '' }}{{ learningEffect.delta.correct_rate }}%
+                </strong>
+                <strong v-else>证据不足</strong>
+                <span v-if="learningEffect.status === 'sufficient'">
+                  掌握度 {{ (learningEffect.delta.mastery_rate ?? 0) > 0 ? '+' : '' }}{{ learningEffect.delta.mastery_rate }}%
+                </span>
+                <span v-else>前后测各需至少 {{ learningEffect.minimum_samples_per_period }} 次有效作答</span>
+              </article>
+            </div>
+          </section>
 
           <!-- 学生资料上传 -->
           <section class="archives-grid__upload-row" aria-label="学习资料上传">
@@ -249,9 +291,8 @@ onMounted(() => {
             </article>
           </section>
         </div>
-      </div>
     </div>
-  </div>
+  </DashboardShell>
 </template>
 
 <style scoped>
@@ -573,6 +614,7 @@ onMounted(() => {
     'emergency emergency'
     'dashboard dashboard'
     'report report'
+    'effect effect'
     'upload-row upload-row';
 }
 
@@ -608,6 +650,10 @@ onMounted(() => {
 
 .archives-grid__report {
   grid-area: report;
+}
+
+.archives-grid__effect {
+  grid-area: effect;
 }
 
 .archives-grid__upload-row {
@@ -675,6 +721,52 @@ onMounted(() => {
   margin: 0.75rem 0 0;
   font-size: 0.8rem;
   color: #fbbf24;
+}
+
+.learning-effect {
+  padding: 1.25rem;
+  border: 1px solid rgba(16, 240, 192, 0.18);
+  border-radius: 16px;
+  background: rgba(8, 24, 36, 0.78);
+}
+
+.learning-effect header,
+.learning-effect__cards {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.learning-effect header {
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.learning-effect h3,
+.learning-effect p {
+  margin: 0;
+}
+
+.learning-effect p,
+.learning-effect header > span,
+.learning-effect article span,
+.learning-effect article small {
+  color: var(--plex-muted);
+  font-size: 0.78rem;
+}
+
+.learning-effect__cards article {
+  flex: 1;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.learning-effect__cards strong {
+  color: var(--plex-accent);
+  font-size: 1.35rem;
 }
 
 @media (max-width: 1100px) {

@@ -1,0 +1,336 @@
+- generic [ref=e1585]:
+  - complementary "主导航" [ref=e1586]:
+    - generic [ref=e1587]:
+      - img [ref=e1588]
+      - generic [ref=e1591]: PLEX
+    - navigation [ref=e1592]:
+      - link "总览 OVERVIEW" [ref=e1593] [cursor=pointer]:
+        - /url: /student
+        - img [ref=e1595]:
+          - img [ref=e1596]
+        - generic [ref=e1601]:
+          - generic [ref=e1602]: 总览
+          - generic [ref=e1603]: OVERVIEW
+      - link "探索舱 EXPLORER" [ref=e1604] [cursor=pointer]:
+        - /url: /student/discovery
+        - img [ref=e1606]:
+          - img [ref=e1607]
+        - generic [ref=e1610]:
+          - generic [ref=e1611]: 探索舱
+          - generic [ref=e1612]: EXPLORER
+      - link "星轨学习 STARPATH" [ref=e1613] [cursor=pointer]:
+        - /url: /student/star-path
+        - img [ref=e1615]:
+          - img [ref=e1616]
+        - generic [ref=e1622]:
+          - generic [ref=e1623]: 星轨学习
+          - generic [ref=e1624]: STARPATH
+      - link "试炼中心 TRIAL ARENA" [ref=e1625] [cursor=pointer]:
+        - /url: /student/trials
+        - img [ref=e1627]:
+          - img [ref=e1628]
+        - generic [ref=e1633]:
+          - generic [ref=e1634]: 试炼中心
+          - generic [ref=e1635]: TRIAL ARENA
+      - link "驿站助手 MESSENGER" [ref=e1636] [cursor=pointer]:
+        - /url: /student/messenger
+        - img [ref=e1638]:
+          - img [ref=e1639]
+        - generic [ref=e1642]:
+          - generic [ref=e1643]: 驿站助手
+          - generic [ref=e1644]: MESSENGER
+      - link "我的 MY SPACE" [ref=e1645] [cursor=pointer]:
+        - /url: /student/me/growth
+        - img [ref=e1647]:
+          - img [ref=e1648]
+        - generic [ref=e1651]:
+          - generic [ref=e1652]: 我的
+          - generic [ref=e1653]: MY SPACE
+    - button "收起侧栏" [ref=e1654] [cursor=pointer]: «
+  - generic [ref=e1655]:
+    - banner [ref=e1656]:
+      - generic [ref=e1657]:
+        - heading "成长档案" [level=1] [ref=e1658]: 成长档案
+        - paragraph [ref=e1660]: 你的成长，被记录在每一段星轨里
+      - generic [ref=e1661]:
+        - generic [ref=e1662]:
+          - button "通知" [ref=e1663] [cursor=pointer]:
+            - img [ref=e1664]:
+              - img [ref=e1665]
+          - superscript [ref=e1668]:
+            - generic [ref=e1671]:
+              - generic [ref=e1672]: "7"
+              - generic [ref=e1674]: "7"
+              - generic [ref=e1675]: "7"
+        - button "当前外观：深色模式，点击切换" [ref=e1676] [cursor=pointer]:
+          - img [ref=e1677]:
+            - img [ref=e1678]
+        - button "打开用户菜单" [ref=e1681] [cursor=pointer]:
+          - generic [ref=e1686]:
+            - strong [ref=e1687]: 学生1
+            - emphasis [ref=e1688]: Lv.2
+          - img [ref=e1689]:
+            - img [ref=e1690]
+    - navigation "我的导航" [ref=e1693]:
+      - link "成长档案" [ref=e1694] [cursor=pointer]:
+        - /url: /student/me/growth
+      - link "学习画像" [ref=e1695] [cursor=pointer]:
+        - /url: /student/me/profile
+      - link "账号设置" [ref=e1696] [cursor=pointer]:
+        - /url: /student/me/settings
+    - generic [ref=e1699]:
+      - region "探索者档案" [ref=e1700]:
+        - img [ref=e1702]
+        - generic [ref=e1705]:
+          - paragraph [ref=e1706]: Explorer · 学生1
+          - paragraph [ref=e1707]: PX-0003
+          - generic [ref=e1708]:
+            - generic [ref=e1709]:
+              - generic [ref=e1710]: 当前等级
+              - text: Lv.2
+            - generic [ref=e1711]:
+              - generic [ref=e1712]: 称号
+              - text: 星轨行者
+            - generic [ref=e1713]:
+              - generic [ref=e1714]: 连续探索
+              - text: 0 天
+      - region "探索倾向" [ref=e1715]:
+        - heading "探索倾向" [level=2] [ref=e1716]
+        - img [ref=e1720]
+        - paragraph [ref=e1722]: 节奏稳定型
+        - paragraph [ref=e1723]: 你能持续完成每日委托，学习节奏均衡，建议保持晨间启动习惯。
+      - region "成长轨迹" [ref=e1724]:
+        - heading "成长轨迹" [level=2] [ref=e1725]
+        - list [ref=e1727]:
+          - listitem [ref=e1728]:
+            - generic [ref=e1732]:
+              - generic [ref=e1733]:
+                - paragraph [ref=e1734]: daily_quest:night-summary
+                - paragraph [ref=e1735]: 2026-06-25
+              - paragraph [ref=e1736]: 获得 25 XP，累计推进个人成长进度。
+          - listitem [ref=e1737]:
+            - generic [ref=e1741]:
+              - generic [ref=e1742]:
+                - paragraph [ref=e1743]: 边界条件补给站 · 紧急任务
+                - paragraph [ref=e1744]: 2026-06-25
+              - paragraph [ref=e1745]: 答对 0/3，未获奖励（Python 与 print）
+          - listitem [ref=e1746]:
+            - generic [ref=e1750]:
+              - generic [ref=e1751]:
+                - paragraph [ref=e1752]: daily_quest:morning-launch
+                - paragraph [ref=e1753]: 2026-06-25
+              - paragraph [ref=e1754]: 获得 20 XP，累计推进个人成长进度。
+          - listitem [ref=e1755]:
+            - generic [ref=e1759]:
+              - generic [ref=e1760]:
+                - paragraph [ref=e1761]: daily_quest:morning-launch
+                - paragraph [ref=e1762]: 2026-06-11
+              - paragraph [ref=e1763]: 获得 20 XP，累计推进个人成长进度。
+          - listitem [ref=e1764]:
+            - generic [ref=e1767]:
+              - generic [ref=e1768]:
+                - paragraph [ref=e1769]: daily_quest:night-summary
+                - paragraph [ref=e1770]: 2026-06-11
+              - paragraph [ref=e1771]: 获得 25 XP，累计推进个人成长进度。
+      - region "能力分布" [ref=e1772]:
+        - heading "能力分布" [level=2] [ref=e1773]
+        - list [ref=e1774]:
+          - listitem [ref=e1775]:
+            - img [ref=e1777]:
+              - img [ref=e1778]
+            - generic [ref=e1783]:
+              - generic [ref=e1784]: DS-STACK
+              - generic [ref=e1785]: 60%
+          - listitem [ref=e1788]:
+            - img [ref=e1790]:
+              - img [ref=e1791]
+            - generic [ref=e1796]:
+              - generic [ref=e1797]: 待探索
+              - generic [ref=e1798]: 0%
+          - listitem [ref=e1800]:
+            - img [ref=e1802]:
+              - img [ref=e1803]
+            - generic [ref=e1808]:
+              - generic [ref=e1809]: 待探索
+              - generic [ref=e1810]: 0%
+          - listitem [ref=e1812]:
+            - img [ref=e1814]:
+              - img [ref=e1815]
+            - generic [ref=e1820]:
+              - generic [ref=e1821]: 待探索
+              - generic [ref=e1822]: 0%
+      - region "成就收藏" [ref=e1824]:
+        - heading "成就收藏" [level=2] [ref=e1825]
+        - generic [ref=e1826]:
+          - article [ref=e1827]:
+            - img [ref=e1829]:
+              - img [ref=e1830]
+            - paragraph [ref=e1833]: 待解锁
+            - paragraph [ref=e1834]: 未解锁
+          - article [ref=e1835]:
+            - img [ref=e1837]:
+              - img [ref=e1838]
+            - paragraph [ref=e1841]: 待解锁
+            - paragraph [ref=e1842]: 未解锁
+          - article [ref=e1843]:
+            - img [ref=e1845]:
+              - img [ref=e1846]
+            - paragraph [ref=e1849]: 待解锁
+            - paragraph [ref=e1850]: 未解锁
+          - article [ref=e1851]:
+            - img [ref=e1853]:
+              - img [ref=e1854]
+            - paragraph [ref=e1857]: 待解锁
+            - paragraph [ref=e1858]: 未解锁
+      - region "紧急任务记录" [ref=e1859]:
+        - heading "补给站紧急任务" [level=2] [ref=e1860]
+        - list [ref=e1861]:
+          - listitem [ref=e1862]:
+            - generic [ref=e1863]:
+              - strong [ref=e1864]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1865]: 0/3
+            - paragraph [ref=e1866]: Python 与 print · 2026-06-25
+            - group [ref=e1867]:
+              - generic "查看作答与解析" [ref=e1868] [cursor=pointer]
+          - listitem [ref=e1869]:
+            - generic [ref=e1870]:
+              - strong [ref=e1871]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1872]: 0/3
+            - paragraph [ref=e1873]: Python 与 print · 2026-06-09
+            - group [ref=e1874]:
+              - generic "查看作答与解析" [ref=e1875] [cursor=pointer]
+          - listitem [ref=e1876]:
+            - generic [ref=e1877]:
+              - strong [ref=e1878]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1879]: 0/3
+            - paragraph [ref=e1880]: Python 与 print · 2026-06-02
+            - group [ref=e1881]:
+              - generic "查看作答与解析" [ref=e1882] [cursor=pointer]
+          - listitem [ref=e1883]:
+            - generic [ref=e1884]:
+              - strong [ref=e1885]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1886]: 0/3
+            - paragraph [ref=e1887]: Python 与 print · 2026-06-01
+            - group [ref=e1888]:
+              - generic "查看作答与解析" [ref=e1889] [cursor=pointer]
+          - listitem [ref=e1890]:
+            - generic [ref=e1891]:
+              - strong [ref=e1892]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1893]: 0/3
+            - paragraph [ref=e1894]: Python 与 print · 2026-05-31
+            - group [ref=e1895]:
+              - generic "查看作答与解析" [ref=e1896] [cursor=pointer]
+          - listitem [ref=e1897]:
+            - generic [ref=e1898]:
+              - strong [ref=e1899]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1900]: 0/3
+            - paragraph [ref=e1901]: Python 与 print · 2026-05-31
+            - group [ref=e1902]:
+              - generic "查看作答与解析" [ref=e1903] [cursor=pointer]
+          - listitem [ref=e1904]:
+            - generic [ref=e1905]:
+              - strong [ref=e1906]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1907]: 全对
+            - paragraph [ref=e1908]: Python 与 print · 2026-05-30 · +55 XP
+            - group [ref=e1909]:
+              - generic "查看作答与解析" [ref=e1910] [cursor=pointer]
+          - listitem [ref=e1911]:
+            - generic [ref=e1912]:
+              - strong [ref=e1913]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1914]: 1/3
+            - paragraph [ref=e1915]: Python 入门 · 2026-05-30
+            - group [ref=e1916]:
+              - generic "查看作答与解析" [ref=e1917] [cursor=pointer]
+          - listitem [ref=e1918]:
+            - generic [ref=e1919]:
+              - strong [ref=e1920]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1921]: 0/3
+            - paragraph [ref=e1922]: 图论基础 · 2026-05-30
+            - group [ref=e1923]:
+              - generic "查看作答与解析" [ref=e1924] [cursor=pointer]
+          - listitem [ref=e1925]:
+            - generic [ref=e1926]:
+              - strong [ref=e1927]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1928]: 0/3
+            - paragraph [ref=e1929]: 图论基础 · 2026-05-30
+            - group [ref=e1930]:
+              - generic "查看作答与解析" [ref=e1931] [cursor=pointer]
+          - listitem [ref=e1932]:
+            - generic [ref=e1933]:
+              - strong [ref=e1934]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1935]: 0/3
+            - paragraph [ref=e1936]: 图论基础 · 2026-05-30
+            - group [ref=e1937]:
+              - generic "查看作答与解析" [ref=e1938] [cursor=pointer]
+          - listitem [ref=e1939]:
+            - generic [ref=e1940]:
+              - strong [ref=e1941]: 边界条件补给站 · 紧急任务
+              - generic [ref=e1942]: 0/3
+            - paragraph [ref=e1943]: 图论基础 · 2026-05-29
+            - group [ref=e1944]:
+              - generic "查看作答与解析" [ref=e1945] [cursor=pointer]
+      - generic [ref=e1947]:
+        - generic [ref=e1948]:
+          - heading "能力雷达" [level=4] [ref=e1950]
+          - heading "近 7 天学习趋势" [level=4] [ref=e1956]
+        - generic [ref=e1961]:
+          - heading "知识域掌握度" [level=4] [ref=e1963]
+          - heading "错题类型分布" [level=4] [ref=e1969]
+      - generic [ref=e1974]:
+        - generic [ref=e1975]:
+          - heading "学习报告" [level=3] [ref=e1976]
+          - generic [ref=e1977]: 起步探索
+        - paragraph [ref=e1978]:
+          - text: 探索指数
+          - strong [ref=e1979]: "23"
+          - text: 近 7 日正确率 0%
+        - list [ref=e1980]:
+          - listitem [ref=e1981]:
+            - strong [ref=e1982]: 边界条件补给站
+            - text: — 建议巩固「Python 与 print」，完成今日紧急任务。
+          - listitem [ref=e1983]:
+            - strong [ref=e1984]: 星轨复习
+            - text: — 在星轨路径中回顾「Python 与 print」相关知识点。
+        - paragraph [ref=e1985]: 关注：近期无练习 · 错题集中
+      - generic [ref=e1986]:
+        - generic [ref=e1987]:
+          - generic [ref=e1988]:
+            - heading "个性化学习效果" [level=3] [ref=e1989]
+            - paragraph [ref=e1990]: cond · 画像 v10
+          - generic [ref=e1991]: 0 条证据
+        - generic [ref=e1992]:
+          - article [ref=e1993]:
+            - generic [ref=e1994]: 学习前
+            - strong [ref=e1995]: 0%
+            - generic [ref=e1996]: 0 次作答 · 0 道错题
+          - article [ref=e1997]:
+            - generic [ref=e1998]: 学习后
+            - strong [ref=e1999]: 0%
+            - generic [ref=e2000]: 0 次作答 · 0 道错题
+          - article [ref=e2001]:
+            - generic [ref=e2002]: 提升值
+            - strong [ref=e2003]: 证据不足
+            - generic [ref=e2004]: 前后测各需至少 3 次有效作答
+      - region "学习资料上传" [ref=e2005]:
+        - article [ref=e2006]:
+          - generic [ref=e2007]:
+            - generic [ref=e2009]:
+              - heading "上传学习报告" [level=4] [ref=e2010]
+              - paragraph [ref=e2011]: 支持上传 PDF、Word 或 Markdown 文件，作为学习过程记录。
+            - button "拖拽代码文件、学习报告或截图到这里" [ref=e2012] [cursor=pointer]:
+              - button "Choose File" [ref=e2013]
+              - generic [ref=e2014]: ⬆
+              - paragraph [ref=e2015]: 拖拽代码文件、学习报告或截图到这里
+              - paragraph [ref=e2016]: 支持 .pdf、.doc、.docx、.md
+              - button "选择文件" [ref=e2017]
+        - article [ref=e2018]:
+          - generic [ref=e2019]:
+            - generic [ref=e2021]:
+              - heading "上传学习截图" [level=4] [ref=e2022]
+              - paragraph [ref=e2023]: 支持上传 PNG、JPG 图片，用于记录运行结果或问题反馈。
+            - button "拖拽代码文件、学习报告或截图到这里" [ref=e2024] [cursor=pointer]:
+              - button "Choose File" [ref=e2025]
+              - generic [ref=e2026]: ⬆
+              - paragraph [ref=e2027]: 拖拽代码文件、学习报告或截图到这里
+              - paragraph [ref=e2028]: 支持 .png、.jpg、.jpeg
+              - button "选择文件" [ref=e2029]

@@ -1,0 +1,23 @@
+{
+  "run_at": "2026-06-12T07:05:25+00:00",
+  "passed": true,
+  "checks": {
+    "sqlalchemy_query_get": {
+      "count": 0,
+      "budget": 0,
+      "passed": true
+    },
+    "datetime_utcnow": {
+      "count": 0,
+      "budget": 0,
+      "passed": true
+    }
+  },
+  "findings": {
+    "sqlalchemy_query_get": [],
+    "datetime_utcnow": []
+  },
+  "dependency_noise": {
+    "werkzeug_ast_deprecations": "third-party warnings from the pinned Werkzeug 2.3 routing compiler; tracked separately from project-owned calls"
+  }
+}

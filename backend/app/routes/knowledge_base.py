@@ -3,7 +3,9 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
+from ..services.course_safety import SafetyViolation
 from ..services.rag_service import RagService
+from ..utils.decorators import role_required
 from ..utils.response import error_response, success_response
 
 kb_bp = Blueprint('knowledge_base', __name__, url_prefix='/api/v1')
@@ -11,6 +13,7 @@ kb_bp = Blueprint('knowledge_base', __name__, url_prefix='/api/v1')
 
 @kb_bp.post('/kb/upload')
 @jwt_required()
+@role_required('teacher', 'admin')
 def upload_document():
     file = request.files.get('file')
     if not file or not file.filename:
@@ -25,7 +28,10 @@ def query_knowledge():
     question = body.get('question', '').strip()
     if not question:
         return error_response('question required', code=400)
-    result = RagService.query(question)
+    try:
+        result = RagService.query(question)
+    except SafetyViolation as exc:
+        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
     return success_response({
         'question': question,
         **result,
@@ -35,18 +41,21 @@ def query_knowledge():
 
 @kb_bp.get('/kb/documents')
 @jwt_required()
+@role_required('teacher', 'admin')
 def list_documents():
     return success_response(RagService.list_documents())
 
 
 @kb_bp.get('/kb/status')
 @jwt_required()
+@role_required('teacher', 'admin')
 def kb_status():
     return success_response(RagService.status())
 
 
 @kb_bp.post('/kb/parse-document')
 @jwt_required()
+@role_required('teacher', 'admin')
 def parse_document():
     """后续处理 stub：触发知识库解析（第一阶段 pending）。"""
     body = request.get_json(silent=True) or {}

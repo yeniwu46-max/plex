@@ -1,4 +1,5 @@
 import { http, type ApiEnvelope } from './http'
+import type { TeacherAssignmentsResult } from './studentAssignments'
 
 export interface LevelProfile {
   level: number
@@ -142,26 +143,6 @@ export interface IncentiveFeedbackPayload {
   unlocked_achievements?: Array<{ name: string; rarity?: string }>
 }
 
-export interface TeacherAssignmentsResult {
-  pending_count: number
-  total_count: number
-  items: Array<{
-    id: number
-    trial_id: number
-    trial_title: string
-    teacher_name: string
-    knowledge_key: string | null
-    knowledge_label: string
-    stem: string
-    options: string[]
-    status: string
-    is_correct: boolean | null
-    selected_index: number | null
-    sort_order: number
-    published_at: string | null
-  }>
-}
-
 export interface DailyQuestTodayResult {
   date: string
   quests: DailyQuestRecord[]
@@ -183,10 +164,8 @@ export interface StudentOverview {
   pointsLog: PointsLogResult | null
   ranking: ClassRankingResult | null
   daily: DailyQuestTodayResult | null
-}
-
-function resolvedOrNull<T>(result: PromiseSettledResult<T>) {
-  return result.status === 'fulfilled' ? result.value : null
+  running_trials: number
+  class_online_count?: number
 }
 
 export async function fetchCurrentStudent() {
@@ -250,19 +229,24 @@ export async function claimDailyQuestBonus() {
 }
 
 export async function fetchStudentOverview(): Promise<StudentOverview> {
-  const profile = await fetchCurrentStudent()
-  const [achievements, pointsLog, ranking, daily] = await Promise.allSettled([
-    fetchUserAchievements(profile.id),
-    fetchPointsLog(profile.id),
-    profile.class?.id ? fetchClassRanking(profile.class.id) : Promise.resolve(null),
-    fetchTodayDailyQuests(),
-  ])
-
-  return {
-    profile,
-    achievements: resolvedOrNull(achievements),
-    pointsLog: resolvedOrNull(pointsLog),
-    ranking: resolvedOrNull(ranking),
-    daily: resolvedOrNull(daily),
+  const { data } = await http.get<ApiEnvelope<StudentOverview>>('/v1/student/overview')
+  if (data.code !== 0) {
+    throw new Error(data.message || '获取学生总览失败')
   }
+  return data.data
+}
+
+export interface StudentPresenceResult {
+  class_id: number | null
+  online_count: number
+  ttl_seconds: number
+  updated_at: string
+}
+
+export async function heartbeatStudentPresence() {
+  const { data } = await http.post<ApiEnvelope<StudentPresenceResult>>('/v1/student/presence/heartbeat')
+  if (data.code !== 0) {
+    throw new Error(data.message || '在线状态更新失败')
+  }
+  return data.data
 }

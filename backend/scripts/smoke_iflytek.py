@@ -16,8 +16,8 @@ def main() -> int:
         return 2
     try:
         result = IflytekSparkService.chat_json(
-            '只输出 JSON 对象，格式为 {"ok": true}。',
-            '执行一次不包含用户数据的连通性检查。',
+            'Return exactly one JSON object: {"ok": true}. No markdown or prose.',
+            'Connectivity check. Do not include user data.',
             timeout=15,
         )
     except SparkServiceError as exc:

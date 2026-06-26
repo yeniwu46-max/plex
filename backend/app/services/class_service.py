@@ -11,7 +11,7 @@ class ClassService(BaseService):
     def create_class(name, description, grade_level, teacher_id):
         """创建班级"""
         # 检查教师是否存在
-        teacher = User.query.get(teacher_id)
+        teacher = db.session.get(User, teacher_id)
         if not teacher:
             raise Exception('教师不存在')
         
@@ -52,7 +52,7 @@ class ClassService(BaseService):
     @staticmethod
     def get_class(class_id):
         """获取班级详情"""
-        class_obj = Class.query.get(class_id)
+        class_obj = db.session.get(Class, class_id)
         if not class_obj:
             raise Exception('班级不存在')
         
@@ -61,7 +61,7 @@ class ClassService(BaseService):
     @staticmethod
     def update_class(class_id, **kwargs):
         """更新班级"""
-        class_obj = Class.query.get(class_id)
+        class_obj = db.session.get(Class, class_id)
         if not class_obj:
             raise Exception('班级不存在')
         
@@ -77,7 +77,7 @@ class ClassService(BaseService):
     @staticmethod
     def delete_class(class_id):
         """删除班级"""
-        class_obj = Class.query.get(class_id)
+        class_obj = db.session.get(Class, class_id)
         if not class_obj:
             raise Exception('班级不存在')
         
@@ -91,11 +91,11 @@ class ClassService(BaseService):
     @staticmethod
     def add_student_to_class(class_id, user_id):
         """将学生添加到班级"""
-        class_obj = Class.query.get(class_id)
+        class_obj = db.session.get(Class, class_id)
         if not class_obj:
             raise Exception('班级不存在')
         
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('学生不存在')
         
@@ -106,7 +106,7 @@ class ClassService(BaseService):
             raise Exception('学生已在该班级中')
         
         if user.class_id:
-            old_class = Class.query.get(user.class_id)
+            old_class = db.session.get(Class, user.class_id)
             if old_class:
                 old_class.student_count = max(0, (old_class.student_count or 0) - 1)
 
@@ -117,11 +117,11 @@ class ClassService(BaseService):
     @staticmethod
     def remove_student_from_class(class_id, user_id):
         """从班级移除学生"""
-        class_obj = Class.query.get(class_id)
+        class_obj = db.session.get(Class, class_id)
         if not class_obj:
             raise Exception('班级不存在')
         
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('学生不存在')
         

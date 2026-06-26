@@ -1,0 +1,58 @@
+{
+  "run_at": "2026-06-12T05:45:20+00:00",
+  "passed": true,
+  "summary": {
+    "passed": 8,
+    "total": 8
+  },
+  "cases": [
+    {
+      "name": "prompt_injection",
+      "passed": true,
+      "http_status": 400,
+      "reason_code": "prompt_injection"
+    },
+    {
+      "name": "out_of_course_scope",
+      "passed": true,
+      "http_status": 400,
+      "reason_code": "out_of_course_scope"
+    },
+    {
+      "name": "sensitive_content",
+      "passed": true,
+      "http_status": 400,
+      "reason_code": "sensitive_content"
+    },
+    {
+      "name": "student_kb_management_denied",
+      "passed": true,
+      "http_status": 403,
+      "reason_code": null
+    },
+    {
+      "name": "student_teacher_review_denied",
+      "passed": true,
+      "http_status": 403,
+      "reason_code": null
+    },
+    {
+      "name": "invalid_resource_type",
+      "passed": true,
+      "http_status": 400,
+      "reason_code": "invalid_resource_type"
+    },
+    {
+      "name": "disguised_executable_upload",
+      "passed": true,
+      "http_status": 400,
+      "reason_code": null
+    },
+    {
+      "name": "blocked_content_not_persisted",
+      "passed": true,
+      "http_status": null,
+      "reason_code": null
+    }
+  ]
+}

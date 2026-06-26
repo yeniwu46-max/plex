@@ -52,7 +52,7 @@ class FileUploadTestCase(unittest.TestCase):
         with self.app.app_context():
             db.session.rollback()
             for user in [self.student, self.teacher, self.admin]:
-                db.session.delete(User.query.get(user.id))
+                db.session.delete(db.session.get(User, user.id))
             db.session.commit()
 
     def _upload(self, token, filename, content, role, scene, mime='application/octet-stream'):
@@ -105,6 +105,18 @@ class FileUploadTestCase(unittest.TestCase):
     def test_student_upload_exe_blocked(self):
         resp = self._upload(
             self.student_token, 'malware.exe', b'MZ\x90\x00', 'student', 'code-file', 'application/octet-stream'
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_executable_disguised_as_pdf_is_blocked(self):
+        resp = self._upload(
+            self.teacher_token, 'lecture.pdf', b'MZ\x90\x00payload', 'teacher', 'course-material', 'application/pdf'
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_invalid_json_content_is_blocked(self):
+        resp = self._upload(
+            self.admin_token, 'config.json', b'{not-json}', 'admin', 'system-config', 'application/json'
         )
         self.assertEqual(resp.status_code, 400)
 

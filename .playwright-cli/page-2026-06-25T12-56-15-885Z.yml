@@ -1,0 +1,433 @@
+- generic [ref=e561]:
+  - complementary "主导航" [ref=e562]:
+    - generic [ref=e563]:
+      - img [ref=e564]
+      - generic [ref=e567]: PLEX
+    - navigation [ref=e568]:
+      - link "总览 OVERVIEW" [ref=e569] [cursor=pointer]:
+        - /url: /student
+        - img [ref=e571]:
+          - img [ref=e572]
+        - generic [ref=e577]:
+          - generic [ref=e578]: 总览
+          - generic [ref=e579]: OVERVIEW
+      - link "探索舱 EXPLORER" [ref=e580] [cursor=pointer]:
+        - /url: /student/discovery
+        - img [ref=e582]:
+          - img [ref=e583]
+        - generic [ref=e586]:
+          - generic [ref=e587]: 探索舱
+          - generic [ref=e588]: EXPLORER
+      - link "星轨学习 STARPATH" [ref=e589] [cursor=pointer]:
+        - /url: /student/star-path
+        - img [ref=e591]:
+          - img [ref=e592]
+        - generic [ref=e598]:
+          - generic [ref=e599]: 星轨学习
+          - generic [ref=e600]: STARPATH
+      - link "试炼中心 TRIAL ARENA" [ref=e601] [cursor=pointer]:
+        - /url: /student/trials
+        - img [ref=e603]:
+          - img [ref=e604]
+        - generic [ref=e609]:
+          - generic [ref=e610]: 试炼中心
+          - generic [ref=e611]: TRIAL ARENA
+      - link "驿站助手 MESSENGER" [ref=e612] [cursor=pointer]:
+        - /url: /student/messenger
+        - img [ref=e614]:
+          - img [ref=e615]
+        - generic [ref=e618]:
+          - generic [ref=e619]: 驿站助手
+          - generic [ref=e620]: MESSENGER
+      - link "我的 MY SPACE" [ref=e621] [cursor=pointer]:
+        - /url: /student/me/growth
+        - img [ref=e623]:
+          - img [ref=e624]
+        - generic [ref=e627]:
+          - generic [ref=e628]: 我的
+          - generic [ref=e629]: MY SPACE
+    - button "收起侧栏" [ref=e630] [cursor=pointer]: «
+  - generic [ref=e631]:
+    - banner [ref=e632]:
+      - generic [ref=e633]:
+        - heading "个性化资源中心" [level=1] [ref=e634]: 个性化资源中心
+        - paragraph [ref=e636]: 画像驱动的五类课程资源
+      - generic [ref=e637]:
+        - generic [ref=e638]:
+          - button "通知" [ref=e639] [cursor=pointer]:
+            - img [ref=e640]:
+              - img [ref=e641]
+          - superscript [ref=e644]:
+            - generic [ref=e647]:
+              - generic [ref=e648]: "7"
+              - generic [ref=e650]: "7"
+              - generic [ref=e651]: "7"
+        - button "当前外观：深色模式，点击切换" [ref=e652] [cursor=pointer]:
+          - img [ref=e653]:
+            - img [ref=e654]
+        - button "打开用户菜单" [ref=e657] [cursor=pointer]:
+          - generic [ref=e662]:
+            - strong [ref=e663]: 学生1
+            - emphasis [ref=e664]: Lv.2
+          - img [ref=e665]:
+            - img [ref=e666]
+    - navigation "星轨学习导航" [ref=e669]:
+      - link "学习路径" [ref=e670] [cursor=pointer]:
+        - /url: /student/star-path
+      - link "个性化资源" [ref=e671] [cursor=pointer]:
+        - /url: /student/star-path/resources
+    - main [ref=e673]:
+      - generic [ref=e674]:
+        - generic [ref=e675]:
+          - heading "生成学习资源包" [level=2] [ref=e676]
+          - paragraph [ref=e677]: 画像解释 → 知识检索 → 教学设计 → 资源生成 → 质量审核 → 路径更新
+          - generic [ref=e679]: 当前 AI 后端：local_rules
+        - generic [ref=e682] [cursor=pointer]:
+          - generic "循环结构" [ref=e683]:
+            - generic [ref=e684]: 循环结构
+          - img "loading" [ref=e685]:
+            - img [ref=e690]
+        - button "生成五类资源" [ref=e692] [cursor=pointer]:
+          - generic [ref=e693]: 生成五类资源
+      - generic [ref=e694]:
+        - heading "生成任务历史" [level=2] [ref=e695]
+        - article [ref=e696]:
+          - generic [ref=e697]:
+            - strong [ref=e698]: rg_4011926a7b544c0e897d
+            - generic [ref=e699]: completed · 画像 v10 · local_rules
+          - button "查看轨迹" [ref=e701] [cursor=pointer]:
+            - generic [ref=e702]: 查看轨迹
+        - article [ref=e703]:
+          - generic [ref=e704]:
+            - strong [ref=e705]: rg_a231de1de6c54ce2b25c
+            - generic [ref=e706]: completed · 画像 v8 · local_rules
+          - button "查看轨迹" [ref=e708] [cursor=pointer]:
+            - generic [ref=e709]: 查看轨迹
+        - article [ref=e710]:
+          - generic [ref=e711]:
+            - strong [ref=e712]: rg_c24a21426b1040c3b514
+            - generic [ref=e713]: completed · 画像 v6 · local_rules
+          - button "查看轨迹" [ref=e715] [cursor=pointer]:
+            - generic [ref=e716]: 查看轨迹
+        - article [ref=e717]:
+          - generic [ref=e718]:
+            - strong [ref=e719]: rg_9fcb46c20d024bff9bc6
+            - generic [ref=e720]: completed · 画像 v5 · local_rules
+          - button "查看轨迹" [ref=e722] [cursor=pointer]:
+            - generic [ref=e723]: 查看轨迹
+        - article [ref=e724]:
+          - generic [ref=e725]:
+            - strong [ref=e726]: rg_744f98dabfbb44ba806d
+            - generic [ref=e727]: completed · 画像 v5 · local_rules
+          - button "查看轨迹" [ref=e729] [cursor=pointer]:
+            - generic [ref=e730]: 查看轨迹
+        - article [ref=e731]:
+          - generic [ref=e732]:
+            - strong [ref=e733]: rg_251aabce794a478cae95
+            - generic [ref=e734]: completed · 画像 v5 · local_rules
+          - button "查看轨迹" [ref=e736] [cursor=pointer]:
+            - generic [ref=e737]: 查看轨迹
+        - article [ref=e738]:
+          - generic [ref=e739]:
+            - strong [ref=e740]: rg_0c998531d089441b9d53
+            - generic [ref=e741]: completed · 画像 v3 · local_rules
+          - button "查看轨迹" [ref=e743] [cursor=pointer]:
+            - generic [ref=e744]: 查看轨迹
+      - generic [ref=e745]:
+        - article [ref=e746] [cursor=pointer]:
+          - generic [ref=e747]:
+            - generic [ref=e749]: 代码实操
+            - generic [ref=e751]: local_rules
+          - heading "if 分支代码实操" [level=3] [ref=e752]
+          - paragraph [ref=e753]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e754]:
+            - generic [ref=e755]: 置信度 88%
+            - generic [ref=e756]: 15 分钟
+        - article [ref=e757] [cursor=pointer]:
+          - generic [ref=e758]:
+            - generic [ref=e760]: 拓展阅读
+            - generic [ref=e762]: local_rules
+          - heading "if 分支拓展阅读" [level=3] [ref=e763]
+          - paragraph [ref=e764]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e765]:
+            - generic [ref=e766]: 置信度 78%
+            - generic [ref=e767]: 15 分钟
+        - article [ref=e768] [cursor=pointer]:
+          - generic [ref=e769]:
+            - generic [ref=e771]: 分层题库
+            - generic [ref=e773]: local_rules
+          - heading "if 分支分层题库" [level=3] [ref=e774]
+          - paragraph [ref=e775]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e776]:
+            - generic [ref=e777]: 置信度 88%
+            - generic [ref=e778]: 15 分钟
+        - article [ref=e779] [cursor=pointer]:
+          - generic [ref=e780]:
+            - generic [ref=e782]: 思维导图
+            - generic [ref=e784]: local_rules
+          - heading "if 分支思维导图" [level=3] [ref=e785]
+          - paragraph [ref=e786]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e787]:
+            - generic [ref=e788]: 置信度 88%
+            - generic [ref=e789]: 15 分钟
+        - article [ref=e790] [cursor=pointer]:
+          - generic [ref=e791]:
+            - generic [ref=e793]: 讲解文档
+            - generic [ref=e795]: local_rules
+          - heading "if 分支个性化讲解" [level=3] [ref=e796]
+          - paragraph [ref=e797]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e798]:
+            - generic [ref=e799]: 置信度 88%
+            - generic [ref=e800]: 15 分钟
+        - article [ref=e801] [cursor=pointer]:
+          - generic [ref=e802]:
+            - generic [ref=e804]: 代码实操
+            - generic [ref=e806]: local_rules
+          - heading "range / break / continue代码实操" [level=3] [ref=e807]
+          - paragraph [ref=e808]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e809]:
+            - generic [ref=e810]: 置信度 88%
+            - generic [ref=e811]: 15 分钟
+        - article [ref=e812] [cursor=pointer]:
+          - generic [ref=e813]:
+            - generic [ref=e815]: 拓展阅读
+            - generic [ref=e817]: local_rules
+          - heading "range / break / continue拓展阅读" [level=3] [ref=e818]
+          - paragraph [ref=e819]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e820]:
+            - generic [ref=e821]: 置信度 78%
+            - generic [ref=e822]: 15 分钟
+        - article [ref=e823] [cursor=pointer]:
+          - generic [ref=e824]:
+            - generic [ref=e826]: 分层题库
+            - generic [ref=e828]: local_rules
+          - heading "range / break / continue分层题库" [level=3] [ref=e829]
+          - paragraph [ref=e830]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e831]:
+            - generic [ref=e832]: 置信度 88%
+            - generic [ref=e833]: 15 分钟
+        - article [ref=e834] [cursor=pointer]:
+          - generic [ref=e835]:
+            - generic [ref=e837]: 思维导图
+            - generic [ref=e839]: local_rules
+          - heading "range / break / continue思维导图" [level=3] [ref=e840]
+          - paragraph [ref=e841]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e842]:
+            - generic [ref=e843]: 置信度 88%
+            - generic [ref=e844]: 15 分钟
+        - article [ref=e845] [cursor=pointer]:
+          - generic [ref=e846]:
+            - generic [ref=e848]: 讲解文档
+            - generic [ref=e850]: local_rules
+          - heading "range / break / continue个性化讲解" [level=3] [ref=e851]
+          - paragraph [ref=e852]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e853]:
+            - generic [ref=e854]: 置信度 88%
+            - generic [ref=e855]: 15 分钟
+        - article [ref=e856] [cursor=pointer]:
+          - generic [ref=e857]:
+            - generic [ref=e859]: 代码实操
+            - generic [ref=e861]: local_rules
+          - heading "循环结构代码实操" [level=3] [ref=e862]
+          - paragraph [ref=e863]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e864]:
+            - generic [ref=e865]: 置信度 88%
+            - generic [ref=e866]: 15 分钟
+        - article [ref=e867] [cursor=pointer]:
+          - generic [ref=e868]:
+            - generic [ref=e870]: 拓展阅读
+            - generic [ref=e872]: local_rules
+          - heading "循环结构拓展阅读" [level=3] [ref=e873]
+          - paragraph [ref=e874]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e875]:
+            - generic [ref=e876]: 置信度 78%
+            - generic [ref=e877]: 15 分钟
+        - article [ref=e878] [cursor=pointer]:
+          - generic [ref=e879]:
+            - generic [ref=e881]: 分层题库
+            - generic [ref=e883]: local_rules
+          - heading "循环结构分层题库" [level=3] [ref=e884]
+          - paragraph [ref=e885]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e886]:
+            - generic [ref=e887]: 置信度 88%
+            - generic [ref=e888]: 15 分钟
+        - article [ref=e889] [cursor=pointer]:
+          - generic [ref=e890]:
+            - generic [ref=e892]: 思维导图
+            - generic [ref=e894]: local_rules
+          - heading "循环结构思维导图" [level=3] [ref=e895]
+          - paragraph [ref=e896]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e897]:
+            - generic [ref=e898]: 置信度 88%
+            - generic [ref=e899]: 15 分钟
+        - article [ref=e900] [cursor=pointer]:
+          - generic [ref=e901]:
+            - generic [ref=e903]: 讲解文档
+            - generic [ref=e905]: local_rules
+          - heading "循环结构个性化讲解" [level=3] [ref=e906]
+          - paragraph [ref=e907]: 根据你的讲解偏好“代码案例优先、分步骤讲解”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e908]:
+            - generic [ref=e909]: 置信度 88%
+            - generic [ref=e910]: 15 分钟
+        - article [ref=e911] [cursor=pointer]:
+          - generic [ref=e912]:
+            - generic [ref=e914]: 代码实操
+            - generic [ref=e916]: local_rules
+          - heading "循环结构代码实操" [level=3] [ref=e917]
+          - paragraph [ref=e918]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e919]:
+            - generic [ref=e920]: 置信度 88%
+            - generic [ref=e921]: 15 分钟
+        - article [ref=e922] [cursor=pointer]:
+          - generic [ref=e923]:
+            - generic [ref=e925]: 分层题库
+            - generic [ref=e927]: local_rules
+          - heading "循环结构分层题库" [level=3] [ref=e928]
+          - paragraph [ref=e929]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e930]:
+            - generic [ref=e931]: 置信度 88%
+            - generic [ref=e932]: 15 分钟
+        - article [ref=e933] [cursor=pointer]:
+          - generic [ref=e934]:
+            - generic [ref=e936]: 思维导图
+            - generic [ref=e938]: local_rules
+          - heading "循环结构思维导图" [level=3] [ref=e939]
+          - paragraph [ref=e940]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e941]:
+            - generic [ref=e942]: 置信度 88%
+            - generic [ref=e943]: 15 分钟
+        - article [ref=e944] [cursor=pointer]:
+          - generic [ref=e945]:
+            - generic [ref=e947]: 讲解文档
+            - generic [ref=e949]: local_rules
+          - heading "循环结构个性化讲解" [level=3] [ref=e950]
+          - paragraph [ref=e951]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e952]:
+            - generic [ref=e953]: 置信度 88%
+            - generic [ref=e954]: 15 分钟
+        - article [ref=e955] [cursor=pointer]:
+          - generic [ref=e956]:
+            - generic [ref=e958]: 代码实操
+            - generic [ref=e960]: local_rules
+          - heading "if 分支代码实操" [level=3] [ref=e961]
+          - paragraph [ref=e962]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e963]:
+            - generic [ref=e964]: 置信度 88%
+            - generic [ref=e965]: 15 分钟
+        - article [ref=e966] [cursor=pointer]:
+          - generic [ref=e967]:
+            - generic [ref=e969]: 拓展阅读
+            - generic [ref=e971]: local_rules
+          - heading "if 分支拓展阅读" [level=3] [ref=e972]
+          - paragraph [ref=e973]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e974]:
+            - generic [ref=e975]: 置信度 78%
+            - generic [ref=e976]: 15 分钟
+        - article [ref=e977] [cursor=pointer]:
+          - generic [ref=e978]:
+            - generic [ref=e980]: 分层题库
+            - generic [ref=e982]: local_rules
+          - heading "if 分支分层题库" [level=3] [ref=e983]
+          - paragraph [ref=e984]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e985]:
+            - generic [ref=e986]: 置信度 88%
+            - generic [ref=e987]: 15 分钟
+        - article [ref=e988] [cursor=pointer]:
+          - generic [ref=e989]:
+            - generic [ref=e991]: 思维导图
+            - generic [ref=e993]: local_rules
+          - heading "if 分支思维导图" [level=3] [ref=e994]
+          - paragraph [ref=e995]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e996]:
+            - generic [ref=e997]: 置信度 88%
+            - generic [ref=e998]: 15 分钟
+        - article [ref=e999] [cursor=pointer]:
+          - generic [ref=e1000]:
+            - generic [ref=e1002]: 讲解文档
+            - generic [ref=e1004]: local_rules
+          - heading "if 分支个性化讲解" [level=3] [ref=e1005]
+          - paragraph [ref=e1006]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1007]:
+            - generic [ref=e1008]: 置信度 88%
+            - generic [ref=e1009]: 15 分钟
+        - article [ref=e1010] [cursor=pointer]:
+          - generic [ref=e1011]:
+            - generic [ref=e1013]: 代码实操
+            - generic [ref=e1015]: local_rules
+          - heading "输入 input代码实操" [level=3] [ref=e1016]
+          - paragraph [ref=e1017]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1018]:
+            - generic [ref=e1019]: 置信度 88%
+            - generic [ref=e1020]: 15 分钟
+        - article [ref=e1021] [cursor=pointer]:
+          - generic [ref=e1022]:
+            - generic [ref=e1024]: 分层题库
+            - generic [ref=e1026]: local_rules
+          - heading "输入 input分层题库" [level=3] [ref=e1027]
+          - paragraph [ref=e1028]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1029]:
+            - generic [ref=e1030]: 置信度 88%
+            - generic [ref=e1031]: 15 分钟
+        - article [ref=e1032] [cursor=pointer]:
+          - generic [ref=e1033]:
+            - generic [ref=e1035]: 思维导图
+            - generic [ref=e1037]: local_rules
+          - heading "输入 input思维导图" [level=3] [ref=e1038]
+          - paragraph [ref=e1039]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1040]:
+            - generic [ref=e1041]: 置信度 88%
+            - generic [ref=e1042]: 15 分钟
+        - article [ref=e1043] [cursor=pointer]:
+          - generic [ref=e1044]:
+            - generic [ref=e1046]: 讲解文档
+            - generic [ref=e1048]: local_rules
+          - heading "输入 input个性化讲解" [level=3] [ref=e1049]
+          - paragraph [ref=e1050]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1051]:
+            - generic [ref=e1052]: 置信度 88%
+            - generic [ref=e1053]: 15 分钟
+        - article [ref=e1054] [cursor=pointer]:
+          - generic [ref=e1055]:
+            - generic [ref=e1057]: 代码实操
+            - generic [ref=e1059]: local_rules
+          - heading "循环结构代码实操" [level=3] [ref=e1060]
+          - paragraph [ref=e1061]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1062]:
+            - generic [ref=e1063]: 置信度 88%
+            - generic [ref=e1064]: 15 分钟
+        - article [ref=e1065] [cursor=pointer]:
+          - generic [ref=e1066]:
+            - generic [ref=e1068]: 拓展阅读
+            - generic [ref=e1070]: local_rules
+          - heading "循环结构拓展阅读" [level=3] [ref=e1071]
+          - paragraph [ref=e1072]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1073]:
+            - generic [ref=e1074]: 置信度 78%
+            - generic [ref=e1075]: 15 分钟
+        - article [ref=e1076] [cursor=pointer]:
+          - generic [ref=e1077]:
+            - generic [ref=e1079]: 分层题库
+            - generic [ref=e1081]: local_rules
+          - heading "循环结构分层题库" [level=3] [ref=e1082]
+          - paragraph [ref=e1083]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1084]:
+            - generic [ref=e1085]: 置信度 88%
+            - generic [ref=e1086]: 15 分钟
+        - article [ref=e1087] [cursor=pointer]:
+          - generic [ref=e1088]:
+            - generic [ref=e1090]: 思维导图
+            - generic [ref=e1092]: local_rules
+          - heading "循环结构思维导图" [level=3] [ref=e1093]
+          - paragraph [ref=e1094]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1095]:
+            - generic [ref=e1096]: 置信度 88%
+            - generic [ref=e1097]: 15 分钟
+        - article [ref=e1098] [cursor=pointer]:
+          - generic [ref=e1099]:
+            - generic [ref=e1101]: 讲解文档
+            - generic [ref=e1103]: local_rules
+          - heading "循环结构个性化讲解" [level=3] [ref=e1104]
+          - paragraph [ref=e1105]: 根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。
+          - generic [ref=e1106]:
+            - generic [ref=e1107]: 置信度 88%
+            - generic [ref=e1108]: 15 分钟

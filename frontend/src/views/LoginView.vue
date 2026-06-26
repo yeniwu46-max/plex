@@ -21,6 +21,7 @@ const showForgotModal = ref(false)
 
 const ADMIN_RESET_EMAIL = '2720329167@qq.com'
 const adminMailto = `mailto:${ADMIN_RESET_EMAIL}?subject=${encodeURIComponent('密码重置申请')}`
+const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
 function togglePassword() {
   showPassword.value = !showPassword.value
@@ -48,6 +49,20 @@ async function onSubmit(e: Event) {
   } finally {
     loading.value = false
   }
+}
+
+function startOAuth(provider: 'google' | 'github') {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+  const params = new URLSearchParams({ redirect })
+  window.location.assign(`${apiBase}/v1/auth/oauth/${provider}?${params.toString()}`)
+}
+
+function goRegister() {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : undefined
+  void router.push({
+    name: 'register',
+    query: redirect ? { redirect } : undefined,
+  })
 }
 </script>
 
@@ -178,7 +193,7 @@ async function onSubmit(e: Event) {
             <span>或使用以下方式登录</span>
           </div>
           <div class="social__row">
-            <button type="button" class="social__btn" aria-label="使用 Google 登录">
+            <button type="button" class="social__btn" aria-label="使用 Google 登录" @click="startOAuth('google')">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
                 <path
                   fill="#EA4335"
@@ -198,14 +213,14 @@ async function onSubmit(e: Event) {
                 />
               </svg>
             </button>
-            <button type="button" class="social__btn" aria-label="使用 GitHub 登录">
+            <button type="button" class="social__btn" aria-label="使用 GitHub 登录" @click="startOAuth('github')">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
                 <path
                   d="M12 1C5.92 1 1 5.92 1 12c0 4.86 3.15 8.98 7.52 10.43.55.1.75-.24.75-.53 0-.26-.01-1.13-.01-2.05-3.06.67-3.71-1.47-3.71-1.47-.5-1.27-1.22-1.61-1.22-1.61-1-.68.08-.67.08-.67 1.1.08 1.68 1.13 1.68 1.13.98 1.68 2.56 1.2 3.19.92.1-.71.39-1.2.71-1.47-2.44-.28-5-1.22-5-5.45 0-1.2.43-2.19 1.13-2.96-.11-.28-.49-1.41.11-2.94 0 0 .92-.3 3.03 1.13a10.5 10.5 0 0 1 5.5 0c2.1-1.43 3.02-1.13 3.02-1.13.6 1.53.22 2.66.11 2.94.7.77 1.13 1.76 1.13 2.96 0 5.24-3.56 6.16-6.97 6.49.55.47 1.03 1.4 1.03 2.83 0 2.04-.02 3.69-.02 4.19 0 .41.28.89 1.05.74C19.85 20.98 23 16.86 23 12 23 5.92 18.08 1 12 1z"
                 />
               </svg>
             </button>
-            <button type="button" class="social__btn social__btn--brand" aria-label="使用 PLEX 账号登录">
+            <button type="button" class="social__btn social__btn--brand" aria-label="注册 PLEX 账号" @click="goRegister">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
                 <path
                   d="M12 2l2.2 6.3L20 12l-5.8 2.1L12 20l-2.2-6.9L4 12l5.8-3.7L12 2z"

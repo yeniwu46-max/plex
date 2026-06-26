@@ -18,6 +18,14 @@ export interface LoginPayload {
   expiresIn?: number
 }
 
+export interface RegisterPayload {
+  username: string
+  email: string
+  password: string
+  real_name: string
+  role?: string
+}
+
 function readProfile(): Omit<LoginPayload, 'access_token' | 'refresh_token' | 'expiresIn'> | null {
   try {
     const raw = localStorage.getItem(storageKeys.profile)
@@ -89,6 +97,37 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function register(payload: RegisterPayload) {
+    try {
+      const { data } = await http.post<ApiEnvelope<LoginPayload>>('/v1/auth/register', payload)
+      if (data.code !== 0) {
+        throw new Error(data.message || '注册失败')
+      }
+      if (!data.data?.access_token) {
+        throw new Error('响应缺少 access_token')
+      }
+      persistSession(data.data)
+      return data.data
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        const ax = e as AxiosError<ApiEnvelope>
+        const body = ax.response?.data
+        if (body && typeof body.message === 'string') {
+          throw new Error(body.message)
+        }
+      }
+      throw e instanceof Error ? e : new Error('注册失败')
+    }
+  }
+
+  function acceptSession(payload: LoginPayload) {
+    if (!payload.access_token || !payload.refresh_token) {
+      throw new Error('第三方登录回调缺少登录凭证')
+    }
+    persistSession(payload)
+    return payload
+  }
+
   async function logout() {
     try {
       await http.post('/v1/auth/logout')
@@ -112,6 +151,8 @@ export const useAuthStore = defineStore('auth', () => {
     profile,
     isAuthenticated,
     login,
+    register,
+    acceptSession,
     logout,
     clearSession,
     syncProfile,

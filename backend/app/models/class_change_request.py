@@ -1,6 +1,6 @@
 """教师班级变更审批申请。"""
 import json
-from datetime import datetime
+from app.utils.time import utc_now
 
 from . import db
 
@@ -17,7 +17,7 @@ class ClassChangeRequest(db.Model):
     reason = db.Column(db.Text)
     reviewer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     review_note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     reviewed_at = db.Column(db.DateTime)
 
     requester = db.relationship('User', foreign_keys=[requester_id], backref='class_change_requests')

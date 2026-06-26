@@ -19,9 +19,30 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
+      - run: python manage.py knowledge-check
+      - run: python scripts/verify_knowledge_base.py --json-output reports/a3-personalization-local/knowledge-base-validation.json
+      - run: python scripts/evaluate_personalization.py --output reports/a3-personalization-local
+      - run: python scripts/evaluate_profile_extraction.py --output reports/a3-personalization-local/profile-extraction-evaluation.json
+      - run: python scripts/verify_feedback_loop.py --output reports/a3-personalization-local/feedback-loop-three-rounds.json
+      - run: python scripts/verify_learning_effect.py
+      - run: python scripts/verify_security.py
+      - run: python scripts/verify_performance_recovery.py
+      - run: python scripts/verify_clean_environment.py
+      - run: python scripts/generate_dependency_inventory.py
+      - run: python scripts/verify_deprecation_budget.py
+      - run: python scripts/generate_defense_metrics.py
+      - run: python scripts/generate_release_manifest.py
+      - run: python scripts/verify_release_readiness.py
       - run: python ../backend/scripts/scan_secrets.py
       - run: DATABASE_URL=sqlite:///instance/ci-migration.db python manage.py init
       - run: DATABASE_URL=sqlite:///instance/ci-migration.db python manage.py migration-smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a3-backend-validation
+          path: |
+            backend/reports/a3-personalization-local/*
+            backend/reports/a3-next-stage/*.json
+            backend/reports/a3-submission/*.json
 
   mysql:
     runs-on: ubuntu-latest
@@ -53,6 +74,16 @@ jobs:
       - run: python manage.py migration-smoke
         env:
           DATABASE_URL: mysql+pymysql://root:plex@127.0.0.1:3306/plex_ci
+      - run: python manage.py seed-demo
+        env:
+          DATABASE_URL: mysql+pymysql://root:plex@127.0.0.1:3306/plex_ci
+      - run: python scripts/verify_clean_environment.py --output reports/a3-next-stage/mysql-clean-environment.json
+        env:
+          DATABASE_URL: mysql+pymysql://root:plex@127.0.0.1:3306/plex_ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a3-mysql-validation
+          path: backend/reports/a3-next-stage/mysql-clean-environment.json
 
   frontend:
     runs-on: ubuntu-latest
@@ -68,3 +99,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a3-frontend-validation
+          path: frontend/reports/bundle-budget.json

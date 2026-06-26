@@ -3,7 +3,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.models import User
+from app.models import User, db
 from app.utils.response import success_response, error_response
 from ..services.search import search_items, SCOPE_CATEGORIES
 
@@ -30,7 +30,7 @@ def global_search():
         return error_response('scope 参数无效，应为 student/teacher/admin', 400, None, 400)
 
     user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     role = user.role.name if user and user.role else 'student'
 
     allowed_scopes = ROLE_SCOPE_MAP.get(role, ['student'])

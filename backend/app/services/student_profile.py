@@ -4,9 +4,18 @@ from __future__ import annotations
 import re
 from datetime import datetime
 
-from app.models import StudentProfile, StudentProfileHistory, StudentProfileSuggestion, db
+from app.models import (
+    StudentProfile,
+    StudentProfileHistory,
+    StudentProfileSuggestion,
+    TrialQuestion,
+    TrialQuestionProgress,
+    db,
+)
+from app.services.course_safety import CourseSafetyService
 from app.services.iflytek_spark import IflytekSparkService
 from app.services.mistake import MistakeService
+from app.utils.time import utc_now
 
 
 PROFILE_DIMENSIONS = (
@@ -17,6 +26,7 @@ PROFILE_DIMENSIONS = (
     'mistake_pattern',
     'learning_pace',
     'interest_direction',
+    'cognitive_state',
 )
 
 DIMENSION_LABELS = {
@@ -27,6 +37,7 @@ DIMENSION_LABELS = {
     'mistake_pattern': '易错模式',
     'learning_pace': '学习节奏',
     'interest_direction': '兴趣方向',
+    'cognitive_state': '当前学习状态',
 }
 
 
@@ -66,9 +77,18 @@ class StudentProfileService:
         changes = {}
         if re.search(r'(计算机|软件|人工智能|电子信息|大[一二三四]|研究生|专业)', text):
             changes['major_background'] = StudentProfileService._dimension(text[:80], text)
-        if re.search(r'(基础|学过|会写|不会|掌握|刚开始|零基础)', text):
+        if re.search(
+            r'(零基础|基础.{0,4}(不牢|薄弱|较差|一般|还行|扎实)|'
+            r'学过|会写|不会|掌握|刚开始)',
+            text,
+        ):
             changes['knowledge_foundation'] = StudentProfileService._dimension(text[:100], text, 0.82)
-        if re.search(r'(目标|希望|想要|考试|两周|比赛|完成)', text):
+        if re.search(
+            r'(目标|想要|考试|两周|比赛|完成|'
+            r'画像|学习情况|最近练习|'
+            r'希望.{0,20}(掌握|提升|通过|完成|参加|学会))',
+            text,
+        ):
             changes['learning_goal'] = StudentProfileService._dimension(text[:100], text)
         if re.search(r'(例子|案例|图|视频|分步|详细|简洁|代码)', text):
             preference = '案例优先、分步骤讲解' if re.search(r'(例子|案例|代码|分步)', text) else text[:80]
@@ -96,18 +116,103 @@ class StudentProfileService:
 
     @staticmethod
     def _behavior_changes(user_id: int) -> dict:
+        changes = {}
         weak = MistakeService.list_weak_knowledge(user_id, limit=3)
-        if not weak:
-            return {}
-        labels = [item['knowledge_label'] for item in weak]
-        return {
-            'mistake_pattern': StudentProfileService._dimension(
+        if weak:
+            labels = [item['knowledge_label'] for item in weak]
+            changes['mistake_pattern'] = StudentProfileService._dimension(
                 '近期薄弱点：' + '、'.join(labels),
                 [f"{item['knowledge_label']}失败权重 {item['weight']}" for item in weak],
                 0.9,
                 'behavior',
             )
-        }
+
+        recent_rows = (
+            TrialQuestionProgress.query.filter_by(user_id=user_id, status='completed')
+            .order_by(TrialQuestionProgress.answered_at.desc(), TrialQuestionProgress.id.desc())
+            .limit(20)
+            .all()
+        )
+        if recent_rows:
+            correct = sum(1 for row in recent_rows if row.is_correct)
+            accuracy = round(correct / len(recent_rows) * 100)
+            question_ids = [row.question_id for row in recent_rows if row.question_id]
+            questions = TrialQuestion.query.filter(TrialQuestion.id.in_(question_ids)).all() if question_ids else []
+            knowledge_labels = []
+            for question in questions:
+                label = getattr(question, 'knowledge_label', None) or getattr(question, 'knowledge_key', None)
+                if label and label not in knowledge_labels:
+                    knowledge_labels.append(label)
+            if accuracy >= 80:
+                foundation = f'近期练习正确率 {accuracy}%，基础表现较稳定'
+                confidence = 0.82
+            elif accuracy >= 60:
+                foundation = f'近期练习正确率 {accuracy}%，基础处于巩固阶段'
+                confidence = 0.78
+            else:
+                foundation = f'近期练习正确率 {accuracy}%，基础仍需补强'
+                confidence = 0.86
+            changes['knowledge_foundation'] = StudentProfileService._dimension(
+                foundation,
+                [f'最近完成 {len(recent_rows)} 次练习，正确 {correct} 次'],
+                confidence,
+                'behavior',
+            )
+            changes['learning_pace'] = StudentProfileService._dimension(
+                f'近阶段已完成 {len(recent_rows)} 次练习，建议按每日短练节奏推进',
+                '由最近练习记录自动生成',
+                0.76,
+                'behavior',
+            )
+            state = '学习状态稳定' if accuracy >= 60 else '需要支持：近期连续错误可能带来挫败感'
+            changes['cognitive_state'] = StudentProfileService._dimension(
+                state, [f'最近练习正确率 {accuracy}%'], .8 if accuracy >= 60 else .86, 'behavior'
+            )
+            if knowledge_labels:
+                changes['interest_direction'] = StudentProfileService._dimension(
+                    '近期关注：' + '、'.join(knowledge_labels[:3]),
+                    '由最近练习知识点自动生成',
+                    0.72,
+                    'behavior',
+                )
+        return changes
+
+    @staticmethod
+    def diagnostic_questions() -> list[dict]:
+        specs = [('syntax','Python 输出函数？',['print','echo','write','show'],0),('var','x=3 的类型？',['str','int','list','bool'],1),('cond','条件分支关键字？',['if','for','def','import'],0),('cond','条件不成立时？',['else','pass','return','break'],0),('loop','遍历序列常用？',['for','class','try','with'],0),('range','range(3) 产生几个数？',['2','3','4','无限'],1),('func','定义函数使用？',['def','func','lambda','function'],0),('func','函数返回值使用？',['yield','return','print','import'],1),('list','列表首项索引？',['0','1','-1','first'],0),('list','列表末尾添加？',['append','push','add','insert_last'],0),('except','捕获异常使用？',['catch','except','error','finally'],1),('except','可能出错代码块？',['try','check','guard','safe'],0)]
+        types = ['single_choice', 'single_choice', 'scenario', 'scenario', 'code_reading', 'code_reading', 'single_choice', 'code_reading', 'code_reading', 'scenario', 'scenario', 'scenario']
+        previews = {4: 'for item in items:\n    print(item)', 5: 'for i in range(3):\n    print(i)', 7: 'def add(a, b):\n    return a + b', 8: 'items = ["a", "b"]\nprint(items[0])'}
+        return [
+            {'id': f'q{i+1}', 'knowledge_key': key, 'question_type': types[i], 'stem': stem, 'options': options, 'correct_index': answer, 'code_preview': previews.get(i)}
+            for i, (key, stem, options, answer) in enumerate(specs)
+        ]
+
+    @staticmethod
+    def diagnostic_status(user_id: int) -> dict:
+        from app.models import StudentProfileDiagnostic
+        row = StudentProfileDiagnostic.query.filter_by(user_id=user_id).first()
+        return row.to_dict() if row else {'status': 'pending', 'answers': {}, 'mastery': {}}
+
+    @staticmethod
+    def submit_diagnostic(user_id: int, answers: dict | None, skip: bool) -> dict:
+        from app.models import StudentProfileDiagnostic
+        row = StudentProfileDiagnostic.query.filter_by(user_id=user_id).first() or StudentProfileDiagnostic(user_id=user_id)
+        if skip:
+            row.status, row.answers, row.mastery, row.skipped_at = 'skipped', {}, {}, utc_now()
+            change = StudentProfileService._dimension('入门测验已跳过，Python 基础待学习行为补全', '学生跳过入门测验', .2, 'confirmed')
+        else:
+            questions = {q['id']: q for q in StudentProfileService.diagnostic_questions()}
+            if set((answers or {}).keys()) != set(questions):
+                raise ValueError('请完成全部 12 道入门测验题目')
+            mastery = {}
+            for q in questions.values():
+                item = mastery.setdefault(q['knowledge_key'], {'correct': 0, 'total': 0})
+                item['total'] += 1; item['correct'] += int(answers[q['id']] == q['correct_index'])
+            row.status, row.answers, row.mastery, row.completed_at = 'completed', answers, mastery, utc_now()
+            correct = sum(v['correct'] for v in mastery.values())
+            change = StudentProfileService._dimension(f'Python 入门测验正确率 {round(correct / 12 * 100)}%', [f'{k}: {v["correct"]}/{v["total"]}' for k, v in mastery.items()], .95, 'behavior')
+        db.session.add(row); db.session.commit()
+        return {'diagnostic': row.to_dict(), 'profile': StudentProfileService.apply_changes(user_id, {'knowledge_foundation': change}, 'onboarding_diagnostic', 'local_rules'), 'backend': 'local_rules'}
 
     @staticmethod
     def create_behavior_suggestion(user_id: int) -> dict | None:
@@ -139,20 +244,31 @@ class StudentProfileService:
 
     @staticmethod
     def _completion(dimensions: dict) -> int:
-        filled = sum(1 for key in PROFILE_DIMENSIONS if (dimensions.get(key) or {}).get('value'))
-        return round(filled / len(PROFILE_DIMENSIONS) * 100)
+        # cognitive_state is inferred from behavior and cannot reasonably be
+        # required from a student-entered profile form.  The seven explicit
+        # learner dimensions are therefore the completion contract.
+        required = tuple(key for key in PROFILE_DIMENSIONS if key != 'cognitive_state')
+        filled = sum(1 for key in required if (dimensions.get(key) or {}).get('value'))
+        return round(filled / len(required) * 100)
 
     @staticmethod
     def chat(user_id: int, message: str, confirm_changes: bool = False) -> dict:
         if not message or len(message.strip()) < 2:
             raise ValueError('message不能为空')
+        CourseSafetyService.ensure_safe(message)
         backend = 'local_rules'
         try:
-            extracted = StudentProfileService._spark_extract(message)
-            backend = 'iflytek_spark'
+            from agents.learning_profile_agent import LearningProfileAgent
+            recent = TrialQuestionProgress.query.filter_by(user_id=user_id, status='completed').count()
+            extracted, backend = LearningProfileAgent.analyze({'message': message[:600], 'practice_count': recent, 'weak_knowledge': MistakeService.list_weak_knowledge(user_id, 3)})
+            if not extracted:
+                extracted = StudentProfileService._rule_extract(message)
         except Exception:
             extracted = StudentProfileService._rule_extract(message)
         extracted.update(StudentProfileService._behavior_changes(user_id))
+        extracted.setdefault('cognitive_state', StudentProfileService._dimension(
+            '当前状态待后续练习补全', '尚无足够连续作答行为', 0.75, 'mixed'
+        ))
 
         row = StudentProfileService.get_or_create(user_id)
         existing = row.dimensions or {}
@@ -203,6 +319,15 @@ class StudentProfileService:
             normalized[key] = value
         if not normalized:
             raise ValueError('没有有效画像字段')
+        if reason == 'student_correction':
+            # Keep an explicitly completed profile internally consistent: an
+            # optional, still-empty cognitive-state slot is not conversation
+            # evidence, but it belongs to the student's confirmed profile
+            # version with zero confidence until behavior supplies a value.
+            cognitive = dict(dimensions.get('cognitive_state') or {})
+            if not cognitive.get('value'):
+                cognitive['source'] = 'confirmed'
+                dimensions['cognitive_state'] = cognitive
         row.dimensions = dimensions
         row.version = (row.version or 0) + 1
         row.completion_rate = StudentProfileService._completion(dimensions)
@@ -266,6 +391,6 @@ class StudentProfileService:
                 'behavior',
             )
         row.status = action
-        row.resolved_at = datetime.utcnow()
+        row.resolved_at = utc_now()
         db.session.commit()
         return {'suggestion': row.to_dict(), 'profile': profile}

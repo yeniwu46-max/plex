@@ -1,0 +1,167 @@
+{
+  "run_at": "2026-06-12T07:06:23+00:00",
+  "passed": true,
+  "evidence_scope": "local_rules_and_local_environment",
+  "external_not_claimed": [
+    "iflytek_spark",
+    "github_ci",
+    "mysql_8",
+    "tts"
+  ],
+  "metrics": [
+    {
+      "group": "personalization",
+      "metric": "task_success_rate",
+      "value": 100.0,
+      "unit": "percent"
+    },
+    {
+      "group": "personalization",
+      "metric": "schema_pass_rate",
+      "value": 100.0,
+      "unit": "percent"
+    },
+    {
+      "group": "personalization",
+      "metric": "citation_valid_rate",
+      "value": 100.0,
+      "unit": "percent"
+    },
+    {
+      "group": "profile",
+      "metric": "balanced_field_accuracy",
+      "value": 100.0,
+      "unit": "percent"
+    },
+    {
+      "group": "knowledge_base",
+      "metric": "coverage_rate",
+      "value": 100.0,
+      "unit": "percent"
+    },
+    {
+      "group": "feedback_loop",
+      "metric": "rounds_passed",
+      "value": 3,
+      "unit": "rounds"
+    },
+    {
+      "group": "learning_effect",
+      "metric": "correct_rate_delta",
+      "value": 100.0,
+      "unit": "percentage_points"
+    },
+    {
+      "group": "learning_effect",
+      "metric": "mistake_count_delta",
+      "value": -3,
+      "unit": "records"
+    },
+    {
+      "group": "security",
+      "metric": "validation_pass_rate",
+      "value": 100.0,
+      "unit": "percent"
+    },
+    {
+      "group": "performance",
+      "metric": "success_rate",
+      "value": 100.0,
+      "unit": "percent"
+    },
+    {
+      "group": "performance",
+      "metric": "idempotency_rate",
+      "value": 100.0,
+      "unit": "percent"
+    },
+    {
+      "group": "performance",
+      "metric": "p95_latency",
+      "value": 173.79,
+      "unit": "ms"
+    },
+    {
+      "group": "engineering",
+      "metric": "project_deprecated_calls",
+      "value": 0,
+      "unit": "calls"
+    },
+    {
+      "group": "frontend",
+      "metric": "initial_gzip",
+      "value": 109.27,
+      "unit": "KiB"
+    },
+    {
+      "group": "frontend",
+      "metric": "largest_lazy_gzip",
+      "value": 390.5,
+      "unit": "KiB"
+    }
+  ],
+  "chart_series": {
+    "quality_rates": [
+      {
+        "name": "task_success_rate",
+        "value": 100.0
+      },
+      {
+        "name": "schema_pass_rate",
+        "value": 100.0
+      },
+      {
+        "name": "citation_valid_rate",
+        "value": 100.0
+      },
+      {
+        "name": "balanced_field_accuracy",
+        "value": 100.0
+      },
+      {
+        "name": "coverage_rate",
+        "value": 100.0
+      },
+      {
+        "name": "validation_pass_rate",
+        "value": 100.0
+      }
+    ],
+    "performance": [
+      {
+        "name": "success_rate",
+        "value": 100.0,
+        "unit": "percent"
+      },
+      {
+        "name": "idempotency_rate",
+        "value": 100.0,
+        "unit": "percent"
+      },
+      {
+        "name": "p95_latency",
+        "value": 173.79,
+        "unit": "ms"
+      }
+    ],
+    "learning_effect": {
+      "before_correct_rate": 0.0,
+      "after_correct_rate": 100.0,
+      "before_mistakes": 3,
+      "after_mistakes": 0,
+      "evidence_count": 6
+    },
+    "frontend_bundle": [
+      {
+        "name": "initial_gzip",
+        "value": 109.27,
+        "unit": "KiB"
+      },
+      {
+        "name": "largest_lazy_gzip",
+        "value": 390.5,
+        "unit": "KiB"
+      }
+    ]
+  }
+}

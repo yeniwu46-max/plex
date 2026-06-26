@@ -1,12 +1,13 @@
 """Trial publish / schedule / end flow."""
 import unittest
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash
 
 from app import create_app
 from app.models import Class, Role, Trial, User, db
+from app.utils.time import utc_now
 
 
 class TrialOperationsTestCase(unittest.TestCase):
@@ -87,7 +88,7 @@ class TrialOperationsTestCase(unittest.TestCase):
         self.assertEqual(end_resp.get_json()['data']['effective_status'], 'ended')
 
     def test_scheduled_trial(self):
-        starts = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+        starts = (utc_now() + timedelta(hours=2)).isoformat()
         resp = self.client.post(
             '/api/v1/teacher/trials',
             headers=self.auth(self.teacher_token),
@@ -192,7 +193,7 @@ class TrialOperationsTestCase(unittest.TestCase):
         )
         self.assertEqual(delete_resp.status_code, 200)
         with self.app.app_context():
-            self.assertIsNone(Trial.query.get(trial_id))
+            self.assertIsNone(db.session.get(Trial, trial_id))
 
 
 if __name__ == '__main__':

@@ -86,3 +86,49 @@ class StudentProfileSuggestion(BaseModel):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
         }
+
+
+class StudentProfileDiagnostic(BaseModel):
+    """Optional onboarding assessment, kept separate from conversational profile evidence."""
+    __tablename__ = 'student_profile_diagnostics'
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, unique=True, index=True)
+    status = db.Column(db.String(16), nullable=False, default='pending')  # pending | completed | skipped
+    answers = db.Column(db.JSON, nullable=False, default=dict)
+    mastery = db.Column(db.JSON, nullable=False, default=dict)
+    completed_at = db.Column(db.DateTime)
+    skipped_at = db.Column(db.DateTime)
+
+    def to_dict(self):
+        return {
+            'status': self.status,
+            'answers': self.answers or {},
+            'mastery': self.mastery or {},
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'skipped_at': self.skipped_at.isoformat() if self.skipped_at else None,
+        }
+
+
+class LearningAdaptation(BaseModel):
+    """Auditable deterministic intervention for one student and knowledge point."""
+    __tablename__ = 'learning_adaptations'
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    knowledge_key = db.Column(db.String(64), nullable=False, index=True)
+    status = db.Column(db.String(16), nullable=False, default='active', index=True)  # active | recovered
+    trigger_evidence = db.Column(db.JSON, nullable=False, default=dict)
+    action_plan = db.Column(db.JSON, nullable=False, default=dict)
+    profile_version = db.Column(db.Integer, nullable=False, default=0)
+    remedial_completed = db.Column(db.Integer, nullable=False, default=0)
+    remedial_correct = db.Column(db.Integer, nullable=False, default=0)
+    resolved_at = db.Column(db.DateTime)
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'knowledge_key': self.knowledge_key, 'status': self.status,
+            'trigger_evidence': self.trigger_evidence or {}, 'action_plan': self.action_plan or {},
+            'profile_version': self.profile_version, 'remedial_completed': self.remedial_completed,
+            'remedial_correct': self.remedial_correct,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+        }

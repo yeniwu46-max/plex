@@ -1372,3 +1372,20 @@ curl -X POST http://localhost:5000/api/v1/classes \
 - `GET /api/v1/system/ai-health`
 
 生成资源统一返回 `backend`、`citations`、`confidence`、`review_status`、`risk_reasons`、`generator_agent`、`generation_task_id` 和 `profile_snapshot`。生成任务增加 `profile_version`、`request_fingerprint` 和 `recoverable`。详细实现见 `docs/2026-06-09-engineering-stability.md`。
+
+## 十一、学习效果与安全接口（2026-06-12）
+
+### 学习效果
+
+- `GET /api/v1/student/learning-effect?task_id=<task_id>`
+- `GET /api/v1/teacher/students/<student_id>/learning-effect?task_id=<task_id>`
+
+接口以资源生成任务的 `created_at` 为介入时间，只统计相同 `knowledge_key` 的已完成作答。返回 `before`、`after`、`delta`、画像版本、资源类型、实际后端、介入时间和作答证据 ID。
+
+前后测各至少需要 3 次有效作答。样本不足时 `status` 为 `insufficient_evidence`，所有变化量为 `null`，不得显示虚假提升。教师接口复用班级归属校验，学生与教师端核心指标来自同一服务。
+
+### 课程安全
+
+画像对话、资源生成、驿站问答和知识库查询被拒绝时，`data.reason_code` 使用稳定枚举：`prompt_injection`、`out_of_course_scope`、`sensitive_content`、`invalid_knowledge_key`、`invalid_resource_type` 或 `invalid_request`。
+
+知识库上传、文档列表、状态和解析接口仅允许 `teacher` 或 `admin`。通用上传服务同时检查角色、场景、扩展名、大小和文件签名。

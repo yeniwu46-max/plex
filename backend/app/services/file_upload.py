@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """文件上传校验与存储服务。"""
+import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,6 +51,24 @@ class UploadValidationError(ValueError):
     pass
 
 
+def _validate_content_signature(ext: str, data: bytes) -> None:
+    if data.startswith(b'MZ'):
+        raise UploadValidationError('file content does not match extension')
+    if ext == '.pdf' and not data.startswith(b'%PDF'):
+        raise UploadValidationError('invalid PDF signature')
+    if ext == '.png' and not data.startswith(b'\x89PNG\r\n\x1a\n'):
+        raise UploadValidationError('invalid PNG signature')
+    if ext in {'.jpg', '.jpeg'} and not data.startswith(b'\xff\xd8\xff'):
+        raise UploadValidationError('invalid JPEG signature')
+    if ext in {'.docx', '.pptx', '.xlsx', '.zip'} and not data.startswith(b'PK'):
+        raise UploadValidationError('invalid archive document signature')
+    if ext == '.json':
+        try:
+            json.loads(data.decode('utf-8'))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise UploadValidationError('invalid JSON content') from exc
+
+
 def validate_and_save(
     file: FileStorage,
     role: str,
@@ -94,6 +113,8 @@ def validate_and_save(
         raise UploadValidationError(f'文件大小超过上限 {mb} MB')
 
     # 5. 存储
+    _validate_content_signature(ext, data)
+
     uid = uuid.uuid4().hex[:16]
     safe_name = secure_filename(raw_filename)
     stored_name = f'{uid}_{safe_name}'

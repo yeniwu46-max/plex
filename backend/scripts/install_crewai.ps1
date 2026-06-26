@@ -10,7 +10,7 @@ $Python = Join-Path $VenvPath 'Scripts\python.exe'
 $Pip = Join-Path $VenvPath 'Scripts\pip.exe'
 
 & $Python -m pip install --upgrade pip
-& $Pip install "git+https://github.com/crewAIInc/crewAI.git#subdirectory=lib/crewai"
+& $Pip install "git+https://github.com/crewAIInc/crewAI.git@5cdc420c50cf9cb9ca12b50fdba3125377743a53#subdirectory=lib/crewai"
 
 Write-Host ">> 验证安装..."
 & $Python -c "import crewai; from crewai import Agent, Crew; print('crewai', crewai.__version__, 'OK')"

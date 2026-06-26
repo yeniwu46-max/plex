@@ -1,12 +1,95 @@
 import { http, type ApiEnvelope } from './http'
 
+/** 错因层级（四层错因模型） */
+export type ErrorLayer = 'syntax' | 'rule' | 'logic' | 'transfer' | 'none'
+
+/** 掌握度判别 */
+export type ProficiencyLevel = 'cannot' | 'can_but_wrong' | 'transfer_gap' | 'mastered'
+
+/** 补救策略类型 */
+export type StrategyType =
+  | 'trace_variables'
+  | 'micro_fix'
+  | 'concept_explain'
+  | 'pattern_compare'
+  | 'syntax_checklist'
+  | 'consolidate'
+
+export interface DiagnosisKnowledgePoint {
+  node: string
+  mastery: string
+  reason: string
+}
+
+export interface RemediationStrategy {
+  type: StrategyType
+  title: string
+  detail: string
+  steps: string[]
+  microExercise: string
+}
+
+/** 单步智能体执行轨迹 */
+export interface AgentTraceStep {
+  agentId: string
+  name: string
+  role?: string
+  status?: 'success' | 'error' | 'running'
+  latencyMs: number
+  summary: string
+}
+
+export interface LearningPathPlanResult {
+  ordered_nodes: Array<{
+    id: string
+    star_path_id?: string | null
+    label: string
+    order_index: number
+    status: string
+    mastery_score: number
+    locked: boolean
+    prerequisites_met: boolean
+    difficulty?: string
+    recommended_resources?: Array<{ id: number; title?: string; type?: string; difficulty?: string | number }>
+    recommended_trials?: Array<{ question_id: string; title?: string; difficulty?: number }>
+    remediation?: { trigger_node: string; steps: string[]; adaptation_id?: number; knowledge_key?: string } | null
+  }>
+  active_node_id?: string | null
+  next_best_action?: { node_id: string | null; reason: string; action: string }
+  remediation_paths?: Array<{ trigger_node: string; steps: string[]; adaptation_id?: number }>
+  graph_backend?: string
+  topology_source?: string
+  rationale?: string
+  agent_trace?: { backend: string; steps: AgentTraceStep[] }
+  nextKnowledgePoint?: string
+  reviewPlan?: string[]
+  estimatedDifficulty?: string
+}
+
+export interface PlanLearningPathPayload {
+  focus_node?: string
+  focus_node_id?: string
+  diagnosis?: Record<string, unknown>
+}
+
 /** 学生端 · 单题诊断完整结果 */
 export interface StudentDiagnoseResult {
   diagnosis: {
+    // 兼容旧字段
     weakPoints: string[]
     errorType: string
     diagnosis: string
     confidence: number
+    // 四层错因模型新增字段
+    errorLayer?: ErrorLayer
+    errorLayerLabel?: string
+    errorSubtype?: string
+    proficiency?: ProficiencyLevel
+    proficiencyLabel?: string
+    proficiencyReason?: string
+    relatedKnowledgePoints?: DiagnosisKnowledgePoint[]
+    remediationStrategy?: RemediationStrategy
+    evidence?: string[]
   }
   codeAnalysis: {
     codeIssueSummary: string
@@ -19,6 +102,7 @@ export interface StudentDiagnoseResult {
     prerequisiteNodes: string[]
     recommendedReviewNodes: string[]
     graphReason: string
+    masteryByNode?: Record<string, string>
   }
   recommendation: {
     nextKnowledgePoint: string
@@ -31,9 +115,63 @@ export interface StudentDiagnoseResult {
     stepHints: string[]
     encouragement: string
     nextAction: string
+    microExercise?: string
+    strategyType?: StrategyType
   }
+  pipelineTrace?: AgentTraceStep[]
   backend?: string
   completedAt?: string
+}
+
+/** 单次代码提交的完整协同闭环；沙箱结果是所有智能体决策的唯一证据源。 */
+export interface LearningCycleResult extends StudentDiagnoseResult {
+  execution: {
+    all_passed: boolean
+    passed_count: number
+    total: number
+    backend?: string
+    results: Array<{
+      case_id: string
+      label: string
+      passed: boolean
+      expected: string
+      actual: string
+      status: { id: number; description: string }
+      time?: string
+      memory?: number
+      error?: string | null
+    }>
+  }
+  learningProfile: {
+    explanationPreference: string
+    visualPreferenceConfirmed: boolean
+    interventionPresentation: string
+    loopMastery: string
+    loopMasteryScore?: number
+    evidence: string[]
+  }
+  learningPath: StudentDiagnoseResult['recommendation'] & { reason: string }
+  resources: {
+    executionDiagram: { title: string; description: string; steps: Array<{ round: number; condition: string; i: number; action: string }> }
+    microFix: { title: string; prompt: string; starterCode: string; expectedOutcome: string; answerPolicy: string }
+    backend: string
+  }
+  tutor: { mode: 'socratic' | 'reflection'; question: string; nextAction: string }
+  knowledgeGraphUpdate: { nodeId: string; nodeLabel: string; status: string; action: 'reinforce' | 'consolidated'; evidence: string }
+  learningReport: { headline: string; outcome: 'passed' | 'needs_remediation'; diagnosis: string; nextActions: string[]; riskTags: string[] }
+}
+
+export interface LearningCyclePayload {
+  language: 'python'
+  code: string
+  run_mode: 'stdout' | 'expression'
+  test_cases: Array<{ id: string; label: string; input?: string; expected?: string; setup?: string; invoke?: string }>
+  exerciseId: string
+  questionTitle?: string
+  questionPrompt?: string
+  topic?: string
+  knowledgePoints: string[]
+  attemptCount: number
 }
 
 export interface TeacherSuggestionResult {
@@ -76,6 +214,9 @@ export interface StudentDiagnosePayload {
   knowledgePoints: string[]
   attemptCount: number
   answerStatus?: 'correct' | 'wrong' | 'partial'
+  questionTitle?: string
+  questionPrompt?: string
+  conversationHistory?: Array<{ role: string; content: string }>
 }
 
 export interface TeacherSuggestionPayload {
@@ -83,6 +224,29 @@ export interface TeacherSuggestionPayload {
   weakPointStats?: Array<{ knowledgePoint: string; count: number }>
   commonErrorTypes?: string[]
   recentExercises?: string[]
+}
+
+export interface CodeHintPayload {
+  exerciseId: string
+  questionTitle?: string
+  topic?: string
+  code: string
+  stdout?: string
+  stderr?: string
+  expectedOutput?: string
+  failedCases?: Array<{
+    label: string
+    expected: string
+    actual: string
+    error?: string
+  }>
+}
+
+export interface CodeHintResult {
+  annotated_code: string
+  comments: string[]
+  policy: 'hint_only_no_direct_answer'
+  backend?: string
 }
 
 const AGENT_TIMEOUT_MS = 15_000
@@ -99,14 +263,77 @@ async function getAgent<T>(path: string) {
   return data.data
 }
 
+/** 学习路径智能体 · 主动规划（星轨页） */
+export function planLearningPath(payload: PlanLearningPathPayload = {}) {
+  return postAgent<LearningPathPlanResult>('/v1/agents/plan-learning-path', payload as Record<string, unknown>)
+}
+
 /** 学生端 · 多智能体单题诊断（诊断→分析→图谱→路径→反馈） */
 export function studentDiagnose(payload: StudentDiagnosePayload) {
   return postAgent<StudentDiagnoseResult>('/v1/agents/student-diagnose', payload as unknown as Record<string, unknown>)
 }
 
+/** 学生端主闭环：提交代码后一次性获得沙箱、诊断、资源、辅导、图谱和报告。 */
+export function runCodeLearningCycle(payload: LearningCyclePayload) {
+  return postAgent<LearningCycleResult>('/v1/agents/code-learning-cycle', payload as unknown as Record<string, unknown>)
+}
+
 /** 教师端 · 班级教学建议 */
 export function teacherAgentSuggestion(payload: TeacherSuggestionPayload) {
   return postAgent<TeacherSuggestionResult>('/v1/agents/teacher-suggestion', payload as unknown as Record<string, unknown>)
+}
+
+function isNotFound(error: unknown) {
+  return (error as { response?: { status?: number } })?.response?.status === 404
+}
+
+function localCodeHint(payload: CodeHintPayload): CodeHintResult {
+  const comments: string[] = []
+  if (payload.stderr) {
+    comments.push('先定位报错行附近的变量名、缩进、类型或函数调用是否正确。')
+  } else if (payload.expectedOutput || payload.stdout) {
+    comments.push('对比实际输出和预期输出，优先检查输出格式、循环范围和边界条件。')
+  } else {
+    comments.push('先把核心处理步骤写完整，再运行测试观察差异。')
+  }
+  const firstFailed = payload.failedCases?.[0]
+  if (firstFailed) comments.push(`重点复查「${firstFailed.label}」这个未通过用例覆盖的输入场景。`)
+  if (payload.topic) comments.push(`本题关联「${payload.topic}」，确认代码中有对应的处理逻辑。`)
+  comments.push('不要写固定输出，要让代码能处理同类输入。')
+
+  const lines = payload.code.replace(/\s+$/g, '').split('\n')
+  const annotated: string[] = [
+    '# AI 提示（不会直接给答案）',
+    `# 题目：${payload.questionTitle || payload.exerciseId}`,
+    ...comments.slice(0, 4).map((item) => `# - ${item}`),
+    '',
+  ]
+  let inserted = false
+  for (const line of lines.length ? lines : ['']) {
+    const stripped = line.trim()
+    if (!inserted && stripped && !stripped.startsWith('#')) {
+      annotated.push('# TODO: 从这里开始检查变量、条件和输出是否符合题意')
+      inserted = true
+    }
+    annotated.push(line)
+  }
+  if (!inserted) annotated.push('# TODO: 在这里补充解题逻辑，再运行测试观察差异')
+  return {
+    annotated_code: `${annotated.join('\n').trimEnd()}\n`,
+    comments: comments.slice(0, 4),
+    policy: 'hint_only_no_direct_answer',
+    backend: 'local_rules',
+  }
+}
+
+/** 学生端 · 代码题提示，只返回注释式提示，不直接给答案 */
+export async function codeHint(payload: CodeHintPayload) {
+  try {
+    return await postAgent<CodeHintResult>('/v1/agents/code-hint', payload as unknown as Record<string, unknown>)
+  } catch (error) {
+    if (isNotFound(error)) return localCodeHint(payload)
+    throw error
+  }
 }
 
 /** 管理员端 · 智能体运行状态 */

@@ -2,7 +2,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.models import User
+from app.models import User, db
 from app.services.ai_question_generator import AiQuestionGenerator
 from app.services.assignment import AssignmentService
 from app.services.trial import TrialService
@@ -13,7 +13,7 @@ trials_bp = Blueprint('trials', __name__, url_prefix='/api/v1')
 
 
 def _role_name(user_id):
-    user = User.query.get(int(user_id))
+    user = db.session.get(User, int(user_id))
     return user.role.name if user and user.role else None
 
 

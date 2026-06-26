@@ -2,15 +2,27 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
-from app.models import TrialQuestion, TrialQuestionProgress, User, UserDailyQuest, db
+from app.models import (
+    PersonalizedLearningResource,
+    ResourceGenerationTask,
+    StudentProfile,
+    TrialQuestion,
+    TrialQuestionProgress,
+    User,
+    UserDailyQuest,
+    db,
+)
 from app.services.mistake import MistakeService
 from app.services.question_generator import QuestionGenerator
 from app.services.student_progress import DOMAIN_CATALOG, StudentProgressService
 from app.services.teacher import TeacherService
+from app.utils.time import utc_now
 
 
 class EvaluationService:
     PERIOD_DAYS = {'7d': 7, '30d': 30}
+    MIN_EFFECT_SAMPLES = 3
+    PHASE_REPORT_COOLDOWN_HOURS = 12
 
     @staticmethod
     def _parse_period(period: str) -> int:
@@ -33,7 +45,7 @@ class EvaluationService:
         ).all()
         by_key: dict[str, dict] = defaultdict(lambda: {'correct': 0, 'answered': 0})
         for row in rows:
-            question = TrialQuestion.query.get(row.question_id)
+            question = db.session.get(TrialQuestion, row.question_id)
             key = (question.knowledge_key if question else None) or 'algo'
             bucket = by_key[key]
             bucket['answered'] += 1
@@ -177,7 +189,7 @@ class EvaluationService:
 
     @staticmethod
     def get_student_learning_report(user_id: int, period: str = '7d'):
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
 
@@ -212,10 +224,141 @@ class EvaluationService:
         }
 
     @staticmethod
+    def _build_phase_report(user_id: int, period: str, report: dict) -> dict:
+        summary = report.get('summary') or {}
+        trend = report.get('trend') or {}
+        weak = report.get('weak_knowledge') or []
+        mistakes = report.get('mistake_highlights') or []
+        domain_mastery = report.get('domain_mastery') or []
+        recommendations = report.get('recommendations') or []
+
+        practice_counts = trend.get('practice_count') or []
+        correct_rates = trend.get('correct_rate') or []
+        total_practice = sum(practice_counts)
+        active_days = len([value for value in practice_counts if value > 0])
+        avg_recent_accuracy = (
+            round(sum(correct_rates) / len([value for value in correct_rates if value or value == 0]))
+            if correct_rates
+            else 0
+        )
+        weakest_domains = sorted(
+            [item for item in domain_mastery if item.get('answered', 0) > 0],
+            key=lambda item: (item.get('mastery_rate', 0), -item.get('answered', 0)),
+        )[:3]
+        top_weak = weak[:3]
+
+        highlights = [
+            f"阶段指数 {summary.get('index', 0)}，状态为「{summary.get('level_label', '起步探索')}」。",
+            f"近 {EvaluationService._parse_period(period)} 天完成 {total_practice} 次练习，活跃 {active_days} 天。",
+            f"最近正确率约 {summary.get('correct_rate', avg_recent_accuracy)}%，累计完成试炼 {summary.get('completed_trials', 0)} 个。",
+        ]
+        if top_weak:
+            highlights.append('主要薄弱点集中在：' + '、'.join(item['knowledge_label'] for item in top_weak) + '。')
+        elif mistakes:
+            highlights.append('已有错题记录，但知识点集中度不高，建议先修复最近失败题。')
+        else:
+            highlights.append('近期错题证据不足，建议先完成 2-3 道代码试炼以生成更准确诊断。')
+
+        focus_items = []
+        for item in top_weak:
+            focus_items.append({
+                'label': item['knowledge_label'],
+                'reason': f"累计失败 {item.get('fail_count', item.get('mistake_count', 1))} 次，优先修复关联错题。",
+                'knowledge_key': item.get('knowledge_key'),
+            })
+        for item in weakest_domains:
+            if len(focus_items) >= 3:
+                break
+            focus_items.append({
+                'label': item['label'],
+                'reason': f"本阶段答题 {item.get('answered', 0)} 次，掌握率 {item.get('mastery_rate', 0)}%。",
+                'knowledge_key': item.get('key'),
+            })
+
+        next_actions = [
+            rec.get('detail') or rec.get('title')
+            for rec in recommendations[:3]
+            if rec.get('detail') or rec.get('title')
+        ]
+        if not next_actions:
+            next_actions = [
+                '先完成一次星轨代码试炼，收集新的运行结果。',
+                '把未通过用例对应的输入输出差异记录到错题本。',
+                '完成今日委托后再刷新薄弱点报告。',
+            ]
+
+        return {
+            'user_id': user_id,
+            'period': period,
+            'generated_at': utc_now().isoformat() + 'Z',
+            'cooldown_hours': EvaluationService.PHASE_REPORT_COOLDOWN_HOURS,
+            'headline': '阶段性薄弱点报告',
+            'summary': highlights,
+            'focus_items': focus_items[:3],
+            'recent_evidence': {
+                'practice_count': total_practice,
+                'active_days': active_days,
+                'correct_rate': summary.get('correct_rate', avg_recent_accuracy),
+                'mistake_count': len(mistakes),
+                'risk_tags': report.get('risk_tags') or [],
+            },
+            'next_actions': next_actions[:3],
+        }
+
+    @staticmethod
+    def generate_phase_report(user_id: int, period: str = '7d') -> dict:
+        user = db.session.get(User, user_id)
+        if not user:
+            raise ValueError('用户不存在')
+
+        now = utc_now()
+        profile = StudentProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            profile = StudentProfile(user_id=user_id, dimensions={}, completion_rate=0, version=1)
+            db.session.add(profile)
+            db.session.flush()
+
+        dimensions = dict(profile.dimensions or {})
+        previous = dimensions.get('phase_report') or {}
+        generated_raw = previous.get('generated_at')
+        if generated_raw:
+            try:
+                last_generated = datetime.fromisoformat(str(generated_raw).replace('Z', ''))
+                elapsed = now - last_generated
+                cooldown = timedelta(hours=EvaluationService.PHASE_REPORT_COOLDOWN_HOURS)
+                if elapsed < cooldown and previous.get('report'):
+                    remaining = cooldown - elapsed
+                    return {
+                        'status': 'cooldown',
+                        'report': previous['report'],
+                        'next_available_at': (last_generated + cooldown).isoformat() + 'Z',
+                        'remaining_seconds': max(1, int(remaining.total_seconds())),
+                    }
+            except ValueError:
+                pass
+
+        base_report = EvaluationService.get_student_learning_report(user_id, period)
+        phase_report = EvaluationService._build_phase_report(user_id, period, base_report)
+        dimensions['phase_report'] = {
+            'generated_at': phase_report['generated_at'],
+            'period': period,
+            'report': phase_report,
+        }
+        profile.dimensions = dimensions
+        profile.version = (profile.version or 1) + 1
+        db.session.commit()
+        return {
+            'status': 'generated',
+            'report': phase_report,
+            'next_available_at': (now + timedelta(hours=EvaluationService.PHASE_REPORT_COOLDOWN_HOURS)).isoformat() + 'Z',
+            'remaining_seconds': EvaluationService.PHASE_REPORT_COOLDOWN_HOURS * 3600,
+        }
+
+    @staticmethod
     def get_teacher_student_report(current_user_id: int, student_id: int, role_name: str, period: str = '7d'):
         from app.services.trial import TrialService
 
-        student = User.query.get(student_id)
+        student = db.session.get(User, student_id)
         if not student or not student.class_id:
             raise ValueError('学生不存在或未分班')
         TrialService._get_teacher_class(student.class_id, current_user_id, role_name)
@@ -228,8 +371,118 @@ class EvaluationService:
         return report
 
     @staticmethod
+    def _effect_snapshot(rows: list[TrialQuestionProgress]) -> dict:
+        answered = len(rows)
+        correct = sum(1 for row in rows if row.is_correct)
+        incorrect = answered - correct
+        rate = round((correct / answered) * 100, 1) if answered else 0.0
+        risk_tags = []
+        if answered < EvaluationService.MIN_EFFECT_SAMPLES:
+            risk_tags.append('insufficient_sample')
+        if answered >= EvaluationService.MIN_EFFECT_SAMPLES and rate < 60:
+            risk_tags.append('low_accuracy')
+        if incorrect >= 3:
+            risk_tags.append('mistakes_concentrated')
+        return {
+            'correct_rate': rate,
+            'answered_count': answered,
+            'correct_count': correct,
+            'mastery_rate': rate,
+            'mistake_count': incorrect,
+            'risk_tags': risk_tags,
+            'evidence_ids': [row.id for row in rows],
+        }
+
+    @staticmethod
+    def get_learning_effect(user_id: int, task_id: str | None = None) -> dict:
+        query = ResourceGenerationTask.query.filter_by(user_id=user_id)
+        if task_id:
+            task = query.filter_by(task_id=task_id).first()
+        else:
+            task = query.filter(
+                ResourceGenerationTask.status == 'completed',
+            ).order_by(ResourceGenerationTask.completed_at.desc(), ResourceGenerationTask.created_at.desc()).first()
+        if not task:
+            raise ValueError('个性化资源任务不存在')
+
+        intervention_at = task.created_at
+        rows = (
+            TrialQuestionProgress.query.join(
+                TrialQuestion,
+                TrialQuestionProgress.question_id == TrialQuestion.id,
+            )
+            .filter(
+                TrialQuestionProgress.user_id == user_id,
+                TrialQuestionProgress.status == 'completed',
+                TrialQuestionProgress.answered_at.isnot(None),
+                TrialQuestion.knowledge_key == task.knowledge_key,
+            )
+            .order_by(TrialQuestionProgress.answered_at.asc(), TrialQuestionProgress.id.asc())
+            .all()
+        )
+        before_rows = [row for row in rows if row.answered_at < intervention_at]
+        after_rows = [row for row in rows if row.answered_at >= intervention_at]
+        before = EvaluationService._effect_snapshot(before_rows)
+        after = EvaluationService._effect_snapshot(after_rows)
+        sufficient = (
+            before['answered_count'] >= EvaluationService.MIN_EFFECT_SAMPLES
+            and after['answered_count'] >= EvaluationService.MIN_EFFECT_SAMPLES
+        )
+        resources = PersonalizedLearningResource.query.filter_by(
+            user_id=user_id,
+            generation_task_id=task.task_id,
+        ).order_by(PersonalizedLearningResource.id.asc()).all()
+
+        def delta(field: str):
+            return round(after[field] - before[field], 1) if sufficient else None
+
+        return {
+            'status': 'sufficient' if sufficient else 'insufficient_evidence',
+            'minimum_samples_per_period': EvaluationService.MIN_EFFECT_SAMPLES,
+            'task': {
+                'task_id': task.task_id,
+                'knowledge_key': task.knowledge_key,
+                'profile_version': task.profile_version,
+                'resource_types': [resource.resource_type for resource in resources]
+                or list(task.requested_types or []),
+                'backend': task.backend,
+                'intervention_at': intervention_at.isoformat() if intervention_at else None,
+            },
+            'before': before,
+            'after': after,
+            'delta': {
+                'correct_rate': delta('correct_rate'),
+                'answered_count': delta('answered_count'),
+                'mastery_rate': delta('mastery_rate'),
+                'mistake_count': delta('mistake_count'),
+            },
+            'evidence_count': len(rows),
+        }
+
+    @staticmethod
+    def get_teacher_learning_effect(
+        current_user_id: int,
+        student_id: int,
+        role_name: str,
+        task_id: str | None = None,
+    ) -> dict:
+        from app.services.trial import TrialService
+
+        student = db.session.get(User, student_id)
+        if not student or not student.class_id:
+            raise ValueError('学生不存在或未分班')
+        TrialService._get_teacher_class(student.class_id, current_user_id, role_name)
+        result = EvaluationService.get_learning_effect(student_id, task_id)
+        result['student'] = {
+            'id': student.id,
+            'username': student.username,
+            'real_name': student.real_name or student.username,
+        }
+        return result
+
+    @staticmethod
     def get_class_evaluation(current_user_id: int, class_id: int | None, period: str = '7d'):
-        teacher = User.query.get(current_user_id)
+        teacher = db.session.get(User, current_user_id)
         if not teacher or not teacher.role:
             raise PermissionError('用户信息获取失败')
 

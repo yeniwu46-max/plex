@@ -11,9 +11,9 @@ users_bp = Blueprint('users', __name__, url_prefix='/api/v1/users')
 
 
 def _current_user():
-    from app.models import User
+    from app.models import User, db
 
-    return User.query.get(int(get_jwt_identity()))
+    return db.session.get(User, int(get_jwt_identity()))
 
 
 @users_bp.route('/me', methods=['GET'])

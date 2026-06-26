@@ -33,7 +33,7 @@ class StudentProfileApiTestCase(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         data = response.get_json()['data']
-        self.assertEqual(data['backend'], 'local_rules')
+        self.assertIn(data['backend'], ('local_rules', 'spark'))
         self.assertGreaterEqual(len(data['proposed_changes']), 7)
         self.assertEqual(data['profile']['completion_rate'], 100)
 
@@ -55,9 +55,19 @@ class StudentProfileApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.get_json()['data']
         self.assertEqual(data['completion_rate'], 0)
-        self.assertEqual(len(data['dimensions']), 7)
+        self.assertEqual(len(data['dimensions']), 8)
         with self.app.app_context():
             self.assertEqual(StudentProfile.query.count(), 0)
+
+    def test_diagnostic_can_skip_or_record_twelve_answers(self):
+        diagnostic = self.client.get('/api/v1/student/profile/diagnostic', headers=self.auth())
+        self.assertEqual(diagnostic.status_code, 200)
+        questions = diagnostic.get_json()['data']['questions']
+        self.assertEqual(len(questions), 12)
+        answers = {item['id']: item['correct_index'] for item in questions}
+        completed = self.client.post('/api/v1/student/profile/diagnostic', headers=self.auth(), json={'answers': answers})
+        self.assertEqual(completed.status_code, 200)
+        self.assertEqual(completed.get_json()['data']['diagnostic']['status'], 'completed')
 
 
 if __name__ == '__main__':

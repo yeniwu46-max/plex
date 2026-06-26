@@ -1,0 +1,186 @@
+- generic [ref=e2273]:
+  - complementary "主导航" [ref=e2274]:
+    - generic [ref=e2275]:
+      - img [ref=e2276]
+      - generic [ref=e2279]: PLEX
+    - navigation [ref=e2280]:
+      - link "总览 OVERVIEW" [ref=e2281] [cursor=pointer]:
+        - /url: /student
+        - img [ref=e2283]:
+          - img [ref=e2284]
+        - generic [ref=e2289]:
+          - generic [ref=e2290]: 总览
+          - generic [ref=e2291]: OVERVIEW
+      - link "探索舱 EXPLORER" [ref=e2292] [cursor=pointer]:
+        - /url: /student/discovery
+        - img [ref=e2294]:
+          - img [ref=e2295]
+        - generic [ref=e2298]:
+          - generic [ref=e2299]: 探索舱
+          - generic [ref=e2300]: EXPLORER
+      - link "星轨学习 STARPATH" [ref=e2301] [cursor=pointer]:
+        - /url: /student/star-path
+        - img [ref=e2303]:
+          - img [ref=e2304]
+        - generic [ref=e2310]:
+          - generic [ref=e2311]: 星轨学习
+          - generic [ref=e2312]: STARPATH
+      - link "试炼中心 TRIAL ARENA" [ref=e2313] [cursor=pointer]:
+        - /url: /student/trials
+        - img [ref=e2315]:
+          - img [ref=e2316]
+        - generic [ref=e2321]:
+          - generic [ref=e2322]: 试炼中心
+          - generic [ref=e2323]: TRIAL ARENA
+      - link "驿站助手 MESSENGER" [ref=e2324] [cursor=pointer]:
+        - /url: /student/messenger
+        - img [ref=e2326]:
+          - img [ref=e2327]
+        - generic [ref=e2330]:
+          - generic [ref=e2331]: 驿站助手
+          - generic [ref=e2332]: MESSENGER
+      - link "我的 MY SPACE" [ref=e2333] [cursor=pointer]:
+        - /url: /student/me/growth
+        - img [ref=e2335]:
+          - img [ref=e2336]
+        - generic [ref=e2339]:
+          - generic [ref=e2340]: 我的
+          - generic [ref=e2341]: MY SPACE
+    - button "收起侧栏" [ref=e2342] [cursor=pointer]: «
+  - generic [ref=e2343]:
+    - banner [ref=e2344]:
+      - generic [ref=e2345]:
+        - heading "账号设置" [level=1] [ref=e2346]: 账号设置
+        - paragraph [ref=e2348]: 管理个人资料、外观偏好与账号状态
+      - generic [ref=e2349]:
+        - generic [ref=e2350]:
+          - button "通知" [ref=e2351] [cursor=pointer]:
+            - img [ref=e2352]:
+              - img [ref=e2353]
+          - superscript [ref=e2356]:
+            - generic [ref=e2359]:
+              - generic [ref=e2360]: "7"
+              - generic [ref=e2362]: "7"
+              - generic [ref=e2363]: "7"
+        - button "当前外观：深色模式，点击切换" [ref=e2364] [cursor=pointer]:
+          - img [ref=e2365]:
+            - img [ref=e2366]
+        - button "打开用户菜单" [ref=e2369] [cursor=pointer]:
+          - generic [ref=e2374]:
+            - strong [ref=e2375]: 学生1
+            - emphasis [ref=e2376]: Lv.2
+          - img [ref=e2377]:
+            - img [ref=e2378]
+    - navigation "我的导航" [ref=e2381]:
+      - link "成长档案" [ref=e2382] [cursor=pointer]:
+        - /url: /student/me/growth
+      - link "学习画像" [ref=e2383] [cursor=pointer]:
+        - /url: /student/me/profile
+      - link "账号设置" [ref=e2384] [cursor=pointer]:
+        - /url: /student/me/settings
+    - region "学生账号设置" [ref=e2386]:
+      - generic [ref=e2387]:
+        - generic [ref=e2388]:
+          - button "上传头像" [ref=e2391] [cursor=pointer]:
+            - generic [ref=e2393]: 学
+            - generic [ref=e2394]: 更换头像
+          - generic [ref=e2395]:
+            - paragraph [ref=e2396]: EXPLORER CONTROL
+            - heading "学生1" [level=2] [ref=e2397]
+            - paragraph [ref=e2398]:
+              - generic [ref=e2399]: "@student001"
+              - generic [ref=e2400]: 火星轨站·探索一班
+              - generic [ref=e2401]: Lv.2
+        - button "退出登录" [ref=e2402] [cursor=pointer]:
+          - generic [ref=e2403]: 退出登录
+      - generic [ref=e2404]:
+        - article [ref=e2405]:
+          - generic [ref=e2406]:
+            - heading "个人资料" [level=3] [ref=e2407]
+            - paragraph [ref=e2408]: 设置昵称与个性签名，头像支持 png/jpg/gif/webp（≤2MB）
+          - generic [ref=e2409]:
+            - generic [ref=e2410]: 昵称
+            - generic [ref=e2412]:
+              - textbox "昵称 3 / 32" [ref=e2414]:
+                - /placeholder: 探索者昵称
+                - text: 学生1
+              - generic [ref=e2415]:
+                - generic: 3 / 32
+          - generic [ref=e2416]:
+            - generic [ref=e2417]: 个性签名
+            - generic [ref=e2418]:
+              - textbox "个性签名 6 / 120" [ref=e2420]:
+                - /placeholder: 写一句属于你的探索宣言…
+                - text: laalla
+              - generic: 6 / 120
+          - generic [ref=e2421]:
+            - generic [ref=e2422]:
+              - term [ref=e2423]: 邮箱
+              - definition [ref=e2424]: student001@example.com
+            - generic [ref=e2425]:
+              - term [ref=e2426]: 累计 XP
+              - definition [ref=e2427]: "1211"
+            - generic [ref=e2428]:
+              - term [ref=e2429]: 连续探索
+              - definition [ref=e2430]: 0 天
+            - generic [ref=e2431]:
+              - term [ref=e2432]: 班级排名
+              - definition [ref=e2433]: 第 1 名
+          - button "保存资料" [ref=e2434] [cursor=pointer]:
+            - generic [ref=e2435]: 保存资料
+        - article [ref=e2436]:
+          - generic [ref=e2437]:
+            - heading "探索偏好" [level=3] [ref=e2438]
+            - paragraph [ref=e2439]: 通知与专注模式（本地保存演示）
+          - list [ref=e2440]:
+            - listitem [ref=e2441]:
+              - generic [ref=e2442]:
+                - strong [ref=e2443]: 试炼提醒
+                - generic [ref=e2444]: 班级试炼开放或即将结束时通知
+              - switch [checked] [ref=e2445]
+            - listitem [ref=e2448]:
+              - generic [ref=e2449]:
+                - strong [ref=e2450]: 委托提醒
+                - generic [ref=e2451]: 今日委托进度与奖励可领取时提醒
+              - switch [checked] [ref=e2452]
+            - listitem [ref=e2455]:
+              - generic [ref=e2456]:
+                - strong [ref=e2457]: 排名变动
+                - generic [ref=e2458]: 班级周榜名次变化时推送
+              - switch [ref=e2459]
+            - listitem [ref=e2462]:
+              - generic [ref=e2463]:
+                - strong [ref=e2464]: 专注模式
+                - generic [ref=e2465]: 隐藏非必要动效，保持探索舱简洁
+              - switch [ref=e2466]
+          - button "保存偏好" [ref=e2469] [cursor=pointer]:
+            - generic [ref=e2470]: 保存偏好
+          - button "重新查看功能导览" [ref=e2471] [cursor=pointer]:
+            - generic [ref=e2472]: 重新查看功能导览
+        - article [ref=e2473]:
+          - generic [ref=e2474]:
+            - heading "外观模式" [level=3] [ref=e2475]
+            - paragraph [ref=e2476]: 选择界面主题，保存到本地浏览器
+          - generic [ref=e2477]:
+            - generic [ref=e2478] [cursor=pointer]:
+              - generic [ref=e2479]:
+                - radio "🌙深色模式" [checked]
+              - generic [ref=e2481]: 🌙深色模式
+            - generic [ref=e2482] [cursor=pointer]:
+              - generic [ref=e2483]:
+                - radio "☀️浅色模式"
+              - generic [ref=e2485]: ☀️浅色模式
+            - generic [ref=e2486] [cursor=pointer]:
+              - generic [ref=e2487]:
+                - radio "🖥️跟随系统"
+              - generic [ref=e2489]: 🖥️跟随系统
+      - generic [ref=e2490]:
+        - article [ref=e2491]:
+          - generic [ref=e2492]:
+            - heading "能力画像" [level=3] [ref=e2493]
+            - paragraph [ref=e2494]: 基于历次试炼与星轨练习生成的多维能力雷达图
+        - article [ref=e2499]:
+          - generic [ref=e2500]:
+            - heading "近 7 天学习趋势" [level=3] [ref=e2501]
+            - paragraph [ref=e2502]: 练习次数与正确率变化曲线
+      - paragraph [ref=e2507]: 班级规则、AI 策略与系统配置由教师在「教师端 · 控制中枢」管理；此处可修改你的 Explorer 昵称、签名与头像。

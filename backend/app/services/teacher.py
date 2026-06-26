@@ -6,6 +6,7 @@ from app.models import Class, PointsLog, RankingCache, Trial, TrialQuestion, Tri
 
 from .base import BaseService
 from .question_generator import QuestionGenerator
+from app.utils.time import utc_now
 
 
 class TeacherService(BaseService):
@@ -13,7 +14,7 @@ class TeacherService(BaseService):
 
     @staticmethod
     def get_overview(current_user_id, class_id=None, period='week'):
-        teacher = User.query.get(current_user_id)
+        teacher = db.session.get(User, current_user_id)
         if not teacher or not teacher.role:
             raise PermissionError('用户信息获取失败或未设置角色')
 
@@ -58,7 +59,7 @@ class TeacherService(BaseService):
     @staticmethod
     def _select_class(classes, class_id, role_name, teacher_id):
         if class_id:
-            selected = Class.query.get(class_id)
+            selected = db.session.get(Class, class_id)
             if not selected:
                 raise ValueError('班级不存在')
             if role_name == 'teacher' and selected.teacher_id != teacher_id:
@@ -157,7 +158,7 @@ class TeacherService(BaseService):
     @staticmethod
     def _student_rows(students, ranking, today):
         rank_map = {item['user_id']: item['rank'] for item in ranking}
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        seven_days_ago = utc_now() - timedelta(days=7)
         today_progress = TeacherService._today_progress([student.id for student in students], today)
 
         rows = []
@@ -171,7 +172,7 @@ class TeacherService(BaseService):
             today_rate = round((today_bucket['completed'] / today_bucket['total']) * 100) if today_bucket['total'] else 0
             inactive_days = None
             if last_log and last_log.created_at:
-                inactive_days = max(0, (datetime.utcnow().date() - last_log.created_at.date()).days)
+                inactive_days = max(0, (utc_now().date() - last_log.created_at.date()).days)
 
             rows.append({
                 'id': student.id,
@@ -299,7 +300,7 @@ class TeacherService(BaseService):
 
     @staticmethod
     def get_class_stats(current_user_id, class_id=None):
-        teacher = User.query.get(current_user_id)
+        teacher = db.session.get(User, current_user_id)
         if not teacher or not teacher.role:
             raise PermissionError('用户信息获取失败或未设置角色')
         role_name = teacher.role.name

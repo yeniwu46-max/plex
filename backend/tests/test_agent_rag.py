@@ -3,7 +3,7 @@ import unittest
 
 from app import create_app
 from app.services.agent_orchestrator import AgentOrchestrator
-from agents.crew import run_student_diagnose, run_teacher_suggestion
+from agents.crew import run_learning_path_plan, run_student_diagnose, run_teacher_suggestion
 
 
 class AgentPipelineTests(unittest.TestCase):
@@ -32,6 +32,30 @@ class AgentPipelineTests(unittest.TestCase):
         self.assertTrue(result['feedback']['stepHints'])
         self.assertLessEqual(len(result['feedback']['stepHints']), 3)
 
+        # 四层错因模型新字段
+        diagnosis = result['diagnosis']
+        self.assertIn(diagnosis['errorLayer'], ('syntax', 'rule', 'logic', 'transfer', 'none'))
+        self.assertIn('proficiency', diagnosis)
+        self.assertIn('remediationStrategy', diagnosis)
+        self.assertIn('relatedKnowledgePoints', diagnosis)
+        # 向后兼容字段仍在
+        self.assertIn('errorType', diagnosis)
+        self.assertIn('weakPoints', diagnosis)
+
+        # 显性化流水线轨迹
+        self.assertIn('pipelineTrace', result)
+        self.assertEqual(len(result['pipelineTrace']), 5)
+        self.assertEqual(result['pipelineTrace'][0]['agentId'], 'learning_diagnosis')
+        self.assertTrue(result['pipelineTrace'][0]['summary'])
+        self.assertEqual(result['pipelineTrace'][3]['agentId'], 'learning_path')
+
+    def test_learning_path_plan(self):
+        result = run_learning_path_plan({'user_id': 1, 'focus_node_id': 'loop'})
+        self.assertIn('ordered_nodes', result)
+        self.assertIn('next_best_action', result)
+        self.assertIn('agent_trace', result)
+        self.assertTrue(result.get('ordered_nodes'))
+
     def test_teacher_suggestion_mock(self):
         result = run_teacher_suggestion({
             'classId': '1',
@@ -51,7 +75,7 @@ class AgentPipelineTests(unittest.TestCase):
 
     def test_agents_status(self):
         status = AgentOrchestrator.agents_status()
-        self.assertEqual(len(status['agents']), 6)
+        self.assertEqual(len(status['agents']), 7)
 
 
 if __name__ == '__main__':

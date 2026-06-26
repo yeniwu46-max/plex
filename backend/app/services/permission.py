@@ -26,14 +26,14 @@ class PermissionService(BaseService):
     @staticmethod
     def assign_permissions_to_role(role_id, permission_ids):
         """为角色分配权限"""
-        role = Role.query.get(role_id)
+        role = db.session.get(Role, role_id)
         if not role:
             raise Exception('角色不存在')
 
         db.session.execute(role_permissions.delete().where(role_permissions.c.role_id == role_id))
 
         for perm_id in permission_ids:
-            perm = Permission.query.get(perm_id)
+            perm = db.session.get(Permission, perm_id)
             if not perm:
                 raise Exception(f'权限ID {perm_id} 不存在')
 
@@ -49,7 +49,7 @@ class PermissionService(BaseService):
         """检查用户是否有某个权限"""
         from app.models import User
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             raise Exception('用户不存在')
 

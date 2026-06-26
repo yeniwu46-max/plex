@@ -11,10 +11,65 @@ export interface LearningDomain {
   recommendation_reason?: string
 }
 
+export interface LearningPathResource {
+  id: number
+  type?: string
+  title?: string
+  difficulty?: string | number
+  knowledge_key?: string
+}
+
+export interface LearningPathTrial {
+  question_id: string
+  title?: string
+  difficulty?: number
+  knowledge_key?: string
+}
+
+export interface LearningPathOrderedNode {
+  id: string
+  star_path_id?: string | null
+  label: string
+  order_index: number
+  status: string
+  mastery_score: number
+  locked: boolean
+  prerequisites_met: boolean
+  prerequisites?: string[]
+  difficulty?: string
+  default_difficulty?: number
+  recommended_resources?: LearningPathResource[]
+  recommended_trials?: LearningPathTrial[]
+  remediation?: {
+    trigger_node: string
+    steps: string[]
+    adaptation_id?: number
+    knowledge_key?: string
+  } | null
+}
+
+export interface NextBestAction {
+  node_id: string | null
+  reason: string
+  action: string
+}
+
+export interface RemediationPath {
+  trigger_node: string
+  steps: string[]
+  adaptation_id?: number
+  knowledge_key?: string
+}
+
 export interface LearningPathResult {
   domains: LearningDomain[]
   active_domain_key: string
   profile_version?: number
+  ordered_nodes?: LearningPathOrderedNode[]
+  active_node_id?: string | null
+  next_best_action?: NextBestAction
+  remediation_paths?: RemediationPath[]
+  graph_backend?: string
 }
 
 export interface ArchiveSkill {

@@ -49,7 +49,7 @@ powershell -ExecutionPolicy Bypass -File scripts/install_crewai.ps1
 
 ```bash
 py -3.12 -m venv .venv-crewai
-.venv-crewai\Scripts\pip install "git+https://github.com/crewAIInc/crewAI.git#subdirectory=lib/crewai"
+.venv-crewai\Scripts\pip install "git+https://github.com/crewAIInc/crewAI.git@5cdc420c50cf9cb9ca12b50fdba3125377743a53#subdirectory=lib/crewai"
 ```
 
 - **启用**：环境变量 `AGENT_BACKEND=auto`（默认，检测到 venv 即报 `crewai`）或 `crewai`；真实 LLM 推理需配置 `OPENAI_API_KEY`（无 Key 时仍走 Mock fallback）。

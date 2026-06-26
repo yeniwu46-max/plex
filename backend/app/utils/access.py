@@ -1,9 +1,9 @@
 """路由层权限与班级归属校验。"""
-from app.models import Class, User
+from app.models import Class, User, db
 
 
 def current_user_from_id(user_id: int) -> User | None:
-    return User.query.get(user_id)
+    return db.session.get(User, user_id)
 
 
 def permission_names(user: User | None) -> set[str]:
@@ -25,7 +25,7 @@ def teacher_owns_class(user: User | None, class_id: int | None) -> bool:
         return False
     if user.role and user.role.name != 'teacher':
         return False
-    class_obj = Class.query.get(class_id)
+    class_obj = db.session.get(Class, class_id)
     return bool(class_obj and class_obj.teacher_id == user.id)
 
 

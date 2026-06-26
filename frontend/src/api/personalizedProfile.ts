@@ -8,6 +8,7 @@ export type ProfileDimensionKey =
   | 'mistake_pattern'
   | 'learning_pace'
   | 'interest_direction'
+  | 'cognitive_state'
 
 export interface ProfileDimension {
   value: string | null
@@ -23,6 +24,16 @@ export interface DynamicStudentProfile {
   version: number
   updated_at?: string | null
 }
+
+export interface LearningAdaptation {
+  id: number
+  knowledge_key: string
+  status: 'active' | 'recovered'
+  trigger_evidence: { rule?: string }
+  action_plan: { action: string; difficulty: string; resources: string[]; micro_practice_count: number; recovery_rule: string }
+}
+
+export interface OnboardingDiagnosticQuestion { id: string; knowledge_key: string; question_type?: 'single_choice' | 'scenario' | 'code_reading'; stem: string; options: string[]; code_preview?: string | null }
 
 export interface ProfileChatResult {
   conversation_id: string
@@ -89,4 +100,22 @@ export async function resolveProfileSuggestion(id: number, action: 'accepted' | 
   >(`/v1/student/profile/suggestions/${id}`, { action })
   if (data.code !== 0) throw new Error(data.message || '画像建议处理失败')
   return data.data
+}
+
+export async function fetchProfileDiagnostic() {
+  const { data } = await http.get<ApiEnvelope<{ questions: OnboardingDiagnosticQuestion[]; diagnostic: { status: string } }>>('/v1/student/profile/diagnostic')
+  if (data.code !== 0) throw new Error(data.message || '入门测验加载失败')
+  return data.data
+}
+
+export async function submitProfileDiagnostic(answers: Record<string, number>, skip = false) {
+  const { data } = await http.post<ApiEnvelope<{ profile: DynamicStudentProfile }>>('/v1/student/profile/diagnostic', { answers, skip })
+  if (data.code !== 0) throw new Error(data.message || '入门测验提交失败')
+  return data.data
+}
+
+export async function fetchLearningAdaptations() {
+  const { data } = await http.get<ApiEnvelope<{ items: LearningAdaptation[] }>>('/v1/student/profile/adaptations')
+  if (data.code !== 0) throw new Error(data.message || '自适应方案加载失败')
+  return data.data.items
 }

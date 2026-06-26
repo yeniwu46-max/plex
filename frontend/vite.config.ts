@@ -8,6 +8,12 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    build: {
+      manifest: true,
+      // G6 is a route-level dynamic dependency. A dedicated gzip budget below
+      // provides a more meaningful gate than Vite's raw-size-only warning.
+      chunkSizeWarningLimit: 1500,
+    },
     server: {
       proxy: {
         '/api': {

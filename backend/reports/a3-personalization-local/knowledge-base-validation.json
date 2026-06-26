@@ -1,0 +1,166 @@
+{
+  "status": "passed",
+  "root": "F:\\homework\\coding6\\backend\\data\\rag_docs\\python-basics",
+  "knowledge_point_count": 16,
+  "valid_knowledge_point_count": 16,
+  "coverage_rate": 1.0,
+  "document_id_count": 16,
+  "source_file_count": 4,
+  "required_section_fields": [
+    "概念",
+    "正例",
+    "反例",
+    "常见错误",
+    "基础题",
+    "进阶题",
+    "来源"
+  ],
+  "items": [
+    {
+      "knowledge_key": "intro",
+      "knowledge_label": "Python 与 print",
+      "document_id": "python-stage1-program-structure",
+      "source_file": "01-python-intro.md",
+      "section_title": "程序结构",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "comment",
+      "knowledge_label": "注释",
+      "document_id": "python-stage1-comments",
+      "source_file": "01-python-intro.md",
+      "section_title": "注释",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "var",
+      "knowledge_label": "变量与类型",
+      "document_id": "python-stage1-variables-types",
+      "source_file": "01-python-intro.md",
+      "section_title": "变量与类型",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "io",
+      "knowledge_label": "输入 input",
+      "document_id": "python-stage1-input-output",
+      "source_file": "01-python-intro.md",
+      "section_title": "输入输出",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "ops",
+      "knowledge_label": "运算与表达式",
+      "document_id": "python-stage2-operators",
+      "source_file": "02-control-flow.md",
+      "section_title": "运算与表达式",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "cond",
+      "knowledge_label": "if 分支",
+      "document_id": "python-stage2-condition",
+      "source_file": "02-control-flow.md",
+      "section_title": "条件分支",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "loop",
+      "knowledge_label": "循环结构",
+      "document_id": "python-stage2-loop",
+      "source_file": "02-control-flow.md",
+      "section_title": "循环结构",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "range",
+      "knowledge_label": "range / break / continue",
+      "document_id": "python-stage2-range",
+      "source_file": "02-control-flow.md",
+      "section_title": "range",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "list",
+      "knowledge_label": "列表 list",
+      "document_id": "python-stage3-list",
+      "source_file": "03-data-structures.md",
+      "section_title": "列表",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "dict",
+      "knowledge_label": "字典 dict",
+      "document_id": "python-stage3-dict",
+      "source_file": "03-data-structures.md",
+      "section_title": "字典",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "str",
+      "knowledge_label": "字符串处理",
+      "document_id": "python-stage3-string",
+      "source_file": "03-data-structures.md",
+      "section_title": "字符串",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "func",
+      "knowledge_label": "函数基础",
+      "document_id": "python-stage3-function",
+      "source_file": "03-data-structures.md",
+      "section_title": "函数",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "file",
+      "knowledge_label": "文件读写",
+      "document_id": "python-stage4-file",
+      "source_file": "04-functions-practice.md",
+      "section_title": "文件操作",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "except",
+      "knowledge_label": "异常处理",
+      "document_id": "python-stage4-exception",
+      "source_file": "04-functions-practice.md",
+      "section_title": "异常处理",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "algo-sum",
+      "knowledge_label": "求和与统计",
+      "document_id": "python-stage4-sum-statistics",
+      "source_file": "04-functions-practice.md",
+      "section_title": "求和与统计",
+      "missing_fields": [],
+      "valid": true
+    },
+    {
+      "knowledge_key": "algo-search",
+      "knowledge_label": "线性查找",
+      "document_id": "python-stage4-linear-search",
+      "source_file": "04-functions-practice.md",
+      "section_title": "线性查找",
+      "missing_fields": [],
+      "valid": true
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

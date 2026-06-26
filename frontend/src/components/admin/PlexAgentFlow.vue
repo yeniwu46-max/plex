@@ -76,7 +76,7 @@ async function refreshAgentStatus() {
             ? 'code'
             : agent.id === 'knowledge_graph'
               ? 'kg'
-              : agent.id === 'path_recommendation'
+              : agent.id === 'path_recommendation' || agent.id === 'learning_path'
                 ? 'path'
                 : agent.id === 'feedback'
                   ? 'feedback'

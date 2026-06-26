@@ -1,0 +1,99 @@
+[
+  {
+    "id": "complete-01",
+    "category": "complete",
+    "message": "我是软件工程专业大二学生，学过 Python 但基础不牢，目标是两周完成课程并提升算法能力。我喜欢先看代码再分步骤讲解，循环边界总是错，每天学习 40 分钟，对算法项目感兴趣。",
+    "expected_dimensions": ["major_background", "knowledge_foundation", "learning_goal", "explanation_preference", "mistake_pattern", "learning_pace", "interest_direction"],
+    "value_contains": {"learning_pace": "每天学习 40 分钟"}
+  },
+  {
+    "id": "major-01",
+    "category": "single",
+    "message": "我是人工智能专业大一学生。",
+    "expected_dimensions": ["major_background"]
+  },
+  {
+    "id": "foundation-zero",
+    "category": "single",
+    "message": "我刚开始接触 Python，完全零基础。",
+    "expected_dimensions": ["knowledge_foundation"]
+  },
+  {
+    "id": "foundation-prior",
+    "category": "single",
+    "message": "我学过 Python，会写简单的变量和判断。",
+    "expected_dimensions": ["knowledge_foundation"]
+  },
+  {
+    "id": "goal-01",
+    "category": "single",
+    "message": "我的目标是两周完成 Python 基础课程。",
+    "expected_dimensions": ["learning_goal"]
+  },
+  {
+    "id": "preference-01",
+    "category": "single",
+    "message": "讲解时请多用案例并且分步说明。",
+    "expected_dimensions": ["explanation_preference"]
+  },
+  {
+    "id": "mistake-01",
+    "category": "single",
+    "message": "我在循环边界和缩进这里总是容易错。",
+    "expected_dimensions": ["mistake_pattern"]
+  },
+  {
+    "id": "pace-01",
+    "category": "single",
+    "message": "我每天可以学习 30 分钟。",
+    "expected_dimensions": ["learning_pace"]
+  },
+  {
+    "id": "interest-01",
+    "category": "single",
+    "message": "我对数据分析项目感兴趣。",
+    "expected_dimensions": ["interest_direction"]
+  },
+  {
+    "id": "pace-fuzzy",
+    "category": "fuzzy",
+    "message": "我一般利用碎片时间学习，希望节奏慢一点。",
+    "expected_dimensions": ["learning_pace"]
+  },
+  {
+    "id": "foundation-conflict",
+    "category": "conflict",
+    "message": "我以前学过一些 Python，但现在很多基础都不会了。",
+    "expected_dimensions": ["knowledge_foundation"]
+  },
+  {
+    "id": "omitted-weather",
+    "category": "omitted",
+    "message": "今天天气不错。",
+    "expected_dimensions": []
+  },
+  {
+    "id": "omitted-question",
+    "category": "omitted",
+    "message": "range 的 stop 参数为什么不包含在结果里？",
+    "expected_dimensions": []
+  },
+  {
+    "id": "preference-interest",
+    "category": "multi",
+    "message": "我喜欢先看代码案例，然后自己做项目。",
+    "expected_dimensions": ["explanation_preference", "interest_direction"]
+  },
+  {
+    "id": "goal-finish",
+    "category": "single",
+    "message": "希望本周完成课程考试准备。",
+    "expected_dimensions": ["learning_goal"]
+  },
+  {
+    "id": "mistake-exception",
+    "category": "single",
+    "message": "异常处理这里我总是错，也不知道该捕获哪种异常。",
+    "expected_dimensions": ["mistake_pattern"]
+  }
+]

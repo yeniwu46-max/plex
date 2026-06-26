@@ -2,6 +2,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
+from app.services.course_safety import SafetyViolation
 from app.services.personalized_resource import PersonalizedResourceService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -19,9 +20,19 @@ def create_resource_task():
         return success_response(PersonalizedResourceService.create_task(
             int(get_jwt_identity()), request.get_json() or {}
         ), '生成任务已创建', status_code=201)
+    except SafetyViolation as exc:
+        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
     except ValueError as exc:
         code = 40011 if '课程范围' in str(exc) else 40010 if '不允许' in str(exc) else 40001
-        return error_response(str(exc), code, None, 400)
+        payload = request.get_json(silent=True) or {}
+        reason_code = (
+            'invalid_resource_type'
+            if 'resource_types' in payload
+            else 'invalid_knowledge_key'
+            if 'knowledge_key' in payload
+            else 'invalid_request'
+        )
+        return error_response(str(exc), code, {'reason_code': reason_code}, 400)
 
 
 @personalized_resources_bp.route('/student/resource-generation/tasks', methods=['GET'])
@@ -73,6 +84,13 @@ def list_resource_review():
     return success_response(PersonalizedResourceService.list_review(
         request.args.get('review_status', 'pending_review')
     ))
+
+
+@personalized_resources_bp.route('/teacher/personalized-resources/metrics', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def resource_review_metrics():
+    return success_response(PersonalizedResourceService.review_metrics())
 
 
 @personalized_resources_bp.route('/teacher/personalized-resources/<int:resource_id>/review', methods=['PUT'])

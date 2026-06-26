@@ -2,9 +2,9 @@
 # Python 要求：>=3.10, <3.14（推荐 3.12）
 #
 # 从 GitHub 安装（与 PLEX agents.pdf 一致）：
-#   pip install "git+https://github.com/crewAIInc/crewAI.git#subdirectory=lib/crewai"
+#   pip install "git+https://github.com/crewAIInc/crewAI.git@5cdc420c50cf9cb9ca12b50fdba3125377743a53#subdirectory=lib/crewai"
 #
 # Windows 一键脚本：
 #   powershell -ExecutionPolicy Bypass -File scripts/install_crewai.ps1
 
-git+https://github.com/crewAIInc/crewAI.git#subdirectory=lib/crewai
+git+https://github.com/crewAIInc/crewAI.git@5cdc420c50cf9cb9ca12b50fdba3125377743a53#subdirectory=lib/crewai

@@ -22,18 +22,7 @@
 - 进阶题：在不修改原列表的前提下去重并保持顺序。
 - 来源：Python 官方教程“More on Lists”。
 
-## 11. 元组与集合
-`document_id: python-stage3-tuple-set`
-
-- 概念：元组不可变并保持顺序；集合无序、元素唯一，适合去重和集合运算。
-- 正例：`point = (3, 4)`；`unique = set(values)`。
-- 反例：`single = (1)` 是整数，单元素元组应写为 `(1,)`。
-- 常见错误：依赖集合顺序、向集合放入列表、尝试修改元组元素。
-- 基础题：用集合统计不同课程名称的数量。
-- 进阶题：计算两组选课学生的交集、并集和差集。
-- 来源：Python 官方教程“Tuples and Sequences”“Sets”。
-
-## 12. 字典
+## 11. 字典
 `document_id: python-stage3-dict`
 
 - 概念：字典保存键值映射，键必须可哈希；`get` 可安全读取缺失键。
@@ -43,3 +32,14 @@
 - 基础题：统计字符串中每个字符出现次数。
 - 进阶题：用嵌套字典保存学生信息并按成绩排序。
 - 来源：Python 官方教程“Dictionaries”。
+
+## 12. 函数
+`document_id: python-stage3-function`
+
+- 概念：函数封装可复用逻辑，通过参数接收输入，通过 `return` 返回结果。
+- 正例：`def area(radius):\n    return 3.14159 * radius ** 2`。
+- 反例：函数只执行 `print(result)` 而调用方需要返回值，会得到 `None`。
+- 常见错误：参数数量不匹配、可变默认参数、局部变量作用域误解。
+- 基础题：编写函数判断一个数是否为素数。
+- 进阶题：将成绩分析程序拆为读取、校验、统计和展示函数。
+- 来源：Python 官方教程“Defining Functions”“More on Defining Functions”。

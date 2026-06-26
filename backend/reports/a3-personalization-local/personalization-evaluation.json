@@ -1,0 +1,5470 @@
+{
+  "run_at": "2026-06-11T13:27:05+00:00",
+  "backend": "local_rules",
+  "knowledge_point_count": 16,
+  "profile_count": 2,
+  "bundle_count": 32,
+  "resource_count": 160,
+  "summary": {
+    "task_success_rate": 1.0,
+    "schema_pass_rate": 1.0,
+    "citation_valid_rate": 1.0,
+    "average_profile_constraint_coverage": 1.0,
+    "difficulty_difference_pass_rate": 1.0,
+    "expression_difference_pass_rate": 1.0,
+    "case_difference_pass_rate": 1.0,
+    "exercise_level_difference_pass_rate": 1.0,
+    "bundle_difference_pass_rate": 1.0,
+    "counterfactual_pass_rate": 1.0
+  },
+  "profiles": {
+    "beginner_lifestyle": {
+      "major_background": "非计算机专业大一",
+      "knowledge_foundation": "Python 零基础",
+      "learning_goal": "掌握 Python 基础并完成校园小工具",
+      "explanation_preference": "分步骤讲解和生活化案例",
+      "mistake_pattern": "循环边界与缩进容易出错",
+      "learning_pace": "每天 30 分钟",
+      "interest_direction": "校园生活自动化"
+    },
+    "algorithm_improver": {
+      "major_background": "软件工程专业",
+      "knowledge_foundation": "具备 Python 编程基础",
+      "learning_goal": "提升算法设计与复杂度分析能力",
+      "explanation_preference": "先看代码和挑战题",
+      "mistake_pattern": "复杂边界条件考虑不足",
+      "learning_pace": "周末集中学习 3 小时",
+      "interest_direction": "算法竞赛"
+    }
+  },
+  "knowledge_base": {
+    "status": "passed",
+    "knowledge_point_count": 16,
+    "valid_knowledge_point_count": 16,
+    "coverage_rate": 1.0,
+    "document_id_count": 16,
+    "source_file_count": 4
+  },
+  "comparisons": [
+    {
+      "knowledge_key": "intro",
+      "knowledge_label": "Python 与 print",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "comment",
+      "knowledge_label": "注释",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "var",
+      "knowledge_label": "变量与类型",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "io",
+      "knowledge_label": "输入 input",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "ops",
+      "knowledge_label": "运算与表达式",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "cond",
+      "knowledge_label": "if 分支",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "loop",
+      "knowledge_label": "循环结构",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "range",
+      "knowledge_label": "range / break / continue",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "list",
+      "knowledge_label": "列表 list",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "dict",
+      "knowledge_label": "字典 dict",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "str",
+      "knowledge_label": "字符串处理",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "func",
+      "knowledge_label": "函数基础",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "file",
+      "knowledge_label": "文件读写",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "except",
+      "knowledge_label": "异常处理",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "algo-sum",
+      "knowledge_label": "求和与统计",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    },
+    {
+      "knowledge_key": "algo-search",
+      "knowledge_label": "线性查找",
+      "difficulty_difference": 25,
+      "expression_difference": true,
+      "case_difference": true,
+      "exercise_level_difference": true,
+      "changed_resource_type_count": 5,
+      "changed_resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "bundle_hash_difference": true
+    }
+  ],
+  "counterfactuals": [
+    {
+      "dimension": "knowledge_foundation",
+      "expected_changes_passed": true,
+      "unrelated_features_stable": true,
+      "passed": true
+    },
+    {
+      "dimension": "explanation_preference",
+      "expected_changes_passed": true,
+      "unrelated_features_stable": true,
+      "passed": true
+    },
+    {
+      "dimension": "interest_direction",
+      "expected_changes_passed": true,
+      "unrelated_features_stable": true,
+      "passed": true
+    },
+    {
+      "dimension": "learning_pace",
+      "expected_changes_passed": true,
+      "unrelated_features_stable": true,
+      "passed": true
+    }
+  ],
+  "bundles": [
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "intro",
+      "knowledge_label": "Python 与 print",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "f17894420b000843a5b19e4e7bf42f829f5518504e83b8530279a3ff060ac08b",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "Python 与 print个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# Python 与 print\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 Python 与 print 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"Python 与 print\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "Python 与 print思维导图",
+          "content": {
+            "format": "tree",
+            "root": "Python 与 print",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "Python 与 print分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 Python 与 print 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 Python 与 print 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "Python 与 print拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 Python 与 print 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "Python 与 print代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用Python 与 print的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用Python 与 print",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "intro",
+      "knowledge_label": "Python 与 print",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "b71ffd9d7bd49790ea4401df444efce5fb6decda30f884813ec1d2e29c92427b",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "Python 与 print个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# Python 与 print\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"Python 与 print\")\n```\n\n## 原理拆解\n围绕 Python 与 print 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "Python 与 print思维导图",
+          "content": {
+            "format": "tree",
+            "root": "Python 与 print",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "Python 与 print分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 Python 与 print 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 Python 与 print 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "Python 与 print拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 Python 与 print 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-program-structure",
+              "title": "《Python程序设计基础》：Python 与 print",
+              "section": "intro",
+              "snippet": "Python 与 print课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "Python 与 print代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用Python 与 print的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用Python 与 print",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "comment",
+      "knowledge_label": "注释",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "56fff854b00d628d517965e827d44cdb7b0e86dec28651762f3fda6724536dfe",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "注释个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 注释\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 注释 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"注释\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "注释思维导图",
+          "content": {
+            "format": "tree",
+            "root": "注释",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "注释分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 注释 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 注释 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "注释拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 注释 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "注释代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用注释的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用注释",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "comment",
+      "knowledge_label": "注释",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "2eea75925dfca92c023b8bc8d9505096f597491fccee986f3a1ce51aff3f5c80",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "注释个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 注释\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"注释\")\n```\n\n## 原理拆解\n围绕 注释 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "注释思维导图",
+          "content": {
+            "format": "tree",
+            "root": "注释",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "注释分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 注释 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 注释 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "注释拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 注释 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-comments",
+              "title": "《Python程序设计基础》：注释",
+              "section": "comment",
+              "snippet": "注释课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "注释代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用注释的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用注释",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "var",
+      "knowledge_label": "变量与类型",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "b94a8a884b42a5c48d35c5e7e3c4f0be07bca660e867421958662db93cf6e09d",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "变量与类型个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 变量与类型\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 变量与类型 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"变量与类型\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "变量与类型思维导图",
+          "content": {
+            "format": "tree",
+            "root": "变量与类型",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "变量与类型分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 变量与类型 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 变量与类型 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "变量与类型拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 变量与类型 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "变量与类型代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用变量与类型的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用变量与类型",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "var",
+      "knowledge_label": "变量与类型",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "c99d49fea838acaff4e71232a420841e688d4aa4d75df73e406c1f4c09b43e49",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "变量与类型个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 变量与类型\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"变量与类型\")\n```\n\n## 原理拆解\n围绕 变量与类型 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "变量与类型思维导图",
+          "content": {
+            "format": "tree",
+            "root": "变量与类型",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "变量与类型分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 变量与类型 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 变量与类型 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "变量与类型拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 变量与类型 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-variables-types",
+              "title": "《Python程序设计基础》：变量与类型",
+              "section": "var",
+              "snippet": "变量与类型课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "变量与类型代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用变量与类型的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用变量与类型",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "io",
+      "knowledge_label": "输入 input",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "297bfc5f8672ed827ce6caae3d61cb15abe48153f314d18ab8f5bebd03908ab3",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "输入 input个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 输入 input\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 输入 input 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"输入 input\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "输入 input思维导图",
+          "content": {
+            "format": "tree",
+            "root": "输入 input",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "输入 input分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 输入 input 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 输入 input 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "输入 input拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 输入 input 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "输入 input代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用输入 input的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用输入 input",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "io",
+      "knowledge_label": "输入 input",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "b8bf2e3614b04f9bab3f089c5e38014a5968b79a1cc8d67e6ec5d96c9815754e",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "输入 input个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 输入 input\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"输入 input\")\n```\n\n## 原理拆解\n围绕 输入 input 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "输入 input思维导图",
+          "content": {
+            "format": "tree",
+            "root": "输入 input",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "输入 input分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 输入 input 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 输入 input 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "输入 input拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 输入 input 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage1-input-output",
+              "title": "《Python程序设计基础》：输入 input",
+              "section": "io",
+              "snippet": "输入 input课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "输入 input代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用输入 input的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用输入 input",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "ops",
+      "knowledge_label": "运算与表达式",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "3f98bf1a991d7338ecadfd223c053e11679c01a365eb9def4536518be62b3916",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "运算与表达式个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 运算与表达式\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 运算与表达式 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"运算与表达式\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "运算与表达式思维导图",
+          "content": {
+            "format": "tree",
+            "root": "运算与表达式",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "运算与表达式分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 运算与表达式 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 运算与表达式 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "运算与表达式拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 运算与表达式 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "运算与表达式代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用运算与表达式的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用运算与表达式",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "ops",
+      "knowledge_label": "运算与表达式",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "e1e42e5e994d9f3bec114b4ef25b23233cb1a0469d440659d9267bf7666fdac5",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "运算与表达式个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 运算与表达式\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"运算与表达式\")\n```\n\n## 原理拆解\n围绕 运算与表达式 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "运算与表达式思维导图",
+          "content": {
+            "format": "tree",
+            "root": "运算与表达式",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "运算与表达式分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 运算与表达式 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 运算与表达式 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "运算与表达式拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 运算与表达式 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-operators",
+              "title": "《Python程序设计基础》：运算与表达式",
+              "section": "ops",
+              "snippet": "运算与表达式课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "运算与表达式代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用运算与表达式的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用运算与表达式",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "cond",
+      "knowledge_label": "if 分支",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "514faabb666d84c051791778528432e235c95159bb8a61c863e8ab380923a96a",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "if 分支个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# if 分支\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 if 分支 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"if 分支\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "if 分支思维导图",
+          "content": {
+            "format": "tree",
+            "root": "if 分支",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "if 分支分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 if 分支 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 if 分支 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "if 分支拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 if 分支 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "if 分支代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用if 分支的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用if 分支",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "cond",
+      "knowledge_label": "if 分支",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "b275f5b191035e0e3774b735620ec6f59909d48914256af5ad1014441aec2885",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "if 分支个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# if 分支\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"if 分支\")\n```\n\n## 原理拆解\n围绕 if 分支 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "if 分支思维导图",
+          "content": {
+            "format": "tree",
+            "root": "if 分支",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "if 分支分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 if 分支 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 if 分支 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "if 分支拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 if 分支 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-condition",
+              "title": "《Python程序设计基础》：if 分支",
+              "section": "cond",
+              "snippet": "if 分支课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "if 分支代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用if 分支的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用if 分支",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "loop",
+      "knowledge_label": "循环结构",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "4758e07fd952d0fdbcb65bfc46dbcf76ca78f6a80095f55955089baf1c2bb6c6",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "循环结构个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 循环结构\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 循环结构 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"循环结构\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "循环结构思维导图",
+          "content": {
+            "format": "tree",
+            "root": "循环结构",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "循环结构分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 循环结构 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 循环结构 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "循环结构拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 循环结构 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "循环结构代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用循环结构的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用循环结构",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "loop",
+      "knowledge_label": "循环结构",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "5da92a10f3337fcbaba3b51c56a0dfd66a85315f169ec57eae504141aa9291eb",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "循环结构个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 循环结构\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"循环结构\")\n```\n\n## 原理拆解\n围绕 循环结构 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "循环结构思维导图",
+          "content": {
+            "format": "tree",
+            "root": "循环结构",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "循环结构分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 循环结构 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 循环结构 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "循环结构拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 循环结构 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-loop",
+              "title": "《Python程序设计基础》：循环结构",
+              "section": "loop",
+              "snippet": "循环结构课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "循环结构代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用循环结构的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用循环结构",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "range",
+      "knowledge_label": "range / break / continue",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "9ea2615caa9a850f819c0f74d1ce42c6bf93754a778ecaf5fe20946b38b40141",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "range / break / continue个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# range / break / continue\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 range / break / continue 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"range / break / continue\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "range / break / continue思维导图",
+          "content": {
+            "format": "tree",
+            "root": "range / break / continue",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "range / break / continue分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 range / break / continue 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 range / break / continue 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "range / break / continue拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 range / break / continue 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "range / break / continue代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用range / break / continue的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用range / break / continue",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "range",
+      "knowledge_label": "range / break / continue",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "25e577d57ee6cdd5c169fe1f564b6aa0d830d2af6d2fef68ddbb112dea2b576d",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "range / break / continue个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# range / break / continue\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"range / break / continue\")\n```\n\n## 原理拆解\n围绕 range / break / continue 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "range / break / continue思维导图",
+          "content": {
+            "format": "tree",
+            "root": "range / break / continue",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "range / break / continue分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 range / break / continue 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 range / break / continue 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "range / break / continue拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 range / break / continue 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage2-range",
+              "title": "《Python程序设计基础》：range / break / continue",
+              "section": "range",
+              "snippet": "range / break / continue课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "range / break / continue代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用range / break / continue的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用range / break / continue",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "list",
+      "knowledge_label": "列表 list",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "957092ba11b6ba4e93715cd0737ff9b4a327b8f58d3a1926c0789c3c61ab9267",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "列表 list个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 列表 list\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 列表 list 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"列表 list\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "列表 list思维导图",
+          "content": {
+            "format": "tree",
+            "root": "列表 list",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "列表 list分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 列表 list 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 列表 list 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "列表 list拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 列表 list 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "列表 list代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用列表 list的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用列表 list",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "list",
+      "knowledge_label": "列表 list",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "e7ef1b66b5d8e05e8e6d3d952de35afec5a93a46317ea2255c70dcee6c4aac7f",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "列表 list个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 列表 list\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"列表 list\")\n```\n\n## 原理拆解\n围绕 列表 list 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "列表 list思维导图",
+          "content": {
+            "format": "tree",
+            "root": "列表 list",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "列表 list分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 列表 list 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 列表 list 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "列表 list拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 列表 list 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-list",
+              "title": "《Python程序设计基础》：列表 list",
+              "section": "list",
+              "snippet": "列表 list课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "列表 list代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用列表 list的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用列表 list",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "dict",
+      "knowledge_label": "字典 dict",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "1c37f4c842e41fc2097871e0f947a05c6e374953449157a32e830b9493c4787c",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字典 dict个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 字典 dict\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 字典 dict 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"字典 dict\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字典 dict思维导图",
+          "content": {
+            "format": "tree",
+            "root": "字典 dict",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字典 dict分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 字典 dict 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 字典 dict 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "字典 dict拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 字典 dict 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字典 dict代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用字典 dict的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用字典 dict",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "dict",
+      "knowledge_label": "字典 dict",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "4b9d7d4d656890f343023305f135514608ffbe9dc99b980876bc75874bcdc9f0",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字典 dict个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 字典 dict\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"字典 dict\")\n```\n\n## 原理拆解\n围绕 字典 dict 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字典 dict思维导图",
+          "content": {
+            "format": "tree",
+            "root": "字典 dict",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字典 dict分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 字典 dict 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 字典 dict 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "字典 dict拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 字典 dict 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-dict",
+              "title": "《Python程序设计基础》：字典 dict",
+              "section": "dict",
+              "snippet": "字典 dict课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字典 dict代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用字典 dict的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用字典 dict",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "str",
+      "knowledge_label": "字符串处理",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "e8aa0a2e6151684a1fb5d6bcd2321acd275bf53013caec14149284b6b5e1c43d",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字符串处理个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 字符串处理\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 字符串处理 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"字符串处理\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字符串处理思维导图",
+          "content": {
+            "format": "tree",
+            "root": "字符串处理",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字符串处理分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 字符串处理 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 字符串处理 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "字符串处理拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 字符串处理 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字符串处理代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用字符串处理的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用字符串处理",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "str",
+      "knowledge_label": "字符串处理",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "18e99b8648b6f8bc0cb0662ef74c5a7dc1552671d2013e2a7952b74a9d3d6d00",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字符串处理个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 字符串处理\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"字符串处理\")\n```\n\n## 原理拆解\n围绕 字符串处理 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字符串处理思维导图",
+          "content": {
+            "format": "tree",
+            "root": "字符串处理",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字符串处理分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 字符串处理 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 字符串处理 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "字符串处理拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 字符串处理 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-string",
+              "title": "《Python程序设计基础》：字符串处理",
+              "section": "str",
+              "snippet": "字符串处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "字符串处理代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用字符串处理的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用字符串处理",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "func",
+      "knowledge_label": "函数基础",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "205526dc8920489126a5542e8a73905027cb5c50eea8b396d1c620f4896d94c0",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "函数基础个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 函数基础\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 函数基础 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"函数基础\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "函数基础思维导图",
+          "content": {
+            "format": "tree",
+            "root": "函数基础",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "函数基础分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 函数基础 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 函数基础 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "函数基础拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 函数基础 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "函数基础代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用函数基础的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用函数基础",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "func",
+      "knowledge_label": "函数基础",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "b805a522a27ad8a6686d6f318b33690d5bc49723bbdca81738683bf3429536a9",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "函数基础个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 函数基础\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"函数基础\")\n```\n\n## 原理拆解\n围绕 函数基础 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "函数基础思维导图",
+          "content": {
+            "format": "tree",
+            "root": "函数基础",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "函数基础分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 函数基础 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 函数基础 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "函数基础拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 函数基础 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage3-function",
+              "title": "《Python程序设计基础》：函数基础",
+              "section": "func",
+              "snippet": "函数基础课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "函数基础代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用函数基础的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用函数基础",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "file",
+      "knowledge_label": "文件读写",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "b5a1a2bc1f21dc667aafa596b6a98287a21986fcf47d7b4d3faffc589b5cf8b8",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "文件读写个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 文件读写\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 文件读写 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"文件读写\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "文件读写思维导图",
+          "content": {
+            "format": "tree",
+            "root": "文件读写",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "文件读写分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 文件读写 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 文件读写 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "文件读写拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 文件读写 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "文件读写代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用文件读写的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用文件读写",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "file",
+      "knowledge_label": "文件读写",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "7bdd9e9f882c8fb39b409408b4a15c6344127d90593cf227d9da367a850c758f",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "文件读写个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 文件读写\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"文件读写\")\n```\n\n## 原理拆解\n围绕 文件读写 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "文件读写思维导图",
+          "content": {
+            "format": "tree",
+            "root": "文件读写",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "文件读写分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 文件读写 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 文件读写 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "文件读写拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 文件读写 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-file",
+              "title": "《Python程序设计基础》：文件读写",
+              "section": "file",
+              "snippet": "文件读写课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "文件读写代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用文件读写的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用文件读写",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "except",
+      "knowledge_label": "异常处理",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "3575619dafe3b570464135d2dea3f4e36b48fb4a72791ab0543a9c96c23ea475",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "异常处理个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 异常处理\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 异常处理 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"异常处理\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "异常处理思维导图",
+          "content": {
+            "format": "tree",
+            "root": "异常处理",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "异常处理分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 异常处理 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 异常处理 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "异常处理拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 异常处理 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "异常处理代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用异常处理的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用异常处理",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "except",
+      "knowledge_label": "异常处理",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "d258bb51d7ab26bd4e7c53fea037bc7181376bf88ddef627a5ec5753ac1ec1a7",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "异常处理个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 异常处理\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"异常处理\")\n```\n\n## 原理拆解\n围绕 异常处理 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "异常处理思维导图",
+          "content": {
+            "format": "tree",
+            "root": "异常处理",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "异常处理分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 异常处理 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 异常处理 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "异常处理拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 异常处理 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-exception",
+              "title": "《Python程序设计基础》：异常处理",
+              "section": "except",
+              "snippet": "异常处理课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "异常处理代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用异常处理的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用异常处理",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "algo-sum",
+      "knowledge_label": "求和与统计",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "eba25f63c83bfac493d49a165fdcf94093cd2f7ee9c0fc938e25d83cf03e3eb0",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "求和与统计个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 求和与统计\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 求和与统计 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"求和与统计\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "求和与统计思维导图",
+          "content": {
+            "format": "tree",
+            "root": "求和与统计",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "求和与统计分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 求和与统计 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 求和与统计 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "求和与统计拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 求和与统计 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "求和与统计代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用求和与统计的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用求和与统计",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "algo-sum",
+      "knowledge_label": "求和与统计",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "3ce03969c2308b7bac828d26a8c188cc2f10977edbf03060af2088d9de994ed6",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "求和与统计个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 求和与统计\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"求和与统计\")\n```\n\n## 原理拆解\n围绕 求和与统计 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "求和与统计思维导图",
+          "content": {
+            "format": "tree",
+            "root": "求和与统计",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "求和与统计分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 求和与统计 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 求和与统计 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "求和与统计拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 求和与统计 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-sum-statistics",
+              "title": "《Python程序设计基础》：求和与统计",
+              "section": "algo-sum",
+              "snippet": "求和与统计课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "求和与统计代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用求和与统计的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用求和与统计",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "beginner_lifestyle",
+      "knowledge_key": "algo-search",
+      "knowledge_label": "线性查找",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 40,
+      "difficulty_max": 40,
+      "estimated_minutes_min": 15,
+      "estimated_minutes_max": 15,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "3d7fa8f33d86f20cd88e4a842859707591e723d91de2ce7bc69d73a4326838b9",
+      "resources": [
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "线性查找个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 线性查找\n\n采用分步骤讲解和生活化案例。\n\n## 核心概念\n围绕 线性查找 理解语法、执行过程和适用场景。\n\n## 生活化案例\n用“校园生活自动化”场景分步骤解释。\n\n## 示例\n```python\nprint(\"线性查找\")\n```\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "线性查找思维导图",
+          "content": {
+            "format": "tree",
+            "root": "线性查找",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "线性查找分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "基础",
+                "question": "解释 线性查找 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "巩固",
+                "question": "使用 线性查找 解决一个与校园生活自动化有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "线性查找拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 线性查找 到真实项目\n\n结合你的兴趣“校园生活自动化”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 40,
+          "estimated_minutes": 15,
+          "recommendation_reason": "根据你的讲解偏好“分步骤讲解和生活化案例”、学习节奏“每天 30 分钟”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "线性查找代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕校园生活自动化完成一个使用线性查找的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用线性查找",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    },
+    {
+      "profile": "algorithm_improver",
+      "knowledge_key": "algo-search",
+      "knowledge_label": "线性查找",
+      "resource_count": 5,
+      "resource_types": [
+        "lesson_document",
+        "mind_map",
+        "exercise_set",
+        "extended_reading",
+        "coding_lab"
+      ],
+      "schema_pass_count": 5,
+      "citation_pass_count": 5,
+      "approved_count": 4,
+      "pending_review_count": 1,
+      "difficulty_min": 65,
+      "difficulty_max": 65,
+      "estimated_minutes_min": 30,
+      "estimated_minutes_max": 30,
+      "constraint_matches": {
+        "difficulty": true,
+        "explanation": true,
+        "interest": true,
+        "pace": true
+      },
+      "constraint_coverage_rate": 1.0,
+      "bundle_hash": "29e5869235134cc39f3397a40c3ec12366f7cee813f683c45b0a94e90e208e39",
+      "resources": [
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "线性查找个性化讲解",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 线性查找\n\n采用先看代码和挑战题。\n\n## 先看代码\n```python\nprint(\"线性查找\")\n```\n\n## 原理拆解\n围绕 线性查找 分析执行过程、复杂度和边界条件。\n\n## 常见错误\n注意缩进、边界与数据类型。"
+          },
+          "resource_type": "lesson_document"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "线性查找思维导图",
+          "content": {
+            "format": "tree",
+            "root": "线性查找",
+            "children": [
+              {
+                "label": "概念"
+              },
+              {
+                "label": "语法"
+              },
+              {
+                "label": "示例"
+              },
+              {
+                "label": "常见错误"
+              }
+            ]
+          },
+          "resource_type": "mind_map"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "线性查找分层题库",
+          "content": {
+            "format": "questions",
+            "questions": [
+              {
+                "level": "进阶",
+                "question": "解释 线性查找 的基本作用并给出最小示例。"
+              },
+              {
+                "level": "挑战",
+                "question": "使用 线性查找 解决一个与算法竞赛有关的小任务。"
+              }
+            ]
+          },
+          "resource_type": "exercise_set"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.78,
+          "title": "线性查找拓展阅读",
+          "content": {
+            "format": "markdown",
+            "markdown": "# 从 线性查找 到真实项目\n\n结合你的兴趣“算法竞赛”，观察该知识点如何用于数据处理、自动化或小游戏。"
+          },
+          "resource_type": "extended_reading"
+        },
+        {
+          "difficulty": 65,
+          "estimated_minutes": 30,
+          "recommendation_reason": "根据你的讲解偏好“先看代码和挑战题”、学习节奏“周末集中学习 3 小时”生成。",
+          "citations": [
+            {
+              "document_id": "python-stage4-linear-search",
+              "title": "《Python程序设计基础》：线性查找",
+              "section": "algo-search",
+              "snippet": "线性查找课程知识库中的概念、示例与常见错误。"
+            }
+          ],
+          "confidence": 0.88,
+          "title": "线性查找代码实操",
+          "content": {
+            "format": "coding_lab",
+            "scenario": "围绕算法竞赛完成一个使用线性查找的程序。",
+            "starter_code": "# 在这里编写代码\n",
+            "checks": [
+              "程序可运行",
+              "正确使用线性查找",
+              "至少包含一个测试样例"
+            ]
+          },
+          "resource_type": "coding_lab"
+        }
+      ]
+    }
+  ]
+}

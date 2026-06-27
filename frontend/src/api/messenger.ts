@@ -3,7 +3,7 @@ import type { LearningRecommendation } from './learningReport'
 
 export interface MessengerChatResult {
   reply: string
-  source: 'llm' | 'rules' | 'rag'
+  source: 'xfyun_agent' | 'spark' | 'llm' | 'rules' | 'rag'
   recommendations?: LearningRecommendation[]
   rag_used?: boolean
   rag_sources?: Array<{ doc_id: string; score: number; snippet?: string }>

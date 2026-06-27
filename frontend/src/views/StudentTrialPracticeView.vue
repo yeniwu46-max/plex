@@ -6,11 +6,17 @@ import DashboardShell from '../components/layout/DashboardShell.vue'
 import PythonTrialWorkspace from '../components/trial/PythonTrialWorkspace.vue'
 import { getPythonTrialQuestion } from '../data/pythonTrialQuestions'
 import { getStarPathNodeByQuestionId } from '../data/starPathTrail'
+import { getStarPathKnowledgePoint } from '../data/starPathDomains'
+import { resolveQuestionById } from '../utils/starPathQuestionGenerator'
 
 const route = useRoute()
 const router = useRouter()
 
 const questionId = computed(() => String(route.params.questionId ?? ''))
+const generatedKnowledgeId = computed(() => {
+  const match = /^gen-(.+)-v\d+$/.exec(questionId.value)
+  return match?.[1] ?? null
+})
 const storedQuestion = (() => {
   try {
     const raw = sessionStorage.getItem('plex:active-practice-question')
@@ -19,9 +25,15 @@ const storedQuestion = (() => {
     return null
   }
 })()
-const question = computed(() => getPythonTrialQuestion(questionId.value) ?? (
-  storedQuestion?.id === questionId.value ? storedQuestion : null
-))
+const question = computed(() => {
+  const staticQuestion = getPythonTrialQuestion(questionId.value)
+  if (staticQuestion) return staticQuestion
+  if (storedQuestion?.id === questionId.value) return storedQuestion
+  const knowledgePoint = generatedKnowledgeId.value
+    ? getStarPathKnowledgePoint(generatedKnowledgeId.value)?.point
+    : null
+  return knowledgePoint ? resolveQuestionById(questionId.value, knowledgePoint) : null
+})
 const starPathNode = computed(() => getStarPathNodeByQuestionId(questionId.value))
 const pageSubtitle = computed(() => {
   if (!question.value) return 'Python 入门 · 代码试炼'

@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain, type LearningPathOrderedNode, type NextBestAction, type RemediationPath } from '../api/studentProgress'
@@ -19,6 +19,7 @@ import {
 } from '../data/starPathDomains'
 import { buildKnowledgeTrack } from '../data/starPathKnowledgeTracks'
 import {
+  getStarPathNode,
   isStarPathNodeUnlocked,
   getPrimaryQuestionId,
   type StarPathNode,
@@ -26,7 +27,6 @@ import {
 import {
   ChevronForwardOutline,
   LockClosedOutline,
-  MapOutline,
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
@@ -34,12 +34,7 @@ import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import PlexLearningPathPanel from '../components/agent/PlexLearningPathPanel.vue'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 
-const PlexKnowledgeGraph = defineAsyncComponent(
-  () => import('../components/shared/PlexKnowledgeGraph.vue'),
-)
-import type { KgEdge, KgNode } from '../data/knowledgeGraphData'
 import { kgIdFromStarPath } from '../data/knowledgeNodeRegistry'
-import { fetchStudentKnowledgeGraph } from '../api/knowledgeGraph'
 import {
   resolveQuestionById,
   resolveStarPathQuestion,
@@ -65,13 +60,9 @@ const activeTabKey = ref<string>(STAR_PATH_TAB_ALL)
 const activeDomainKey = ref('stage1')
 const selectedKnowledgeId = ref<string | null>(null)
 const selectedNodeId = ref('stage1-intro')
-const viewMode = ref<'track' | 'map'>('track')
 const pathRecommendations = ref<LearningRecommendation[]>([])
 const knowledgeResources = ref<LearningResourceItem[]>([])
 const personalizedResources = ref<PersonalizedResource[]>([])
-const kgNodes = ref<KgNode[]>([])
-const kgEdges = ref<KgEdge[]>([])
-const kgLoading = ref(false)
 const orderedNodes = ref<LearningPathOrderedNode[]>([])
 const activePathNodeId = ref<string | null>(null)
 const nextBestAction = ref<NextBestAction | null>(null)
@@ -90,11 +81,6 @@ const starPathNodes = computed<StarPathNode[]>(() => {
   if (!showDomainTrack.value) return []
   return buildKnowledgeTrack(activeDomainKey.value, orderedNodes.value, activePathNodeId.value)
 })
-
-const pathKgNodeIds = computed(() => orderedNodes.value.map((n) => n.id))
-const remediationKgIds = computed(() =>
-  remediationPaths.value.map((p) => p.trigger_node).filter(Boolean),
-)
 
 const trackVariant = computed<'seven' | 'four'>(() =>
   starPathNodes.value.length > 5 ? 'seven' : 'four',
@@ -129,16 +115,6 @@ const filteredStarPathNodes = computed(() => {
   )
 })
 
-const filteredKgNodes = computed(() => {
-  const q = pageSearch.value.trim().toLowerCase()
-  if (!q) return kgNodes.value
-  return kgNodes.value.filter(
-    (node) =>
-      node.label.toLowerCase().includes(q) ||
-      (node.description ?? '').toLowerCase().includes(q),
-  )
-})
-
 const selectedKnowledge = computed(() => {
   if (!selectedKnowledgeId.value) return null
   return getStarPathKnowledgePoint(selectedKnowledgeId.value)
@@ -146,6 +122,7 @@ const selectedKnowledge = computed(() => {
 
 const selectedNode = computed(
   () =>
+    getStarPathNode(selectedNodeId.value) ??
     starPathNodes.value.find((n) => n.id === selectedNodeId.value) ??
     starPathNodes.value[0] ??
     null,
@@ -183,22 +160,26 @@ function questionForNode(node: StarPathNode, questionId?: string) {
 }
 
 function openPractice(questionId?: string) {
+  const kp = selectedKnowledge.value?.point
   const node = selectedNode.value
-  if (!node || !isStarPathNodeUnlocked(node)) return
-  const qid = questionId ?? getPrimaryQuestionId(node)
-  if (!qid) {
-    const kp = selectedKnowledge.value?.point
-    if (kp) {
-      const generated = resolveStarPathQuestion(kp)
-      if (generated) {
-        launchPractice(generated)
-        return
-      }
-    }
+  if (node && !isStarPathNodeUnlocked(node)) return
+
+  // “全部阶段”展示的是知识点卡片，不会填充当前星域的节点轨道；
+  // 因此优先按知识点解析题目，避免卡片选中后被空节点误判为不可练习。
+  if (kp) {
+    const question = questionId
+      ? resolveQuestionById(questionId, kp)
+      : resolveStarPathQuestion(kp)
+    if (question) launchPractice(question)
     return
   }
-  const kp = selectedKnowledge.value?.point
-  const question = questionForNode(node, qid) ?? (kp ? resolveStarPathQuestion(kp) : null)
+
+  if (!node) return
+  const qid = questionId ?? getPrimaryQuestionId(node)
+  if (!qid) {
+    return
+  }
+  const question = questionForNode(node, qid)
   if (!question) return
   launchPractice(question)
 }
@@ -292,14 +273,6 @@ function jumpToKnowledgeById(kpId: string) {
   if (found) jumpToKnowledge(found.point)
 }
 
-function onKgNodeClick(node: KgNode) {
-  const starId = orderedNodes.value.find((n) => n.id === node.id)?.star_path_id
-  if (starId) {
-    jumpToKnowledgeById(starId)
-  }
-  void refreshPathPlan(node.id)
-}
-
 function jumpToKnowledge(kp: StarPathKnowledgePoint) {
   activeTabKey.value = kp.domainKey
   activeDomainKey.value = kp.domainKey
@@ -331,7 +304,6 @@ function applyRouteQuery() {
     selectedNodeId.value = first?.id ?? 'stage1-intro'
   }
 
-  viewMode.value = 'track'
 }
 
 function continueKnowledgeTrial() {
@@ -353,24 +325,6 @@ const starPathAdviceText = computed(() => {
   const rec = pathRecommendations.value.find((item) => item.action === 'star_path')
   if (rec) return rec.detail
   return null
-})
-
-async function loadKnowledgeGraph() {
-  kgLoading.value = true
-  try {
-    const data = await fetchStudentKnowledgeGraph()
-    kgNodes.value = data.nodes
-    kgEdges.value = data.edges
-  } catch {
-    kgNodes.value = []
-    kgEdges.value = []
-  } finally {
-    kgLoading.value = false
-  }
-}
-
-watch(viewMode, (mode) => {
-  if (mode === 'map') void loadKnowledgeGraph()
 })
 
 async function loadPath() {
@@ -451,15 +405,6 @@ onMounted(() => {
         >
           {{ tab.label }}
         </button>
-        <div class="view-actions">
-          <button type="button" class="view-select" @click="viewMode = 'map'">
-            查看星图
-            <n-icon :component="MapOutline" />
-          </button>
-          <button type="button" class="map-button" aria-label="知识图谱" @click="viewMode = viewMode === 'map' ? 'track' : 'map'">
-            <n-icon :component="MapOutline" />
-          </button>
-        </div>
       </section>
 
       <div v-if="loading" class="starpath-state">正在同步星轨路径…</div>
@@ -473,30 +418,6 @@ onMounted(() => {
         class="starpath-content"
         :aria-label="`${activeDomain?.title ?? '星域'}星轨`"
       >
-        <template v-if="viewMode === 'map'">
-          <div class="starpath-kg-section" data-tour="student-knowledge-graph">
-            <header class="starpath-kg-head">
-              <h2>知识地图</h2>
-              <p>Python 初学知识图谱 · 点击节点查看详情与前置知识</p>
-              <button type="button" class="starpath-kg-back" @click="viewMode = 'track'">← 返回星轨</button>
-            </header>
-            <plex-knowledge-graph
-              v-if="filteredKgNodes.length > 0"
-              :nodes="filteredKgNodes"
-              :edges="kgEdges"
-              mode="student"
-              height="500px"
-              :path-node-ids="pathKgNodeIds"
-              :remediation-node-ids="remediationKgIds"
-              :active-path-node-id="activePathNodeId"
-              @node-click="onKgNodeClick"
-            />
-            <p v-if="kgLoading" class="starpath-kg-loading">正在同步学情知识地图…</p>
-            <p v-else-if="filteredKgNodes.length === 0" class="starpath-kg-loading">暂无知识地图数据，请稍后重试</p>
-          </div>
-        </template>
-
-        <template v-else>
         <div class="content-left">
           <section class="path-board">
             <div class="domain-copy">
@@ -714,7 +635,7 @@ onMounted(() => {
 
           <button
             type="button"
-            class="continue-btn"
+            class="continue-btn continue-btn--launch"
             :disabled="!selectedNode || !isStarPathNodeUnlocked(selectedNode)"
             @click="detailMode === 'knowledge' ? continueKnowledgeTrial() : continueExplore()"
           >
@@ -729,7 +650,6 @@ onMounted(() => {
             换一题
           </button>
         </aside>
-        </template>
       </section>
     </main>
   </DashboardShell>
@@ -1054,38 +974,6 @@ onMounted(() => {
   box-shadow: 0 0 14px rgba(35, 255, 222, 0.6);
 }
 
-.view-actions {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 0.65rem;
-  margin-left: auto;
-}
-
-.view-select,
-.map-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-height: 48px;
-  border: 1px solid rgba(130, 212, 255, 0.12);
-  border-radius: 0.55rem;
-  background: rgba(6, 18, 31, 0.68);
-  color: #edf7ff;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 650;
-}
-
-.view-select {
-  padding: 0 1.05rem;
-}
-
-.map-button {
-  width: 52px;
-  justify-content: center;
-  color: #2efff1;
-}
-
 .starpath-content {
   position: relative;
   z-index: 2;
@@ -1227,13 +1115,28 @@ onMounted(() => {
   background: rgba(6, 18, 31, 0.82);
   color: #edf7ff;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
 }
 
 .knowledge-node:hover,
 .knowledge-node--active {
   border-color: rgba(35, 255, 222, 0.55);
   box-shadow: 0 0 18px rgba(35, 255, 222, 0.12);
+  transform: translateY(-3px);
+}
+
+.knowledge-node--active {
+  animation: knowledge-node-lock 0.48s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.knowledge-node:active {
+  transform: translateY(0) scale(0.98);
+}
+
+@keyframes knowledge-node-lock {
+  0% { box-shadow: 0 0 0 rgba(35, 255, 222, 0); }
+  50% { box-shadow: 0 0 0 7px rgba(35, 255, 222, 0.16), 0 0 28px rgba(35, 255, 222, 0.28); }
+  100% { box-shadow: 0 0 18px rgba(35, 255, 222, 0.12); }
 }
 
 .knowledge-node__level {
@@ -1995,6 +1898,24 @@ onMounted(() => {
   cursor: pointer;
   font-size: 0.96rem;
   font-weight: 760;
+  transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+}
+
+.continue-btn--launch:not(:disabled):hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 4px rgba(35, 255, 222, 0.1), 0 10px 24px rgba(16, 240, 192, 0.2);
+}
+
+.continue-btn--launch:not(:disabled)::after {
+  content: '›';
+  display: inline-block;
+  margin-left: 0.45rem;
+  animation: launch-chevron 1.2s ease-in-out infinite;
+}
+
+@keyframes launch-chevron {
+  50% { transform: translateX(4px); }
 }
 
 .continue-btn:disabled {
@@ -2066,10 +1987,6 @@ onMounted(() => {
     padding-bottom: 1rem;
   }
 
-  .view-actions {
-    margin-left: 0;
-  }
-
   .path-board {
     grid-template-columns: 1fr;
   }
@@ -2112,38 +2029,4 @@ onMounted(() => {
   }
 }
 
-.starpath-kg-section {
-  padding: 0 var(--plex-page-gutter-x, 1.5rem) 2rem;
-}
-
-.starpath-kg-head {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-
-.starpath-kg-head h2 {
-  margin: 0;
-  color: #fff;
-  font-size: 1.2rem;
-}
-
-.starpath-kg-head p {
-  margin: 0;
-  color: rgba(203, 213, 225, 0.65);
-  font-size: 0.82rem;
-}
-
-.starpath-kg-back {
-  margin-left: auto;
-  padding: 0.35rem 0.8rem;
-  border-radius: 6px;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  background: rgba(34, 197, 94, 0.08);
-  color: #4ade80;
-  font-size: 0.82rem;
-  cursor: pointer;
-}
 </style>

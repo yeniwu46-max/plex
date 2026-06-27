@@ -48,6 +48,43 @@ class AgentOrchestrator:
         return run_student_diagnose(enriched)
 
     @staticmethod
+    def diagnose_learning_overview(user_id: int) -> dict:
+        """Run the diagnosis crew against the student's persisted mistake evidence.
+
+        This is intentionally separate from a single code-submission diagnosis: the
+        messenger has no editor payload, but it does have a reliable server-side
+        record of the student's active mistakes and their execution metadata.
+        """
+        mistakes = MistakeService.list_for_student(user_id, active_only=True)
+        recent = MistakeService.list_recent_with_meta(user_id, limit=8)
+        focus = mistakes[0] if mistakes else {}
+        meta = focus.get('meta') if isinstance(focus.get('meta'), dict) else {}
+        error_types = focus.get('error_types') or []
+        error_summary = '；'.join(str(item) for item in error_types if item) or str(
+            focus.get('error_type') or ''
+        )
+        knowledge_points = [
+            str(item.get('knowledge_label') or item.get('knowledge_key'))
+            for item in mistakes[:3]
+            if item.get('knowledge_label') or item.get('knowledge_key')
+        ]
+        payload = {
+            'exerciseId': str(focus.get('question_id') or focus.get('question_ref') or 'learning-overview'),
+            'questionTitle': str(focus.get('question_title') or '近期学习表现'),
+            'questionPrompt': str(meta.get('stem_preview') or focus.get('question_title') or ''),
+            # Historical mistakes do not always retain submitted source.  The
+            # diagnosis engine still uses stderr, error type and mistake history;
+            # a harmless placeholder keeps its input contract explicit.
+            'code': str(meta.get('code') or '# 从近期错题记录生成学习诊断'),
+            'stderr': error_summary,
+            'knowledgePoints': knowledge_points or ['Python 基础'],
+            'attemptCount': int(focus.get('fail_count') or 0),
+            'answerStatus': 'wrong' if focus else 'correct',
+            'recentMistakes': recent,
+        }
+        return AgentOrchestrator.student_diagnose(user_id, payload)
+
+    @staticmethod
     def run_code_learning_cycle(user_id: int, payload: dict) -> dict:
         """One reliable endpoint for sandbox evidence and the full learning loop."""
         from app.services.learning_cycle import LearningCycleService

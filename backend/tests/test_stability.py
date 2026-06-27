@@ -12,6 +12,7 @@ from app.models import ResourceGenerationTask, StudentProfileSuggestion, User, d
 from app.services.iflytek_spark import IflytekSparkService, SparkServiceError
 from app.services.mistake import MistakeService
 from app.services.personalized_resource import PersonalizedResourceService
+from app.services.xfyun_agent import XfyunAgentService
 from app.utils.time import utc_now
 
 
@@ -93,6 +94,76 @@ class StabilityTestCase(unittest.TestCase):
                 with self.assertRaises(SparkServiceError) as context:
                     IflytekSparkService.chat_json('system', 'user')
         self.assertEqual(context.exception.code, 'timeout')
+
+    def test_xfyun_agent_api_request_and_response_parsing(self):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = {
+            'choices': [{'message': {'content': '可以先用 print 输出变量，再检查循环边界。'}}],
+        }
+        self.app.config['XFYUN_AGENT_ALLOW_IN_TESTS'] = True
+        with patch.dict(os.environ, {
+            'XFYUN_AGENT_FLOW_ID': 'flow-test',
+            'XFYUN_AGENT_API_KEY': 'key-test',
+            'XFYUN_AGENT_API_SECRET': 'secret-test',
+            'XFYUN_AGENT_BOT_ID': '2208791',
+        }):
+            with patch('app.services.xfyun_agent.requests.post', return_value=response) as post:
+                result = XfyunAgentService.chat_text(user_id=self.student_id, message='Python print 怎么用？', context='课程：Python 入门')
+
+        self.assertIn('print', result)
+        request_kwargs = post.call_args.kwargs
+        self.assertEqual(request_kwargs['headers']['Authorization'], 'Bearer key-test:secret-test')
+        self.assertEqual(request_kwargs['json']['flow_id'], 'flow-test')
+        self.assertEqual(request_kwargs['json']['ext']['bot_id'], '2208791')
+        self.assertEqual(request_kwargs['proxies'], {'http': '', 'https': ''})
+        self.assertIn('Python print 怎么用？', request_kwargs['json']['parameters']['AGENT_USER_INPUT'])
+
+        response.json.return_value = {
+            'code': 0,
+            'message': 'Success',
+            'choices': [{'delta': {'content': '这是工作流非流式返回。'}}],
+        }
+        with patch.dict(os.environ, {
+            'XFYUN_AGENT_FLOW_ID': 'flow-test',
+            'XFYUN_AGENT_API_KEY': 'key-test',
+            'XFYUN_AGENT_API_SECRET': 'secret-test',
+        }):
+            with patch('app.services.xfyun_agent.requests.post', return_value=response):
+                self.assertIn('工作流', XfyunAgentService.chat_text(user_id=self.student_id, message='测试', context=''))
+
+        response.json.return_value = {
+            'code': 20207,
+            'message': 'flow id 状态为草稿，请发布',
+            'choices': [{'delta': {'content': ''}}],
+        }
+        with patch.dict(os.environ, {
+            'XFYUN_AGENT_FLOW_ID': 'flow-test',
+            'XFYUN_AGENT_API_KEY': 'key-test',
+            'XFYUN_AGENT_API_SECRET': 'secret-test',
+        }):
+            with patch('app.services.xfyun_agent.requests.post', return_value=response):
+                with self.assertRaises(Exception) as context:
+                    XfyunAgentService.chat_text(user_id=self.student_id, message='测试', context='')
+        self.assertIn('草稿', str(context.exception))
+
+    def test_xfyun_agent_rejects_placeholder_response(self):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = {
+            'code': 0,
+            'choices': [{'message': {'content': '{{str_output}}\n'}}],
+        }
+        self.app.config['XFYUN_AGENT_ALLOW_IN_TESTS'] = True
+        with patch.dict(os.environ, {
+            'XFYUN_AGENT_FLOW_ID': 'flow-test',
+            'XFYUN_AGENT_API_KEY': 'key-test',
+            'XFYUN_AGENT_API_SECRET': 'secret-test',
+        }):
+            with patch('app.services.xfyun_agent.requests.post', return_value=response):
+                with self.assertRaises(Exception) as context:
+                    XfyunAgentService.chat_text(user_id=self.student_id, message='test', context='')
+        self.assertEqual(context.exception.code, 'placeholder_response')
 
     def test_task_idempotency_history_and_atomic_claim(self):
         first = self.client.post(

@@ -166,3 +166,81 @@ class IflytekSparkService:
                 exc.code,
             )
             raise
+
+    @classmethod
+    def chat_text(cls, system_prompt: str, user_prompt: str, timeout: int = 30) -> str:
+        """Return the provider's natural-language response without a JSON contract."""
+        password = os.getenv('IFLYTEK_SPARK_API_PASSWORD')
+        if not password:
+            cls._record(status='unavailable', error_code='not_configured')
+            raise SparkServiceError('not_configured', 'iflytek_not_configured')
+
+        url = os.getenv('IFLYTEK_SPARK_URL', cls.DEFAULT_URL)
+        model = os.getenv('IFLYTEK_SPARK_MODEL', 'lite')
+        started = time.monotonic()
+        request_id = None
+        try:
+            response = requests.post(
+                url,
+                headers={
+                    'Authorization': f'Bearer {password}',
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'model': model,
+                    'messages': [
+                        {'role': 'system', 'content': system_prompt},
+                        {'role': 'user', 'content': user_prompt},
+                    ],
+                    'temperature': 0.3,
+                    'stream': False,
+                },
+                timeout=(5, timeout),
+            )
+            request_id = (
+                response.headers.get('x-request-id')
+                or response.headers.get('request-id')
+                or response.headers.get('sid')
+            )
+            latency_ms = round((time.monotonic() - started) * 1000)
+            if response.status_code in (401, 403):
+                raise SparkServiceError('authentication_failed', 'spark_authentication_failed', recoverable=False)
+            if response.status_code == 429:
+                raise SparkServiceError('rate_limited', 'spark_rate_limited')
+            if response.status_code >= 500:
+                raise SparkServiceError('upstream_error', f'spark_upstream_{response.status_code}')
+            if response.status_code >= 400:
+                raise SparkServiceError('request_rejected', f'spark_http_{response.status_code}', recoverable=False)
+
+            payload = response.json()
+            choices = payload.get('choices') if isinstance(payload, dict) else None
+            message = choices[0].get('message') if isinstance(choices, list) and choices else None
+            text = message.get('content') if isinstance(message, dict) else None
+            if not isinstance(text, str) or not text.strip():
+                raise SparkServiceError('empty_response', 'spark_content_empty')
+
+            cls._record(status='available', request_id=request_id, latency_ms=latency_ms, model=model, error_code=None)
+            logger.info('Spark text request succeeded request_id=%s model=%s latency_ms=%s', request_id or 'unknown', model, latency_ms)
+            return text.strip()
+        except requests.Timeout as exc:
+            error = SparkServiceError('timeout', 'spark_timeout')
+            cls._record(status='unavailable', request_id=request_id, model=model, error_code=error.code)
+            raise error from exc
+        except requests.RequestException as exc:
+            error = SparkServiceError('network_error', 'spark_network_error')
+            cls._record(status='unavailable', request_id=request_id, model=model, error_code=error.code)
+            raise error from exc
+        except (ValueError, KeyError, TypeError) as exc:
+            error = SparkServiceError('invalid_response', 'spark_response_invalid')
+            cls._record(status='unavailable', request_id=request_id, model=model, error_code=error.code)
+            raise error from exc
+        except SparkServiceError as exc:
+            cls._record(
+                status='unavailable',
+                request_id=request_id,
+                latency_ms=round((time.monotonic() - started) * 1000),
+                model=model,
+                error_code=exc.code,
+            )
+            logger.warning('Spark text request failed request_id=%s model=%s error_code=%s', request_id or 'unknown', model, exc.code)
+            raise

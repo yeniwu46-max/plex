@@ -2,6 +2,7 @@
 import unittest
 
 from app import create_app
+from app.models import User
 from app.services.agent_orchestrator import AgentOrchestrator
 from agents.crew import run_learning_path_plan, run_student_diagnose, run_teacher_suggestion
 
@@ -68,6 +69,13 @@ class AgentPipelineTests(unittest.TestCase):
         result = AgentOrchestrator.diagnose(None, {'code': 'print(1)', 'stderr': 'SyntaxError'})
         self.assertEqual(result['status'], 'completed')
         self.assertTrue(result['weak_points'])
+
+    def test_messenger_learning_diagnosis_uses_persisted_evidence(self):
+        student = User.query.filter_by(username='student001').first()
+        result = AgentOrchestrator.diagnose_learning_overview(student.id)
+        self.assertIn('diagnosis', result)
+        self.assertIn('recommendation', result)
+        self.assertTrue(result['diagnosis']['weakPoints'])
 
     def test_agent_backend_detects_crewai_or_mock(self):
         name = AgentOrchestrator.backend_name()

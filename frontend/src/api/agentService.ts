@@ -273,6 +273,11 @@ export function studentDiagnose(payload: StudentDiagnosePayload) {
   return postAgent<StudentDiagnoseResult>('/v1/agents/student-diagnose', payload as unknown as Record<string, unknown>)
 }
 
+/** 根据服务端留存的错题与运行证据执行一次学习诊断，供小E快捷操作使用。 */
+export function diagnoseLearning() {
+  return postAgent<StudentDiagnoseResult>('/v1/agents/diagnose-learning')
+}
+
 /** 学生端主闭环：提交代码后一次性获得沙箱、诊断、资源、辅导、图谱和报告。 */
 export function runCodeLearningCycle(payload: LearningCyclePayload) {
   return postAgent<LearningCycleResult>('/v1/agents/code-learning-cycle', payload as unknown as Record<string, unknown>)

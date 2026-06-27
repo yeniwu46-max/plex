@@ -45,6 +45,13 @@ def student_diagnose():
     return success_response(AgentOrchestrator.student_diagnose(user_id, payload))
 
 
+@agent_bp.post('/agents/diagnose-learning')
+@jwt_required()
+def diagnose_learning():
+    """Diagnose persisted learning evidence for the messenger quick action."""
+    return success_response(AgentOrchestrator.diagnose_learning_overview(_user_id()))
+
+
 @agent_bp.post('/agents/code-learning-cycle')
 @jwt_required()
 def code_learning_cycle():

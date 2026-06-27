@@ -1,155 +1,82 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NIcon, NInput } from 'naive-ui'
-import { useAuthStore } from '../stores/auth'
-import { getStarPathNodeByQuestionId } from '../data/starPathTrail'
 import { postMessengerChat } from '../api/messenger'
 import {
-  generateStudentPhaseReport,
-  type GeneratedPhaseReportResult,
-  type PhaseLearningReport,
-} from '../api/learningReport'
-import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
+  diagnoseLearning,
+  planLearningPath,
+  type LearningPathPlanResult,
+  type StudentDiagnoseResult,
+} from '../api/agentService'
 import {
-  AnalyticsOutline,
   BarbellOutline,
   GitNetworkOutline,
-  NavigateOutline,
   PaperPlaneOutline,
-  PulseOutline,
-  SparklesOutline,
   TelescopeOutline,
   TrendingUpOutline,
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 
-const auth = useAuthStore()
-const workspace = useStudentWorkspaceStore()
 const router = useRouter()
 const prompt = ref('')
-const analyzing = ref(false)
 const chatLoading = ref(false)
+const agentLoading = ref(false)
 const chatMessages = ref<Array<{ role: 'user' | 'assistant'; text: string }>>([])
-const phaseReport = ref<PhaseLearningReport | null>(null)
-const phaseReportStatus = ref<GeneratedPhaseReportResult['status'] | null>(null)
-const phaseReportRemainingSeconds = ref(0)
-const phaseReportError = ref('')
 
-const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Explorer')
-
-const userId = computed(() => auth.profile?.id ?? 'guest')
-
-type AssistantSuggestion = { title: string; desc: string }
-type AssistantRecommendation = {
-  questionId: string
-  label: string
-  matchPercent: number
-  summary: string
-  decisionSteps: Array<{ label: string; detail: string }>
+function formatDiagnosisReply(result: StudentDiagnoseResult) {
+  const diagnosis = result.diagnosis
+  const recommendation = result.recommendation
+  const strategy = diagnosis.remediationStrategy
+  return [
+    `知识诊断智能体已完成分析（${result.backend ?? 'learning-engine'}）。`,
+    `诊断：${diagnosis.diagnosis}`,
+    `下一试炼：${recommendation.nextKnowledgePoint || '请先完成一题短练习以收集证据。'}`,
+    strategy ? `修复策略：${strategy.title}。${strategy.steps.slice(0, 2).join('；')}` : '',
+  ].filter(Boolean).join('\n')
 }
 
-const assistantSuggestions = ref<AssistantSuggestion[]>([])
-const recommendedTrial = ref<AssistantRecommendation | null>(null)
-const mistakeCount = ref(0)
-
-const suggestionIcons = [AnalyticsOutline, BarbellOutline, PulseOutline, SparklesOutline] as const
-
-const suggestions = computed(() =>
-  assistantSuggestions.value.map((item, index) => ({
-    ...item,
-    icon: suggestionIcons[index] ?? AnalyticsOutline,
-  })),
-)
-
-const fragmentCount = computed(() => mistakeCount.value)
-const recommended = computed(() => recommendedTrial.value)
-const showDecisionDetail = ref(false)
-
-const analysisHeadline = computed(() =>
-  analyzing.value
-    ? '小E 正在根据你的错题分析'
-    : phaseReport.value
-      ? phaseReport.value.headline
-    : mistakeCount.value > 0
-      ? '小E 已根据错题更新分析'
-      : '小E 等待你的试炼数据',
-)
-
-const phaseReportCooldownText = computed(() => {
-  if (phaseReportStatus.value !== 'cooldown' || phaseReportRemainingSeconds.value <= 0) return ''
-  const hours = Math.floor(phaseReportRemainingSeconds.value / 3600)
-  const minutes = Math.ceil((phaseReportRemainingSeconds.value % 3600) / 60)
-  return hours > 0 ? `距离下次生成约 ${hours} 小时 ${minutes} 分钟` : `距离下次生成约 ${minutes} 分钟`
-})
-
-async function refreshAnalysis() {
-  analyzing.value = true
-  try {
-    const result = await workspace.loadRecommendations('7d', true)
-    const firstMistake = result.mistake_highlights[0]
-    const firstRecommendation = result.recommendations[0]
-    mistakeCount.value = result.mistake_highlights.length
-    recommendedTrial.value = firstMistake
-      ? {
-          questionId: firstMistake.question_id,
-          label: firstMistake.question_title,
-          matchPercent: Math.min(98, 70 + firstMistake.fail_count * 5),
-          summary: firstRecommendation?.detail || `优先修复 ${firstMistake.knowledge_label || firstMistake.topic} 的近期错题。`,
-          decisionSteps: [
-            { label: '薄弱知识', detail: firstMistake.knowledge_label || firstMistake.topic },
-            { label: '错误证据', detail: `累计失败 ${firstMistake.fail_count} 次，最近失败于 ${firstMistake.last_failed_at.slice(0, 10)}。` },
-            { label: '推荐依据', detail: firstRecommendation?.detail || '根据服务端错题权重与画像上下文生成。' },
-          ],
-        }
-      : null
-    assistantSuggestions.value = [
-      ...result.recommendations.slice(0, 3).map((item) => ({ title: item.title, desc: item.detail })),
-      {
-        title: '画像与资源',
-        desc: `当前画像版本 v${result.profile_version}，已匹配 ${result.personalized_resources.length} 个个性化资源。`,
-      },
-    ]
-  } finally {
-    analyzing.value = false
-  }
+function formatPathReply(result: LearningPathPlanResult) {
+  const action = result.next_best_action
+  const remediation = result.remediation_paths?.[0]
+  const steps = remediation?.steps?.slice(0, 3) ?? result.reviewPlan?.slice(0, 3) ?? []
+  return [
+    `路径规划智能体已生成修复路线（${result.graph_backend ?? result.agent_trace?.backend ?? 'learning-engine'}）。`,
+    action?.reason ? `优先动作：${action.reason}` : '',
+    steps.length ? `建议顺序：${steps.join(' → ')}` : '当前没有待修复路径，建议继续完成下一道试炼。',
+  ].filter(Boolean).join('\n')
 }
 
-async function onAnalyzeWeakPoints() {
-  if (analyzing.value) return
-  analyzing.value = true
-  phaseReportError.value = ''
+async function runDiagnosisAgent() {
+  if (agentLoading.value || chatLoading.value) return
+  chatMessages.value.push({ role: 'user', text: '请用知识诊断智能体推荐我的下一试炼。' })
+  agentLoading.value = true
   try {
-    const [reportResult] = await Promise.all([
-      generateStudentPhaseReport('7d'),
-      refreshAnalysis(),
-    ])
-    phaseReport.value = reportResult.report
-    phaseReportStatus.value = reportResult.status
-    phaseReportRemainingSeconds.value = reportResult.remaining_seconds
+    chatMessages.value.push({ role: 'assistant', text: formatDiagnosisReply(await diagnoseLearning()) })
   } catch (error) {
-    phaseReportError.value = error instanceof Error ? error.message : '阶段报告生成失败'
+    chatMessages.value.push({
+      role: 'assistant',
+      text: error instanceof Error ? error.message : '知识诊断智能体暂时无法完成本次分析。',
+    })
   } finally {
-    analyzing.value = false
+    agentLoading.value = false
   }
 }
 
-function goToRecommendedTrial() {
-  const rec = recommendedTrial.value
-  const node = rec?.questionId ? getStarPathNodeByQuestionId(rec.questionId) : null
-  if (node) {
-    void router.push({ path: '/student/trials', query: { node: node.id } })
-  } else {
-    void router.push('/student/trials')
+async function runPathPlanningAgent() {
+  if (agentLoading.value || chatLoading.value) return
+  chatMessages.value.push({ role: 'user', text: '请用路径规划智能体生成我的修复路线。' })
+  agentLoading.value = true
+  try {
+    chatMessages.value.push({ role: 'assistant', text: formatPathReply(await planLearningPath()) })
+  } catch (error) {
+    chatMessages.value.push({
+      role: 'assistant',
+      text: error instanceof Error ? error.message : '路径规划智能体暂时无法生成修复路线。',
+    })
+  } finally {
+    agentLoading.value = false
   }
-}
-
-function goToTrialList() {
-  void router.push('/student/trials')
-}
-
-function goToRepairRoute() {
-  void router.push('/student/star-path')
 }
 
 function goToArchives() {
@@ -157,22 +84,30 @@ function goToArchives() {
 }
 
 const actions = [
-  { label: '分析我的薄弱点', icon: TelescopeOutline, handler: onAnalyzeWeakPoints },
-  { label: '推荐下一试炼', icon: BarbellOutline, handler: goToRecommendedTrial },
-  { label: '生成修复路线', icon: GitNetworkOutline, handler: goToRepairRoute },
+  { label: '诊断薄弱点', icon: TelescopeOutline, handler: runDiagnosisAgent },
+  { label: '推荐下一试炼', icon: BarbellOutline, handler: runDiagnosisAgent },
+  { label: '规划修复路线', icon: GitNetworkOutline, handler: runPathPlanningAgent },
   { label: '查看最近成长', icon: TrendingUpOutline, handler: goToArchives },
 ] as const
 
 async function sendChat() {
   const text = prompt.value.trim()
-  if (!text || chatLoading.value) return
+  if (!text || chatLoading.value || agentLoading.value) return
   chatMessages.value.push({ role: 'user', text })
   prompt.value = ''
   chatLoading.value = true
   try {
     const result = await postMessengerChat(text)
     const sourceLabel =
-      result.source === 'llm'
+      result.source === 'xfyun_agent'
+        ? result.rag_used
+          ? '（讯飞星辰 Agent + 课程知识库）'
+          : '（讯飞星辰 Agent）'
+        : result.source === 'spark'
+        ? result.rag_used
+          ? '（讯飞星火 + 课程知识库）'
+          : '（讯飞星火）'
+        : result.source === 'llm'
         ? result.rag_used
           ? '（LLM + 知识库）'
           : ''
@@ -192,14 +127,6 @@ async function sendChat() {
     chatLoading.value = false
   }
 }
-
-onMounted(() => {
-  refreshAnalysis()
-})
-
-watch(userId, () => {
-  void refreshAnalysis()
-})
 </script>
 
 <template>
@@ -222,126 +149,20 @@ watch(userId, () => {
           <span class="station-bg__crystal station-bg__crystal--two" />
         </div>
 
-        <section class="hero-zone">
-          <article class="float-card float-card--greeting">
-            <h2>晚上好，<span>{{ displayName }}</span></h2>
-            <p>今天也在不断探索与成长呢</p>
-            <div class="wave-bars" aria-hidden="true"><span /><span /><span /><span /><span /></div>
-          </article>
-
-          <article class="float-card float-card--fragment">
-            <p>待修复知识碎片</p>
-            <strong>{{ fragmentCount }} <span>题</span></strong>
-            <button type="button" class="float-card__action" @click="goToTrialList">
-              去修复 <n-icon :component="NavigateOutline" />
-            </button>
-            <n-icon :component="GitNetworkOutline" class="float-card__watermark" />
-          </article>
-
-          <div class="assistant-bot" aria-hidden="true">
-            <span class="assistant-bot__crest" />
-            <span class="assistant-bot__head" />
-            <span class="assistant-bot__ear assistant-bot__ear--left" />
-            <span class="assistant-bot__ear assistant-bot__ear--right" />
-            <span class="assistant-bot__face" />
-            <span class="assistant-bot__body"><em></em></span>
-            <span class="assistant-bot__arm assistant-bot__arm--left" />
-            <span class="assistant-bot__arm assistant-bot__arm--right" />
-            <span class="assistant-bot__cape" />
-          </div>
-
-          <article
-            class="float-card float-card--trial"
-            :class="{ 'float-card--trial-expanded': showDecisionDetail && recommended }"
-          >
-            <h2>推荐下一试炼</h2>
-            <strong>{{ recommended?.label ?? '暂无推荐 · 先去试炼' }}</strong>
-            <p v-if="recommended" class="trial-match">匹配度 {{ recommended.matchPercent }}%</p>
-            <p v-else class="trial-match">完成代码试炼后，根据错题为你推荐</p>
-
-            <p v-if="recommended" class="trial-summary">{{ recommended.summary }}</p>
-
-            <button
-              v-if="recommended?.decisionSteps.length"
-              type="button"
-              class="trial-logic-toggle"
-              @click="showDecisionDetail = !showDecisionDetail"
-            >
-              {{ showDecisionDetail ? '收起推荐逻辑' : '查看推荐逻辑' }}
-              <n-icon :component="NavigateOutline" />
-            </button>
-
-            <ol v-if="showDecisionDetail && recommended" class="trial-decision-list">
-              <li v-for="step in recommended.decisionSteps" :key="step.label">
-                <strong>{{ step.label }}</strong>
-                <span>{{ step.detail }}</span>
-              </li>
-            </ol>
-
-            <button type="button" class="trial-start-link" @click="goToRecommendedTrial">
-              查看试炼推荐 <n-icon :component="NavigateOutline" />
-            </button>
-            <span class="radar" aria-hidden="true" />
-          </article>
-
-          <article class="float-card float-card--growth">
-            <h2>最近成长</h2>
-            <p>连续探索 <strong>5 </strong></p>
-            <p>击败了 <span>80%</span> 的 Explorer</p>
-            <svg viewBox="0 0 100 44" class="growth-line" aria-hidden="true">
-              <polyline points="4,36 20,28 32,32 45,18 57,22 70,10 82,17 96,4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </article>
-        </section>
-
-        <aside class="analysis-panel" aria-label="学习分析建议">
+        <aside class="analysis-panel" aria-label="与小E对话反馈">
           <header>
-            <h2>{{ analysisHeadline }} <span aria-hidden="true">▮▮</span></h2>
+            <h2>小E 对话反馈 <span aria-hidden="true">▮▮</span></h2>
           </header>
-          <article v-if="phaseReport || phaseReportError" class="phase-report">
-            <header>
-              <strong>阶段性薄弱点报告</strong>
-              <span v-if="phaseReportStatus === 'cooldown'">{{ phaseReportCooldownText }}</span>
-              <span v-else-if="phaseReportStatus === 'generated'">已生成</span>
-            </header>
-            <p v-if="phaseReportError" class="phase-report__error">{{ phaseReportError }}</p>
-            <template v-else-if="phaseReport">
-              <ul class="phase-report__summary">
-                <li v-for="item in phaseReport.summary" :key="item">{{ item }}</li>
-              </ul>
-              <div v-if="phaseReport.focus_items.length" class="phase-report__focus">
-                <strong>优先修复</strong>
-                <p v-for="item in phaseReport.focus_items" :key="item.label">
-                  {{ item.label }}：{{ item.reason }}
-                </p>
-              </div>
-              <div v-if="phaseReport.next_actions.length" class="phase-report__actions">
-                <strong>下一步</strong>
-                <p v-for="item in phaseReport.next_actions" :key="item">{{ item }}</p>
-              </div>
-            </template>
-          </article>
-          <div class="analysis-list">
-            <article v-for="item in suggestions" :key="item.title" class="analysis-card">
-              <span class="analysis-card__icon">
-                <n-icon :component="item.icon" />
-              </span>
-              <div>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.desc }}</p>
-              </div>
-            </article>
-          </div>
-          <div v-if="chatMessages.length" class="chat-thread" aria-label="与小E对话">
+          <div class="chat-thread" aria-label="与小E对话">
+            <div v-if="!chatMessages.length" class="chat-thread__empty">
+              <strong>向小E提一个 Python 或学习问题</strong>
+              <p>这里会直接显示智能体回复，反馈区保持专注和干净。</p>
+            </div>
             <article v-for="(msg, idx) in chatMessages" :key="idx" :class="`chat-thread__item chat-thread__item--${msg.role}`">
               <p>{{ msg.text }}</p>
             </article>
-            <p v-if="chatLoading" class="chat-thread__loading">小E 正在思考…</p>
+            <p v-if="chatLoading || agentLoading" class="chat-thread__loading">小E 正在调用学习智能体…</p>
           </div>
-          <button type="button" class="all-advice" @click="onAnalyzeWeakPoints">
-            生成阶段报告
-            <n-icon :component="NavigateOutline" />
-          </button>
         </aside>
 
         <section class="prompt-dock" aria-label="向小E提问">
@@ -353,17 +174,29 @@ watch(userId, () => {
               :bordered="false"
               @keydown.enter.prevent="sendChat"
             />
-            <button type="button" aria-label="发送" :disabled="chatLoading" @click="sendChat">
+            <button type="button" aria-label="发送" :disabled="chatLoading || agentLoading" @click="sendChat">
               <n-icon :component="PaperPlaneOutline" />
             </button>
           </div>
           <div class="prompt-actions">
-            <button v-for="item in actions" :key="item.label" type="button" @click="item.handler">
+            <button v-for="item in actions" :key="item.label" type="button" :disabled="chatLoading || agentLoading" @click="item.handler">
               <n-icon :component="item.icon" />
               {{ item.label }}
             </button>
           </div>
         </section>
+
+        <div class="assistant-bot assistant-bot--corner" aria-hidden="true">
+          <span class="assistant-bot__crest" />
+          <span class="assistant-bot__head" />
+          <span class="assistant-bot__ear assistant-bot__ear--left" />
+          <span class="assistant-bot__ear assistant-bot__ear--right" />
+          <span class="assistant-bot__face" />
+          <span class="assistant-bot__body"><em></em></span>
+          <span class="assistant-bot__arm assistant-bot__arm--left" />
+          <span class="assistant-bot__arm assistant-bot__arm--right" />
+          <span class="assistant-bot__cape" />
+        </div>
       </section>
     </main>
   </DashboardShell>
@@ -681,16 +514,16 @@ watch(userId, () => {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
-    'hero analysis'
-    'prompt prompt';
-  gap: 1rem 1.35rem;
+    'analysis'
+    'prompt';
+  gap: 0.9rem;
   height: calc(100dvh - 124px);
   min-height: 0;
   overflow: hidden;
-  padding: 0 var(--plex-page-gutter-x) var(--plex-page-gutter-bottom);
+  padding: 0 var(--plex-page-gutter-x) calc(var(--plex-page-gutter-bottom) + 0.25rem);
 }
 
 .station-bg {
@@ -1107,6 +940,17 @@ watch(userId, () => {
   pointer-events: none;
 }
 
+.assistant-bot--corner {
+  position: absolute;
+  right: var(--plex-page-gutter-x);
+  bottom: calc(var(--plex-page-gutter-bottom) + 5.5rem);
+  justify-self: end;
+  align-self: end;
+  opacity: 0.2;
+  transform: scale(0.46);
+  transform-origin: bottom right;
+}
+
 .assistant-bot__crest {
   position: absolute;
   left: 123px;
@@ -1231,14 +1075,17 @@ watch(userId, () => {
   grid-area: analysis;
   position: relative;
   z-index: 2;
-  align-self: start;
-  width: 100%;
-  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-self: stretch;
+  justify-self: center;
+  width: min(1180px, 100%);
   min-height: 0;
-  max-height: calc(100% - 2.75rem);
-  margin-top: 2.75rem;
-  overflow-y: auto;
-  padding: 1.35rem 1.25rem 1.25rem;
+  max-height: none;
+  margin-top: 0;
+  overflow: hidden;
+  padding: 1.15rem 1.25rem 1.2rem;
   border: 1px solid rgba(90, 208, 255, 0.14);
   border-radius: 1.2rem;
   background:
@@ -1260,139 +1107,54 @@ watch(userId, () => {
   letter-spacing: 0.15em;
 }
 
-.analysis-list {
-  display: grid;
-  gap: 1.25rem;
-  margin-top: 1.55rem;
-}
-
-.phase-report {
-  margin-top: 1.2rem;
-  padding: 1rem;
-  border: 1px solid rgba(37, 245, 238, 0.14);
-  border-radius: 0.85rem;
-  background: rgba(5, 21, 34, 0.64);
-}
-
-.phase-report header {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.phase-report header strong {
-  color: #f8fbff;
-  font-size: 0.96rem;
-}
-
-.phase-report header span {
-  color: rgba(165, 243, 252, 0.78);
-  font-size: 0.78rem;
-}
-
-.phase-report__summary {
-  display: grid;
-  gap: 0.45rem;
-  margin: 0.85rem 0 0;
-  padding-left: 1rem;
-  color: rgba(221, 232, 241, 0.78);
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-
-.phase-report__focus,
-.phase-report__actions {
-  margin-top: 0.8rem;
-}
-
-.phase-report__focus strong,
-.phase-report__actions strong {
-  color: #25f5ee;
-  font-size: 0.82rem;
-}
-
-.phase-report__focus p,
-.phase-report__actions p,
-.phase-report__error {
-  margin: 0.35rem 0 0;
-  color: rgba(221, 232, 241, 0.74);
-  font-size: 0.82rem;
-  line-height: 1.5;
-}
-
-.phase-report__error {
-  color: #fca5a5;
-}
-
-.analysis-card {
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 1rem;
-  padding: 1.25rem;
-  border: 1px solid rgba(130, 212, 255, 0.1);
-  border-radius: 0.9rem;
-  background: rgba(6, 18, 31, 0.48);
-}
-
-.analysis-card__icon {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 0.55rem;
-  background: rgba(37, 245, 238, 0.08);
-  color: #25f5ee;
-  font-size: 1.4rem;
-}
-
-.analysis-card strong {
-  color: #ffffff;
-  font-size: 0.96rem;
-}
-
-.analysis-card p {
-  margin: 0.65rem 0 0;
-  color: rgba(221, 232, 241, 0.68);
-  font-size: 0.86rem;
-  line-height: 1.55;
-}
-
-.all-advice {
-  display: flex;
-  width: 100%;
-  min-height: 58px;
-  align-items: center;
-  justify-content: center;
-  gap: 1.2rem;
-  margin-top: 1.75rem;
-  border: 1px solid rgba(130, 212, 255, 0.12);
-  border-radius: 0.8rem;
-  background: linear-gradient(90deg, rgba(224, 237, 247, 0.08), rgba(224, 237, 247, 0.04));
-  color: #ffffff;
-  cursor: pointer;
-  font-weight: 680;
-}
-
-.all-advice .n-icon {
-  color: #25f5ee;
-  font-size: 1.4rem;
-}
-
 .chat-thread {
-  max-height: 160px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
-  margin-bottom: 0.65rem;
-  padding: 0.65rem 0.85rem;
+  margin: 0.75rem 0 0;
+  padding: 1rem 1.05rem;
   border-radius: 12px;
   background: rgba(4, 18, 30, 0.72);
   border: 1px solid rgba(110, 228, 255, 0.12);
 }
 
-.chat-thread__item {
-  margin: 0 0 0.5rem;
+.chat-thread__empty {
+  display: grid;
+  min-height: 100%;
+  place-content: center;
+  gap: 0.45rem;
+  text-align: center;
+}
+
+.chat-thread__empty strong {
+  color: rgba(237, 247, 255, 0.9);
+  font-size: 1rem;
+}
+
+.chat-thread__empty p {
+  margin: 0;
+  color: rgba(221, 232, 241, 0.58);
   font-size: 0.86rem;
-  line-height: 1.45;
+}
+
+.chat-thread__item {
+  width: fit-content;
+  max-width: min(760px, 84%);
+  margin: 0 0 0.55rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.chat-thread__item--user {
+  margin-left: auto;
+  background: rgba(37, 245, 238, 0.1);
+}
+
+.chat-thread__item--assistant {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .chat-thread__item--user p {
@@ -1413,8 +1175,11 @@ watch(userId, () => {
   grid-area: prompt;
   position: relative;
   z-index: 2;
-  width: 100%;
-  padding: 1rem 1.25rem 1.15rem;
+  align-self: end;
+  justify-self: center;
+  width: min(1180px, 100%);
+  margin-top: 0;
+  padding: 0.75rem 1rem 0.85rem;
   border: 1px solid rgba(37, 245, 238, 0.28);
   border-radius: 1.1rem;
   background:
@@ -1427,7 +1192,7 @@ watch(userId, () => {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding-bottom: 0.8rem;
+  padding-bottom: 0.55rem;
   border-bottom: 1px solid rgba(224, 237, 247, 0.09);
 }
 
@@ -1440,8 +1205,8 @@ watch(userId, () => {
 
 .prompt-line button {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   flex: 0 0 auto;
   place-items: center;
   border: 0;
@@ -1454,13 +1219,13 @@ watch(userId, () => {
 .prompt-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
 }
 
 .prompt-actions button {
   display: inline-flex;
-  min-height: 58px;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
   gap: 0.65rem;
@@ -1469,7 +1234,7 @@ watch(userId, () => {
   background: rgba(6, 18, 31, 0.55);
   color: rgba(237, 247, 255, 0.86);
   cursor: pointer;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   font-weight: 650;
 }
 
@@ -1490,9 +1255,8 @@ watch(userId, () => {
 
   .messenger-stage {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(520px, auto) auto auto;
+    grid-template-rows: minmax(320px, auto) auto;
     grid-template-areas:
-      'hero'
       'analysis'
       'prompt';
     height: auto;
@@ -1553,8 +1317,13 @@ watch(userId, () => {
     transform: scale(0.88);
   }
 
+  .assistant-bot--corner {
+    display: none;
+  }
+
   .analysis-panel {
-    margin-top: 1.5rem;
+    width: min(1180px, 100%);
+    margin-top: 0;
     max-height: none;
   }
 }
@@ -1604,7 +1373,6 @@ watch(userId, () => {
   .messenger-stage {
     grid-template-columns: 1fr;
     grid-template-areas:
-      'hero'
       'analysis'
       'prompt';
     min-height: auto;
@@ -1652,7 +1420,7 @@ watch(userId, () => {
   }
 
   .prompt-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

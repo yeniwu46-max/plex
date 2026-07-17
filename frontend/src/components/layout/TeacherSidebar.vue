@@ -3,16 +3,22 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import {
-  ArchiveOutline,
   BarbellOutline,
   CompassOutline,
+  PeopleOutline,
   PlanetOutline,
   SettingsOutline,
   LibraryOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../../stores/auth'
 
-export type TeacherNavKey = 'navigator' | 'starfield' | 'trial' | 'explorers' | 'resources' | 'admin'
+export type TeacherNavKey =
+  | 'navigator'
+  | 'starfield'
+  | 'trial'
+  | 'classes'
+  | 'resources'
+  | 'admin'
 
 const props = withDefaults(
   defineProps<{
@@ -34,7 +40,7 @@ const allNavItems = [
   { key: 'navigator' as const, label: '领航总览', sub: 'NAVIGATOR HUB', icon: CompassOutline, to: '/teacher' },
   { key: 'starfield' as const, label: '星域观测', sub: 'STARFIELD ANALYTICS', icon: PlanetOutline, to: '/teacher/starfield' },
   { key: 'trial' as const, label: '试炼中枢', sub: 'TRIAL COMMAND', icon: BarbellOutline, to: '/teacher/trials' },
-  { key: 'explorers' as const, label: 'Explorer 档案', sub: 'EXPLORER ARCHIVES', icon: ArchiveOutline, to: '/teacher/explorers' },
+  { key: 'classes' as const, label: '班级管理', sub: 'CLASS MANAGEMENT', icon: PeopleOutline, to: '/teacher/classes' },
   { key: 'resources' as const, label: '资源审核', sub: 'RESOURCE REVIEW', icon: LibraryOutline, to: '/teacher/resources' },
   { key: 'admin' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/admin' },
 ]

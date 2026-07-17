@@ -14,7 +14,7 @@ PASSWORD = 'student123'
 
 def main() -> None:
     req = urllib.request.Request(
-        'http://127.0.0.1:5000/api/v1/auth/login',
+        'http://127.0.0.1:5100/api/v1/auth/login',
         data=json.dumps({'username': USERNAME, 'password': PASSWORD}).encode(),
         headers={'Content-Type': 'application/json'},
         method='POST',
@@ -46,7 +46,7 @@ window.location.replace('/student');
 </html>"""
 
     BOOTSTRAP.write_text(html, encoding='utf-8')
-    webbrowser.open('http://localhost:5173/_dev_login.html')
+    webbrowser.open('http://localhost:5180/_dev_login.html')
     print(f'已打开浏览器，账号 {USERNAME} 将跳转到 /student')
     time.sleep(3)
     try:

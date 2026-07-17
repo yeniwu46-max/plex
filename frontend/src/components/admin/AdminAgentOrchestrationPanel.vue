@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { NButton, NCheckbox, NIcon, useMessage } from 'naive-ui'
+import { computed, onMounted, ref, watch } from 'vue'
+import { NButton, NCheckbox, NIcon, NSwitch, useMessage } from 'naive-ui'
 import {
   CheckmarkCircleOutline,
   CodeSlashOutline,
@@ -11,7 +11,6 @@ import {
 } from '@vicons/ionicons5'
 import {
   GRADING_AGENT_CATEGORY_LABELS,
-  TEACHER_GRADING_AGENTS,
   type GradingAgentCategory,
 } from '../../data/gradingAgents'
 import {
@@ -19,12 +18,30 @@ import {
   validateGradingAgentSelection,
   type GradingAgentValidationResult,
 } from '../../utils/gradingAgentValidation'
+import {
+  fetchAgentOrchestration,
+  saveAgentOrchestration,
+  type AgentOrchestrationResult,
+  type AgentRegistryItem,
+  type AgentRuntimeInfo,
+} from '../../api/agentOrchestration'
 import PlexAgentFlow from './PlexAgentFlow.vue'
 
-const STORAGE_KEY = 'plex.teacher-grading-agents'
+const emit = defineEmits<{
+  orchestrationUpdated: []
+}>()
 
 const message = useMessage()
+const loading = ref(false)
+const saving = ref(false)
+const orchestrationEnabled = ref(true)
+const agentBackend = ref('mock')
+const agentRuntime = ref<AgentRuntimeInfo | null>(null)
+const registryGradingAgents = ref<AgentRegistryItem[]>([])
+const registryLearningAgents = ref<AgentRegistryItem[]>([])
 const selectedAgentIds = ref<string[]>([])
+const selectedLearningIds = ref<string[]>([])
+const flowConfigVersion = ref(0)
 const validation = ref<GradingAgentValidationResult>({
   valid: true,
   selectedCount: 0,
@@ -52,26 +69,69 @@ const groupedAgents = computed(() =>
   categoryOrder.map((category) => ({
     category,
     label: GRADING_AGENT_CATEGORY_LABELS[category],
-    agents: TEACHER_GRADING_AGENTS.filter((agent) => agent.category === category),
+    agents: registryGradingAgents.value.filter((agent) => agent.category === category),
   })),
 )
 
-function refreshValidation() {
-  validation.value = validateGradingAgentSelection(selectedAgentIds.value)
+const flowLearningPipeline = computed(() => selectedLearningIds.value)
+
+const runtimeBannerTone = computed(() => {
+  const runtime = agentRuntime.value
+  if (!runtime) return 'idle'
+  if (runtime.ready_for_llm) return 'ok'
+  if (runtime.llm_available && !runtime.crewai_venv) return 'warn'
+  if (agentBackend.value === 'crewai' && runtime.degraded_reason) return 'warn'
+  if (agentBackend.value === 'crewai' && !runtime.crewai_venv) return 'error'
+  return 'idle'
+})
+
+const runtimeBannerMessage = computed(() => {
+  const runtime = agentRuntime.value
+  if (!runtime) return '加载运行态…'
+  if (runtime.ready_for_llm) {
+    return 'CrewAI 虚拟环境与 API Key 已就绪，学习流水线将使用 LLM 增强'
+  }
+  if (runtime.llm_available && !runtime.crewai_venv) {
+    return 'API Key 已配置：学习流水线将通过主进程 LLM 增强（CrewAI venv 缺失时可降级运行）'
+  }
+  if (runtime.degraded_reason === 'missing_api_key') {
+    return '已检测到 CrewAI 环境，但未配置 OPENAI_API_KEY / OPENROUTER_API_KEY，将降级为规则引擎'
+  }
+  if (runtime.degraded_reason === 'missing_crewai_venv') {
+    return '缺少 backend/.venv-crewai，请运行 scripts/install_crewai.ps1 后重启后端'
+  }
+  if (agentBackend.value === 'mock') {
+    return '当前为 mock 规则后端；配置 AGENT_BACKEND=auto 并安装 CrewAI venv 可启用 LLM'
+  }
+  return `运行时后端：${agentBackend.value}`
+})
+
+function applyOrchestrationPayload(payload: AgentOrchestrationResult) {
+  registryGradingAgents.value = payload.grading_agents
+  registryLearningAgents.value = payload.learning_pipeline_agents
+  orchestrationEnabled.value = payload.config.enabled
+  selectedAgentIds.value = [...payload.config.grading_agents]
+  selectedLearningIds.value = [...payload.config.learning_pipeline]
+  agentBackend.value = payload.agent_backend
+  agentRuntime.value = payload.runtime ?? null
+  flowConfigVersion.value += 1
+  refreshValidation()
 }
 
-function loadSavedSelection() {
+async function loadOrchestration() {
+  loading.value = true
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-    const parsed = JSON.parse(raw) as string[]
-    if (Array.isArray(parsed)) {
-      selectedAgentIds.value = parsed.filter((id) => TEACHER_GRADING_AGENTS.some((agent) => agent.id === id))
-    }
-  } catch {
-    selectedAgentIds.value = []
+    const payload = await fetchAgentOrchestration()
+    applyOrchestrationPayload(payload)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '加载编排配置失败')
+  } finally {
+    loading.value = false
   }
-  refreshValidation()
+}
+
+function refreshValidation() {
+  validation.value = validateGradingAgentSelection(selectedAgentIds.value)
 }
 
 function toggleAgent(agentId: string, checked: boolean) {
@@ -88,30 +148,63 @@ function toggleAgent(agentId: string, checked: boolean) {
   refreshValidation()
 }
 
-function saveSelection() {
+function toggleLearningAgent(agentId: string, checked: boolean) {
+  if (checked) {
+    selectedLearningIds.value = [...selectedLearningIds.value, agentId]
+  } else {
+    selectedLearningIds.value = selectedLearningIds.value.filter((id) => id !== agentId)
+  }
+}
+
+async function saveSelection() {
   refreshValidation()
-  if (selectedAgentIds.value.length === 0) {
-    message.warning('请至少勾选一个检查智能体')
+  if (selectedAgentIds.value.length === 0 && selectedLearningIds.value.length === 0) {
+    message.warning('请至少勾选一个检查智能体或学习流水线节点')
     return
   }
   if (!validation.value.valid) {
     message.error('存在重复检查维度，请调整勾选后再保存')
     return
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedAgentIds.value))
-  message.success(`已保存 ${validation.value.selectedCount} 个检查智能体编排`)
+  saving.value = true
+  try {
+    const payload = await saveAgentOrchestration({
+      enabled: orchestrationEnabled.value,
+      grading_agents: selectedAgentIds.value,
+      learning_pipeline: selectedLearningIds.value,
+    })
+    applyOrchestrationPayload(payload)
+    emit('orchestrationUpdated')
+    message.success('智能体编排已同步至平台配置')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '保存失败')
+  } finally {
+    saving.value = false
+  }
 }
 
-function resetSelection() {
-  selectedAgentIds.value = []
-  refreshValidation()
-  localStorage.removeItem(STORAGE_KEY)
-  message.info('已清空教师检查智能体勾选')
+async function resetSelection() {
+  saving.value = true
+  try {
+    const payload = await saveAgentOrchestration({
+      enabled: true,
+      grading_agents: [],
+      learning_pipeline: [],
+    })
+    applyOrchestrationPayload(payload)
+    message.info('已恢复为空编排（提交时将跳过智能体检查）')
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '重置失败')
+  } finally {
+    saving.value = false
+  }
 }
 
 watch(selectedAgentIds, refreshValidation, { deep: true })
 
-loadSavedSelection()
+onMounted(() => {
+  void loadOrchestration()
+})
 </script>
 
 <template>
@@ -120,27 +213,57 @@ loadSavedSelection()
       <header class="panel-head panel-head--stack">
         <div>
           <h2>教师检查智能体</h2>
-          <p>勾选参与学生做题自动检查；各智能体检查维度互不重叠</p>
+          <p>勾选参与学生做题自动检查；保存后写入平台配置，学生提交试炼时按编排执行</p>
         </div>
         <div class="grading-actions">
-          <n-button type="primary" :disabled="!validation.valid || validation.selectedCount === 0" @click="saveSelection">
+          <label class="enable-switch">
+            <span>启用编排</span>
+            <n-switch v-model:value="orchestrationEnabled" size="small" />
+          </label>
+          <n-button
+            type="primary"
+            :loading="saving"
+            :disabled="loading || !validation.valid || (selectedAgentIds.length === 0 && selectedLearningIds.length === 0)"
+            @click="saveSelection"
+          >
             保存编排
           </n-button>
-          <n-button secondary @click="resetSelection">清空</n-button>
+          <n-button secondary :loading="saving" :disabled="loading" @click="resetSelection">清空</n-button>
         </div>
       </header>
 
       <div
+        class="runtime-banner"
+        :class="{
+          'runtime-banner--ok': runtimeBannerTone === 'ok',
+          'runtime-banner--warn': runtimeBannerTone === 'warn',
+          'runtime-banner--error': runtimeBannerTone === 'error',
+          'runtime-banner--idle': runtimeBannerTone === 'idle',
+        }"
+      >
+        <n-icon :component="runtimeBannerTone === 'ok' ? CheckmarkCircleOutline : WarningOutline" />
+        <span>{{ runtimeBannerMessage }}</span>
+        <span v-if="agentRuntime">后端 {{ agentBackend }} · venv {{ agentRuntime.crewai_venv ? 'OK' : '缺失' }} · Key {{ agentRuntime.api_key_configured ? 'OK' : '未配置' }}</span>
+      </div>
+
+      <div class="backend-banner">
+        <span>运行时后端：{{ agentBackend }}</span>
+        <span v-if="loading">加载配置中…</span>
+      </div>
+
+      <div
         class="validation-banner"
         :class="{
-          'validation-banner--ok': validation.valid && validation.selectedCount > 0,
+          'validation-banner--ok': validation.valid && (selectedAgentIds.length > 0 || selectedLearningIds.length > 0),
           'validation-banner--warn': !validation.valid,
-          'validation-banner--idle': validation.selectedCount === 0,
+          'validation-banner--idle': selectedAgentIds.length === 0 && selectedLearningIds.length === 0,
         }"
       >
         <n-icon :component="validation.valid ? CheckmarkCircleOutline : WarningOutline" />
-        <span v-if="validation.selectedCount === 0">尚未勾选检查智能体</span>
-        <span v-else-if="validation.valid">已选 {{ validation.selectedCount }} 个，重复校验通过</span>
+        <span v-if="selectedAgentIds.length === 0 && selectedLearningIds.length === 0">尚未勾选智能体</span>
+        <span v-else-if="validation.valid">
+          已选检查 {{ selectedAgentIds.length }} 个 · 流水线 {{ selectedLearningIds.length }} 个
+        </span>
         <span v-else>检测到 {{ validation.duplicates.length }} 处重复检查维度</span>
       </div>
 
@@ -159,6 +282,7 @@ loadSavedSelection()
             >
               <n-checkbox
                 :checked="selectedAgentIds.includes(agent.id)"
+                :disabled="loading"
                 @update:checked="(checked) => toggleAgent(agent.id, checked)"
               />
               <div class="grading-agent-body">
@@ -173,20 +297,55 @@ loadSavedSelection()
           </div>
         </section>
       </div>
+
+      <section class="learning-pipeline-section">
+        <header class="grading-group-head">
+          <n-icon :component="GitNetworkOutline" />
+          <strong>学习协同流水线（提交后 enrichment）</strong>
+        </header>
+        <div class="learning-agent-grid">
+          <label
+            v-for="agent in registryLearningAgents"
+            :key="agent.id"
+            class="grading-agent-card"
+            :class="{ selected: selectedLearningIds.includes(agent.id) }"
+          >
+            <n-checkbox
+              :checked="selectedLearningIds.includes(agent.id)"
+              :disabled="loading"
+              @update:checked="(checked) => toggleLearningAgent(agent.id, checked)"
+            />
+            <div class="grading-agent-body">
+              <div class="grading-agent-title">
+                <strong>{{ agent.name }}</strong>
+              </div>
+              <em>{{ agent.nameEn }}</em>
+              <small>{{ agent.description }}</small>
+            </div>
+          </label>
+        </div>
+      </section>
     </article>
 
     <article class="panel flow-panel">
       <header class="panel-head">
         <h2>多智能体协同流程</h2>
-        <span class="core-badge">Vue Flow · 可视化编排</span>
+        <span class="core-badge">Vue Flow · {{ selectedLearningIds.length }}/{{ registryLearningAgents.length }} 节点启用</span>
       </header>
-      <plex-agent-flow />
+      <plex-agent-flow :key="flowConfigVersion" :enabled-learning-ids="flowLearningPipeline" />
     </article>
   </section>
 </template>
 
 <style scoped>
 .agents-layout {
+  --admin-text-title: 1.08rem;
+  --admin-text-subtitle: 0.78rem;
+  --admin-text-body: 0.82rem;
+  --admin-text-card-title: 0.86rem;
+  --admin-text-muted: 0.78rem;
+  --admin-text-meta: 0.74rem;
+
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -222,19 +381,72 @@ loadSavedSelection()
 .panel-head h2 {
   margin: 0;
   color: #fff;
-  font-size: 1.08rem;
+  font-size: var(--admin-text-title);
 }
 
 .panel-head p {
   margin: 0.35rem 0 0;
   color: rgba(226, 232, 240, 0.58);
-  font-size: 0.78rem;
+  font-size: var(--admin-text-subtitle);
+  line-height: 1.45;
 }
 
 .grading-actions {
   display: flex;
   flex-shrink: 0;
   gap: 0.55rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.enable-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: var(--admin-text-body);
+}
+
+.backend-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: rgba(167, 139, 250, 0.78);
+  font-size: var(--admin-text-meta);
+}
+
+.runtime-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  background: rgba(12, 14, 32, 0.62);
+  font-size: var(--admin-text-body);
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.runtime-banner--ok {
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #a7f3d0;
+}
+
+.runtime-banner--warn {
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
+}
+
+.runtime-banner--error {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fca5a5;
+}
+
+.runtime-banner--idle {
+  color: rgba(226, 232, 240, 0.72);
 }
 
 .validation-banner {
@@ -246,7 +458,7 @@ loadSavedSelection()
   border-radius: 8px;
   border: 1px solid rgba(167, 139, 250, 0.16);
   background: rgba(12, 14, 32, 0.62);
-  font-size: 0.82rem;
+  font-size: var(--admin-text-body);
   color: rgba(226, 232, 240, 0.72);
 }
 
@@ -265,16 +477,23 @@ loadSavedSelection()
   gap: 1.1rem;
 }
 
+.learning-pipeline-section {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(167, 139, 250, 0.12);
+}
+
 .grading-group-head {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   margin-bottom: 0.65rem;
   color: #c4b5fd;
-  font-size: 0.84rem;
+  font-size: var(--admin-text-body);
 }
 
-.grading-agent-grid {
+.grading-agent-grid,
+.learning-agent-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
@@ -312,19 +531,19 @@ loadSavedSelection()
 
 .grading-agent-title strong {
   color: rgba(255, 255, 255, 0.92);
-  font-size: 0.86rem;
+  font-size: var(--admin-text-card-title);
   line-height: 1.35;
 }
 
 .grading-agent-body em {
   color: rgba(167, 139, 250, 0.7);
-  font-size: 0.7rem;
+  font-size: var(--admin-text-meta);
   font-style: normal;
 }
 
 .grading-agent-body small {
   color: rgba(226, 232, 240, 0.6);
-  font-size: 0.76rem;
+  font-size: var(--admin-text-muted);
   line-height: 1.45;
 }
 
@@ -351,109 +570,9 @@ loadSavedSelection()
   white-space: nowrap;
 }
 
-.topology-list,
-.schedule-log {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.55rem;
-}
-
-.topology-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.45rem 0;
-  border-bottom: 1px solid rgba(167, 139, 250, 0.08);
-  color: rgba(226, 232, 240, 0.72);
-  font-size: 0.82rem;
-}
-
-.topology-list li:last-child {
-  border-bottom: none;
-}
-
-.topology-list em {
-  flex-shrink: 0;
-  color: #34d399;
-  font-style: normal;
-  font-size: 0.74rem;
-}
-
-.topology-list em::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 0.35rem;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.chain-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.45rem;
-}
-
-.chain-list li {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 0.55rem;
-  align-items: center;
-  color: rgba(226, 232, 240, 0.78);
-  font-size: 0.82rem;
-}
-
-.chain-list i {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(139, 92, 246, 0.22);
-  color: #c4b5fd;
-  font-style: normal;
-  font-size: 0.72rem;
-}
-
-.chain-loop {
-  margin: auto 0 0;
-  padding-top: 0.75rem;
-  color: rgba(167, 139, 250, 0.75);
-  font-size: 0.76rem;
-}
-
-.schedule-log li {
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
-  gap: 0.55rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid rgba(167, 139, 250, 0.08);
-  color: rgba(226, 232, 240, 0.68);
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-.schedule-log li:last-child {
-  border-bottom: none;
-}
-
-.schedule-log time {
-  color: rgba(167, 139, 250, 0.75);
-  font-size: 0.72rem;
-}
-
 @media (max-width: 1280px) {
-  .grading-agent-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .agents-bottom-row {
+  .grading-agent-grid,
+  .learning-agent-grid {
     grid-template-columns: 1fr;
   }
 }

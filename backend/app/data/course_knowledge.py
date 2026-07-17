@@ -54,6 +54,75 @@ def document_ids() -> dict[str, str]:
     }
 
 
+_SECTION_FIELD_KEYS = ('概念', '正例', '反例', '常见错误', '基础题', '进阶题', '来源')
+_SECTION_CACHE: dict[str, dict] | None = None
+
+
+def _section_fields(body: str) -> dict[str, str]:
+    """Extract the structured ``- 字段：内容`` lines from one knowledge section."""
+    fields: dict[str, str] = {}
+    for field in _SECTION_FIELD_KEYS:
+        match = re.search(rf'^-\s*{re.escape(field)}：\s*(.+?)\s*$', body, re.MULTILINE)
+        if match:
+            fields[field] = match.group(1).strip()
+    return fields
+
+
+def _load_sections() -> dict[str, dict]:
+    """Parse every mapped knowledge section into structured fields (cached)."""
+    global _SECTION_CACHE
+    if _SECTION_CACHE is not None:
+        return _SECTION_CACHE
+    parsed: dict[str, dict] = {}
+    source_files = {item[1] for item in COURSE_KNOWLEDGE_SOURCES.values()}
+    by_document: dict[str, dict] = {}
+    for filename in source_files:
+        path = KNOWLEDGE_ROOT / filename
+        if not path.is_file():
+            continue
+        for section in _parse_sections(path):
+            document_id = section.get('document_id')
+            if document_id:
+                by_document[document_id] = {
+                    'title': section['title'],
+                    'document_id': document_id,
+                    'source_file': filename,
+                    'fields': _section_fields(section['body']),
+                }
+    for knowledge_key, (document_id, _filename) in COURSE_KNOWLEDGE_SOURCES.items():
+        section = by_document.get(document_id)
+        if section:
+            parsed[knowledge_key] = section
+    _SECTION_CACHE = parsed
+    return parsed
+
+
+def knowledge_section(knowledge_key: str) -> dict:
+    """Return the real knowledge-base section content for a knowledge key.
+
+    The returned dict always carries the structured fields parsed from the
+    ingested Python tutorial knowledge base (concept, worked example,
+    counter-example, common mistakes, base/advanced exercises and source) so
+    callers can derive genuine learning content instead of fixed templates.
+    """
+    section = _load_sections().get(knowledge_key)
+    fields = dict(section['fields']) if section else {}
+    return {
+        'knowledge_key': knowledge_key,
+        'document_id': section['document_id'] if section else None,
+        'section_title': section['title'] if section else None,
+        'source_file': section['source_file'] if section else None,
+        'concept': fields.get('概念', ''),
+        'good_example': fields.get('正例', ''),
+        'bad_example': fields.get('反例', ''),
+        'common_mistakes': fields.get('常见错误', ''),
+        'base_question': fields.get('基础题', ''),
+        'advanced_question': fields.get('进阶题', ''),
+        'source': fields.get('来源', ''),
+        'fields': fields,
+    }
+
+
 def _parse_sections(path: Path) -> list[dict]:
     text = path.read_text(encoding='utf-8')
     headings = list(re.finditer(r'^##\s+\d+\.\s+(.+?)\s*$', text, flags=re.MULTILINE))

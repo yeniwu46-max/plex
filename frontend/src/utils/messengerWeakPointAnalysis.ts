@@ -275,12 +275,12 @@ function buildRepairRouteSuggestion(records: TrialMistakeRecord[]) {
     const node = getStarPathNode(nodeId)
     const nodeRecords = byNode.get(nodeId) ?? []
     const titles = nodeRecords.map((item) => item.questionTitle).join('、')
-    const unlocked = node && isStarPathNodeUnlocked(node)
+    const unlocked = Boolean(node)
     return {
       title: '知识修复路线',
       desc: unlocked
         ? `建议回到星轨 ${formatStarPathNodeLabel(node!)}，优先重做：${titles}。按题目顺序巩固后再推进下一节点。`
-        : `错题集中在「${node?.title ?? nodeId}」板块（${titles}），解锁该星轨节点后完成修复试炼。`,
+        : `错题集中在「${nodeId}」板块（${titles}），请从星轨学习页进入对应知识点练习。`,
     }
   }
 

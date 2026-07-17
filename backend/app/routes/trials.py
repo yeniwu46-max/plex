@@ -201,6 +201,42 @@ def list_student_arena_trials():
         return error_response(str(exc), 50001, None, 500)
 
 
+@trials_bp.route('/student/practice-questions', methods=['GET'])
+@jwt_required()
+@role_required('student', 'teacher', 'admin')
+def list_student_practice_questions():
+    try:
+        from app.services.practice_question import PracticeQuestionService
+
+        knowledge_key = (request.args.get('knowledge_key') or '').strip() or None
+        search_q = (request.args.get('q') or request.args.get('search') or '').strip()
+        limit = min(int(request.args.get('limit') or 500), 500)
+        if search_q:
+            items = PracticeQuestionService.search_for_student(search_q, limit=min(limit, 30))
+        else:
+            items = PracticeQuestionService.list_for_student(knowledge_key=knowledge_key, limit=limit)
+        return success_response({'items': items, 'total': len(items)})
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/student/practice-questions/<path:question_ref>', methods=['GET'])
+@jwt_required()
+@role_required('student', 'teacher', 'admin')
+def get_student_practice_question(question_ref):
+    try:
+        from app.services.practice_question import PracticeQuestionService
+
+        item = PracticeQuestionService.get_by_ref(question_ref)
+        if not item:
+            return error_response('题目不存在', 40401, None, 404)
+        return success_response(item)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @trials_bp.route('/student/trials', methods=['GET'])
 @jwt_required()
 @role_required('student')

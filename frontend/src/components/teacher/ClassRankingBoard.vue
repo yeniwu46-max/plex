@@ -11,7 +11,7 @@ const router = useRouter()
 const medal = ['🥇', '🥈', '🥉']
 
 function goExplorer(userId: number) {
-  void router.push({ path: '/teacher/explorers', query: { studentId: String(userId) } })
+  void router.push({ path: '/teacher/starfield', query: { studentId: String(userId) } })
 }
 </script>
 

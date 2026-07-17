@@ -207,7 +207,8 @@ def messenger_chat():
         user_id = int(get_jwt_identity())
         payload = request.get_json() or {}
         message = payload.get('message') or payload.get('content') or ''
-        return success_response(MessengerChatService.chat(user_id, message))
+        history = payload.get('history') or payload.get('messages') or []
+        return success_response(MessengerChatService.chat(user_id, message, history))
     except SafetyViolation as exc:
         return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
     except ValueError as exc:

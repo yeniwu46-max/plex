@@ -12,6 +12,7 @@ class Class(db.Model):
     description = db.Column(db.Text)
     grade_level = db.Column(db.Integer)  # 年级
     teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    join_code = db.Column(db.String(8), unique=True, nullable=True, index=True)
 
     student_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=utc_now)
@@ -32,6 +33,7 @@ class Class(db.Model):
             'grade_level': self.grade_level,
             'teacher_id': self.teacher_id,
             'teacher_name': self.teacher.real_name if self.teacher else None,
+            'join_code': self.join_code,
             'student_count': self.student_count,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,

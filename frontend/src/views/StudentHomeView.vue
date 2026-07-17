@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import {
-  ArchiveOutline,
-  BarbellOutline,
-  CalendarOutline,
   FlameOutline,
+  CalendarOutline,
   RibbonOutline,
   RocketOutline,
   TrophyOutline,
@@ -18,6 +17,9 @@ import { DAILY_QUESTS } from '../data/dailyQuests'
 import TeacherAssignmentPanel from '../components/student/TeacherAssignmentPanel.vue'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import { useMessage } from 'naive-ui'
+import { scrollToHashAnchor } from '../utils/navigation'
+
+const route = useRoute()
 
 const auth = useAuthStore()
 const workspace = useStudentWorkspaceStore()
@@ -42,9 +44,7 @@ const weekPoints = computed(() => profile.value?.incentive?.week_points ?? 0)
 const nextAchievement = computed(() => profile.value?.incentive?.next_achievements?.[0])
 const daily = computed(() => overview.value?.daily)
 const teacherAssignments = computed(() => daily.value?.teacher_assignments ?? { pending_count: 0, total_count: 0, items: [] })
-const runningTrials = computed(() => overview.value?.running_trials ?? 0)
 const completedQuests = computed(() => daily.value?.completed_count ?? 0)
-const totalQuests = computed(() => daily.value?.total_count ?? DAILY_QUESTS.length)
 const totalQuestReward = computed(
   () => daily.value?.quests.reduce((sum, quest) => sum + quest.reward_xp, 0) ?? DAILY_QUESTS.reduce((sum, quest) => sum + quest.rewardXp, 0),
 )
@@ -76,28 +76,18 @@ const classRankLabel = computed(() => {
   if (!profile.value?.class) return '暂未加入班级'
   return profile.value.class_rank ? `第 ${profile.value.class_rank} 名` : '暂无排名'
 })
+const classDisplayLabel = computed(() => {
+  const cls = profile.value?.class
+  if (!cls) return '暂未加入班级'
+  const code = cls.join_code ? ` · 编号 ${cls.join_code}` : ''
+  return `${cls.name || `班级 #${cls.id}`}${code}`
+})
 
 const statCards = computed(() => [
   { key: 'level', label: '当前等级', value: `Lv.${level.value}`, icon: RocketOutline, tone: 'teal' },
   { key: 'points', label: '累计 XP', value: String(totalPoints.value), icon: FlameOutline, tone: 'amber' },
   { key: 'streak', label: '连续探索', value: `${profile.value?.consecutive_days ?? 0} 天`, icon: CalendarOutline, tone: 'blue' },
   { key: 'rank', label: '班级排名', value: classRankLabel.value, icon: TrophyOutline, tone: 'purple' },
-  { key: 'quests', label: '今日委托', value: `${completedQuests.value}/${totalQuests.value}`, icon: CalendarOutline, tone: 'blue' },
-])
-
-const quickLinks = computed(() => [
-  { title: '探索舱', desc: '查看学习星域与资源状态', to: '/student/discovery', icon: RocketOutline },
-  { title: '今日委托', desc: '完成今日任务并领取反馈', to: '/student#daily', icon: CalendarOutline },
-  { title: '成长档案', desc: '查看成长轨迹与成就收藏', to: '/student/me/growth', icon: ArchiveOutline },
-  {
-    title: '试炼关卡',
-    desc:
-      runningTrials.value > 0
-        ? `班级有 ${runningTrials.value} 场试炼进行中，点击参与`
-        : '选择适合你的挑战入口',
-    to: '/student/trials',
-    icon: BarbellOutline,
-  },
 ])
 
 async function loadOverview() {
@@ -137,7 +127,17 @@ function onAssignmentsUpdated(payload: { daily: StudentOverview['daily'] }) {
   workspace.invalidateOverview()
 }
 
-onMounted(loadOverview)
+onMounted(() => {
+  void loadOverview()
+  if (route.hash) void scrollToHashAnchor(route.hash)
+})
+
+watch(
+  () => route.hash,
+  (hash) => {
+    if (hash) void scrollToHashAnchor(hash)
+  },
+)
 </script>
 
 <template>
@@ -163,15 +163,21 @@ onMounted(loadOverview)
               完成全部可获得 {{ totalQuestReward }} XP 反馈。
             </p>
             <div class="hero-band__actions">
-              <a href="#daily" class="primary-link">继续今日委托</a>
-              <RouterLink to="/student/discovery" class="ghost-link">进入探索舱</RouterLink>
+              <RouterLink to="/student/discovery" class="primary-link">进入探索舱</RouterLink>
             </div>
           </div>
           <div class="hero-band__meter" aria-label="等级进度">
-            <span class="meter-ring" :style="{ '--progress': `${xpRatio}%` }">
-              <strong>{{ xpRatio }}</strong>
-              <em>%</em>
-            </span>
+            <div class="meter-hud" :style="{ '--progress': `${xpRatio}%` }">
+              <span class="meter-hud__glow" aria-hidden="true" />
+              <span class="meter-hud__ticks" aria-hidden="true" />
+              <span class="meter-ring">
+                <span class="meter-ring__inner">
+                  <strong>{{ xpRatio }}</strong>
+                  <em>%</em>
+                </span>
+              </span>
+              <span class="meter-hud__scan" aria-hidden="true" />
+            </div>
             <p>{{ rankTitle }}</p>
             <small>{{ totalPoints }} / {{ xpTarget }} XP · 本周 +{{ weekPoints }}</small>
           </div>
@@ -226,7 +232,7 @@ onMounted(loadOverview)
             <dl class="summary-list">
               <div>
                 <dt>所属班级</dt>
-                <dd>{{ profile?.class?.name || '暂未加入班级' }}</dd>
+                <dd>{{ classDisplayLabel }}</dd>
               </div>
               <div>
                 <dt>已解锁成就</dt>
@@ -249,17 +255,6 @@ onMounted(loadOverview)
           :loading="loading"
           @updated="onAssignmentsUpdated"
         />
-
-        <section class="quick-entry" aria-label="快捷入口">
-          <RouterLink v-for="item in quickLinks" :key="item.to" :to="item.to" class="entry-tile">
-            <n-icon :component="item.icon" />
-            <span>
-              <strong>{{ item.title }}</strong>
-              <small>{{ item.desc }}</small>
-            </span>
-            <em aria-hidden="true">›</em>
-          </RouterLink>
-        </section>
       </template>
     </section>
   </DashboardShell>
@@ -371,27 +366,111 @@ onMounted(loadOverview)
   gap: 0.45rem;
 }
 
-.meter-ring {
+.meter-hud {
   --progress: 0%;
+  position: relative;
   display: grid;
-  width: 150px;
+  place-items: center;
+  width: 168px;
+  aspect-ratio: 1;
+}
+
+.meter-hud__glow {
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(35, 255, 222, 0.22), transparent 68%);
+  filter: blur(6px);
+  animation: meter-pulse 2.8s ease-in-out infinite;
+}
+
+.meter-hud__ticks {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from -90deg,
+    rgba(123, 248, 255, 0.55) 0deg 2deg,
+    transparent 2deg 12deg
+  );
+  mask: radial-gradient(circle, transparent 62%, #000 63%);
+  opacity: 0.75;
+}
+
+.meter-ring {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 142px;
   aspect-ratio: 1;
   place-items: center;
   border-radius: 50%;
   background:
-    radial-gradient(circle at center, #071625 57%, transparent 58%),
-    conic-gradient(#7bf8ff var(--progress), rgba(75, 128, 160, 0.24) 0);
+    radial-gradient(circle at center, #071625 54%, transparent 55%),
+    conic-gradient(from -90deg, #23ffde 0%, #7bf8ff var(--progress), rgba(75, 128, 160, 0.18) var(--progress));
+  box-shadow:
+    0 0 0 1px rgba(123, 248, 255, 0.35),
+    0 0 28px rgba(35, 255, 222, 0.28),
+    inset 0 0 24px rgba(35, 255, 222, 0.08);
+}
+
+.meter-ring::before {
+  content: '';
+  position: absolute;
+  inset: 10%;
+  border-radius: 50%;
+  border: 1px dashed rgba(123, 248, 255, 0.28);
+}
+
+.meter-ring__inner {
+  display: grid;
+  place-items: center;
+  text-align: center;
 }
 
 .meter-ring strong {
   color: #ffffff;
-  font-size: 2rem;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 2.15rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-shadow: 0 0 18px rgba(123, 248, 255, 0.55);
 }
 
 .meter-ring em {
-  margin-top: -2.8rem;
-  color: rgba(226, 232, 240, 0.68);
+  margin-top: -0.15rem;
+  color: rgba(123, 248, 255, 0.82);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.72rem;
   font-style: normal;
+  letter-spacing: 0.22em;
+}
+
+.meter-hud__scan {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(123, 248, 255, 0.14) 40deg, transparent 80deg);
+  animation: meter-scan 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes meter-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes meter-scan {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .achievement-hint {
@@ -422,8 +501,7 @@ onMounted(loadOverview)
   color: rgba(226, 232, 240, 0.72);
 }
 
-.stat-grid,
-.quick-entry {
+.stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.9rem;
@@ -431,7 +509,6 @@ onMounted(loadOverview)
 }
 
 .stat-card,
-.entry-tile,
 .mission-panel {
   border: 1px solid rgba(90, 208, 255, 0.12);
   border-radius: 0.85rem;
@@ -529,13 +606,11 @@ onMounted(loadOverview)
   font-weight: 700;
 }
 
-.quest-mini strong,
-.entry-tile strong {
+.quest-mini strong {
   color: #ffffff;
 }
 
 .quest-mini p,
-.entry-tile small,
 .summary-list dt {
   margin: 0.25rem 0 0;
   color: rgba(226, 232, 240, 0.62);
@@ -570,32 +645,6 @@ onMounted(loadOverview)
   font-weight: 700;
 }
 
-.quick-entry {
-  padding-bottom: 0.2rem;
-}
-
-.entry-tile {
-  display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr) auto;
-  gap: 0.75rem;
-  align-items: center;
-  min-height: 92px;
-  padding: 1rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.entry-tile > .n-icon {
-  color: #52fff1;
-  font-size: 1.6rem;
-}
-
-.entry-tile em {
-  color: rgba(82, 255, 241, 0.78);
-  font-size: 1.5rem;
-  font-style: normal;
-}
-
 @media (max-width: 1100px) {
   .student-home {
     padding-inline: 1rem;
@@ -606,15 +655,13 @@ onMounted(loadOverview)
     grid-template-columns: 1fr;
   }
 
-  .stat-grid,
-  .quick-entry {
+  .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
   .stat-grid,
-  .quick-entry,
   .quest-mini {
     grid-template-columns: 1fr;
   }
@@ -622,5 +669,54 @@ onMounted(loadOverview)
   .hero-band {
     padding: 1.1rem;
   }
+}
+
+html[data-theme='light'] .state-panel,
+html[data-theme='light'] .hero-band,
+html[data-theme='light'] .achievement-hint,
+html[data-theme='light'] .stat-card,
+html[data-theme='light'] .mission-panel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 248, 252, 0.92));
+  border-color: rgba(8, 145, 178, 0.18);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme='light'] .hero-band h2,
+html[data-theme='light'] .stat-card strong,
+html[data-theme='light'] .quest-mini strong,
+html[data-theme='light'] .summary-list dd {
+  color: #0f172a;
+}
+
+html[data-theme='light'] .hero-band p,
+html[data-theme='light'] .stat-card span,
+html[data-theme='light'] .quest-mini p {
+  color: #475569;
+}
+
+html[data-theme='light'] .hero-band__eyebrow,
+html[data-theme='light'] .section-head h2,
+html[data-theme='light'] .quest-mini__time,
+html[data-theme='light'] .quest-mini em {
+  color: #0891b2;
+}
+
+html[data-theme='light'] .meter-ring {
+  background:
+    radial-gradient(circle at center, #f8fafc 54%, transparent 55%),
+    conic-gradient(from -90deg, #0891b2 0%, #22d3ee var(--progress), rgba(148, 163, 184, 0.2) var(--progress));
+  box-shadow:
+    0 0 0 1px rgba(8, 145, 178, 0.25),
+    0 0 20px rgba(8, 145, 178, 0.12);
+}
+
+html[data-theme='light'] .meter-ring strong {
+  color: #0f172a;
+  text-shadow: none;
+}
+
+html[data-theme='light'] .primary-link {
+  background: linear-gradient(90deg, #0891b2, #06b6d4);
+  color: #ffffff;
 }
 </style>

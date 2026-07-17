@@ -76,13 +76,11 @@ const router = createRouter({
       path: '/student/me/growth',
       name: 'student-growth',
       meta: { roles: ['student'] },
-      component: () => import('../views/ExplorationArchivesView.vue'),
+      component: () => import('../views/StudentGrowthView.vue'),
     },
     {
       path: '/student/me/profile',
-      name: 'student-profile',
-      meta: { roles: ['student'] },
-      component: () => import('../views/StudentProfileView.vue'),
+      redirect: '/student/me/growth',
     },
     {
       path: '/student/me/settings',
@@ -92,7 +90,7 @@ const router = createRouter({
     },
     { path: '/student/daily', redirect: { path: '/student', hash: '#daily' } },
     { path: '/student/archives', redirect: '/student/me/growth' },
-    { path: '/student/profile', redirect: '/student/me/profile' },
+    { path: '/student/profile', redirect: '/student/me/growth' },
     { path: '/student/control', redirect: '/student/me/settings' },
     { path: '/student/resources', redirect: '/student/star-path/resources' },
     {
@@ -110,15 +108,21 @@ const router = createRouter({
           name: 'teacher-starfield',
           component: () => import('../views/TeacherStarfieldView.vue'),
         },
+        { path: 'explorers', redirect: '/teacher/starfield' },
         {
-          path: 'explorers',
-          name: 'teacher-explorers',
-          component: () => import('../views/TeacherExplorersView.vue'),
+          path: 'classes',
+          name: 'teacher-classes',
+          component: () => import('../views/TeacherClassManageView.vue'),
         },
         {
           path: 'trials',
           name: 'teacher-trials',
           component: () => import('../views/TrialArenaView.vue'),
+        },
+        {
+          path: 'trials/create',
+          name: 'teacher-trial-create',
+          component: () => import('../views/TeacherTrialCreateView.vue'),
         },
         {
           path: 'resources',

@@ -2,7 +2,6 @@ import type { TourStepConfig } from './types'
 
 /**
  * 教师端导览步骤
- * 班级看板/薄弱点/AI建议在 /teacher 首页；学生档案跳转 /teacher/explorers
  */
 export const teacherTour: TourStepConfig[] = [
   {
@@ -17,8 +16,9 @@ export const teacherTour: TourStepConfig[] = [
   },
   {
     element: '[data-tour="teacher-student-profile"]',
-    title: '学生档案',
-    description: '教师可以查看学生的学习轨迹、能力画像和错题记录，进行更有针对性的指导。',
+    title: '星域观测',
+    description: '在星域观测页查看班级知识掌握、薄弱点与需关注学生，配合 AI 学情诊断制定干预方案。',
+    prepareRoute: '/teacher/starfield',
   },
   {
     element: '[data-tour="teacher-weak-points"]',
@@ -29,5 +29,6 @@ export const teacherTour: TourStepConfig[] = [
     element: '[data-tour="teacher-ai-suggestion"]',
     title: 'AI 教学建议',
     description: 'AI 会根据班级数据生成教学建议，辅助教师调整教学节奏和讲解重点。',
+    prepareRoute: '/teacher/starfield',
   },
 ]

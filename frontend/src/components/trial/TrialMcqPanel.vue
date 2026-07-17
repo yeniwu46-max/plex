@@ -8,6 +8,7 @@ import {
 } from '../../api/studentTrials'
 import { submitAssignmentAnswer, type TeacherAssignmentItem } from '../../api/studentAssignments'
 import { showIncentiveFeedback } from '../../utils/incentiveFeedback'
+import { xiaoESubmitCheckSummary } from '../../utils/xiaoEPersona'
 
 const props = defineProps<{
   trialId: number
@@ -26,6 +27,7 @@ const payload = ref<StudentTrialQuestionsResult | null>(null)
 const selections = ref<Record<number, number | null>>({})
 const submittingId = ref<number | null>(null)
 const feedback = ref<Record<number, { correct: boolean; correctIndex: number }>>({})
+const agentTraceFeedback = ref<Record<number, string>>({})
 const questionStartedAt = ref<Record<number, number>>({})
 
 function markQuestionStart(questionId: number) {
@@ -88,6 +90,14 @@ async function submit(item: TeacherAssignmentItem) {
   try {
     const result = await submitAssignmentAnswer(item.id, selected, elapsedSec(item.id))
     feedback.value[item.id] = { correct: result.correct, correctIndex: result.correct_index }
+    if (result.agent_trace?.items?.length) {
+      agentTraceFeedback.value[item.id] = xiaoESubmitCheckSummary(
+        result.agent_trace.items
+          .slice(0, 2)
+          .map((row) => row.summary)
+          .join(' · '),
+      )
+    }
     showIncentiveFeedback(message, result.incentive ?? result.trial_complete?.incentive)
     if (result.trial_complete) {
       message.success(`试炼已完成，得分 ${result.trial_complete.participation.score}`)
@@ -186,6 +196,9 @@ onMounted(() => {
           </button>
         </li>
       </ul>
+      <p v-if="agentTraceFeedback[item.id]" class="trial-mcq__agent-trace">
+        小E：{{ agentTraceFeedback[item.id] }}
+      </p>
       <footer v-if="!isDone">
         <n-button
           type="primary"
@@ -283,6 +296,17 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.trial-mcq__agent-trace {
+  margin: 0.65rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(129, 140, 248, 0.1);
+  border: 1px solid rgba(129, 140, 248, 0.18);
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .option-btn {

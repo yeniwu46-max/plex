@@ -11,6 +11,7 @@ import {
 import PlexSidebar from './PlexSidebar.vue'
 import type { StudentNavKey } from './PlexSidebar.vue'
 import PlexTopbar from './PlexTopbar.vue'
+import PlexGuideTour from '../common/PlexGuideTour.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -68,6 +69,7 @@ function goStarMap() {
         <slot />
       </div>
     </div>
+    <PlexGuideTour v-if="activeNav" role="student" />
   </div>
 </template>
 

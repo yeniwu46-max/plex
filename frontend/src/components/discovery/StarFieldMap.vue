@@ -11,6 +11,8 @@ import {
   TrophyOutline,
 } from '@vicons/ionicons5'
 import EmergencyMissionModal from './EmergencyMissionModal.vue'
+import StarMapParticles from './StarMapParticles.vue'
+import { navigateAndScroll } from '../../utils/navigation'
 
 const props = withDefaults(
   defineProps<{
@@ -50,7 +52,7 @@ function openMessenger() {
 }
 
 function openDailyQuest() {
-  void router.push({ path: '/student', hash: '#daily' })
+  void navigateAndScroll(router, { path: '/student', hash: '#daily' })
 }
 
 function openTrials() {
@@ -64,6 +66,7 @@ function openStarPath() {
 
 <template>
   <div class="star-map" aria-label="探索舱星图">
+    <StarMapParticles />
     <div class="orbit-field" aria-hidden="true">
       <span class="orbit orbit--outer" />
       <span class="orbit orbit--middle" />
@@ -95,15 +98,15 @@ function openStarPath() {
         </linearGradient>
       </defs>
       <g filter="url(#mapLineGlow)">
-        <line x1="50" y1="51" x2="50" y2="21" stroke="url(#lineTeal)" stroke-width="0.35" />
-        <line x1="50" y1="51" x2="22" y2="37" stroke="url(#lineAmber)" stroke-width="0.28" />
-        <line x1="50" y1="51" x2="80" y2="38" stroke="url(#linePurple)" stroke-width="0.28" />
-        <line x1="50" y1="51" x2="23" y2="65" stroke="url(#lineTeal)" stroke-width="0.28" />
-        <line x1="50" y1="51" x2="50" y2="82" stroke="rgba(177,206,222,0.34)" stroke-width="0.25" />
-        <line x1="50" y1="51" x2="79" y2="64" stroke="rgba(177,206,222,0.3)" stroke-width="0.25" />
+        <line class="energy-line energy-line--teal" x1="50" y1="51" x2="50" y2="13" stroke="url(#lineTeal)" stroke-width="0.35" />
+        <line class="energy-line energy-line--amber" x1="50" y1="51" x2="22" y2="37" stroke="url(#lineAmber)" stroke-width="0.28" />
+        <line class="energy-line energy-line--purple" x1="50" y1="51" x2="80" y2="38" stroke="url(#linePurple)" stroke-width="0.28" />
+        <line class="energy-line energy-line--teal energy-line--delay-1" x1="50" y1="51" x2="23" y2="65" stroke="url(#lineTeal)" stroke-width="0.28" />
+        <line class="energy-line energy-line--muted" x1="50" y1="51" x2="50" y2="82" stroke="rgba(177,206,222,0.34)" stroke-width="0.25" />
+        <line class="energy-line energy-line--muted energy-line--delay-2" x1="50" y1="51" x2="79" y2="64" stroke="rgba(177,206,222,0.3)" stroke-width="0.25" />
       </g>
       <g fill="#e9fbff">
-        <circle cx="50" cy="38" r="0.55" />
+        <circle cx="50" cy="13" r="0.55" />
         <circle cx="37" cy="47" r="0.45" />
         <circle cx="63" cy="48" r="0.45" />
         <circle cx="25" cy="65" r="0.55" />
@@ -202,6 +205,9 @@ function openStarPath() {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(16, 240, 192, 0.06), transparent 42%),
+    radial-gradient(circle at 82% 68%, rgba(120, 80, 255, 0.05), transparent 35%);
 }
 
 .orbit-field {
@@ -218,6 +224,56 @@ function openStarPath() {
   border-radius: 50%;
   transform: translate(-50%, -50%) rotate(-8deg);
   box-shadow: 0 0 22px rgba(39, 255, 238, 0.035);
+  animation: orbit-spin 96s linear infinite;
+}
+
+.orbit--middle {
+  animation-duration: 72s;
+  animation-direction: reverse;
+}
+
+.orbit--inner {
+  animation-duration: 56s;
+}
+
+.orbit--core {
+  animation: orbit-pulse 8.5s ease-in-out infinite;
+}
+
+@keyframes orbit-spin {
+  from { transform: translate(-50%, -50%) rotate(-8deg); }
+  to { transform: translate(-50%, -50%) rotate(352deg); }
+}
+
+@keyframes orbit-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 26px rgba(39, 255, 238, 0.16),
+      inset 0 0 28px rgba(39, 255, 238, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 38px rgba(39, 255, 238, 0.32),
+      inset 0 0 36px rgba(39, 255, 238, 0.14);
+  }
+}
+
+.energy-line {
+  stroke-dasharray: 3 2.5;
+  animation: energy-flow 5.6s linear infinite;
+}
+
+.energy-line--delay-1 {
+  animation-delay: 1.2s;
+}
+
+.energy-line--delay-2 {
+  animation-delay: 2.4s;
+}
+
+@keyframes energy-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -24; }
 }
 
 .orbit--outer {
@@ -292,6 +348,16 @@ function openStarPath() {
     inset 0 0 20px rgba(255, 255, 255, 0.035);
   color: #ffffff;
   transition: transform 0.18s ease;
+  animation: node-glow 7.2s ease-in-out infinite;
+}
+
+@keyframes node-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--node-color) 45%, transparent));
+  }
+  50% {
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--node-color) 75%, transparent));
+  }
 }
 
 .map-node__orb::before {
@@ -448,6 +514,12 @@ function openStarPath() {
     0 0 38px rgba(16, 240, 192, 0.56);
   color: #eaffff;
   transition: transform 0.18s ease;
+  animation: hub-pulse 5.6s ease-in-out infinite;
+}
+
+@keyframes hub-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
 }
 
 .map-hub__core::before {

@@ -1,4 +1,7 @@
 import { getClassArenaQuestion } from './classArenaQuestions'
+import { getCachedPracticeQuestion } from '../utils/practiceQuestionCache'
+import { normalizeQuestion } from '../utils/questionNaming'
+import { wrapExploration } from '../utils/explorationNarrative'
 
 export type PythonTrialDifficulty = '入门' | '基础' | '进阶' | '挑战'
 
@@ -15,6 +18,7 @@ export interface PythonTestCase {
 
 export interface PythonTrialQuestion {
   id: string
+  code?: string
   title: string
   topic: string
   difficulty: PythonTrialDifficulty
@@ -39,8 +43,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     rewardXp: 20,
     durationMin: 5,
     tags: ['输出', '字符串'],
-    description:
-      '编写程序，向 PLEX 宇宙输出一句问候语。要求使用 `print()`，且输出内容必须与样例完全一致（区分大小写）。',
+    description: wrapExploration(
+      '首次登陆数据星，需要向 PLEX 总部发送标准问候',
+      '使用 `print()` 输出 `Hello, PLEX!`（区分大小写，与样例完全一致）。',
+    ),
     constraints: ['仅使用 print', '不要额外输入输出'],
     examples: [
       {
@@ -63,8 +69,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     rewardXp: 25,
     durationMin: 8,
     tags: ['变量', '加法'],
-    description:
-      '已有两个整数变量 `a` 与 `b`（由测试数据注入）。请计算它们的和并 `print` 输出，不要修改给定变量名。',
+    description: wrapExploration(
+      '火星轨道站上报了两路能量读数 `a` 与 `b`',
+      '计算它们的和并用 `print` 输出，不要修改给定变量名。',
+    ),
     constraints: ['使用 print 输出结果', '结果为整数'],
     examples: [
       { input: 'a = 3, b = 5', output: '8' },
@@ -87,8 +95,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     rewardXp: 30,
     durationMin: 10,
     tags: ['if', '模运算'],
-    description:
-      '给定整数 `n`，若为偶数输出 `偶数`，否则输出 `奇数`。请使用 `if/else` 完成判断。',
+    description: wrapExploration(
+      '小E 的奇偶探测器扫描到整数 `n` 的波动',
+      '若为偶数输出 `偶数`，否则输出 `奇数`，请使用 `if/else`。',
+    ),
     constraints: ['输出必须是「偶数」或「奇数」', '使用 if/else'],
     examples: [
       { input: 'n = 4', output: '偶数' },
@@ -209,7 +219,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['输出', '变量'],
     description: '变量 `name` 已给定。请输出 `Hello, PLEX!`（使用 print，内容须与样例一致）。',
     constraints: ['使用 print', '输出固定为 Hello, PLEX!'],
-    examples: [{ input: 'name = "PLEX"', output: 'Hello, PLEX!' }],
+    examples: [
+      { input: 'name = "PLEX"', output: 'Hello, PLEX!' },
+      { input: 'name = "Explorer"', output: 'Hello, PLEX!' },
+    ],
     testCases: [{ id: 't1', label: '基础', setup: 'name = "PLEX"', expected: 'Hello, PLEX!' }],
     starterCode: `# name 已给定\n# 输出 Hello, PLEX!\n`,
     runMode: 'stdout',
@@ -225,7 +238,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['输出', '算术'],
     description: '请 `print` 输出表达式 `6 * 7` 的计算结果（只输出数字）。',
     constraints: ['只输出一个整数'],
-    examples: [{ input: '（无输入）', output: '42' }],
+    examples: [
+      { input: '（无输入）', output: '42' },
+      { input: '（无输入）', output: '42' },
+    ],
     testCases: [{ id: 't1', label: '乘法', expected: '42' }],
     starterCode: `# 输出 6 * 7 的结果\n`,
     runMode: 'stdout',
@@ -241,7 +257,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['输出', '多行'],
     description: '依次输出两行：`PLEX` 与 `Ready`。两行之间不要有多余空行。',
     constraints: ['恰好两行', '区分大小写'],
-    examples: [{ input: '（无输入）', output: 'PLEX\nReady' }],
+    examples: [
+      { input: '（无输入）', output: 'PLEX\nReady' },
+      { input: '（无输入）', output: 'PLEX\nReady' },
+    ],
     testCases: [{ id: 't1', label: '双行', expected: 'PLEX\nReady' }],
     starterCode: `# 输出两行：PLEX 与 Ready\n`,
     runMode: 'stdout',
@@ -257,7 +276,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['变量', '乘法'],
     description: '给定整数 `a` 与 `b`，计算乘积并 `print` 输出。',
     constraints: ['使用 print 输出结果'],
-    examples: [{ input: 'a = 4, b = 5', output: '20' }],
+    examples: [
+      { input: 'a = 4, b = 5', output: '20' },
+      { input: 'a = 7, b = 8', output: '56' },
+    ],
     testCases: [
       { id: 't1', label: '样例', setup: 'a = 4\nb = 5', expected: '20' },
       { id: 't2', label: '隐藏', setup: 'a = 7\nb = 8', expected: '56' },
@@ -276,7 +298,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['变量', '减法'],
     description: '给定整数 `a` 与 `b`，计算 `a - b` 并 `print` 输出。',
     constraints: ['使用 print 输出结果'],
-    examples: [{ input: 'a = 10, b = 3', output: '7' }],
+    examples: [
+      { input: 'a = 10, b = 3', output: '7' },
+      { input: 'a = 2, b = 8', output: '-6' },
+    ],
     testCases: [
       { id: 't1', label: '样例', setup: 'a = 10\nb = 3', expected: '7' },
       { id: 't2', label: '负数', setup: 'a = 2\nb = 8', expected: '-6' },
@@ -295,7 +320,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['变量', '整除'],
     description: '给定整数 `a` 与 `b`（b ≠ 0），输出 `a // b` 的整除结果。',
     constraints: ['使用 // 整除', '使用 print 输出'],
-    examples: [{ input: 'a = 17, b = 5', output: '3' }],
+    examples: [
+      { input: 'a = 17, b = 5', output: '3' },
+      { input: 'a = 20, b = 4', output: '5' },
+    ],
     testCases: [
       { id: 't1', label: '样例', setup: 'a = 17\nb = 5', expected: '3' },
       { id: 't2', label: '隐藏', setup: 'a = 20\nb = 4', expected: '5' },
@@ -314,7 +342,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['if', '比较'],
     description: '给定整数 `a` 与 `b`，输出两者中的较大值。请使用 `if/else`。',
     constraints: ['使用 if/else', '输出整数'],
-    examples: [{ input: 'a = 3, b = 9', output: '9' }],
+    examples: [
+      { input: 'a = 3, b = 9', output: '9' },
+      { input: 'a = 12, b = 5', output: '12' },
+    ],
     testCases: [
       { id: 't1', label: 'a 小', setup: 'a = 3\nb = 9', expected: '9' },
       { id: 't2', label: 'b 小', setup: 'a = 12\nb = 5', expected: '12' },
@@ -334,7 +365,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['if', '比较'],
     description: '给定整数 `score`，若 `score >= 60` 输出 `及格`，否则输出 `不及格`。',
     constraints: ['输出必须是「及格」或「不及格」'],
-    examples: [{ input: 'score = 75', output: '及格' }],
+    examples: [
+      { input: 'score = 75', output: '及格' },
+      { input: 'score = 59', output: '不及格' },
+    ],
     testCases: [
       { id: 't1', label: '及格', setup: 'score = 75', expected: '及格' },
       { id: 't2', label: '不及格', setup: 'score = 59', expected: '不及格' },
@@ -354,7 +388,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['if', 'elif'],
     description: '给定整数 `n`：大于 0 输出 `正数`，小于 0 输出 `负数`，等于 0 输出 `零`。',
     constraints: ['使用 if/elif/else', '输出三选一'],
-    examples: [{ input: 'n = -3', output: '负数' }],
+    examples: [
+      { input: 'n = -3', output: '负数' },
+      { input: 'n = 5', output: '正数' },
+    ],
     testCases: [
       { id: 't1', label: '负', setup: 'n = -3', expected: '负数' },
       { id: 't2', label: '正', setup: 'n = 5', expected: '正数' },
@@ -374,7 +411,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['循环', '累乘'],
     description: '给定正整数 `n`（1 ≤ n ≤ 10），用 `for` 循环计算 n 的阶乘并输出。',
     constraints: ['使用 for 循环', 'n 至少为 1'],
-    examples: [{ input: 'n = 5', output: '120' }],
+    examples: [
+      { input: 'n = 5', output: '120' },
+      { input: 'n = 4', output: '24' },
+    ],
     testCases: [
       { id: 't1', label: 'n=5', setup: 'n = 5', expected: '120' },
       { id: 't2', label: 'n=1', setup: 'n = 1', expected: '1' },
@@ -394,7 +434,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['循环', '计数'],
     description: '给定正整数 `n`，统计 1 到 n 中偶数的个数并输出。',
     constraints: ['使用 for 循环', '含 n 本身'],
-    examples: [{ input: 'n = 6', output: '3' }],
+    examples: [
+      { input: 'n = 6', output: '3' },
+      { input: 'n = 10', output: '5' },
+    ],
     testCases: [
       { id: 't1', label: 'n=6', setup: 'n = 6', expected: '3' },
       { id: 't2', label: 'n=1', setup: 'n = 1', expected: '0' },
@@ -414,7 +457,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['循环', '输出'],
     description: '给定正整数 `n`，输出一行 `n*1 n*2 n*3 n*4 n*5`，数字之间用一个空格分隔。',
     constraints: ['使用 for 循环', '恰好 5 项'],
-    examples: [{ input: 'n = 3', output: '3 6 9 12 15' }],
+    examples: [
+      { input: 'n = 3', output: '3 6 9 12 15' },
+      { input: 'n = 2', output: '2 4 6 8 10' },
+    ],
     testCases: [
       { id: 't1', label: 'n=3', setup: 'n = 3', expected: '3 6 9 12 15' },
       { id: 't2', label: 'n=2', setup: 'n = 2', expected: '2 4 6 8 10' },
@@ -433,7 +479,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['列表', 'min'],
     description: '给定非空整数列表 `nums`，输出其中的最小值。',
     constraints: ['列表非空'],
-    examples: [{ input: 'nums = [3, 9, 1]', output: '1' }],
+    examples: [
+      { input: 'nums = [3, 9, 1]', output: '1' },
+      { input: 'nums = [-2, 0, 5]', output: '-2' },
+    ],
     testCases: [
       { id: 't1', label: '样例', setup: 'nums = [3, 9, 1]', expected: '1' },
       { id: 't2', label: '负数', setup: 'nums = [-2, 0, 5]', expected: '-2' },
@@ -452,7 +501,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['列表', '循环'],
     description: '给定整数列表 `nums`，用 `for` 循环求所有元素之和并输出。',
     constraints: ['使用 for 循环', '列表非空'],
-    examples: [{ input: 'nums = [1, 2, 3]', output: '6' }],
+    examples: [
+      { input: 'nums = [1, 2, 3]', output: '6' },
+      { input: 'nums = [10, -2, 5]', output: '13' },
+    ],
     testCases: [
       { id: 't1', label: '样例', setup: 'nums = [1, 2, 3]', expected: '6' },
       { id: 't2', label: '负数', setup: 'nums = [10, -2, 5]', expected: '13' },
@@ -471,7 +523,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['列表', '索引'],
     description: '给定非空整数列表 `nums`，输出第一个元素与最后一个元素之和。',
     constraints: ['列表至少 1 个元素'],
-    examples: [{ input: 'nums = [4, 7, 2, 9]', output: '13' }],
+    examples: [
+      { input: 'nums = [4, 7, 2, 9]', output: '13' },
+      { input: 'nums = [5]', output: '10' },
+    ],
     testCases: [
       { id: 't1', label: '多样例', setup: 'nums = [4, 7, 2, 9]', expected: '13' },
       { id: 't2', label: '单元素', setup: 'nums = [5]', expected: '10' },
@@ -490,7 +545,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['函数', 'return'],
     description: '实现 `rect_perimeter(w, h)`，返回矩形周长 `2 * (w + h)`。',
     constraints: ['函数名必须为 rect_perimeter'],
-    examples: [{ input: 'w=4, h=5', output: '18' }],
+    examples: [
+      { input: 'w=4, h=5', output: '18' },
+      { input: 'w=3, h=3', output: '12' },
+    ],
     testCases: [
       { id: 't1', label: '样例', invoke: 'str(rect_perimeter(4, 5))', expected: '18' },
       { id: 't2', label: '正方形', invoke: 'str(rect_perimeter(3, 3))', expected: '12' },
@@ -509,7 +567,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['函数', 'return'],
     description: '实现 `double(x)`，返回 x 的两倍。',
     constraints: ['函数名必须为 double'],
-    examples: [{ input: 'x=7', output: '14' }],
+    examples: [
+      { input: 'x=7', output: '14' },
+      { input: 'x=0', output: '0' },
+    ],
     testCases: [
       { id: 't1', label: '正数', invoke: 'str(double(7))', expected: '14' },
       { id: 't2', label: '零', invoke: 'str(double(0))', expected: '0' },
@@ -528,7 +589,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['函数', 'return'],
     description: '实现 `max_two(a, b)`，返回 a 与 b 中的较大值。',
     constraints: ['函数名必须为 max_two', '使用 return'],
-    examples: [{ input: 'a=3, b=9', output: '9' }],
+    examples: [
+      { input: 'a=3, b=9', output: '9' },
+      { input: 'a=5, b=5', output: '5' },
+    ],
     testCases: [
       { id: 't1', label: 'a 小', invoke: 'str(max_two(3, 9))', expected: '9' },
       { id: 't2', label: '相等', invoke: 'str(max_two(5, 5))', expected: '5' },
@@ -547,7 +611,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['函数', '循环', '列表'],
     description: '实现 `count_positive(nums)`，返回列表中大于 0 的元素个数。',
     constraints: ['函数名必须为 count_positive', '使用 for 循环'],
-    examples: [{ input: 'nums = [1, -2, 3, 0]', output: '2' }],
+    examples: [
+      { input: 'nums = [1, -2, 3, 0]', output: '2' },
+      { input: 'nums = [-1, -2]', output: '0' },
+    ],
     testCases: [
       { id: 't1', label: '样例', invoke: 'str(count_positive([1, -2, 3, 0]))', expected: '2' },
       { id: 't2', label: '全负', invoke: 'str(count_positive([-1, -2]))', expected: '0' },
@@ -566,7 +633,10 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     tags: ['函数', '循环'],
     description: '实现 `sum_range(a, b)`，返回从 a 到 b（含两端）所有整数的和。保证 a ≤ b。',
     constraints: ['函数名必须为 sum_range', '使用 for 循环'],
-    examples: [{ input: 'a=1, b=5', output: '15' }],
+    examples: [
+      { input: 'a=1, b=5', output: '15' },
+      { input: 'a=4, b=4', output: '4' },
+    ],
     testCases: [
       { id: 't1', label: '样例', invoke: 'str(sum_range(1, 5))', expected: '15' },
       { id: 't2', label: '单点', invoke: 'str(sum_range(4, 4))', expected: '4' },
@@ -596,8 +666,232 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
     runMode: 'expression',
     hint: 'if n % 3 == 0: return "Fizz"',
   },
+  {
+    id: 'algo-bubble-sort',
+    title: '冒泡升序',
+    topic: '冒泡排序',
+    difficulty: '进阶',
+    rewardXp: 48,
+    durationMin: 20,
+    tags: ['排序', '列表', '循环'],
+    description:
+      '实现 `bubble_sort(nums)`，用冒泡排序将整数列表升序排列并返回新列表（不要修改原列表）。',
+    constraints: ['函数名 bubble_sort', '返回新列表', '使用双重循环'],
+    examples: [
+      { input: 'nums = [3, 1, 2]', output: '[1, 2, 3]' },
+      { input: 'nums = [5, 4, 3, 2, 1]', output: '[1, 2, 3, 4, 5]' },
+    ],
+    testCases: [
+      { id: 't1', label: '样例', invoke: 'str(bubble_sort([3, 1, 2]))', expected: '[1, 2, 3]' },
+      { id: 't2', label: '已排序', invoke: 'str(bubble_sort([1, 2, 3]))', expected: '[1, 2, 3]' },
+      { id: 't3', label: '逆序', invoke: 'str(bubble_sort([5, 4, 3, 2, 1]))', expected: '[1, 2, 3, 4, 5]' },
+    ],
+    starterCode: `def bubble_sort(nums):\n    # 冒泡排序，返回升序新列表\n    pass\n`,
+    runMode: 'expression',
+    hint: '复制列表后，相邻元素比较并交换。',
+  },
+  {
+    id: 'algo-bubble-pass',
+    title: '冒泡一轮',
+    topic: '冒泡排序',
+    difficulty: '基础',
+    rewardXp: 40,
+    durationMin: 15,
+    tags: ['排序', '列表'],
+    description:
+      '实现 `bubble_pass(nums)`，对列表执行一轮冒泡（相邻比较交换），返回这一轮结束后的列表。',
+    constraints: ['函数名 bubble_pass', '原地修改并返回 nums'],
+    examples: [
+      { input: 'nums = [3, 1, 2]', output: '[1, 2, 3]' },
+      { input: 'nums = [1, 2, 3]', output: '[1, 2, 3]' },
+    ],
+    testCases: [
+      { id: 't1', label: '样例', invoke: 'str(bubble_pass([3, 1, 2]))', expected: '[1, 2, 3]' },
+      { id: 't2', label: '无需交换', invoke: 'str(bubble_pass([1, 2, 3]))', expected: '[1, 2, 3]' },
+    ],
+    starterCode: `def bubble_pass(nums):\n    pass\n`,
+    runMode: 'expression',
+    hint: '内层循环到 len(nums)-1。',
+  },
+  {
+    id: 'algo-bubble-swaps',
+    title: '冒泡交换次数',
+    topic: '冒泡排序',
+    difficulty: '进阶',
+    rewardXp: 44,
+    durationMin: 18,
+    tags: ['排序', '计数'],
+    description:
+      '实现 `count_bubble_swaps(nums)`，用冒泡排序思路统计升序排列过程中发生的交换次数。',
+    constraints: ['函数名 count_bubble_swaps', '返回 int'],
+    examples: [
+      { input: 'nums = [3, 1, 2]', output: '2' },
+      { input: 'nums = [1, 2, 3]', output: '0' },
+    ],
+    testCases: [
+      { id: 't1', label: '样例', invoke: 'str(count_bubble_swaps([3, 1, 2]))', expected: '2' },
+      { id: 't2', label: '已排序', invoke: 'str(count_bubble_swaps([1, 2, 3]))', expected: '0' },
+    ],
+    starterCode: `def count_bubble_swaps(nums):\n    pass\n`,
+    runMode: 'expression',
+    hint: '每次交换 swaps += 1。',
+  },
+  {
+    id: 'algo-selection-sort',
+    title: '选择升序',
+    topic: '选择排序',
+    difficulty: '进阶',
+    rewardXp: 48,
+    durationMin: 20,
+    tags: ['排序', '列表'],
+    description:
+      '实现 `selection_sort(nums)`，用选择排序将整数列表升序排列并返回新列表。',
+    constraints: ['函数名 selection_sort', '返回新列表'],
+    examples: [
+      { input: 'nums = [4, 2, 3]', output: '[2, 3, 4]' },
+      { input: 'nums = [3, 2, 1]', output: '[1, 2, 3]' },
+    ],
+    testCases: [
+      { id: 't1', label: '样例', invoke: 'str(selection_sort([4, 2, 3]))', expected: '[2, 3, 4]' },
+      { id: 't2', label: '逆序', invoke: 'str(selection_sort([3, 2, 1]))', expected: '[1, 2, 3]' },
+    ],
+    starterCode: `def selection_sort(nums):\n    pass\n`,
+    runMode: 'expression',
+    hint: '每轮找最小元素放到前面。',
+  },
+  {
+    id: 'algo-selection-min-index',
+    title: '最小索引',
+    topic: '选择排序',
+    difficulty: '基础',
+    rewardXp: 38,
+    durationMin: 14,
+    tags: ['排序', '索引'],
+    description:
+      '实现 `min_index(nums, start)`，返回从索引 `start` 到末尾的最小元素所在索引。',
+    constraints: ['函数名 min_index', '列表非空'],
+    examples: [
+      { input: 'nums = [5, 2, 8, 1], start = 1', output: '3' },
+      { input: 'nums = [3, 1, 2], start = 0', output: '1' },
+    ],
+    testCases: [
+      { id: 't1', label: '样例', invoke: 'str(min_index([5, 2, 8, 1], 1))', expected: '3' },
+      { id: 't2', label: 'start=0', invoke: 'str(min_index([3, 1, 2], 0))', expected: '1' },
+    ],
+    starterCode: `def min_index(nums, start):\n    pass\n`,
+    runMode: 'expression',
+    hint: '从 start 遍历找最小值索引。',
+  },
+  {
+    id: 'algo-selection-step',
+    title: '选择一步',
+    topic: '选择排序',
+    difficulty: '基础',
+    rewardXp: 40,
+    durationMin: 15,
+    tags: ['排序', '交换'],
+    description:
+      '实现 `selection_step(nums, i)`，将索引 i 到末尾的最小元素交换到位置 i，返回 nums。',
+    constraints: ['函数名 selection_step', '原地交换'],
+    examples: [
+      { input: 'nums = [4, 2, 3], i = 0', output: '[2, 4, 3]' },
+      { input: 'nums = [2, 4, 3], i = 1', output: '[2, 3, 4]' },
+    ],
+    testCases: [
+      { id: 't1', label: '样例', invoke: 'str(selection_step([4, 2, 3], 0))', expected: '[2, 4, 3]' },
+      { id: 't2', label: 'i=1', invoke: 'str(selection_step([2, 4, 3], 1))', expected: '[2, 3, 4]' },
+    ],
+    starterCode: `def selection_step(nums, i):\n    pass\n`,
+    runMode: 'expression',
+    hint: '先找 min_index 再交换。',
+  },
+  {
+    id: 'algo-binary-search',
+    title: '二分查找',
+    topic: '二分查找',
+    difficulty: '进阶',
+    rewardXp: 50,
+    durationMin: 22,
+    tags: ['查找', '算法'],
+    description:
+      '实现 `binary_search(nums, target)`，在升序整数列表中查找 target，找到返回索引，否则返回 -1。',
+    constraints: ['函数名 binary_search', '列表已升序'],
+    examples: [
+      { input: 'nums = [1, 3, 5, 7], target = 5', output: '2' },
+      { input: 'nums = [1, 3, 5, 7], target = 4', output: '-1' },
+    ],
+    testCases: [
+      { id: 't1', label: '命中', invoke: 'str(binary_search([1, 3, 5, 7], 5))', expected: '2' },
+      { id: 't2', label: '未命中', invoke: 'str(binary_search([1, 3, 5, 7], 4))', expected: '-1' },
+      { id: 't3', label: '首元素', invoke: 'str(binary_search([2, 4, 6], 2))', expected: '0' },
+    ],
+    starterCode: `def binary_search(nums, target):\n    pass\n`,
+    runMode: 'expression',
+    hint: '维护 left、right 与 mid。',
+  },
+  {
+    id: 'algo-binary-check',
+    title: '二分判定',
+    topic: '二分查找',
+    difficulty: '基础',
+    rewardXp: 42,
+    durationMin: 16,
+    tags: ['查找', '算法'],
+    description:
+      '实现 `contains_sorted(nums, target)`，判断升序列表中是否包含 target，包含输出 `yes`，否则 `no`。',
+    constraints: ['函数名 contains_sorted', '使用二分思想'],
+    examples: [
+      { input: 'nums = [1, 4, 9], target = 4', output: 'yes' },
+      { input: 'nums = [1, 4, 9], target = 3', output: 'no' },
+    ],
+    testCases: [
+      { id: 't1', label: '存在', invoke: 'contains_sorted([1, 4, 9], 4)', expected: 'yes' },
+      { id: 't2', label: '不存在', invoke: 'contains_sorted([1, 4, 9], 3)', expected: 'no' },
+    ],
+    starterCode: `def contains_sorted(nums, target):\n    pass\n`,
+    runMode: 'expression',
+    hint: '可调用 binary_search 或自行二分。',
+  },
+  {
+    id: 'algo-binary-first',
+    title: '首次出现',
+    topic: '二分查找',
+    difficulty: '进阶',
+    rewardXp: 46,
+    durationMin: 18,
+    tags: ['查找', '边界'],
+    description:
+      '实现 `first_ge(nums, x)`，在升序列表中返回第一个大于等于 x 的元素索引；若不存在返回 len(nums)。',
+    constraints: ['函数名 first_ge', '列表升序'],
+    examples: [
+      { input: 'nums = [1, 3, 3, 5], x = 3', output: '1' },
+      { input: 'nums = [1, 2, 3], x = 10', output: '3' },
+    ],
+    testCases: [
+      { id: 't1', label: '样例', invoke: 'str(first_ge([1, 3, 3, 5], 3))', expected: '1' },
+      { id: 't2', label: '超出', invoke: 'str(first_ge([1, 2, 3], 10))', expected: '3' },
+    ],
+    starterCode: `def first_ge(nums, x):\n    pass\n`,
+    runMode: 'expression',
+    hint: '二分找左边界。',
+  },
 ]
 
 export function getPythonTrialQuestion(id: string) {
-  return PYTHON_TRIAL_QUESTIONS.find((item) => item.id === id) ?? getClassArenaQuestion(id)
+  const found =
+    getCachedPracticeQuestion(id) ??
+    PYTHON_TRIAL_QUESTIONS.find((item) => item.id === id) ??
+    getClassArenaQuestion(id)
+  if (!found) return null
+  const normalized = normalizeQuestion(found)
+  if (normalized.description.includes('星球探险') || normalized.description.includes('🛸')) {
+    return normalized
+  }
+  return {
+    ...normalized,
+    description: wrapExploration(
+      '任务现场收到一条加密指令',
+      normalized.description.trim(),
+    ),
+  }
 }

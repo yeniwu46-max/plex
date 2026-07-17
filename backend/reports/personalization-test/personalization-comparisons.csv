@@ -1,0 +1,17 @@
+﻿knowledge_key,knowledge_label,difficulty_difference,expression_difference,case_difference,exercise_level_difference,changed_resource_type_count,changed_resource_types,bundle_hash_difference
+intro,Python 与 print,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+comment,注释,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+var,变量与类型,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+io,输入 input,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+ops,运算与表达式,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+cond,if 分支,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+loop,循环结构,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+range,range / break / continue,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+list,列表 list,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+dict,字典 dict,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+str,字符串处理,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+func,函数基础,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+file,文件读写,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+except,异常处理,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+algo-sum,求和与统计,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True
+algo-search,线性查找,25,True,True,True,6,"learning_bundle,lesson_document,mind_map,exercise_set,extended_reading,coding_lab",True

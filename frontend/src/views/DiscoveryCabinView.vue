@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { advanceDailyQuest } from '../api/studentOverview'
 import { NIcon } from 'naive-ui'
@@ -11,8 +11,6 @@ import {
 } from '@vicons/ionicons5'
 import StarFieldMap from '../components/discovery/StarFieldMap.vue'
 import ClassArenaHub from '../components/discovery/ClassArenaHub.vue'
-import { fetchStudentArenaTrials } from '../api/studentTrials'
-import { mapApiTrialsToArenaModes, type TrialMode } from '../data/trialArena'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import type { CurrentStudent } from '../api/studentOverview'
 import { fetchStudentAssignments } from '../api/studentAssignments'
@@ -24,10 +22,6 @@ const auth = useAuthStore()
 const workspace = useStudentWorkspaceStore()
 const profile = ref<CurrentStudent | null>(null)
 const mapMode = ref<'starfield' | 'trial'>('starfield')
-const arenaTrials = ref<TrialMode[]>([])
-const arenaLoading = ref(false)
-const arenaError = ref('')
-const selectedArenaKey = ref<string | null>(null)
 const classArenaInWorkspace = ref(false)
 const pendingFragmentCount = ref(0)
 const emergencyDoneToday = ref(false)
@@ -87,29 +81,6 @@ async function loadProfile() {
     profile.value = null
   }
 }
-
-async function loadArenaTrials() {
-  arenaLoading.value = true
-  arenaError.value = ''
-  try {
-    const data = await fetchStudentArenaTrials()
-    arenaTrials.value = mapApiTrialsToArenaModes(data.trials, userLevel.value)
-    if (arenaTrials.value.length && !selectedArenaKey.value) {
-      selectedArenaKey.value = arenaTrials.value[0].key
-    }
-  } catch (error) {
-    arenaError.value = error instanceof Error ? error.message : '试炼场加载失败'
-    arenaTrials.value = []
-  } finally {
-    arenaLoading.value = false
-  }
-}
-
-watch(mapMode, (mode) => {
-  if (mode === 'trial' && !arenaLoading.value) {
-    void loadArenaTrials()
-  }
-})
 
 async function loadEmergencyStatus() {
   try {
@@ -172,7 +143,7 @@ onBeforeUnmount(() => {
             星域探索
           </button>
           <button type="button" role="tab" :aria-selected="mapMode === 'trial'" :class="{ 'is-active': mapMode === 'trial' }" @click="mapMode = 'trial'">
-            班级试炼场
+            试炼场
           </button>
         </div>
 
@@ -190,12 +161,6 @@ onBeforeUnmount(() => {
             :user-name="displayName"
             :user-level="userLevel"
             :class-online-count="classOnlineCount"
-            :trials="arenaTrials"
-            :trials-loading="arenaLoading"
-            :trials-error="arenaError"
-            :selected-arena-key="selectedArenaKey"
-            @update:selected-arena-key="selectedArenaKey = $event"
-            @retry-trials="loadArenaTrials()"
             @session-change="classArenaInWorkspace = $event"
           />
         </div>

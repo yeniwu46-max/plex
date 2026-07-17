@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { NButton, NCheckbox, NIcon, NSelect, NSlider, useMessage, type SelectOption } from 'naive-ui'
+import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { NButton, NCheckbox, NIcon, useMessage } from 'naive-ui'
 import {
-  AnalyticsOutline,
-  CubeOutline,
-  GiftOutline,
+  AddOutline,
   PeopleOutline,
-  PlanetOutline,
-  RadioButtonOnOutline,
-  ShieldCheckmarkOutline,
-  SparklesOutline,
-  StarOutline,
   TimeOutline,
 } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
@@ -18,29 +12,20 @@ import PlexFileUploader from '../components/shared/upload/PlexFileUploader.vue'
 import { TEACHER_PRESETS } from '../config/upload/uploadPresets'
 import TeacherTemplatesPanel from '../components/teacher/TeacherTemplatesPanel.vue'
 import TeacherTrialDetailPanel from '../components/teacher/TeacherTrialDetailPanel.vue'
-import TrialPaperEditor from '../components/teacher/TrialPaperEditor.vue'
-import KnowledgePointPicker from '../components/teacher/KnowledgePointPicker.vue'
 import {
-  aiGenerateTrialQuestions,
-  createTeacherTrial,
   deleteTeacherTrial,
-  fetchTeacherTrialDetail,
   fetchTeacherTrials,
   publishTeacherTrial,
   updateTeacherTrial,
-  type TrialPaperQuestion,
   type TeacherTrial,
-  type TeacherTrialSummary,
 } from '../api/teacherTrials'
 import { labelForKnowledgeKey } from '../data/teacherKnowledgeCatalog'
-import { useKnowledgeCatalog } from '../composables/useKnowledgeCatalog'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import { useAuthStore } from '../stores/auth'
 import { useTeacherNotificationStore } from '../stores/teacherNotifications'
 
 type TrialStatus = 'running' | 'soon' | 'ended' | 'draft'
 type TrialTone = 'orange' | 'blue' | 'purple' | 'amber'
-type TemplateTone = 'orange' | 'teal' | 'purple' | 'red' | 'gold'
 
 interface TrialCard {
   id: number
@@ -59,40 +44,19 @@ interface TrialCard {
   canEditDraft: boolean
 }
 
-interface TemplateItem {
-  id: string
-  title: string
-  desc: string
-  tone: TemplateTone
-  icon: typeof CubeOutline
-}
-
 const message = useMessage()
+const router = useRouter()
 const auth = useAuthStore()
 const teacherNotifications = useTeacherNotificationStore()
 const { selectedClassId, hasSelectedClass } = useTeacherOverviewInjected()
 
 const activeTab = ref<'manage' | 'templates'>('manage')
-const trialType = ref('solo')
-const selectedKnowledgeKeys = ref<string[]>([])
-const { domains: knowledgeDomains, loadCatalog } = useKnowledgeCatalog()
 const notifyStudentsOnPublish = ref(true)
-const duration = ref('60')
-const difficulty = ref(78)
 const loading = ref(false)
-const creating = ref(false)
 const actingTrialId = ref<number | null>(null)
-const publishMode = ref<'now' | 'draft' | 'scheduled'>('now')
-const scheduleDelay = ref('30')
 const errorMessage = ref('')
-const summary = ref<TeacherTrialSummary | null>(null)
 const trials = ref<TrialCard[]>([])
 const detailTrialId = ref<number | null>(null)
-const editingDraftId = ref<number | null>(null)
-const paperQuestions = ref<TrialPaperQuestion[]>([])
-const generatingAi = ref(false)
-const createPanelExpanded = ref(false)
-const createPanelCollapsed = ref(false)
 
 const typeLabels: Record<string, string> = {
   solo: '个人挑战',
@@ -101,64 +65,16 @@ const typeLabels: Record<string, string> = {
   abyss: '深渊试炼',
 }
 
-const trialTypeOptions: SelectOption[] = [
+const trialTypeOptionsPlain: Array<{ label: string; value: string }> = [
   { label: '个人挑战', value: 'solo' },
   { label: '小组协作', value: 'team' },
   { label: '限时竞赛', value: 'timed' },
   { label: '深渊试炼', value: 'abyss' },
 ]
 
-const durationOptions: SelectOption[] = [
-  { label: '30 分钟', value: '30' },
-  { label: '60 分钟', value: '60' },
-  { label: '90 分钟', value: '90' },
-  { label: '120 分钟', value: '120' },
-]
-
-const publishModeOptions: SelectOption[] = [
-  { label: '立即发布', value: 'now' },
-  { label: '保存草稿', value: 'draft' },
-  { label: '定时发布', value: 'scheduled' },
-]
-
-const trialTypeOptionsPlain = computed(() =>
-  trialTypeOptions.map((item) => ({
-    label: typeof item.label === 'string' ? item.label : String(item.value ?? ''),
-    value: String(item.value ?? ''),
-  })),
-)
-
-const scheduleDelayOptions: SelectOption[] = [
-  { label: '30 分钟后', value: '30' },
-  { label: '1 小时后', value: '60' },
-  { label: '明天此时', value: '1440' },
-]
-
-const templates: TemplateItem[] = [
-  { id: 'solo', title: '个人挑战', desc: '单人提升能力', tone: 'orange', icon: CubeOutline },
-  { id: 'team', title: '小组协作', desc: '团队合作任务', tone: 'teal', icon: PeopleOutline },
-  { id: 'timed', title: '限时竞赛', desc: '时间限定挑战', tone: 'purple', icon: SparklesOutline },
-  { id: 'abyss', title: '深渊试炼', desc: '高难度实践', tone: 'red', icon: PlanetOutline },
-  { id: 'custom', title: '自定义试炼', desc: '自由创建任务', tone: 'gold', icon: GiftOutline },
-]
-
-const stats = computed(() => {
-  const s = summary.value
-  return [
-    { label: '进行中试炼', value: s?.running_count ?? 0, icon: ShieldCheckmarkOutline, tone: 'orange' },
-    { label: '即将开始', value: s?.scheduled_count ?? 0, icon: TimeOutline, tone: 'blue' },
-    { label: '草稿', value: s?.draft_count ?? 0, icon: CubeOutline, tone: 'amber' },
-    { label: '参与 Explorer', value: s?.participant_count ?? 0, icon: PeopleOutline, tone: 'teal' },
-    { label: '平均完成率', value: `${s?.avg_completion_rate ?? 0}%`, icon: AnalyticsOutline, tone: 'purple' },
-    {
-      label: '班级人数',
-      value: s?.class_student_count ?? 0,
-      icon: RadioButtonOnOutline,
-      tone: 'red',
-    },
-    { label: '试炼模板', value: s?.template_count ?? templates.length, icon: StarOutline, tone: 'gold' },
-  ]
-})
+function goCreate() {
+  void router.push('/teacher/trials/create')
+}
 
 function mapTrial(item: TeacherTrial): TrialCard {
   const effective = item.effective_status ?? item.status
@@ -214,7 +130,6 @@ function mapTrial(item: TeacherTrial): TrialCard {
 async function loadTrials() {
   if (!selectedClassId.value) {
     trials.value = []
-    summary.value = null
     return
   }
   loading.value = true
@@ -222,89 +137,11 @@ async function loadTrials() {
   try {
     const data = await fetchTeacherTrials(selectedClassId.value)
     trials.value = data.trials.map(mapTrial)
-    summary.value = data.summary
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '试炼数据加载失败'
     trials.value = []
   } finally {
     loading.value = false
-  }
-}
-
-async function loadAiQuestions() {
-  if (!selectedKnowledgeKeys.value.length) {
-    message.warning('请先选择知识点')
-    return
-  }
-  generatingAi.value = true
-  try {
-    const generated = await aiGenerateTrialQuestions(selectedKnowledgeKeys.value, 3)
-    paperQuestions.value = generated.map((q) => ({
-      question_type: 'mcq' as const,
-      stem: q.stem,
-      options: q.options || [],
-      correct_index: q.correct_index ?? 0,
-      knowledge_key: q.knowledge_key || selectedKnowledgeKeys.value[0],
-    }))
-    message.success('已生成 3 道选择题，可在下方编辑')
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : 'AI 出题失败')
-  } finally {
-    generatingAi.value = false
-  }
-}
-
-async function createTrial() {
-  if (!selectedClassId.value) {
-    message.warning('请先选择班级')
-    return
-  }
-  if (!selectedKnowledgeKeys.value.length) {
-    message.warning('请至少勾选一个知识点')
-    return
-  }
-  const typeLabel = trialTypeOptions.find((item) => item.value === trialType.value)?.label ?? '个人挑战'
-  const knowLabel = selectedKnowledgeKeys.value.map((k) => labelForKnowledgeKey(k)).join('、')
-  const title = `${knowLabel.slice(0, 24)}${knowLabel.length > 24 ? '…' : ''} · ${typeLabel}`
-
-  creating.value = true
-  try {
-    const result = await createTeacherTrial({
-      class_id: selectedClassId.value,
-      title,
-      trial_type: trialType.value,
-      knowledge_keys: selectedKnowledgeKeys.value,
-      knowledge_key: selectedKnowledgeKeys.value[0],
-      difficulty: difficulty.value,
-      duration_minutes: Number(duration.value),
-      reward_points: Math.max(15, Math.round(difficulty.value / 2)),
-      publish_mode: publishMode.value,
-      start_delay_minutes: publishMode.value === 'scheduled' ? Number(scheduleDelay.value) : undefined,
-      notify_students: notifyStudentsOnPublish.value,
-      custom_questions: paperQuestions.value.length ? paperQuestions.value : undefined,
-    })
-    const modeLabel =
-      publishMode.value === 'draft' ? '已保存草稿' : publishMode.value === 'scheduled' ? '已创建定时试炼' : '已发布试炼'
-    if (publishMode.value === 'now' && notifyStudentsOnPublish.value && auth.profile?.id) {
-      teacherNotifications.notifyAssignmentPublished(
-        auth.profile.id,
-        title,
-        result.student_count ?? 0,
-      )
-      if (result.student_count) {
-        message.success(`${modeLabel}「${title}」，已通知 ${result.student_count} 名学生`)
-      } else {
-        message.success(`${modeLabel}「${title}」`)
-      }
-    } else {
-      message.success(`${modeLabel}「${title}」`)
-    }
-    paperQuestions.value = []
-    await loadTrials()
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '创建失败')
-  } finally {
-    creating.value = false
   }
 }
 
@@ -345,52 +182,8 @@ async function onEndTrial(trialId: number) {
   }
 }
 
-async function onEditDraft(trialId: number) {
-  actingTrialId.value = trialId
-  try {
-    const detail = await fetchTeacherTrialDetail(trialId)
-    const draft = (detail.draft_questions?.length ? detail.draft_questions : detail.questions) as TrialPaperQuestion[]
-    paperQuestions.value = draft.map((q) => {
-      if ((q as TrialPaperQuestion).question_type === 'coding') {
-        const cq = q as Extract<TrialPaperQuestion, { question_type: 'coding' }>
-        return { ...cq, question_type: 'coding' as const }
-      }
-      const mq = q as Extract<TrialPaperQuestion, { question_type: 'mcq' }>
-      return {
-        question_type: 'mcq' as const,
-        stem: mq.stem,
-        options: mq.options || ['', '', '', ''],
-        correct_index: mq.correct_index ?? 0,
-        knowledge_key: mq.knowledge_key,
-      }
-    })
-    editingDraftId.value = trialId
-    message.info('已加载草稿试卷，编辑后点击「保存草稿修改」')
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '加载草稿失败')
-  } finally {
-    actingTrialId.value = null
-  }
-}
-
-async function onSaveDraftEdit() {
-  if (!editingDraftId.value) return
-  if (!paperQuestions.value.length) {
-    message.warning('试卷至少需要 1 题')
-    return
-  }
-  actingTrialId.value = editingDraftId.value
-  try {
-    await updateTeacherTrial(editingDraftId.value, { draft_questions: paperQuestions.value })
-    message.success('草稿试卷已更新')
-    editingDraftId.value = null
-    paperQuestions.value = []
-    await loadTrials()
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '保存失败')
-  } finally {
-    actingTrialId.value = null
-  }
+function onEditDraft(trialId: number) {
+  void router.push({ path: '/teacher/trials/create', query: { draftId: String(trialId) } })
 }
 
 async function onDeleteDraft(trialId: number) {
@@ -398,10 +191,6 @@ async function onDeleteDraft(trialId: number) {
   try {
     await deleteTeacherTrial(trialId)
     message.success('草稿已删除')
-    if (editingDraftId.value === trialId) {
-      editingDraftId.value = null
-      paperQuestions.value = []
-    }
     await loadTrials()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '删除失败')
@@ -410,13 +199,8 @@ async function onDeleteDraft(trialId: number) {
   }
 }
 
-function switchTemplate(template: TemplateItem) {
-  trialType.value = template.id === 'custom' ? 'solo' : template.id
-  message.info(`已选用「${template.title}」模板`)
-}
-
 onMounted(() => {
-  void loadCatalog()
+  void loadTrials()
 })
 
 watch(selectedClassId, () => {
@@ -434,26 +218,20 @@ watch(selectedClassId, () => {
     toolbar-label="试炼中枢筛选与状态"
   >
     <div class="trial-arena-page teacher-page">
-    <section
-      class="trial-command"
-      :class="{
-        'trial-command--templates': activeTab === 'templates',
-        'trial-command--create-collapsed': activeTab === 'manage' && createPanelCollapsed && !createPanelExpanded,
-      }"
-      aria-label="试炼中枢"
-    >
+    <section class="trial-command" aria-label="试炼中枢">
         <section class="command-panel mission-panel">
           <header class="tabbar">
             <button type="button" :class="{ active: activeTab === 'manage' }" @click="activeTab = 'manage'">试炼管理</button>
             <button type="button" :class="{ active: activeTab === 'templates' }" @click="activeTab = 'templates'">我的模板</button>
             <n-button
-              v-if="activeTab === 'manage' && createPanelCollapsed"
-              quaternary
+              v-if="activeTab === 'manage'"
+              type="primary"
               size="small"
               class="tabbar__create-toggle"
-              @click="createPanelCollapsed = false"
+              @click="goCreate"
             >
-              展开快速创建
+              <template #icon><n-icon :component="AddOutline" /></template>
+              创建试炼
             </n-button>
           </header>
 
@@ -466,7 +244,10 @@ watch(selectedClassId, () => {
           <div v-if="activeTab === 'manage'" class="panel-section">
             <div class="section-head">
               <h2>进行中的试炼</h2>
-              <button type="button" @click="loadTrials()">刷新 <span>›</span></button>
+              <div class="section-head__tools">
+                <n-checkbox v-model:checked="notifyStudentsOnPublish">发布时通知全班</n-checkbox>
+                <button type="button" @click="loadTrials()">刷新 <span>›</span></button>
+              </div>
             </div>
 
             <div v-if="!hasSelectedClass" class="teacher-state-panel trial-command__state">请先在顶部选择班级。</div>
@@ -475,7 +256,10 @@ watch(selectedClassId, () => {
               <span>{{ errorMessage }}</span>
               <n-button secondary size="small" @click="loadTrials()">重试</n-button>
             </div>
-            <div v-else-if="!trials.length" class="teacher-state-panel trial-command__state">暂无试炼，使用右侧表单快速创建。</div>
+            <div v-else-if="!trials.length" class="teacher-state-panel trial-command__state">
+              <span>暂无试炼，点击上方「创建试炼」进入全屏出题工作台。</span>
+              <n-button type="primary" size="small" @click="goCreate">创建试炼</n-button>
+            </div>
 
             <div v-else class="trial-grid">
               <article v-for="trial in trials" :key="trial.id" class="trial-card" :class="[`trial-card--${trial.tone}`, `trial-card--${trial.scene}`]">
@@ -551,131 +335,8 @@ watch(selectedClassId, () => {
             @close="detailTrialId = null"
           />
 
-          <div v-if="activeTab === 'manage'" class="panel-section template-section">
-            <div class="section-head">
-              <h2>试炼类型快捷选用</h2>
-            </div>
-            <div class="template-row">
-              <button
-                v-for="template in templates"
-                :key="template.id"
-                type="button"
-                class="template-card"
-                :class="`template-card--${template.tone}`"
-                @click="switchTemplate(template)"
-              >
-                <span><n-icon :component="template.icon" /></span>
-                <strong>{{ template.title }}</strong>
-                <small>{{ template.desc }}</small>
-              </button>
-            </div>
-          </div>
         </section>
 
-      <div
-        v-if="createPanelExpanded"
-        class="create-panel-backdrop"
-        aria-hidden="true"
-        @click="createPanelExpanded = false"
-      />
-
-      <aside
-        v-if="activeTab === 'manage' && (!createPanelCollapsed || createPanelExpanded)"
-        class="create-panel"
-        :class="{ 'create-panel--expanded': createPanelExpanded }"
-      >
-        <div class="create-panel__head">
-          <h2>快速创建试炼</h2>
-          <div class="create-panel__actions">
-            <n-button
-              v-if="!createPanelExpanded"
-              quaternary
-              size="small"
-              class="create-panel__collapse"
-              @click="createPanelCollapsed = true"
-            >
-              折叠
-            </n-button>
-            <n-button quaternary size="small" class="create-panel__expand" @click="createPanelExpanded = !createPanelExpanded">
-              {{ createPanelExpanded ? '收起' : '全屏' }}
-            </n-button>
-          </div>
-        </div>
-        <div v-if="!createPanelExpanded" class="create-orbit" aria-hidden="true">
-          <span v-for="ring in 6" :key="ring" :style="{ '--ring': ring }" />
-          <i />
-          <b>+</b>
-        </div>
-
-        <label class="field">
-          <span>选择试炼类型</span>
-          <n-select v-model:value="trialType" :options="trialTypeOptions" class="field-select" />
-        </label>
-
-        <div class="field">
-          <span>勾选知识点（知识宇宙）</span>
-          <KnowledgePointPicker v-model="selectedKnowledgeKeys" :domains="knowledgeDomains" />
-        </div>
-
-        <n-checkbox v-model:checked="notifyStudentsOnPublish">发布时通知全班学生</n-checkbox>
-
-        <div class="field custom-questions">
-          <n-button secondary block :loading="generatingAi" @click="loadAiQuestions">AI 生成 3 道选择题</n-button>
-          <TrialPaperEditor
-            v-model="paperQuestions"
-            :knowledge-key="selectedKnowledgeKeys[0]"
-          />
-          <n-button
-            v-if="editingDraftId"
-            type="warning"
-            block
-            :loading="actingTrialId === editingDraftId"
-            @click="onSaveDraftEdit"
-          >
-            保存草稿修改（#{{ editingDraftId }}）
-          </n-button>
-        </div>
-
-        <div class="field">
-          <span>难度设置</span>
-          <n-slider v-model:value="difficulty" :min="0" :max="100" :step="1" class="difficulty-slider" />
-          <div class="difficulty-labels">
-            <small>简单</small>
-            <small>中等</small>
-            <small>困难</small>
-          </div>
-        </div>
-
-        <label class="field">
-          <span>预计时长</span>
-          <n-select v-model:value="duration" :options="durationOptions" class="field-select" />
-        </label>
-
-        <label class="field">
-          <span>发布方式</span>
-          <n-select v-model:value="publishMode" :options="publishModeOptions" class="field-select" />
-        </label>
-
-        <label v-if="publishMode === 'scheduled'" class="field">
-          <span>开始时间</span>
-          <n-select v-model:value="scheduleDelay" :options="scheduleDelayOptions" class="field-select" />
-        </label>
-
-        <n-button type="primary" size="large" block class="create-btn" :loading="creating" @click="createTrial">
-          {{ publishMode === 'draft' ? '保存草稿' : publishMode === 'scheduled' ? '创建定时试炼' : '创建并发布' }}
-        </n-button>
-      </aside>
-
-      <section v-if="activeTab === 'manage'" class="command-panel data-panel">
-        <h2>试炼数据概览</h2>
-        <div class="stats-row">
-          <article v-for="item in stats" :key="item.label" :class="`stat-card stat-card--${item.tone}`">
-            <span><n-icon :component="item.icon" /></span>
-            <strong>{{ item.value }}</strong>
-            <small>{{ item.label }}</small>
-          </article>
-        </div>
-      </section>
     </section>
 
     <!-- 教师资料上传 -->
@@ -812,8 +473,7 @@ watch(selectedClassId, () => {
   --gold: #fbbf24;
   --teal: #2efff1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  grid-template-rows: auto auto;
+  grid-template-columns: 1fr;
   gap: var(--teacher-quad-gap, 1.1rem);
   align-items: start;
   align-content: start;
@@ -822,13 +482,10 @@ watch(selectedClassId, () => {
   z-index: 2;
 }
 
-.trial-command--templates {
-  grid-template-columns: 1fr;
-  grid-template-rows: auto;
-}
-
-.trial-command--create-collapsed {
-  grid-template-columns: 1fr;
+.section-head__tools {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .trial-command__state {
@@ -846,76 +503,6 @@ watch(selectedClassId, () => {
   display: flex;
   flex-direction: column;
   overflow: visible;
-}
-
-.create-panel-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  background: rgba(2, 8, 14, 0.58);
-  backdrop-filter: blur(2px);
-}
-
-.create-panel {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  align-self: start;
-  flex-direction: column;
-  position: relative;
-  min-width: 0;
-  padding: 1.55rem 1.45rem;
-  overflow: visible;
-  border: 1px solid rgba(130, 212, 255, 0.12);
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 45% 0%, rgba(251, 146, 60, 0.08), transparent 34%),
-    linear-gradient(145deg, rgba(5, 18, 30, 0.91), rgba(3, 12, 20, 0.78));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04), 0 22px 70px rgba(0, 0, 0, 0.2);
-}
-
-.create-panel--expanded {
-  position: fixed;
-  z-index: 100;
-  top: 5rem;
-  right: 1.25rem;
-  bottom: 1.25rem;
-  width: min(580px, calc(100vw - 2.5rem));
-  height: auto;
-  max-height: calc(100vh - 6.5rem);
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.create-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-shrink: 0;
-}
-
-.create-panel__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-  flex-shrink: 0;
-}
-
-.create-panel__collapse,
-.create-panel__expand {
-  color: var(--orange) !important;
-}
-
-.create-panel__head h2 {
-  margin: 0;
-  color: #fff7ed;
-  font-size: 1.18rem;
-  font-weight: 740;
-}
-
-.create-panel__expand {
-  flex-shrink: 0;
 }
 
 .tabbar {
@@ -994,8 +581,7 @@ watch(selectedClassId, () => {
   margin-bottom: 1.05rem;
 }
 
-.section-head h2,
-.data-panel h2 {
+.section-head h2 {
   margin: 0;
   color: #fff7ed;
   font-size: 1.18rem;
@@ -1273,81 +859,6 @@ watch(selectedClassId, () => {
   color: rgba(221, 230, 239, 0.58);
 }
 
-.data-panel {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  padding: 1rem 1.45rem 1.1rem;
-}
-
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-top: 0.85rem;
-  margin-bottom: 0;
-}
-
-.stat-card {
-  display: grid;
-  grid-template-columns: 54px auto;
-  grid-template-rows: auto auto;
-  column-gap: 1rem;
-  align-items: center;
-  min-width: 0;
-  border-right: 1px solid rgba(219, 235, 249, 0.08);
-}
-
-.stat-card:last-child {
-  border-right: 0;
-}
-
-.stat-card > span {
-  grid-row: 1 / span 2;
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--orange);
-  background: rgba(251, 146, 60, 0.12);
-  border: 1px solid rgba(251, 146, 60, 0.3);
-  font-size: 1.45rem;
-}
-
-.stat-card--teal > span {
-  color: #34d399;
-  background: rgba(52, 211, 153, 0.12);
-  border-color: rgba(52, 211, 153, 0.3);
-}
-
-.stat-card--purple > span {
-  color: #c084fc;
-  background: rgba(192, 132, 252, 0.12);
-  border-color: rgba(192, 132, 252, 0.3);
-}
-
-.stat-card--red > span {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.12);
-  border-color: rgba(248, 113, 113, 0.3);
-}
-
-.stat-card--gold > span {
-  color: var(--gold);
-  background: rgba(251, 191, 36, 0.12);
-  border-color: rgba(251, 191, 36, 0.3);
-}
-
-.stat-card strong {
-  color: #ffffff;
-  font-size: 1.55rem;
-  font-weight: 650;
-}
-
-.stat-card small {
-  color: rgba(221, 230, 239, 0.62);
-}
-
 .create-orbit {
   position: relative;
   height: 220px;
@@ -1509,22 +1020,9 @@ watch(selectedClassId, () => {
     grid-template-rows: auto;
   }
 
-  .mission-panel,
-  .create-panel,
-  .data-panel {
+  .mission-panel {
     grid-column: 1;
     grid-row: auto;
-  }
-
-  .create-panel:not(.create-panel--expanded) {
-    width: 100%;
-  }
-
-  .create-panel--expanded {
-    top: 4.5rem;
-    right: 0.75rem;
-    bottom: 0.75rem;
-    width: calc(100vw - 1.5rem);
   }
 
   .create-orbit {
@@ -1534,8 +1032,7 @@ watch(selectedClassId, () => {
 
 @media (max-width: 980px) {
   .trial-grid,
-  .template-row,
-  .stats-row {
+  .template-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1563,8 +1060,7 @@ watch(selectedClassId, () => {
   }
 
   .trial-grid,
-  .template-row,
-  .stats-row {
+  .template-row {
     grid-template-columns: 1fr;
   }
 }

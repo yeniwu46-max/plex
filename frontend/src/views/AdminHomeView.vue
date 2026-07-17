@@ -1,8 +1,8 @@
 ﻿<script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { usePlexTour } from '../composables/usePlexTour'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NIcon, NInput, NModal, NSelect, useMessage, type SelectOption } from 'naive-ui'
+import { NButton, NDropdown, NIcon, NInput, NModal, NSelect, useMessage, type DropdownOption, type SelectOption } from 'naive-ui'
 import {
   AlertCircleOutline,
   AnalyticsOutline,
@@ -17,6 +17,7 @@ import {
   PeopleOutline,
   PersonCircleOutline,
   PlanetOutline,
+  RefreshOutline,
   SettingsOutline,
   ShieldCheckmarkOutline,
   SparklesOutline,
@@ -43,6 +44,7 @@ const AdminTrialObservatoryPanel = defineAsyncComponent(
 )
 import type { SystemAnnouncement } from '../api/teacherAnnouncements'
 import { fetchAdminSettings, saveAdminSettings, fetchAdminDashboard, type AdminSettingsPayload, type AdminDashboardResult } from '../api/adminSettings'
+import { fetchAgentOrchestration, type AgentOrchestrationResult } from '../api/agentOrchestration'
 import { NInputNumber, NSwitch } from 'naive-ui'
 import { useThemeStore, type ColorMode } from '../stores/theme'
 
@@ -118,6 +120,22 @@ const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
+
+const adminDisplayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Overseer')
+
+const userMenuOptions = computed<DropdownOption[]>(() => [
+  {
+    label: '重新查看功能导览',
+    key: 'restart-tour',
+    icon: () => h(NIcon, null, { default: () => h(RefreshOutline) }),
+  },
+  { type: 'divider', key: 'menu-divider' },
+  {
+    label: '退出登录',
+    key: 'logout',
+    icon: () => h(NIcon, null, { default: () => h(ExitOutline) }),
+  },
+])
 
 const announcementTitle = ref('')
 const announcementBody = ref('')
@@ -333,12 +351,54 @@ const observerMetricCards = computed<MetricCard[]>(() => {
   ]
 })
 
-const agentsMetricCards: MetricCard[] = [
-  { label: '运行智能体', value: '24', sub: '较昨日 ↑ 9.1%', icon: HardwareChipOutline, tone: 'purple' },
-  { label: '当前编排任务', value: '128', sub: '较昨日 ↑ 15.6%', icon: GitNetworkOutline, tone: 'purple' },
-  { label: '平均响应延迟', value: '0.8s', sub: '较昨日 ↓ 8.7%', icon: AnalyticsOutline, tone: 'purple' },
-  { label: '协同成功率', value: '98.6%', sub: '较昨日 ↑ 1.2%', icon: ShieldCheckmarkOutline, tone: 'purple' },
-]
+const agentOrchestrationData = ref<AgentOrchestrationResult | null>(null)
+
+const agentsMetricCardsLive = computed<MetricCard[]>(() => {
+  const data = agentOrchestrationData.value
+  const runtime = data?.runtime
+  const config = data?.config
+  const enabledCount =
+    (config?.grading_agents?.length ?? 0) + (config?.learning_pipeline?.length ?? 0)
+  const backend = data?.agent_backend ?? 'mock'
+  const avgMs = runtime?.avg_latency_ms
+  const avgLabel = avgMs == null ? '—' : avgMs >= 1000 ? `${(avgMs / 1000).toFixed(1)}s` : `${avgMs}ms`
+  const successRate = runtime?.success_rate ?? 100
+  const orchestrationOn = config?.enabled ?? false
+  return [
+    {
+      label: '运行智能体',
+      value: String(enabledCount),
+      sub: orchestrationOn ? `后端 ${backend} · 已启用编排` : '编排已关闭',
+      icon: HardwareChipOutline,
+      tone: 'purple',
+    },
+    {
+      label: '注册智能体',
+      value: String(runtime?.registered_agent_count ?? data?.runtime_status?.length ?? 0),
+      sub: `检查 ${config?.grading_agents?.length ?? 0} · 流水线 ${config?.learning_pipeline?.length ?? 0}`,
+      icon: GitNetworkOutline,
+      tone: 'purple',
+    },
+    {
+      label: '平均响应延迟',
+      value: avgLabel,
+      sub: runtime?.ready_for_llm ? 'CrewAI/LLM 就绪' : runtime?.api_key_configured ? 'LLM 增强可用' : '规则引擎或降级运行',
+      icon: AnalyticsOutline,
+      tone: runtime?.ready_for_llm ? 'green' : 'amber',
+    },
+    {
+      label: '协同成功率',
+      value: `${successRate}%`,
+      sub: runtime?.degraded_reason === 'missing_api_key'
+        ? '未配置 API Key'
+        : runtime?.degraded_reason === 'missing_crewai_venv'
+          ? '缺少 CrewAI venv'
+          : '基于最近运行态',
+      icon: ShieldCheckmarkOutline,
+      tone: successRate >= 95 ? 'green' : 'amber',
+    },
+  ]
+})
 
 const knowledgeMetricCards: MetricCard[] = [
   { label: '知识节点总数', value: '48', sub: '试炼 24 + 星轨 24', icon: PlanetOutline, tone: 'purple' },
@@ -390,7 +450,7 @@ const pageSubtitle = computed(() => {
 })
 const visibleMetrics = computed(() => {
   if (activeNav.value === 'observer') return observerMetricCards.value
-  if (activeNav.value === 'agents') return agentsMetricCards
+  if (activeNav.value === 'agents') return agentsMetricCardsLive.value
   if (activeNav.value === 'knowledge') return knowledgeMetricCards
   return liveMetricCards.value
 })
@@ -422,11 +482,19 @@ function setActiveNav(key: NavKey) {
     void loadAnnouncements()
     void loadSettings()
   }
-  if (key === 'nexus') {
+  if (key === 'nexus' || key === 'observer') {
     void loadDashboard()
   }
-  if (key === 'observer') {
-    void loadDashboard()
+  if (key === 'agents') {
+    void loadAgentOrchestrationMetrics()
+  }
+}
+
+async function loadAgentOrchestrationMetrics() {
+  try {
+    agentOrchestrationData.value = await fetchAgentOrchestration()
+  } catch {
+    agentOrchestrationData.value = null
   }
 }
 
@@ -518,6 +586,16 @@ async function handleLogout() {
   await router.replace({ name: 'login' })
 }
 
+async function handleUserMenuSelect(key: string) {
+  if (key === 'restart-tour') {
+    await restartAdminTour()
+    return
+  }
+  if (key === 'logout') {
+    await handleLogout()
+  }
+}
+
 onMounted(() => {
   clockTimer = setInterval(() => {
     now.value = new Date()
@@ -601,14 +679,15 @@ onUnmounted(() => {
             placeholder="搜索当前面板内容…"
             class="search-input"
           />
-          <button type="button" class="icon-button" aria-label="通知"><n-icon :component="NotificationsOutline" /><i /></button>
           <plex-theme-switcher />
           <span class="nexus-globe" aria-hidden="true"><n-icon :component="SparklesOutline" /></span>
-          <button type="button" class="profile-button">
-            <n-icon :component="PersonCircleOutline" />
-            <span><strong>Overseer</strong><small>系统治理者</small></span>
-            <n-icon :component="ChevronDownOutline" />
-          </button>
+          <n-dropdown trigger="click" :options="userMenuOptions" @select="handleUserMenuSelect">
+            <button type="button" class="profile-button" aria-label="打开用户菜单">
+              <n-icon :component="PersonCircleOutline" />
+              <span><strong>{{ adminDisplayName }}</strong><small>系统治理者</small></span>
+              <n-icon :component="ChevronDownOutline" />
+            </button>
+          </n-dropdown>
         </div>
 
         <div class="current-time">{{ currentTimeText }}</div>
@@ -866,7 +945,11 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <admin-agent-orchestration-panel v-else-if="activeNav === 'agents'" data-tour="admin-agent-flow" />
+      <admin-agent-orchestration-panel
+        v-else-if="activeNav === 'agents'"
+        data-tour="admin-agent-flow"
+        @orchestration-updated="loadAgentOrchestrationMetrics"
+      />
 
       <admin-knowledge-nexus-panel v-else-if="activeNav === 'knowledge'" data-tour="admin-knowledge-maintenance" />
 
@@ -1186,7 +1269,6 @@ onUnmounted(() => {
 }
 
 .sidebar-actions button,
-.icon-button,
 .profile-button {
   border: 0;
   background: transparent;
@@ -1300,23 +1382,6 @@ onUnmounted(() => {
   --n-border-hover: 1px solid rgba(167, 139, 250, 0.34) !important;
   --n-text-color: #eef2ff !important;
   --n-placeholder-color: rgba(221, 214, 254, 0.45) !important;
-}
-
-.icon-button {
-  position: relative;
-  color: #ddd6fe;
-  font-size: 1.4rem;
-}
-
-.icon-button i {
-  position: absolute;
-  right: -2px;
-  top: -4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #a855f7;
-  box-shadow: 0 0 10px #a855f7;
 }
 
 .nexus-globe {
@@ -1823,22 +1888,22 @@ onUnmounted(() => {
 
 .observer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto auto;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.55fr) minmax(220px, 0.62fr);
+  grid-template-rows: minmax(420px, 1fr) auto;
   gap: 1rem;
   margin-top: 1.05rem;
-  align-items: start;
+  align-items: stretch;
   align-content: start;
 }
 
 .observer-grid > .panel,
 .observer-grid > .observatory-trials-panel,
 .observer-grid > .observer-grid__footer {
-  grid-column: 1;
   min-width: 0;
 }
 
 .anomaly-panel {
+  grid-column: 1;
   grid-row: 1;
   display: flex;
   flex-direction: column;
@@ -1846,20 +1911,26 @@ onUnmounted(() => {
 }
 
 .observatory-trials-panel {
-  grid-row: 2;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .observatory-panel {
-  grid-row: 3;
+  grid-column: 3;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 .observer-grid__footer {
-  grid-row: 4;
+  grid-column: 1 / -1;
+  grid-row: 2;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.85fr);
   gap: 1rem;
   align-items: stretch;
 }
@@ -1871,9 +1942,18 @@ onUnmounted(() => {
 .anomaly-panel .anomaly-list {
   flex: 1;
   min-height: 0;
-  max-height: 280px;
   align-content: start;
   overflow: auto;
+}
+
+.observatory-trials-panel :deep(.admin-trials) {
+  flex: 1;
+  min-height: 0;
+}
+
+.observatory-trials-panel :deep(.admin-trials__body) {
+  flex: 1;
+  min-height: 0;
 }
 
 .info-dot {
@@ -1902,9 +1982,31 @@ onUnmounted(() => {
 
 .observatory-services {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.75rem;
-  padding-top: 0.35rem;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  flex: 1;
+  padding-top: 0.15rem;
+  align-content: start;
+}
+
+.observatory-panel .observatory-service {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  display: grid;
+  align-items: center;
+  justify-items: start;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  gap: 0.65rem;
+}
+
+.observatory-panel .observatory-service .n-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+}
+
+.observatory-panel .observatory-service small {
+  justify-self: end;
 }
 
 .observatory-service {
@@ -2017,8 +2119,12 @@ onUnmounted(() => {
 
 .module-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.6rem;
+}
+
+.observer-grid__footer .module-row article {
+  min-height: 96px;
 }
 
 .module-row article {
@@ -2118,30 +2224,51 @@ onUnmounted(() => {
   }
 
   .metric-row,
-  .dashboard-grid,
-  .observer-grid {
+  .dashboard-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
   }
 
-  .anomaly-panel,
-  .observatory-trials-panel,
-  .observatory-panel,
-  .observer-grid__footer {
+  .observer-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .anomaly-panel {
     grid-column: 1;
-    grid-row: auto;
+    grid-row: 1;
+  }
+
+  .observatory-panel {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .observatory-trials-panel {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .observer-grid__footer {
+    grid-column: 1 / -1;
+    grid-row: 3;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .observer-grid__footer .wave-panel {
+    grid-column: 1 / -1;
   }
 
   .observatory-services {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+
+  .observatory-panel .observatory-service {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
   }
 
   .anomaly-panel .anomaly-list {
-    max-height: none;
+    max-height: 240px;
   }
 
   .admin-topbar {
@@ -2163,16 +2290,32 @@ onUnmounted(() => {
   }
 
   .metric-row,
-  .dashboard-grid,
-  .observer-grid {
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
-  .observatory-services {
+  .observer-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .anomaly-panel,
+  .observatory-trials-panel,
+  .observatory-panel,
+  .observer-grid__footer {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .observer-grid__footer {
+    grid-template-columns: 1fr;
+  }
+
+  .observer-grid__footer .wave-panel {
+    grid-column: auto;
+  }
+
+  .observatory-services {
     grid-template-columns: 1fr;
   }
 

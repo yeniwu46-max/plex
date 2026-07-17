@@ -22,11 +22,10 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   selectNode: [node: LearningPathOrderedNode]
+  action: [action: NextBestAction]
 }>()
 
 const displayNodes = computed(() => props.orderedNodes.slice(0, 8))
-
-const traceSteps = computed(() => props.agentTrace?.steps ?? [])
 
 function masteryPct(node: LearningPathOrderedNode) {
   return Math.round((node.mastery_score ?? 0) * 100)
@@ -41,19 +40,23 @@ function difficultyLabel(node: LearningPathOrderedNode) {
 </script>
 
 <template>
-  <section class="plex-learning-path" aria-label="AI 学习路径">
+  <section class="plex-learning-path" aria-label="小E 学习路径">
     <header class="plex-learning-path__head">
-      <h3>学习路径智能体</h3>
-      <span v-if="graphBackend" class="plex-learning-path__badge">{{ graphBackend }}</span>
+      <h3>小E · 学习路径</h3>
     </header>
 
-    <p v-if="loading" class="plex-learning-path__hint">正在规划学习顺序…</p>
+    <p v-if="loading" class="plex-learning-path__hint">小E 正在为你规划学习顺序…</p>
 
-    <div v-if="nextBestAction" class="plex-learning-path__nba">
+    <button
+      v-if="nextBestAction"
+      type="button"
+      class="plex-learning-path__nba"
+      @click="emit('action', nextBestAction)"
+    >
       <strong>下一步建议</strong>
       <p>{{ nextBestAction.reason }}</p>
       <em>{{ nextBestAction.action === 'practice' ? '进入练习' : '先复习前置' }}</em>
-    </div>
+    </button>
 
     <ol v-if="displayNodes.length" class="plex-learning-path__timeline">
       <li
@@ -95,14 +98,6 @@ function difficultyLabel(node: LearningPathOrderedNode) {
       </ul>
     </div>
 
-    <footer v-if="traceSteps.length" class="plex-learning-path__trace">
-      <span>Agent 轨迹</span>
-      <ul>
-        <li v-for="step in traceSteps" :key="step.agentId">
-          {{ step.name }} · {{ step.summary }} ({{ step.latencyMs }}ms)
-        </li>
-      </ul>
-    </footer>
   </section>
 </template>
 
@@ -136,9 +131,17 @@ function difficultyLabel(node: LearningPathOrderedNode) {
 }
 
 .plex-learning-path__nba {
+  display: block;
+  width: 100%;
   margin-bottom: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   font-size: 13px;
   line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
 }
 
 .plex-learning-path__nba p {

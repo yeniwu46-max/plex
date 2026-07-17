@@ -89,6 +89,22 @@ function selectClassForEdit(classId: number) {
   editForm.grade_level = row.grade_level
 }
 
+const selectedClassJoinCode = computed(() => {
+  if (!editClassId.value) return null
+  return myClasses.value.find((c) => c.id === editClassId.value)?.join_code ?? null
+})
+
+async function copyJoinCode() {
+  const code = selectedClassJoinCode.value
+  if (!code) return
+  try {
+    await navigator.clipboard.writeText(code)
+    message.success('班级编号已复制')
+  } catch {
+    message.info(`班级编号：${code}`)
+  }
+}
+
 async function saveClassEdit() {
   if (!editClassId.value) {
     message.warning('请选择要编辑的班级')
@@ -205,6 +221,14 @@ onMounted(() => {
           <span>说明</span>
           <n-input v-model:value="editForm.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" />
         </label>
+        <div v-if="selectedClassJoinCode" class="class-manage__join-code">
+          <div>
+            <span>班级编号</span>
+            <strong>{{ selectedClassJoinCode }}</strong>
+            <p>学生凭此编号在「账号设置 → 加入班级」提交入班申请。</p>
+          </div>
+          <n-button size="small" secondary @click="copyJoinCode">复制</n-button>
+        </div>
         <n-button type="primary" class="class-manage__primary" :loading="saving" @click="saveClassEdit">保存修改</n-button>
       </article>
 
@@ -300,6 +324,39 @@ onMounted(() => {
 .class-manage__field > span {
   color: rgba(198, 214, 230, 0.68);
   font-size: 0.82rem;
+}
+
+.class-manage__join-code {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(252, 211, 77, 0.28);
+  border-radius: 12px;
+  background: rgba(252, 211, 77, 0.08);
+}
+
+.class-manage__join-code span {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(214, 230, 244, 0.72);
+}
+
+.class-manage__join-code strong {
+  display: block;
+  margin: 0.15rem 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
+  color: #fcd34d;
+}
+
+.class-manage__join-code p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(214, 230, 244, 0.65);
+  line-height: 1.45;
 }
 
 .class-manage__requests {

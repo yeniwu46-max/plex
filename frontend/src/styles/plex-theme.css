@@ -74,48 +74,48 @@ html[data-theme='dark'] {
 /* ─── 浅色变量覆盖 ──────────────────────────────────────── */
 html[data-theme='light'] {
   --plex-space-bg-image: none;
-  --plex-bg: #f0f4f8;
+  --plex-bg: #e8eef5;
   --plex-bg-elevated: #ffffff;
-  --plex-bg-glass: rgba(255, 255, 255, 0.88);
+  --plex-bg-glass: rgba(255, 255, 255, 0.92);
   --plex-bg-card: #ffffff;
-  --plex-bg-input: #f8fafc;
+  --plex-bg-input: #f1f5f9;
   --plex-bg-code: #f8fafc;
 
   --plex-text: #0f172a;
   --plex-text-muted: #475569;
-  --plex-text-subtle: rgba(71, 85, 105, 0.65);
+  --plex-text-subtle: rgba(51, 65, 85, 0.72);
 
   /* 浅色通用主色（被角色 persona 块再覆盖） */
   --plex-accent: #0891b2;
   --plex-accent-hover: #0e7490;
   --plex-accent-pressed: #155e75;
 
-  --plex-border: rgba(8, 145, 178, 0.25);
-  --plex-border-subtle: rgba(0, 0, 0, 0.07);
-  --plex-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --plex-border: rgba(8, 145, 178, 0.22);
+  --plex-border-subtle: rgba(15, 23, 42, 0.08);
+  --plex-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
 
   /* 图表 */
-  --plex-chart-axis: rgba(71, 85, 105, 0.7);
-  --plex-chart-split: rgba(0, 0, 0, 0.06);
-  --plex-chart-tooltip-bg: rgba(255, 255, 255, 0.97);
-  --plex-chart-tooltip-border: rgba(0, 0, 0, 0.1);
+  --plex-chart-axis: rgba(51, 65, 85, 0.72);
+  --plex-chart-split: rgba(15, 23, 42, 0.06);
+  --plex-chart-tooltip-bg: rgba(255, 255, 255, 0.98);
+  --plex-chart-tooltip-border: rgba(8, 145, 178, 0.15);
   --plex-chart-text: #0f172a;
-  --plex-chart-legend: rgba(51, 65, 85, 0.85);
+  --plex-chart-legend: rgba(51, 65, 85, 0.82);
 
   /* 知识图谱 */
-  --plex-kg-canvas-bg: linear-gradient(135deg, #f1f5f9, #e8edf2);
-  --plex-kg-label: #334155;
-  --plex-kg-detail-bg: rgba(255, 255, 255, 0.97);
-  --plex-kg-detail-border: rgba(0, 0, 0, 0.1);
+  --plex-kg-canvas-bg: linear-gradient(135deg, #eef4f8, #e2ebf3);
+  --plex-kg-label: #1e293b;
+  --plex-kg-detail-bg: rgba(255, 255, 255, 0.98);
+  --plex-kg-detail-border: rgba(8, 145, 178, 0.12);
   --plex-kg-tooltip-bg: #ffffff;
   --plex-kg-tooltip-text: #475569;
   --plex-kg-tooltip-desc: #334155;
 
   /* 代码编辑器 */
   --plex-code-bg: #f8fafc;
-  --plex-code-topbar-bg: #f1f5f9;
-  --plex-code-border: rgba(148, 163, 184, 0.3);
-  --plex-code-topbar-border: rgba(148, 163, 184, 0.2);
+  --plex-code-topbar-bg: #eef2f7;
+  --plex-code-border: rgba(100, 116, 139, 0.22);
+  --plex-code-topbar-border: rgba(100, 116, 139, 0.16);
 
   /* Naive 弹层辅助 */
   --plex-popover-bg: #ffffff;
@@ -348,11 +348,151 @@ html[data-theme='light'][data-plex-persona='teacher'] .nav-item--active {
 }
 
 html[data-theme='light'] .main {
-  background: #eef2f7 !important;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(8, 145, 178, 0.06), transparent 28%),
+    #eef2f7 !important;
   color: var(--plex-text) !important;
 }
 
 html[data-theme='light'] .main::before {
+  display: none;
+}
+
+/* ─── 星轨学习页浅色适配 ─────────────────────────────────── */
+html[data-theme='light'] .starpath-main {
+  background:
+    radial-gradient(circle at 54% 48%, rgba(22, 163, 74, 0.06), transparent 34%),
+    radial-gradient(circle at 78% 25%, rgba(8, 145, 178, 0.05), transparent 28%),
+    linear-gradient(180deg, #f4f7fb 0%, #eef2f7 60%, #e8edf4 100%) !important;
+  color: #0f172a;
+}
+
+html[data-theme='light'] .starpath-main::before {
+  opacity: 0.25;
+  background-image:
+    radial-gradient(1px 1px at 11% 21%, rgba(15, 23, 42, 0.12), transparent),
+    radial-gradient(1px 1px at 62% 47%, rgba(8, 145, 178, 0.15), transparent);
+}
+
+html[data-theme='light'] .path-board,
+html[data-theme='light'] .domain-overview,
+html[data-theme='light'] .detail-panel,
+html[data-theme='light'] .question-search-panel {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .domain-copy h2,
+html[data-theme='light'] .domain-copy strong,
+html[data-theme='light'] .domain-overview h2,
+html[data-theme='light'] .detail-panel h2,
+html[data-theme='light'] .overview-card strong,
+html[data-theme='light'] .overview-card p {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .domain-copy p,
+html[data-theme='light'] .domain-copy__desc,
+html[data-theme='light'] .detail-panel__trial,
+html[data-theme='light'] .advice p {
+  color: #475569 !important;
+}
+
+html[data-theme='light'] .domain-copy__head span,
+html[data-theme='light'] .detail-panel__head span,
+html[data-theme='light'] .domain-copy__focus {
+  color: #0e7490 !important;
+  background: rgba(8, 145, 178, 0.1) !important;
+}
+
+html[data-theme='light'] .domain-tab {
+  color: rgba(15, 23, 42, 0.62) !important;
+}
+
+html[data-theme='light'] .domain-tab--active {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .domain-tab--active::after {
+  background: var(--plex-accent) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='light'] .progress-line {
+  background: rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme='light'] .progress-line span {
+  background: var(--plex-accent) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='light'] .overview-card {
+  background: #f8fafc !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme='light'] .overview-card em {
+  color: var(--plex-accent) !important;
+}
+
+html[data-theme='light'] .knowledge-node {
+  background: #f8fafc !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .knowledge-node p {
+  color: #64748b !important;
+}
+
+html[data-theme='light'] .path-viewport__controls,
+html[data-theme='light'] .legend {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  color: #64748b !important;
+}
+
+html[data-theme='light'] .path-viewport__controls button {
+  background: rgba(8, 145, 178, 0.08) !important;
+  border-color: rgba(8, 145, 178, 0.22) !important;
+  color: #0e7490 !important;
+}
+
+html[data-theme='light'] .track-node strong,
+html[data-theme='light'] .track-node p {
+  color: #1e293b !important;
+  text-shadow: none !important;
+}
+
+html[data-theme='light'] .track-node__orb {
+  background:
+    radial-gradient(circle, rgba(8, 145, 178, 0.12), transparent 66%),
+    #ffffff !important;
+}
+
+html[data-theme='light'] .continue-btn--ghost {
+  color: var(--plex-accent) !important;
+  border-color: rgba(8, 145, 178, 0.28) !important;
+}
+
+html[data-theme='light'] .detail-panel__actions {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.96) 28%, #ffffff 100%) !important;
+  border-top-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme='light'] .student-trial__welcome,
+html[data-theme='light'] .student-trial__stat-card,
+html[data-theme='light'] .student-trial__python-card,
+html[data-theme='light'] .student-trial__card {
+  background: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .topbar-actions {
   display: none;
 }
 

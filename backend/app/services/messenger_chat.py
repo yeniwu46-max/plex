@@ -1,5 +1,6 @@
 """驿站对话：LLM（可选）+ 规则兜底"""
 import os
+import re
 
 import requests
 
@@ -12,31 +13,93 @@ from app.services.xfyun_agent import XfyunAgentService
 
 
 class MessengerChatService:
+    PROVIDER_LABEL_RE = re.compile(
+        r'\s*[（(]\s*(?:(?:讯飞星火|讯飞星辰\s*Agent|星火|LLM|OpenAI|模型|AI接口)(?:\s*\+\s*(?:课程)?知识库)?|(?:课程)?知识库\s*\+\s*学情|规则分析)\s*[）)]\s*$',
+        re.IGNORECASE,
+    )
+    SELF_PREFIX_RE = re.compile(r'^\s*(?:小E|小e|助手|AI)\s*[:：]\s*', re.IGNORECASE)
+    MAX_HISTORY_ITEMS = 18
+    MAX_HISTORY_CHARS = 500
+    ASSISTANT_SYSTEM_PROMPT = (
+        '你叫小E，是 A3 学习系统的驿站助手；记住学生最近 18 条对话并优先承接上下文。'
+        '只以小E身份和学生对话，不要提到讯飞、星火、OpenAI、LLM、模型、接口、知识库来源或供应商。'
+        '不要在句子末尾添加“（讯飞星火）”“（LLM）”这类来源尾注。'
+        '不要用“小E：”“助手：”这类自我署名开头，直接回答学生的问题。'
+        '如果学生追问“这个/上面/刚才”，要根据最近对话判断指代，不要装作第一次听到。'
+        '采用苏格拉底式提问：不要急着给完整答案，先用 2-4 个循序渐进的小问题引导学生自己发现关键点。'
+        '每次最多只揭示一个必要提示；如果学生明显卡住，再给一个很短的示例或判断方向。'
+        '问题要具体，围绕学生当前代码、概念或上一轮对话，不要泛泛地问“你觉得呢”。'
+        '语气像学习伙伴一样温和、聪明、具体，不要官腔，不要模板化，不要重复学生原话。'
+        '一般控制在 120-200 字；结尾用一个最值得学生立刻思考的问题收束。'
+    )
+
+    @classmethod
+    def _clean_reply(cls, reply: str) -> str:
+        """Remove provider labels if an upstream model adds them anyway."""
+        text = (reply or '').strip()
+        previous = None
+        while text and previous != text:
+            previous = text
+            text = cls.PROVIDER_LABEL_RE.sub('', text).strip()
+            text = cls.SELF_PREFIX_RE.sub('', text).strip()
+        return text
+
     @staticmethod
-    def _student_context(user_id: int, message: str) -> tuple[dict, str, bool]:
+    def _normalize_history(history) -> list[dict]:
+        if not isinstance(history, list):
+            return []
+        rows = []
+        for item in history[-MessengerChatService.MAX_HISTORY_ITEMS:]:
+            if not isinstance(item, dict):
+                continue
+            role = item.get('role')
+            if role not in ('user', 'assistant'):
+                continue
+            content = str(item.get('content') or item.get('text') or '').strip()
+            if not content:
+                continue
+            rows.append({
+                'role': role,
+                'content': content[:MessengerChatService.MAX_HISTORY_CHARS],
+            })
+        return rows
+
+    @staticmethod
+    def _format_history(history: list[dict]) -> str:
+        if not history:
+            return '无'
+        label = {'user': '学生', 'assistant': '你'}
+        return '\n'.join(
+            f'{idx + 1}. {label.get(item["role"], item["role"])}：{item["content"]}'
+            for idx, item in enumerate(history)
+        )
+
+    @staticmethod
+    def _student_context(user_id: int, message: str, history=None) -> tuple[dict, str, bool]:
         report = EvaluationService.get_student_learning_report(user_id, '7d')
         summary = report.get('summary') or {}
         weak = report.get('weak_knowledge') or []
         rag_context = RagService.build_context(message)
+        history_rows = MessengerChatService._normalize_history(history)
         weak_labels = '、'.join(
             str(item.get('knowledge_label') or item.get('knowledge_key') or '')
             for item in weak[:3]
         ) or '暂无明显薄弱知识点'
         context = (
-            f'你是 A3 学习系统的驿站助手小E，请用自然、友好的中文回答，不要模板化。\n'
-            f'学习指数：{summary.get("index", 0)}；正确率：{summary.get("correct_rate", 0)}%；'
+            f'{MessengerChatService.ASSISTANT_SYSTEM_PROMPT}\n\n'
+            f'最近对话（最多 18 条，越靠后越新）：\n{MessengerChatService._format_history(history_rows)}\n\n'
+            f'学生近 7 天学情：学习指数 {summary.get("index", 0)}；正确率 {summary.get("correct_rate", 0)}%；'
             f'当前薄弱知识：{weak_labels}。\n'
-            f'可参考的课程知识：{rag_context[:1200] if rag_context else "无"}\n'
-            '回答要求：先直接解决学生问题，再给一条具体且可执行的下一步；总字数控制在 200 字以内。'
+            f'内部课程参考（只用于理解问题，不要说明来源）：{rag_context[:1200] if rag_context else "无"}'
         )
         return report, context, bool(rag_context)
 
     @staticmethod
-    def _xfyun_agent_reply(user_id: int, message: str) -> dict | None:
+    def _xfyun_agent_reply(user_id: int, message: str, history=None) -> dict | None:
         """Prefer the published iFlytek Xingchen Agent when API credentials are configured."""
         if not XfyunAgentService.configured():
             return None
-        report, context, rag_used = MessengerChatService._student_context(user_id, message)
+        report, context, rag_used = MessengerChatService._student_context(user_id, message, history)
         try:
             reply = XfyunAgentService.chat_text(
                 user_id=user_id,
@@ -45,7 +108,7 @@ class MessengerChatService:
                 timeout=90,
             )
             return {
-                'reply': reply,
+                'reply': MessengerChatService._clean_reply(reply),
                 'source': 'xfyun_agent',
                 'recommendations': report.get('recommendations') or [],
                 'rag_used': rag_used,
@@ -54,19 +117,19 @@ class MessengerChatService:
             return None
 
     @staticmethod
-    def _spark_reply(user_id: int, message: str) -> dict | None:
+    def _spark_reply(user_id: int, message: str, history=None) -> dict | None:
         """Use the configured Spark provider for a real, per-request conversation reply."""
         if not IflytekSparkService.configured():
             return None
-        report, context, rag_used = MessengerChatService._student_context(user_id, message)
+        report, context, rag_used = MessengerChatService._student_context(user_id, message, history)
         try:
             reply = IflytekSparkService.chat_text(
-                '你是 A3 学习系统的驿站助手小E。用自然、友好的中文直接回答学生，避免固定模板。',
+                MessengerChatService.ASSISTANT_SYSTEM_PROMPT,
                 f'{context}\n\n学生问题：{message[:500]}',
-                timeout=20,
+                timeout=30,
             )
             return {
-                'reply': reply,
+                'reply': MessengerChatService._clean_reply(reply),
                 'source': 'spark',
                 'recommendations': report.get('recommendations') or [],
                 'rag_used': rag_used,
@@ -76,18 +139,20 @@ class MessengerChatService:
         return None
 
     @staticmethod
-    def _rule_reply(user_id: int, message: str) -> dict:
+    def _rule_reply(user_id: int, message: str, history=None) -> dict:
         rec = RecommendationService.get_student_recommendations(user_id, '7d')
         weak = rec.get('weak_knowledge') or []
         recommendations = rec.get('recommendations') or []
         weak_text = weak[0]['knowledge_label'] if weak else '暂无突出薄弱点'
         rec_text = recommendations[0]['detail'] if recommendations else '保持每日委托与试炼节奏。'
+        history_rows = MessengerChatService._normalize_history(history)
+        context_hint = '我们接着刚才的思路往下推。' if history_rows else '可以先把问题拆小一点。'
         reply = (
-            f'收到你的问题：「{message[:120]}」。\n'
-            f'根据近期学情，当前薄弱方向：{weak_text}。\n'
-            f'建议：{rec_text}'
+            f'{context_hint}\n'
+            f'先问自己两个问题：这一步最依赖哪个知识点？如果把输入换成一个最小例子，结果会怎么变？\n'
+            f'结合最近表现，优先关注「{weak_text}」。下一步可以这样验证：{rec_text}'
         )
-        return {'reply': reply, 'source': 'rules', 'recommendations': recommendations[:3]}
+        return {'reply': MessengerChatService._clean_reply(reply), 'source': 'rules', 'recommendations': recommendations[:3]}
 
     @staticmethod
     def _llm_provider() -> tuple[str, str, str] | None:
@@ -116,22 +181,12 @@ class MessengerChatService:
         return None
 
     @staticmethod
-    def _llm_reply(user_id: int, message: str) -> dict | None:
+    def _llm_reply(user_id: int, message: str, history=None) -> dict | None:
         provider = MessengerChatService._llm_provider()
         if not provider:
             return None
         api_key, endpoint, model = provider
-        report = EvaluationService.get_student_learning_report(user_id, '7d')
-        summary = report.get('summary') or {}
-        weak = report.get('weak_knowledge') or []
-        rag_context = RagService.build_context(message)
-        context = (
-            f'学习指数 {summary.get("index", 0)}，等级 {summary.get("level_label", "")}，'
-            f'正确率 {summary.get("correct_rate", 0)}%，薄弱知识点：'
-            f'{", ".join(w["knowledge_label"] for w in weak[:3]) or "无"}'
-        )
-        if rag_context:
-            context += f'\n\n课程知识库检索：\n{rag_context}'
+        report, context, rag_used = MessengerChatService._student_context(user_id, message, history)
         try:
             resp = requests.post(
                 endpoint,
@@ -144,14 +199,11 @@ class MessengerChatService:
                     'messages': [
                         {
                             'role': 'system',
-                            'content': (
-                                '你是 A3 学习系统的驿站助手小E，用简洁中文回答，'
-                                '结合学情给出可执行建议，不超过 200 字。'
-                            ),
+                            'content': MessengerChatService.ASSISTANT_SYSTEM_PROMPT,
                         },
-                        {'role': 'user', 'content': f'学情摘要：{context}\n\n学生问题：{message}'},
+                        {'role': 'user', 'content': f'{context}\n\n学生问题：{message[:500]}'},
                     ],
-                    'max_tokens': 320,
+                    'max_tokens': 360,
                 },
                 timeout=25,
             )
@@ -159,37 +211,39 @@ class MessengerChatService:
             data = resp.json()
             text = data['choices'][0]['message']['content'].strip()
             return {
-                'reply': text,
+                'reply': MessengerChatService._clean_reply(text),
                 'source': 'llm',
                 'recommendations': report.get('recommendations') or [],
-                'rag_used': bool(rag_context),
+                'rag_used': rag_used,
             }
         except Exception:
             return None
 
     @staticmethod
-    def _rag_rule_reply(user_id: int, message: str) -> dict:
+    def _rag_rule_reply(user_id: int, message: str, history=None) -> dict:
         rag = RagService.query(message)
-        base = MessengerChatService._rule_reply(user_id, message)
+        base = MessengerChatService._rule_reply(user_id, message, history)
         if rag.get('sources'):
             base['reply'] = f'{rag["answer"]}\n\n{base["reply"]}'
             base['source'] = 'rag'
             base['rag_sources'] = rag.get('sources')
+        base['reply'] = MessengerChatService._clean_reply(base['reply'])
         return base
 
     @staticmethod
-    def chat(user_id: int, message: str) -> dict:
+    def chat(user_id: int, message: str, history=None) -> dict:
         text = (message or '').strip()
         if not text:
             raise ValueError('消息不能为空')
         CourseSafetyService.ensure_safe(text, enforce_course_scope=True)
-        agent = MessengerChatService._xfyun_agent_reply(user_id, text)
-        if agent:
-            return agent
-        spark = MessengerChatService._spark_reply(user_id, text)
+        # Spark Lite 响应更快，优先于星辰 Agent（后者 workflow 可达 90s）
+        spark = MessengerChatService._spark_reply(user_id, text, history)
         if spark:
             return spark
-        llm = MessengerChatService._llm_reply(user_id, text)
+        agent = MessengerChatService._xfyun_agent_reply(user_id, text, history)
+        if agent:
+            return agent
+        llm = MessengerChatService._llm_reply(user_id, text, history)
         if llm:
             return llm
-        return MessengerChatService._rag_rule_reply(user_id, text)
+        return MessengerChatService._rag_rule_reply(user_id, text, history)

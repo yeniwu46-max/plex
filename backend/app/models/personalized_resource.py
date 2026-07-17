@@ -29,6 +29,7 @@ class ResourceGenerationTask(BaseModel):
     recoverable = db.Column(db.Boolean, nullable=False, default=True)
     started_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
+    audit_report = db.Column(db.JSON)
 
     def to_dict(self, resources=None):
         return {
@@ -45,6 +46,7 @@ class ResourceGenerationTask(BaseModel):
             'profile_version': self.profile_version or 0,
             'request_fingerprint': self.request_fingerprint,
             'recoverable': bool(self.recoverable),
+            'audit_report': self.audit_report,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
         }

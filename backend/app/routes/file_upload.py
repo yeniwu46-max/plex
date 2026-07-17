@@ -6,6 +6,7 @@ from flask import Blueprint, current_app, request, send_from_directory
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import User, db
+from app.services.class_files import ClassFileService
 from app.services.file_upload import UploadValidationError, validate_and_save
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -60,11 +61,8 @@ def serve_upload_file(filepath: str):
             return error_response('用户不存在', 40401, None, 404)
 
         actual_role = user.role.name if user.role else ''
-        # 非 admin 只能访问自己目录
-        if actual_role != 'admin':
-            prefix = str(user_id) + '/'
-            if not filepath.startswith(prefix):
-                return error_response('无权访问该文件', 40301, None, 403)
+        if actual_role != 'admin' and not ClassFileService.can_access(user_id, filepath):
+            return error_response('无权访问该文件', 40301, None, 403)
 
         base = Path(current_app.instance_path) / 'uploads' / 'files'
         target = (base / filepath).resolve()
@@ -75,6 +73,20 @@ def serve_upload_file(filepath: str):
             return error_response('文件不存在', 40401, None, 404)
 
         return send_from_directory(base, filepath)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@upload_bp.route('/class-files', methods=['GET'])
+@jwt_required()
+def list_class_files():
+    """列出当前用户可接收的班级共享文件。"""
+    try:
+        user_id = int(get_jwt_identity())
+        payload = ClassFileService.list_incoming(user_id)
+        return success_response(payload)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 

@@ -6,6 +6,8 @@ export interface TourStepConfig {
   element: string
   title: string
   description: string
-  /** 进入该步骤前执行（跳转路由、切换 tab 等） */
+  /** 进入该步骤前先跳转的路由（相对路径） */
+  prepareRoute?: string
+  /** 进入该步骤前执行（切换 tab、等待渲染等） */
   prepare?: () => Promise<void>
 }

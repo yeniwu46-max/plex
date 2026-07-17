@@ -1,6 +1,7 @@
 import { http, type ApiEnvelope } from './http'
 
 export type PersonalizedResourceType =
+  | 'learning_bundle'
   | 'lesson_document'
   | 'mind_map'
   | 'exercise_set'
@@ -69,11 +70,19 @@ export async function createResourceTask(
   knowledgeKey: string,
   resourceTypes?: PersonalizedResourceType[],
   idempotencyKey?: string,
+  options?: {
+    target?: string
+    learning_stage?: string
+    learning_style?: string[]
+  },
 ) {
   const { data } = await http.post<ApiEnvelope<ResourceTask>>('/v1/student/resource-generation/tasks', {
     knowledge_key: knowledgeKey,
     resource_types: resourceTypes,
     idempotency_key: idempotencyKey,
+    target: options?.target,
+    learning_stage: options?.learning_stage,
+    learning_style: options?.learning_style,
   })
   if (data.code !== 0) throw new Error(data.message || '创建生成任务失败')
   return data.data
@@ -124,6 +133,79 @@ export interface ResourceReviewMetrics {
   pending_review_count: number
   average_review_minutes: number | null
   risk_reason_distribution: Array<{ reason: string; count: number }>
+  verdict_distribution?: Array<{ verdict: AuditVerdict; count: number }>
+  avg_dimension_scores?: Partial<Record<keyof DimensionScores, number>>
+}
+
+export type AuditVerdict = 'PASS' | 'NEED_MODIFY' | 'REJECT'
+export type CheckLevel = 'PASS' | 'WARNING' | 'FAIL'
+
+export interface AuditCheckItem {
+  id: string
+  label: string
+  level: CheckLevel
+  detail: string
+}
+
+export interface AuditStepResult {
+  step: number
+  name: string
+  checks: AuditCheckItem[]
+  score: number
+  summary: string
+}
+
+export interface DimensionScores {
+  knowledge_accuracy: number
+  teaching_quality: number
+  case_quality: number
+  exercise_quality: number
+  code_quality: number
+  ai_trustworthiness: number
+}
+
+export interface AuditReport {
+  verdict: AuditVerdict
+  suggested_publish: boolean
+  summary: string
+  steps: AuditStepResult[]
+  dimensions: DimensionScores
+  knowledge_key: string
+  backend: string
+  metadata?: Record<string, unknown>
+}
+
+export interface ResourceAuditResponse {
+  resource_id: number
+  generation_task_id: string
+  audit_report: AuditReport
+}
+
+const DIMENSION_LABELS: Record<keyof DimensionScores, string> = {
+  knowledge_accuracy: '知识准确性',
+  teaching_quality: '教学质量',
+  case_quality: '案例质量',
+  exercise_quality: '练习质量',
+  code_quality: '代码质量',
+  ai_trustworthiness: 'AI 可信度',
+}
+
+export { DIMENSION_LABELS }
+
+export async function fetchResourceAudit(resourceId: number) {
+  const { data } = await http.get<ApiEnvelope<ResourceAuditResponse>>(
+    `/v1/teacher/personalized-resources/${resourceId}/audit`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '审核报告加载失败')
+  return data.data
+}
+
+export async function rerunResourceAudit(resourceId: number) {
+  const { data } = await http.post<ApiEnvelope<ResourceAuditResponse>>(
+    `/v1/teacher/personalized-resources/${resourceId}/audit/rerun`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '重新审核失败')
+  return data.data
 }
 
 export async function fetchResourceReviewMetrics() {

@@ -33,7 +33,8 @@ export interface LearningAdaptation {
   action_plan: { action: string; difficulty: string; resources: string[]; micro_practice_count: number; recovery_rule: string }
 }
 
-export interface OnboardingDiagnosticQuestion { id: string; knowledge_key: string; question_type?: 'single_choice' | 'scenario' | 'code_reading'; stem: string; options: string[]; code_preview?: string | null }
+export type OnboardingQuestionType = 'single_choice' | 'scenario' | 'code_reading' | 'true_false' | 'fill_blank'
+export interface OnboardingDiagnosticQuestion { id: string; knowledge_key: string; question_type?: OnboardingQuestionType; stem: string; options: string[]; code_preview?: string | null }
 
 export interface ProfileChatResult {
   conversation_id: string

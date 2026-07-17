@@ -93,6 +93,28 @@ def resource_review_metrics():
     return success_response(PersonalizedResourceService.review_metrics())
 
 
+@personalized_resources_bp.route('/teacher/personalized-resources/<int:resource_id>/audit', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_resource_audit(resource_id):
+    try:
+        return success_response(PersonalizedResourceService.get_audit(resource_id))
+    except LookupError as exc:
+        return error_response(str(exc), 40401, None, 404)
+
+
+@personalized_resources_bp.route('/teacher/personalized-resources/<int:resource_id>/audit/rerun', methods=['POST'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def rerun_resource_audit(resource_id):
+    try:
+        return success_response(PersonalizedResourceService.rerun_audit(resource_id), '审核已重新执行')
+    except LookupError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+
+
 @personalized_resources_bp.route('/teacher/personalized-resources/<int:resource_id>/review', methods=['PUT'])
 @jwt_required()
 @role_required('teacher', 'admin')

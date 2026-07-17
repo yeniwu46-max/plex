@@ -37,7 +37,12 @@ def submit_class_request():
         user_id = int(get_jwt_identity())
         data = request.get_json() or {}
         action = data.get('action')
-        class_id = data.get('class_id', type=int) if data.get('class_id') is not None else None
+        class_id = None
+        if data.get('class_id') is not None:
+            try:
+                class_id = int(data.get('class_id'))
+            except (TypeError, ValueError):
+                raise ValueError('class_id must be an integer')
         payload = data.get('payload') or {}
         reason = data.get('reason')
         row = ClassRequestService.create_request(user_id, action, payload, class_id=class_id, reason=reason)

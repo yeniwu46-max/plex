@@ -3,7 +3,7 @@
  * PlexGuideTour — 分角色新手引导挂载组件
  * 放置在 App.vue 或各端布局中，按 role + autoStart 决定是否自动启动导览
  */
-import { onMounted, onBeforeUnmount } from 'vue'
+import { onBeforeUnmount, onMounted } from 'vue'
 import { usePlexTour, type TourRole } from '../../composables/usePlexTour'
 
 const props = withDefaults(
@@ -14,7 +14,7 @@ const props = withDefaults(
   { autoStart: true },
 )
 
-const { startTour, resetTour, hasSeenTour, hasNeverShowTour } = usePlexTour()
+const { startTour, resetTour, hasSeenTour, hasNeverShowTour, destroyActiveTour } = usePlexTour()
 
 async function restartTour() {
   resetTour(props.role)
@@ -33,7 +33,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  // 路由切换时不强制销毁，让 driver 自然完成
+  destroyActiveTour()
 })
 </script>
 

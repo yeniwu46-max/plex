@@ -52,6 +52,34 @@ def diagnose_learning():
     return success_response(AgentOrchestrator.diagnose_learning_overview(_user_id()))
 
 
+@agent_bp.post('/agents/trial-feedback')
+@jwt_required()
+def trial_feedback():
+    """On-demand 小E feedback for trial workspace (lazy, not auto on run)."""
+    body = request.get_json(silent=True) or {}
+    code = (body.get('code') or '').strip()
+    if not code:
+        return error_response('code required', code=400)
+    user_id = _user_id()
+    try:
+        return success_response(AgentOrchestrator.trial_feedback(user_id, body))
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+
+
+@agent_bp.post('/agents/messenger-quick-action')
+@jwt_required()
+def messenger_quick_action():
+    body = request.get_json(silent=True) or {}
+    action = (body.get('action') or '').strip()
+    if not action:
+        return error_response('action required', code=400)
+    try:
+        return success_response(AgentOrchestrator.messenger_quick_action(_user_id(), action))
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+
+
 @agent_bp.post('/agents/code-learning-cycle')
 @jwt_required()
 def code_learning_cycle():
@@ -59,6 +87,19 @@ def code_learning_cycle():
     body = request.get_json(silent=True) or {}
     try:
         return success_response(AgentOrchestrator.run_code_learning_cycle(_user_id(), body))
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+
+
+@agent_bp.post('/agents/trial-coach')
+@jwt_required()
+def trial_coach():
+    body = request.get_json(silent=True) or {}
+    intent = (body.get('intent') or '').strip()
+    if not intent:
+        return error_response('intent required', code=400)
+    try:
+        return success_response(AgentOrchestrator.trial_coach(body))
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
 

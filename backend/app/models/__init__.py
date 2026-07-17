@@ -19,6 +19,7 @@ from .teacher_trial_template import TeacherTrialTemplate
 from .system_announcement import SystemAnnouncement
 from .student_notification import StudentNotification
 from .class_change_request import ClassChangeRequest
+from .class_enrollment_request import ClassEnrollmentRequest
 from .student_mistake import StudentMistake
 from .learning_resource import LearningResource
 from .student_profile import (
@@ -26,6 +27,7 @@ from .student_profile import (
     StudentProfileDiagnostic, LearningAdaptation,
 )
 from .personalized_resource import PersonalizedLearningResource, ResourceGenerationTask
+from .trial_comment import TrialComment, TrialCommentLike
 
 __all__ = [
     'db',
@@ -52,6 +54,7 @@ __all__ = [
     'SystemAnnouncement',
     'StudentNotification',
     'ClassChangeRequest',
+    'ClassEnrollmentRequest',
     'StudentMistake',
     'LearningResource',
     'StudentProfile',
@@ -61,4 +64,6 @@ __all__ = [
     'LearningAdaptation',
     'PersonalizedLearningResource',
     'ResourceGenerationTask',
+    'TrialComment',
+    'TrialCommentLike',
 ]

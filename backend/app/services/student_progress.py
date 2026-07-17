@@ -2,21 +2,31 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
+from app.constants.star_path_unlock import (
+    DOMAIN_COMPLETE_PROGRESS,
+    DOMAIN_UNLOCK_PROGRESS,
+)
 from app.models import Trial, TrialParticipation, TrialQuestionProgress, User, UserDailyQuest, db
 from app.models import PersonalizedLearningResource, StudentProfile
 
 DOMAIN_CATALOG = [
-    {'key': 'stage1', 'title': '会写第一段 Python', 'knowledge_keys': ['intro', 'comment', 'python', 'lang', 'syntax', 'basic', 'var', 'io', 'input']},
-    {'key': 'stage2', 'title': '条件与循环', 'knowledge_keys': ['ops', 'cond', 'condition', 'loop', 'range']},
-    {'key': 'stage3', 'title': '容器、字符串与函数', 'knowledge_keys': ['list', 'tuple', 'set', 'dict', 'str', 'string', 'func', 'function']},
-    {'key': 'stage4', 'title': '简单算法小任务', 'knowledge_keys': ['file', 'except', 'exception', 'algo', 'algo-sum', 'algo-search', 'algo-sort', 'algo-dedup', 'nested']},
+    {'key': 'data-vars', 'title': '数据与变量', 'knowledge_keys': ['intro', 'comment', 'python', 'lang', 'syntax', 'basic', 'var', 'io', 'input']},
+    {'key': 'operators', 'title': '运算符的使用', 'knowledge_keys': ['ops']},
+    {'key': 'flow-control', 'title': '流程控制', 'knowledge_keys': ['cond', 'condition', 'loop', 'range', 'break', 'continue', 'nested']},
+    {'key': 'strings', 'title': '字符串', 'knowledge_keys': ['str', 'string']},
+    {'key': 'lists-dicts', 'title': '列表与字典', 'knowledge_keys': ['list', 'tuple', 'set', 'dict']},
+    {'key': 'functions', 'title': '函数', 'knowledge_keys': ['func', 'function']},
+    {'key': 'recursion-iter', 'title': '递归与迭代', 'knowledge_keys': ['file', 'except', 'exception', 'algo', 'algo-sum', 'algo-search', 'algo-sort', 'algo-dedup', 'algo-bubble', 'algo-selection', 'algo-binary']},
 ]
 
 KNOWLEDGE_LABELS = {
-    'stage1': '会写第一段 Python',
-    'stage2': '条件与循环',
-    'stage3': '容器、字符串与函数',
-    'stage4': '简单算法小任务',
+    'data-vars': '数据与变量',
+    'operators': '运算符的使用',
+    'flow-control': '流程控制',
+    'strings': '字符串',
+    'lists-dicts': '列表与字典',
+    'functions': '函数',
+    'recursion-iter': '递归与迭代',
     'intro': 'Python 入门',
     'comment': '注释',
     'var': '变量与类型',
@@ -99,19 +109,16 @@ class StudentProgressService:
                     domain_scores[domain['key']].append(score)
                     break
             else:
-                domain_scores['stage1'].append(score)
+                domain_scores['data-vars'].append(score)
             skill_scores[key].append(score)
 
         level_boost = min(30, (user.level or 1) * 4)
         domains = []
-        prev_unlocked = True
         for index, domain in enumerate(DOMAIN_CATALOG):
             scores = domain_scores.get(domain['key'], [])
-            progress = min(100, round(sum(scores) / len(scores)) if scores else level_boost // (index + 1))
-            locked = not prev_unlocked and progress < 15
-            if progress >= 20:
-                prev_unlocked = True
-            state = '待解锁' if locked else ('进行中' if progress < 85 else '已点亮')
+            progress = min(100, round(sum(scores) / len(scores)) if scores else max(15, level_boost // (index + 1)))
+            locked = index > 0 and domains[index - 1]['progress'] < DOMAIN_UNLOCK_PROGRESS
+            state = '进行中' if progress < DOMAIN_COMPLETE_PROGRESS else '已点亮'
             domains.append(
                 {
                     'key': domain['key'],
@@ -119,7 +126,7 @@ class StudentProgressService:
                     'progress': progress,
                     'state': state,
                     'locked': locked,
-                    'active': not locked and progress < 85,
+                    'active': progress < DOMAIN_COMPLETE_PROGRESS and not locked,
                 }
             )
 
@@ -160,18 +167,20 @@ class StudentProgressService:
             )
 
         from app.services.learning_path import LearningPathService
+        from app.services.mistake import MistakeService
 
         path_plan = LearningPathService.plan(user_id)
 
         return {
             'domains': domains,
-            'active_domain_key': next((d['key'] for d in domains if d.get('active')), 'stage1'),
+            'active_domain_key': next((d['key'] for d in domains if d.get('active')), 'data-vars'),
             'profile_version': profile.version if profile else 0,
             'ordered_nodes': path_plan.get('ordered_nodes', []),
             'active_node_id': path_plan.get('active_node_id'),
             'next_best_action': path_plan.get('next_best_action'),
             'remediation_paths': path_plan.get('remediation_paths', []),
             'graph_backend': path_plan.get('graph_backend'),
+            'question_ac_status': MistakeService.list_accepted_question_refs(user_id),
         }
 
     @staticmethod
@@ -181,24 +190,32 @@ class StudentProgressService:
             raise ValueError('用户不存在')
 
         completed = StudentProgressService._completed_trials(user_id)
-        skill_map = defaultdict(list)
+        domain_scores = defaultdict(list)
         for part in completed:
             key = (part.trial.knowledge_key or 'algo').lower()
-            skill_map[key].append(part.score or 60)
+            for domain in DOMAIN_CATALOG:
+                if key in domain['knowledge_keys']:
+                    domain_scores[domain['key']].append(part.score or 60)
+                    break
+            else:
+                domain_scores['data-vars'].append(part.score or 60)
 
         skills = []
-        for key, scores in skill_map.items():
+        for domain in DOMAIN_CATALOG:
+            scores = domain_scores.get(domain['key'], [])
+            percent = min(100, round(sum(scores) / len(scores))) if scores else 0
             skills.append(
                 {
-                    'key': key,
-                    'label': KNOWLEDGE_LABELS.get(key, key.upper()),
-                    'percent': min(100, round(sum(scores) / len(scores))),
+                    'key': domain['key'],
+                    'label': domain['title'],
+                    'percent': percent,
                 }
             )
-        skills.sort(key=lambda item: item['percent'], reverse=True)
 
-        while len(skills) < 4:
-            skills.append({'key': f'pending-{len(skills)}', 'label': '待探索', 'percent': 0})
+        if not any(item['percent'] > 0 for item in skills):
+            level_boost = min(30, (user.level or 1) * 4)
+            for index, item in enumerate(skills):
+                item['percent'] = max(0, min(100, level_boost // (index + 2)))
 
         today_quests = (
             UserDailyQuest.query.filter_by(user_id=user_id)
@@ -223,7 +240,7 @@ class StudentProgressService:
 
         return {
             'tendency': {'label': label, 'description': desc},
-            'skills': skills[:6],
+            'skills': skills[:7],
             'stats': {
                 'completed_trials': trial_count,
                 'completed_daily_quests': completed_q,

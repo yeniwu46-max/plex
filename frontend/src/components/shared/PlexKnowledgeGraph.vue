@@ -61,6 +61,52 @@ const MODE_ACCENT: Record<string, string> = {
   admin: '#818cf8',
 }
 
+function heatLevel(node: KgNode) {
+  return Math.min(1, Math.max(0, (node.weak_score ?? 0) / 120))
+}
+
+function metricText(value: number | null | undefined, suffix = '') {
+  if (value === null || value === undefined) return '—'
+  return `${value}${suffix}`
+}
+
+function errorTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    wrong_output: '输出不符',
+    runtime_error: '运行错误',
+    wrong_answer: '答案错误',
+  }
+  return labels[type] ?? type
+}
+
+function buildMetricTooltip(node: KgNode) {
+  if (
+    node.weak_score === undefined &&
+    node.fail_count === undefined &&
+    node.accuracy === undefined &&
+    node.affected_student_count === undefined
+  ) {
+    return ''
+  }
+  const errors = (node.top_error_types ?? [])
+    .map((item) => `${errorTypeLabel(item.error_type)} ${item.count}`)
+    .join('、')
+  const notMasteredPercent =
+    node.not_mastered_percent ??
+    (
+      node.student_count && node.affected_student_count !== undefined
+        ? Math.round((node.affected_student_count / node.student_count) * 100)
+        : null
+    )
+  return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.24);display:grid;gap:4px;color:${g6Tokens.value.tooltipTextColor};font-size:11px;">
+    <span>薄弱热度：${metricText(node.weak_score)}</span>
+    <span>失败次数：${metricText(node.fail_count)} · 错题数：${metricText(node.wrong_count)}</span>
+    <span>正确率：${metricText(node.accuracy, '%')} · 影响学生：${metricText(node.affected_student_count)}人</span>
+    ${props.mode === 'teacher' ? `<span>未掌握学生：${metricText(notMasteredPercent, '%')}</span>` : ''}
+    ${errors ? `<span>常见错误：${errors}</span>` : ''}
+  </div>`
+}
+
 function buildGraphData(): GraphData {
   const accent = MODE_ACCENT[props.mode] ?? '#22c55e'
   const tk = g6Tokens.value
@@ -74,8 +120,11 @@ function buildGraphData(): GraphData {
       const isActive = props.activePathNodeId === n.id
       const isRemediation = remediationSet.has(n.id)
       const statusColor = KG_NODE_STATUS_COLOR[n.status as KgNodeStatus]
-      const stroke = isActive ? '#22c55e' : isRemediation ? '#f97316' : statusColor
-      const lineWidth = isActive ? 3 : onPath ? 2.2 : n.status === 'recommended' ? 2.5 : 1.5
+      const heat = heatLevel(n)
+      const isTeacherWeak = props.mode === 'teacher' && (n.status === 'weak' || (n.weak_score ?? 0) > 0)
+      const heatColor = isTeacherWeak ? '#fb7185' : statusColor
+      const stroke = isActive ? '#22c55e' : isRemediation ? '#f97316' : heatColor
+      const lineWidth = isActive ? 3 : onPath ? 2.2 : n.status === 'recommended' ? 2.5 : 1.5 + heat * 3
       const labelSuffix = isRemediation ? ' · 补救' : isActive ? ' · 下一步' : onPath ? ' · 路径' : ''
       return {
         id: n.id,
@@ -90,8 +139,8 @@ function buildGraphData(): GraphData {
         style: {
           x: n.x ?? Math.random() * 800,
           y: n.y ?? Math.random() * 480,
-          size: n.level === 'advanced' ? 48 : n.level === 'intermediate' ? 42 : 36,
-          fill: statusColor + (onPath ? '33' : '22'),
+          size: (n.level === 'advanced' ? 48 : n.level === 'intermediate' ? 42 : 36) + heat * 18,
+          fill: heatColor + (heat > 0 ? '55' : onPath ? '33' : '22'),
           stroke,
           lineWidth,
           labelText: n.label + labelSuffix,
@@ -100,7 +149,7 @@ function buildGraphData(): GraphData {
           labelFontFamily: 'Microsoft YaHei, sans-serif',
           labelOffsetY: 4,
           shadowColor: stroke,
-          shadowBlur: isActive || n.status === 'mastered' || n.status === 'recommended' ? 12 : onPath ? 8 : 0,
+          shadowBlur: isActive || n.status === 'mastered' || n.status === 'recommended' ? 12 : onPath ? 8 : heat * 22,
           cursor: 'pointer',
           badgeFill: accent,
         },
@@ -172,7 +221,14 @@ async function initGraph() {
           if (!node) return ''
           const statusLabel = KG_NODE_STATUS_LABEL[node.status as KgNodeStatus]
           const color = KG_NODE_STATUS_COLOR[node.status as KgNodeStatus]
-          return buildG6TooltipHtml(node.label, node.domain, statusLabel, node.description, color, g6Tokens.value)
+          return buildG6TooltipHtml(
+            node.label,
+            node.domain,
+            statusLabel,
+            node.description,
+            color,
+            g6Tokens.value,
+          ).replace('</div>', `${buildMetricTooltip(node)}</div>`)
         },
       },
     ],
@@ -253,6 +309,26 @@ onBeforeUnmount(() => {
         <h3>{{ selectedNode.label }}</h3>
         <p class="plex-kg-detail__domain">{{ selectedNode.domain }} · {{ selectedNode.level === 'basic' ? '入门' : selectedNode.level === 'intermediate' ? '进阶' : '挑战' }}</p>
         <p class="plex-kg-detail__desc">{{ selectedNode.description }}</p>
+        <dl
+          v-if="selectedNode.weak_score !== undefined || selectedNode.fail_count !== undefined"
+          class="plex-kg-detail__metrics"
+        >
+          <div>
+            <dt>薄弱热度</dt>
+            <dd>{{ selectedNode.weak_score ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>正确率</dt>
+            <dd>
+              {{ selectedNode.accuracy ?? '—' }}
+              <span v-if="selectedNode.accuracy !== null && selectedNode.accuracy !== undefined">%</span>
+            </dd>
+          </div>
+          <div>
+            <dt>{{ mode === 'teacher' ? '影响学生' : '失败次数' }}</dt>
+            <dd>{{ mode === 'teacher' ? selectedNode.affected_student_count ?? 0 : selectedNode.fail_count ?? 0 }}</dd>
+          </div>
+        </dl>
         <div class="plex-kg-detail__edges">
           <p>
             <small>前置知识：</small>
@@ -353,6 +429,32 @@ onBeforeUnmount(() => {
   color: rgba(203, 213, 225, 0.82);
   font-size: 0.8rem;
   line-height: 1.5;
+}
+
+.plex-kg-detail__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0.7rem 0;
+}
+
+.plex-kg-detail__metrics div {
+  padding: 0.45rem;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.plex-kg-detail__metrics dt {
+  margin: 0 0 0.2rem;
+  color: rgba(203, 213, 225, 0.62);
+  font-size: 0.68rem;
+}
+
+.plex-kg-detail__metrics dd {
+  margin: 0;
+  color: #f8fafc;
+  font-weight: 700;
 }
 
 .plex-kg-detail__edges p {

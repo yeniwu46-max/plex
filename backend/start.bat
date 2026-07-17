@@ -47,7 +47,7 @@ timeout /t 2 /nobreak
 echo.
 echo [4/4] 启动服务...
 echo ========================================
-echo 服务正在启动... 请访问: http://localhost:5000
+echo 服务正在启动... 请访问: http://localhost:5180
 echo.
 echo 测试账户:
 echo   用户名: admin

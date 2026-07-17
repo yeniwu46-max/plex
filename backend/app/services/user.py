@@ -93,6 +93,7 @@ class UserService(BaseService):
             'class': {
                 'id': user.class_rel.id,
                 'name': user.class_rel.name,
+                'join_code': user.class_rel.join_code,
             } if user.class_rel else None,
         }
 

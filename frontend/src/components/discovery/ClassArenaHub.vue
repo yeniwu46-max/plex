@@ -1,44 +1,43 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { NButton, NIcon, NModal, NTag, useMessage } from 'naive-ui'
 import {
   CheckmarkCircleOutline,
+  DocumentTextOutline,
   FlashOutline,
-  GameControllerOutline,
   PeopleOutline,
   PulseOutline,
   ShieldHalfOutline,
   TimerOutline,
   TrophyOutline,
 } from '@vicons/ionicons5'
-import TrialArenaMap from './TrialArenaMap.vue'
-import TrialMcqPanel from '../trial/TrialMcqPanel.vue'
 import PythonTrialWorkspace from '../trial/PythonTrialWorkspace.vue'
-import { joinStudentTrial } from '../../api/studentTrials'
 import {
   CLASS_ARENA_MODULES,
-  RPS_SAMPLE_RULES,
-  RPS_STRATEGY_EXAMPLES,
+  MOCK_EXAM_PROBLEM_COUNT,
+  MOCK_EXAM_RULES,
+  MOCK_EXAM_TIME_SEC,
+  STUDENT_DUEL_PROBLEM_COUNT,
   type ClassArenaModuleKey,
 } from '../../data/classArenaModules'
 import {
-  GLADIATOR_DUEL_QUESTIONS,
-  GLADIATOR_DUEL_TIME_SEC,
-  RPS_STRATEGY_QUESTION,
+  getDefaultMockExamQuestions,
+  MOCK_EXAM_SETS,
+  DEFAULT_MOCK_EXAM_SET_ID,
+  getMockExamQuestionsForSet,
+  STUDENT_DUEL_TIME_SEC,
+  pickRandomStudentDuelQuestions,
 } from '../../data/classArenaQuestions'
 import type { PythonTrialQuestion } from '../../data/pythonTrialQuestions'
-import type { TrialMode } from '../../data/trialArena'
+import { ensurePracticeQuestionsLoaded } from '../../utils/practiceQuestionCache'
 
-type CodeSessionKind = 'gladiator' | 'rps'
+type CodeSessionKind = 'student_duel' | 'mock_exam'
 
 interface CodeSession {
   kind: CodeSessionKind
   question: PythonTrialQuestion
-}
-
-interface TrialMcqSession {
-  trialId: number
-  title: string
+  questionIndex: number
+  totalQuestions: number
 }
 
 const props = defineProps<{
@@ -47,46 +46,39 @@ const props = defineProps<{
   userName: string
   userLevel: number
   classOnlineCount: number
-  trials: TrialMode[]
-  trialsLoading: boolean
-  trialsError: string
-  selectedArenaKey: string | null
 }>()
 
 const emit = defineEmits<{
-  'update:selectedArenaKey': [key: string | null]
-  retryTrials: []
   sessionChange: [active: boolean]
 }>()
 
 const message = useMessage()
-const activeModule = ref<ClassArenaModuleKey>('trials')
-const showGladiatorModal = ref(false)
-const showRpsModal = ref(false)
+const activeModule = ref<ClassArenaModuleKey>('student_duel')
+const showDuelModal = ref(false)
+const showExamModal = ref(false)
 const duelMatching = ref(false)
 const duelMatched = ref(false)
-const rpsConfirmed = ref(false)
 const codeSession = ref<CodeSession | null>(null)
-const trialMcqSession = ref<TrialMcqSession | null>(null)
-const entering = ref(false)
-const gladiatorQuestionIndex = ref(0)
-const gladiatorCompletedCount = ref(0)
-const gladiatorRemainingSec = ref(GLADIATOR_DUEL_TIME_SEC)
-const gladiatorTimerRunning = ref(false)
-let gladiatorTimerId: ReturnType<typeof setInterval> | undefined
-
-const gladiatorTotalQuestions = GLADIATOR_DUEL_QUESTIONS.length
-const gladiatorTimerText = computed(() => formatTimer(gladiatorRemainingSec.value))
-const gladiatorTimerUrgent = computed(() => gladiatorRemainingSec.value <= 60)
+const duelQuestions = ref<PythonTrialQuestion[]>([])
+const examQuestions = ref<PythonTrialQuestion[]>([...getDefaultMockExamQuestions()])
+const selectedExamSetId = ref(DEFAULT_MOCK_EXAM_SET_ID)
+const duelQuestionIndex = ref(0)
+const duelCompletedCount = ref(0)
+const examQuestionIndex = ref(0)
+const examCompletedCount = ref(0)
+const duelRemainingSec = ref(STUDENT_DUEL_TIME_SEC)
+const examRemainingSec = ref(MOCK_EXAM_TIME_SEC)
+const duelTimerRunning = ref(false)
+const examTimerRunning = ref(false)
+let duelTimerId: ReturnType<typeof setInterval> | undefined
+let examTimerId: ReturnType<typeof setInterval> | undefined
 
 const onlineCount = computed(() => Math.max(0, props.classOnlineCount || 0))
-const activeTrialCount = computed(() => props.trials.length)
 const rivalName = computed(() => `探索者-${String((props.classRank ?? 2) + 1).padStart(2, '0')}`)
 
 const moduleIcon: Record<ClassArenaModuleKey, typeof TrophyOutline> = {
-  trials: TrophyOutline,
-  gladiator: FlashOutline,
-  rps: GameControllerOutline,
+  student_duel: FlashOutline,
+  mock_exam: DocumentTextOutline,
 }
 
 const statusLabel: Record<string, string> = {
@@ -101,6 +93,11 @@ const statusType: Record<string, 'success' | 'warning' | 'default'> = {
   soon: 'default',
 }
 
+const duelTimerText = computed(() => formatTimer(duelRemainingSec.value))
+const examTimerText = computed(() => formatTimer(examRemainingSec.value))
+const duelTimerUrgent = computed(() => duelRemainingSec.value <= 300)
+const examTimerUrgent = computed(() => examRemainingSec.value <= 600)
+
 function formatTimer(totalSec: number) {
   const sec = Math.max(0, totalSec)
   const m = Math.floor(sec / 60)
@@ -108,54 +105,87 @@ function formatTimer(totalSec: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-function stopGladiatorTimer() {
-  gladiatorTimerRunning.value = false
-  if (gladiatorTimerId !== undefined) {
-    clearInterval(gladiatorTimerId)
-    gladiatorTimerId = undefined
+function stopDuelTimer() {
+  duelTimerRunning.value = false
+  if (duelTimerId !== undefined) {
+    clearInterval(duelTimerId)
+    duelTimerId = undefined
   }
 }
 
-function startGladiatorTimer() {
-  stopGladiatorTimer()
-  gladiatorRemainingSec.value = GLADIATOR_DUEL_TIME_SEC
-  gladiatorTimerRunning.value = true
-  gladiatorTimerId = setInterval(() => {
-    if (gladiatorRemainingSec.value <= 0) {
-      stopGladiatorTimer()
-      message.warning('对决时间到！')
+function stopExamTimer() {
+  examTimerRunning.value = false
+  if (examTimerId !== undefined) {
+    clearInterval(examTimerId)
+    examTimerId = undefined
+  }
+}
+
+function startDuelTimer() {
+  stopDuelTimer()
+  duelRemainingSec.value = STUDENT_DUEL_TIME_SEC
+  duelTimerRunning.value = true
+  duelTimerId = setInterval(() => {
+    if (duelRemainingSec.value <= 0) {
+      stopDuelTimer()
+      message.warning('对战时间到！')
       return
     }
-    gladiatorRemainingSec.value -= 1
+    duelRemainingSec.value -= 1
   }, 1000)
 }
 
-function resetGladiatorRun() {
-  stopGladiatorTimer()
-  gladiatorQuestionIndex.value = 0
-  gladiatorCompletedCount.value = 0
-  gladiatorRemainingSec.value = GLADIATOR_DUEL_TIME_SEC
+function startExamTimer() {
+  stopExamTimer()
+  examRemainingSec.value = MOCK_EXAM_TIME_SEC
+  examTimerRunning.value = true
+  examTimerId = setInterval(() => {
+    if (examRemainingSec.value <= 0) {
+      stopExamTimer()
+      message.warning('考试时间到！')
+      return
+    }
+    examRemainingSec.value -= 1
+  }, 1000)
 }
 
-function buildGladiatorQuestion(index: number): PythonTrialQuestion {
-  const base = GLADIATOR_DUEL_QUESTIONS[index]
+function resetDuelRun() {
+  stopDuelTimer()
+  duelQuestionIndex.value = 0
+  duelCompletedCount.value = 0
+  duelRemainingSec.value = STUDENT_DUEL_TIME_SEC
+}
+
+const activeExamSet = computed(() => MOCK_EXAM_SETS.find((item) => item.id === selectedExamSetId.value) ?? MOCK_EXAM_SETS[0])
+
+function switchExamSet(setId: string) {
+  selectedExamSetId.value = setId
+  examQuestions.value = getMockExamQuestionsForSet(setId)
+}
+
+function resetExamRun() {
+  stopExamTimer()
+  examQuestionIndex.value = 0
+  examCompletedCount.value = 0
+  examRemainingSec.value = MOCK_EXAM_TIME_SEC
+}
+
+function buildDuelQuestion(index: number): PythonTrialQuestion {
+  const base = duelQuestions.value[index]
+  const label = base.code ? `${base.code}` : base.title
   return {
     ...base,
-    title: `第 ${index + 1} 题 · ${base.title}`,
-    description: `${base.description}\n\n对手：${rivalName.value} · 限时 ${formatTimer(gladiatorRemainingSec.value)} · 已完成 ${gladiatorCompletedCount.value}/${gladiatorTotalQuestions} 题`,
+    title: `${label} · 对战第 ${index + 1} 题`,
   }
 }
 
-function openGladiatorQuestion(index: number) {
-  gladiatorQuestionIndex.value = index
-  openCodeSession({
-    kind: 'gladiator',
-    question: buildGladiatorQuestion(index),
-  })
-}
-
-function selectModule(key: ClassArenaModuleKey) {
-  activeModule.value = key
+function buildExamQuestion(index: number): PythonTrialQuestion {
+  const base = examQuestions.value[index]
+  const label = base.code ? `${base.code}` : base.title
+  return {
+    ...base,
+    title: `${label} · 卷面第 ${index + 1} 题`,
+  }
 }
 
 function openCodeSession(session: CodeSession) {
@@ -163,45 +193,39 @@ function openCodeSession(session: CodeSession) {
   emit('sessionChange', true)
 }
 
+function openDuelQuestion(index: number) {
+  duelQuestionIndex.value = index
+  openCodeSession({
+    kind: 'student_duel',
+    question: buildDuelQuestion(index),
+    questionIndex: index,
+    totalQuestions: STUDENT_DUEL_PROBLEM_COUNT,
+  })
+}
+
+function openExamQuestion(index: number) {
+  examQuestionIndex.value = index
+  openCodeSession({
+    kind: 'mock_exam',
+    question: buildExamQuestion(index),
+    questionIndex: index,
+    totalQuestions: MOCK_EXAM_PROBLEM_COUNT,
+  })
+}
+
 function closeCodeSession() {
-  if (codeSession.value?.kind === 'gladiator') {
-    resetGladiatorRun()
-  }
+  if (codeSession.value?.kind === 'student_duel') resetDuelRun()
+  if (codeSession.value?.kind === 'mock_exam') resetExamRun()
   codeSession.value = null
   duelMatched.value = false
-  rpsConfirmed.value = false
   emit('sessionChange', false)
 }
 
-function closeTrialMcqSession() {
-  trialMcqSession.value = null
-  emit('sessionChange', false)
+function selectModule(key: ClassArenaModuleKey) {
+  activeModule.value = key
 }
 
-function onTrialMcqCompleted() {
-  message.success('班级试炼已完成，数据已同步至数据库')
-  emit('retryTrials')
-  closeTrialMcqSession()
-}
-
-async function onEnterTrial(trial: TrialMode) {
-  if (!trial.trialId) {
-    message.warning('该试炼暂不可用')
-    return
-  }
-  entering.value = true
-  try {
-    await joinStudentTrial(trial.trialId)
-    trialMcqSession.value = { trialId: trial.trialId, title: trial.title }
-    emit('sessionChange', true)
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '进入试炼失败')
-  } finally {
-    entering.value = false
-  }
-}
-
-function startGladiatorMatch() {
+function startDuelMatch() {
   if (onlineCount.value < 2) {
     message.info('当前同班在线人数不足，等待其他 Explorer 上线后再匹配')
     return
@@ -210,95 +234,119 @@ function startGladiatorMatch() {
   window.setTimeout(() => {
     duelMatching.value = false
     duelMatched.value = true
-    message.success(`已匹配对手 ${rivalName.value}`)
+    duelQuestions.value = pickRandomStudentDuelQuestions(STUDENT_DUEL_PROBLEM_COUNT)
+    message.success(`已匹配对手 ${rivalName.value}，随机 ${STUDENT_DUEL_PROBLEM_COUNT} 题`)
   }, 1200)
 }
 
-function confirmGladiatorDuel() {
-  resetGladiatorRun()
-  startGladiatorTimer()
-  openGladiatorQuestion(0)
-  message.success('对决开始！计时器已启动')
+function confirmDuelStart() {
+  resetDuelRun()
+  startDuelTimer()
+  openDuelQuestion(0)
+  message.success('ACM 对战开始！先 AC 者获胜')
 }
 
-function confirmRpsStrategy() {
-  rpsConfirmed.value = true
-  openCodeSession({
-    kind: 'rps',
-    question: RPS_STRATEGY_QUESTION,
-  })
+function confirmExamStart() {
+  resetExamRun()
+  examQuestions.value = getMockExamQuestionsForSet(selectedExamSetId.value)
+  startExamTimer()
+  openExamQuestion(0)
+  message.success('模拟考试开始，祝你好运！')
 }
 
-async function onWorkspacePassed() {
+function onWorkspacePassed() {
   const session = codeSession.value
   if (!session) return
-  if (session.kind === 'gladiator') {
-    gladiatorCompletedCount.value += 1
-    if (gladiatorQuestionIndex.value < gladiatorTotalQuestions - 1) {
-      message.success(`第 ${gladiatorCompletedCount.value} 题完成，进入下一题`)
-      openGladiatorQuestion(gladiatorQuestionIndex.value + 1)
+
+  if (session.kind === 'student_duel') {
+    duelCompletedCount.value += 1
+    if (duelQuestionIndex.value < session.totalQuestions - 1) {
+      message.success(`第 ${duelCompletedCount.value} 题 AC，进入下一题`)
+      openDuelQuestion(duelQuestionIndex.value + 1)
       return
     }
-    stopGladiatorTimer()
-    message.success(`全部 ${gladiatorTotalQuestions} 题完成！用时 ${formatTimer(GLADIATOR_DUEL_TIME_SEC - gladiatorRemainingSec.value)}`)
+    stopDuelTimer()
+    message.success(`对战胜利！${STUDENT_DUEL_PROBLEM_COUNT} 题全部 AC，用时 ${formatTimer(STUDENT_DUEL_TIME_SEC - duelRemainingSec.value)}`)
     return
   }
-  message.success('策略有效！系统将用此出招与对手进行多轮猜拳对战（演示）')
+
+  examCompletedCount.value += 1
+  if (examQuestionIndex.value < session.totalQuestions - 1) {
+    message.success(`第 ${examCompletedCount.value} 题 AC，继续下一题`)
+    openExamQuestion(examQuestionIndex.value + 1)
+    return
+  }
+  stopExamTimer()
+  const score = Math.round((examCompletedCount.value / MOCK_EXAM_PROBLEM_COUNT) * 100)
+  message.success(`模拟考试结束！得分 ${score}，AC ${examCompletedCount.value}/${MOCK_EXAM_PROBLEM_COUNT} 题`)
 }
 
+onMounted(() => {
+  void ensurePracticeQuestionsLoaded()
+})
+
 onUnmounted(() => {
-  stopGladiatorTimer()
+  stopDuelTimer()
+  stopExamTimer()
 })
 </script>
 
 <template>
-  <div class="class-arena" :class="{ 'class-arena--workspace': codeSession || trialMcqSession }">
-    <template v-if="trialMcqSession">
-      <TrialMcqPanel
-        :trial-id="trialMcqSession.trialId"
-        :trial-title="trialMcqSession.title"
-        @back="closeTrialMcqSession"
-        @completed="onTrialMcqCompleted"
-      />
-    </template>
-    <template v-else-if="codeSession">
+  <div class="class-arena" :class="{ 'class-arena--workspace': codeSession }">
+    <template v-if="codeSession">
       <header
-        v-if="codeSession.kind === 'gladiator'"
-        class="gladiator-hud"
-        aria-label="角斗士对决状态"
+        v-if="codeSession.kind === 'student_duel'"
+        class="arena-hud"
+        aria-label="学生对战状态"
       >
-        <div class="gladiator-hud__item" :class="{ 'gladiator-hud__item--urgent': gladiatorTimerUrgent }">
+        <div class="arena-hud__item" :class="{ 'arena-hud__item--urgent': duelTimerUrgent }">
           <n-icon :component="TimerOutline" />
-          <span>{{ gladiatorTimerText }}</span>
-          <em>{{ gladiatorTimerRunning ? '倒计时' : '已结束' }}</em>
+          <span>{{ duelTimerText }}</span>
+          <em>ACM 倒计时</em>
         </div>
-        <div class="gladiator-hud__item gladiator-hud__item--progress">
+        <div class="arena-hud__item arena-hud__item--progress">
           <n-icon :component="CheckmarkCircleOutline" />
-          <span>完成题数 {{ gladiatorCompletedCount }} / {{ gladiatorTotalQuestions }}</span>
-          <em>当前第 {{ gladiatorQuestionIndex + 1 }} 题</em>
+          <span>AC {{ duelCompletedCount }} / {{ STUDENT_DUEL_PROBLEM_COUNT }}</span>
+          <em>第 {{ duelQuestionIndex + 1 }} 题</em>
         </div>
-        <div class="gladiator-hud__item">
+        <div class="arena-hud__item">
           <n-icon :component="PeopleOutline" />
           <span>VS {{ rivalName }}</span>
+        </div>
+      </header>
+      <header
+        v-else
+        class="arena-hud"
+        aria-label="模拟考试状态"
+      >
+        <div class="arena-hud__item" :class="{ 'arena-hud__item--urgent': examTimerUrgent }">
+          <n-icon :component="TimerOutline" />
+          <span>{{ examTimerText }}</span>
+          <em>考试剩余</em>
+        </div>
+        <div class="arena-hud__item arena-hud__item--progress">
+          <n-icon :component="DocumentTextOutline" />
+          <span>AC {{ examCompletedCount }} / {{ MOCK_EXAM_PROBLEM_COUNT }}</span>
+          <em>套卷进度</em>
         </div>
       </header>
       <PythonTrialWorkspace
         :key="codeSession.question.id"
         :question="codeSession.question"
         embedded
-        back-label="返回班级模块"
+        back-label="返回试炼场"
         @back="closeCodeSession"
         @passed="onWorkspacePassed"
       />
     </template>
 
     <template v-else>
-      <header class="class-arena__overview" aria-label="班级总览">
+      <header class="class-arena__overview" aria-label="试炼场总览">
         <div class="class-arena__overview-main">
-          <p class="class-arena__eyebrow">CLASS HUB · 班级协作空间</p>
+          <p class="class-arena__eyebrow">TRIAL ARENA · 试炼场</p>
           <h2>{{ className }}</h2>
           <p class="class-arena__desc">
-            与同班探索者一起完成教师高难度试炼、实时竞速编程，或用代码策略进行猜拳攻防。点击进入后均可编写并运行 Python 代码。
+            同班对战或模拟考试套卷，进入后在代码区编写并运行 Python。
           </p>
         </div>
         <dl class="class-arena__stats">
@@ -307,8 +355,8 @@ onUnmounted(() => {
             <dd>{{ onlineCount }} 人</dd>
           </div>
           <div>
-            <dt><n-icon :component="TrophyOutline" /> 进行中试炼</dt>
-            <dd>{{ activeTrialCount }} 场</dd>
+            <dt><n-icon :component="FlashOutline" /> 对战模式</dt>
+            <dd>ACM · 3 题</dd>
           </div>
           <div>
             <dt><n-icon :component="PulseOutline" /> 我的班排</dt>
@@ -321,7 +369,7 @@ onUnmounted(() => {
         </dl>
       </header>
 
-      <nav class="class-arena__modules" aria-label="班级模块">
+      <nav class="class-arena__modules" aria-label="试炼场模块">
         <button
           v-for="mod in CLASS_ARENA_MODULES"
           :key="mod.key"
@@ -347,35 +395,10 @@ onUnmounted(() => {
       </nav>
 
       <section class="class-arena__panel" :aria-label="CLASS_ARENA_MODULES.find((m) => m.key === activeModule)?.title">
-        <template v-if="activeModule === 'trials'">
+        <template v-if="activeModule === 'student_duel'">
           <header class="panel-head">
-            <h3>教师试炼场 · 高难度编程题</h3>
-            <p>点击地图节点进入，将打开代码编辑区与测试运行</p>
-          </header>
-          <div v-if="trialsLoading" class="panel-state">正在同步班级试炼…</div>
-          <div v-else-if="trialsError" class="panel-state panel-state--error">
-            <span>{{ trialsError }}</span>
-            <n-button secondary size="small" @click="emit('retryTrials')">重试</n-button>
-          </div>
-          <p v-else-if="!trials.length" class="panel-state">
-            暂无进行中的班级试炼。可先体验「角斗士」或「代码攻防」模块的代码编写区。
-          </p>
-          <TrialArenaMap
-            v-else
-            :model-value="selectedArenaKey"
-            :trials="trials"
-            :allow-demo-fallback="false"
-            :user-level="userLevel"
-            @update:model-value="emit('update:selectedArenaKey', $event)"
-            @enter="onEnterTrial"
-          />
-          <p v-if="entering" class="panel-state">正在进入试炼代码区…</p>
-        </template>
-
-        <template v-else-if="activeModule === 'gladiator'">
-          <header class="panel-head">
-            <h3>角斗士 · 竞速对决</h3>
-            <p>匹配成功后确认进入，即可在同题代码区中与对手竞速</p>
+            <h3>学生对战 · ACM 赛制</h3>
+            <p>匹配同班对手，随机 {{ STUDENT_DUEL_PROBLEM_COUNT }} 题，先全部 AC 者获胜</p>
           </header>
           <div class="duel-preview">
             <div class="duel-preview__players">
@@ -392,67 +415,86 @@ onUnmounted(() => {
               </article>
             </div>
             <article class="duel-problem">
-              <h4>同题竞速 · 共 {{ gladiatorTotalQuestions }} 题</h4>
-              <p>两数之和 → 较大值 → 乘积，连续闯关。双方题目一致，先全部 AC 者胜。</p>
+              <h4>随机 {{ STUDENT_DUEL_PROBLEM_COUNT }} 题 · ACM</h4>
+              <p>匹配成功后从题池随机抽题；双方题目一致，先通过全部测试用例者获胜。</p>
+              <p v-if="duelMatched && duelQuestions.length" class="duel-problem__limit">
+                本轮题目：{{ duelQuestions.map((q) => q.title).join(' → ') }}
+              </p>
               <p class="duel-problem__limit">
                 <n-icon :component="TimerOutline" />
-                总时限 {{ formatTimer(GLADIATOR_DUEL_TIME_SEC) }} · 开始后显示计时与完成题数
+                总时限 {{ formatTimer(STUDENT_DUEL_TIME_SEC) }}
               </p>
             </article>
             <div class="duel-preview__actions">
-              <n-button v-if="!duelMatched" type="primary" :loading="duelMatching" @click="startGladiatorMatch">
+              <n-button v-if="!duelMatched" type="primary" :loading="duelMatching" @click="startDuelMatch">
                 寻找对手
               </n-button>
               <template v-else>
-                <n-button type="primary" @click="confirmGladiatorDuel">开始对决</n-button>
+                <n-button type="primary" @click="confirmDuelStart">开始对战</n-button>
                 <n-button secondary @click="duelMatched = false">重新匹配</n-button>
               </template>
-              <n-button quaternary size="small" @click="showGladiatorModal = true">对战流程说明</n-button>
+              <n-button quaternary size="small" @click="showDuelModal = true">ACM 规则说明</n-button>
             </div>
           </div>
         </template>
 
         <template v-else>
           <header class="panel-head">
-            <h3>代码攻防 · 猜拳对决</h3>
-            <p>确认后进入策略代码区，编写出招逻辑</p>
+            <h3>模拟考试</h3>
+            <p>{{ MOCK_EXAM_PROBLEM_COUNT }} 道编程题 · 限时 {{ formatTimer(MOCK_EXAM_TIME_SEC) }}</p>
           </header>
-          <div class="rps-preview">
-            <ol class="rps-rules">
-              <li v-for="(rule, index) in RPS_SAMPLE_RULES" :key="index">{{ rule }}</li>
+          <div class="exam-set-tabs" role="tablist" aria-label="套卷选择">
+            <button
+              v-for="set in MOCK_EXAM_SETS"
+              :key="set.id"
+              type="button"
+              role="tab"
+              class="exam-set-tab"
+              :class="{ 'exam-set-tab--active': selectedExamSetId === set.id }"
+              :aria-selected="selectedExamSetId === set.id"
+              @click="switchExamSet(set.id)"
+            >
+              <strong>{{ set.title }}</strong>
+              <span>{{ set.difficulty }}</span>
+            </button>
+          </div>
+          <p class="exam-set-desc">{{ activeExamSet?.description }}</p>
+          <div class="exam-preview">
+            <ol class="exam-rules">
+              <li v-for="(rule, index) in MOCK_EXAM_RULES" :key="index">{{ rule }}</li>
             </ol>
-            <div class="rps-strategies">
-              <article v-for="item in RPS_STRATEGY_EXAMPLES" :key="item.name" class="rps-strategy">
-                <strong>{{ item.name }}</strong>
-                <pre><code>{{ item.code }}</code></pre>
+            <div class="exam-outline">
+              <article v-for="(item, index) in examQuestions" :key="item.id" class="exam-outline__item">
+                <strong>第 {{ index + 1 }} 题</strong>
+                <span>{{ item.title }}</span>
+                <em>{{ item.topic }}</em>
               </article>
             </div>
             <div class="duel-preview__actions">
-              <n-button type="primary" @click="confirmRpsStrategy">确认 · 进入代码编写区</n-button>
-              <n-button quaternary size="small" @click="showRpsModal = true">查看对战流程</n-button>
+              <n-button type="primary" @click="confirmExamStart">开始模拟考试</n-button>
+              <n-button quaternary size="small" @click="showExamModal = true">考试说明</n-button>
             </div>
           </div>
         </template>
       </section>
 
-      <n-modal v-model:show="showGladiatorModal" preset="card" title="角斗士 · 对战流程" style="max-width: 520px">
+      <n-modal v-model:show="showDuelModal" preset="card" title="学生对战 · ACM 规则" style="max-width: 520px">
         <ol class="modal-steps">
           <li>匹配一名同时在线的同班探索者。</li>
-          <li>点击「确认进入对决」，打开<strong>同一道</strong>编程题代码区。</li>
-          <li>在编辑区编写 Python，运行测试；先全部通过者获胜。</li>
+          <li>系统随机抽取 {{ STUDENT_DUEL_PROBLEM_COUNT }} 道编程题，双方题目一致。</li>
+          <li>ACM 赛制：先通过某题全部用例即算该题 AC；先 AC 全部 {{ STUDENT_DUEL_PROBLEM_COUNT }} 题者获胜。</li>
         </ol>
         <template #footer>
-          <n-button @click="showGladiatorModal = false">知道了</n-button>
+          <n-button @click="showDuelModal = false">知道了</n-button>
         </template>
       </n-modal>
 
-      <n-modal v-model:show="showRpsModal" preset="card" title="代码攻防 · 猜拳规则" style="max-width: 560px">
-        <p class="modal-lead">程序输出 rock / paper / scissors，系统自动多轮对战：</p>
+      <n-modal v-model:show="showExamModal" preset="card" title="模拟考试说明" style="max-width: 560px">
         <ul class="modal-list">
-          <li v-for="(rule, index) in RPS_SAMPLE_RULES" :key="`m-${index}`">{{ rule }}</li>
+          <li v-for="(rule, index) in MOCK_EXAM_RULES" :key="`m-${index}`">{{ rule }}</li>
         </ul>
         <template #footer>
-          <n-button @click="showRpsModal = false">关闭</n-button>
+          <n-button @click="showExamModal = false">关闭</n-button>
         </template>
       </n-modal>
     </template>
@@ -478,7 +520,7 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.gladiator-hud {
+.arena-hud {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
@@ -486,7 +528,7 @@ onUnmounted(() => {
   padding: 0.55rem 0.75rem 0;
 }
 
-.gladiator-hud__item {
+.arena-hud__item {
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -499,19 +541,19 @@ onUnmounted(() => {
   font-weight: 650;
 }
 
-.gladiator-hud__item em {
+.arena-hud__item em {
   color: rgba(200, 220, 235, 0.58);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 500;
 }
 
-.gladiator-hud__item--urgent {
+.arena-hud__item--urgent {
   border-color: rgba(248, 113, 113, 0.45);
   color: #fca5a5;
 }
 
-.gladiator-hud__item--progress {
+.arena-hud__item--progress {
   border-color: rgba(52, 211, 153, 0.35);
   color: #6ee7b7;
 }
@@ -587,7 +629,7 @@ onUnmounted(() => {
 
 .class-arena__modules {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
@@ -678,21 +720,8 @@ onUnmounted(() => {
   font-size: 0.78rem;
 }
 
-.panel-state {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 0;
-  color: rgba(220, 230, 241, 0.78);
-  font-size: 0.86rem;
-}
-
-.panel-state--error {
-  color: #fecaca;
-}
-
 .duel-preview,
-.rps-preview {
+.exam-preview {
   display: grid;
   gap: 1rem;
 }
@@ -792,7 +821,50 @@ onUnmounted(() => {
   gap: 0.55rem;
 }
 
-.rps-rules {
+.exam-set-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+}
+
+.exam-set-tab {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(130, 212, 255, 0.12);
+  border-radius: 0.65rem;
+  background: rgba(6, 16, 28, 0.55);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.exam-set-tab strong {
+  color: #fff;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.exam-set-tab span {
+  color: rgba(200, 220, 235, 0.58);
+  font-size: 0.68rem;
+}
+
+.exam-set-tab--active {
+  border-color: rgba(37, 245, 238, 0.45);
+  background: rgba(37, 245, 238, 0.1);
+}
+
+.exam-set-desc {
+  margin: 0 0 0.75rem;
+  color: rgba(220, 230, 241, 0.68);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.exam-rules {
   margin: 0;
   padding-left: 1.15rem;
   color: rgba(220, 230, 241, 0.72);
@@ -800,32 +872,38 @@ onUnmounted(() => {
   line-height: 1.55;
 }
 
-.rps-strategies {
+.exam-outline {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.55rem;
 }
 
-.rps-strategy {
+.exam-outline__item {
   padding: 0.65rem 0.75rem;
   border-radius: 0.65rem;
   border: 1px solid rgba(130, 212, 255, 0.1);
   background: rgba(8, 18, 30, 0.65);
 }
 
-.rps-strategy strong {
+.exam-outline__item strong {
   display: block;
-  margin-bottom: 0.35rem;
-  color: #fff;
-  font-size: 0.8rem;
+  color: #5fffe8;
+  font-size: 0.74rem;
 }
 
-.rps-strategy pre {
-  margin: 0;
-  overflow-x: auto;
-  color: #8cecff;
-  font-size: 0.72rem;
-  line-height: 1.4;
+.exam-outline__item span {
+  display: block;
+  margin-top: 0.2rem;
+  color: #fff;
+  font-size: 0.82rem;
+}
+
+.exam-outline__item em {
+  display: block;
+  margin-top: 0.15rem;
+  color: rgba(200, 220, 235, 0.55);
+  font-size: 0.68rem;
+  font-style: normal;
 }
 
 .modal-steps,
@@ -834,11 +912,6 @@ onUnmounted(() => {
   padding-left: 1.2rem;
   color: rgba(226, 232, 240, 0.88);
   line-height: 1.55;
-}
-
-.modal-lead {
-  margin: 0 0 0.5rem;
-  color: rgba(200, 220, 235, 0.85);
 }
 
 @media (max-width: 1100px) {
@@ -850,7 +923,7 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .rps-strategies {
+  .exam-outline {
     grid-template-columns: 1fr;
   }
 }

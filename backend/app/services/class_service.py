@@ -1,11 +1,39 @@
 """班级服务"""
+import secrets
+
 from .base import BaseService
 from app.models import Class, User, db
 from sqlalchemy import func
 
+_JOIN_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
 
 class ClassService(BaseService):
     """班级服务"""
+
+    @staticmethod
+    def generate_join_code() -> str:
+        """生成 6 位唯一班级编号。"""
+        while True:
+            code = ''.join(secrets.choice(_JOIN_CODE_ALPHABET) for _ in range(6))
+            if not Class.query.filter_by(join_code=code).first():
+                return code
+
+    @staticmethod
+    def ensure_join_codes() -> None:
+        """为缺少编号的班级补齐 join_code。"""
+        missing = Class.query.filter((Class.join_code.is_(None)) | (Class.join_code == '')).all()
+        for class_obj in missing:
+            class_obj.join_code = ClassService.generate_join_code()
+        if missing:
+            db.session.commit()
+
+    @staticmethod
+    def get_class_by_join_code(join_code: str) -> Class | None:
+        normalized = (join_code or '').strip().upper()
+        if not normalized:
+            return None
+        return Class.query.filter_by(join_code=normalized).first()
 
     @staticmethod
     def create_class(name, description, grade_level, teacher_id):
@@ -23,7 +51,8 @@ class ClassService(BaseService):
             name=name,
             description=description,
             grade_level=grade_level,
-            teacher_id=teacher_id
+            teacher_id=teacher_id,
+            join_code=ClassService.generate_join_code(),
         )
         
         db.session.add(class_obj)

@@ -1,4 +1,6 @@
 """Flask application factory."""
+import os
+
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -174,9 +176,20 @@ def create_app(config_name='development'):
 
     with app.app_context():
         db.create_all()
-        from app.utils.db_migrate import ensure_trial_progress_columns
+        from app.utils.db_migrate import (
+            ensure_class_enrollment_schema,
+            ensure_practice_question_schema,
+            ensure_resource_audit_schema,
+            ensure_trial_comments_schema,
+            ensure_trial_progress_columns,
+        )
 
         ensure_trial_progress_columns()
+        ensure_class_enrollment_schema()
+        ensure_resource_audit_schema()
+        ensure_trial_comments_schema()
+        if not app.config.get('TESTING'):
+            ensure_practice_question_schema()
         init_seed_data()
         sync_teacher_role_permissions()
         ensure_dev_login_users()
@@ -200,4 +213,4 @@ def create_app(config_name='development'):
 
 if __name__ == '__main__':
     app = create_app('development')
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=int(os.getenv('SERVER_PORT', '5100')))

@@ -16,7 +16,7 @@ class AuthOAuthTestCase(unittest.TestCase):
     def setUp(self):
         self.app = create_app('testing')
         self.app.config.update(
-            FRONTEND_BASE_URL='http://localhost:5173',
+            FRONTEND_BASE_URL='http://localhost:5180',
             GOOGLE_CLIENT_ID='google-client',
             GOOGLE_CLIENT_SECRET='google-secret',
             GITHUB_CLIENT_ID='github-client',

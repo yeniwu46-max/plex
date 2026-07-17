@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -23,13 +24,17 @@ def _run_student(payload: dict) -> dict:
 
     os.environ.setdefault('AGENT_BACKEND', 'crewai')
     from agents.crew import _run_mock_student_pipeline, backend_name
+    from agents.pipeline_llm import enhance_student_pipeline
+
+    baseline = _run_mock_student_pipeline(payload)
 
     if backend_name() != 'crewai':
-        return _run_mock_student_pipeline(payload)
+        return baseline
 
     if not (os.getenv('OPENAI_API_KEY') or os.getenv('OPENROUTER_API_KEY')):
-        return _run_mock_student_pipeline(payload)
+        return baseline
 
+    started = time.perf_counter()
     try:
         from crewai import Agent, Crew, Process, Task
 
@@ -58,7 +63,11 @@ def _run_student(payload: dict) -> dict:
         crew.kickoff(inputs=payload)
     except Exception:
         pass
-    return _run_mock_student_pipeline(payload)
+
+    enhanced = enhance_student_pipeline(baseline, payload)
+    enhanced['backend'] = 'crewai'
+    enhanced['crewaiSubprocessMs'] = round((time.perf_counter() - started) * 1000, 1)
+    return enhanced
 
 
 def main() -> int:

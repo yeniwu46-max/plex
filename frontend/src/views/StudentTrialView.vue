@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon, NSelect, NTag, useMessage, type SelectOption } from 'naive-ui'
 import { CheckmarkCircleOutline, ChevronForwardOutline, CodeSlashOutline } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
-import PlexFileUploader from '../components/shared/upload/PlexFileUploader.vue'
-import { STUDENT_PRESETS } from '../config/upload/uploadPresets'
 import {
   fetchStudentTrialStats,
   fetchStudentTrials,
@@ -14,7 +12,6 @@ import {
   type StudentTrialStatsResult,
 } from '../api/studentTrials'
 import TrialExamPanel from '../components/trial/TrialExamPanel.vue'
-import TrialRecommendationPanel from '../components/trial/TrialRecommendationPanel.vue'
 import {
   formatStarPathNodeLabel,
   getStarPathNode,
@@ -26,6 +23,9 @@ import {
 import { useAuthStore } from '../stores/auth'
 import { buildTrialPageRecommendation } from '../utils/trialPageRecommendation'
 import { fetchServerMistakeRecords, getTrialMistakeRecords, type TrialMistakeRecord } from '../utils/trialMistakeLog'
+import { fetchLearningPath } from '../api/studentProgress'
+import { isQuestionAccepted, mergeAcceptedQuestionIds } from '../utils/starPathProgress'
+import { formatQuestionLabel } from '../utils/questionNaming'
 
 const message = useMessage()
 const auth = useAuthStore()
@@ -43,6 +43,7 @@ const trialStats = ref<StudentTrialStatsResult | null>(null)
 const statsLoading = ref(true)
 const trials = ref<StudentTrial[]>([])
 const serverMistakes = ref<TrialMistakeRecord[]>([])
+const acceptedQuestionIds = ref<Set<string>>(new Set())
 const actingId = ref<number | null>(null)
 const activeMcqTrial = ref<{ id: number; title: string } | null>(null)
 const currentView = ref<'card' | 'list'>('card')
@@ -53,7 +54,7 @@ let trialListLoadedAt = 0
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Explorer')
 const userId = computed(() => auth.profile?.id ?? 'guest')
 
-const unlockedNodes = computed(() => getUnlockedStarPathNodes())
+const unlockedNodes = computed(() => getUnlockedStarPathNodes(acceptedQuestionIds.value))
 const selectedNodeId = ref('stage1-intro')
 
 const nodeSelectOptions = computed<SelectOption[]>(() =>
@@ -65,11 +66,6 @@ const nodeSelectOptions = computed<SelectOption[]>(() =>
 
 
 const activeQuestions = computed(() => getStarPathQuestionsForNode(selectedNodeId.value))
-
-const selectedNodeLabel = computed(() => {
-  const node = getStarPathNode(selectedNodeId.value)
-  return node ? formatStarPathNodeLabel(node) : selectedNodeId.value
-})
 
 const pageRecommendation = computed(() =>
   buildTrialPageRecommendation(
@@ -84,14 +80,19 @@ const recommendedQuestionId = computed(() => pageRecommendation.value.recommende
 
 
 const questionAcStatus = computed(() => {
-  const records = getTrialMistakeRecords(userId.value)
+  const records = serverMistakes.value.length
+    ? serverMistakes.value
+    : getTrialMistakeRecords(userId.value)
   const map: Record<string, 'ac' | 'wa'> = {}
   for (const r of records) {
-    if (r.lastPassedAt && new Date(r.lastPassedAt) > new Date(r.lastFailedAt)) {
+    if (isQuestionAccepted(r)) {
       map[r.questionId] = 'ac'
-    } else {
+    } else if (r.lastFailedAt) {
       map[r.questionId] = 'wa'
     }
+  }
+  for (const qid of acceptedQuestionIds.value) {
+    map[qid] = 'ac'
   }
   return map
 })
@@ -160,16 +161,11 @@ async function onMcqCompleted() {
   await Promise.all([loadTrials(true), loadTrialStats()])
 }
 
-function onViewSwitch(key: string) {
-  currentView.value = key === 'list' ? 'list' : 'card'
-}
-
-
 function onSearchSubmit(query: string) {
   const q = query.trim().toLowerCase()
   if (!q) return
 
-  for (const node of getUnlockedStarPathNodes()) {
+  for (const node of getUnlockedStarPathNodes(acceptedQuestionIds.value)) {
     const questions = getStarPathQuestionsForNode(node.id)
     const hit = questions.find(
       (question) =>
@@ -193,22 +189,29 @@ function onSearchSubmit(query: string) {
   message.warning(`未找到"${query}"相关题目或试炼`)
 }
 
+async function refreshPracticeProgress() {
+  const [records, path] = await Promise.all([
+    fetchServerMistakeRecords(userId.value),
+    fetchLearningPath().catch(() => null),
+  ])
+  serverMistakes.value = records
+  acceptedQuestionIds.value = mergeAcceptedQuestionIds(path?.question_ac_status, records)
+}
+
 onMounted(() => {
   const rawNode = route.query.node
   if (typeof rawNode === 'string') {
     const resolved = resolveStarPathNodeId(rawNode)
-    const node = getStarPathNode(resolved)
+    const node = getStarPathNode(resolved, acceptedQuestionIds.value)
     if (isStarPathNodeUnlocked(node)) {
       selectedNodeId.value = resolved
     }
   }
-  void Promise.all([
-    loadTrials(),
-    loadTrialStats(),
-    fetchServerMistakeRecords(userId.value).then((records) => {
-      serverMistakes.value = records
-    }),
-  ])
+  void Promise.all([loadTrials(), loadTrialStats(), refreshPracticeProgress()])
+})
+
+onActivated(() => {
+  void refreshPracticeProgress()
 })
 </script>
 
@@ -218,8 +221,6 @@ onMounted(() => {
     page-title="试炼关卡"
     page-subtitle="Python 入门代码试炼 · 参与班级任务赢取探索积分"
     search-placeholder="搜索试炼、题目或知识点…"
-    show-view-switcher
-    @view-switch="onViewSwitch"
     @search-submit="onSearchSubmit"
   >
     <section class="student-trial" aria-label="学生试炼关卡">
@@ -304,7 +305,7 @@ onMounted(() => {
               <span class="student-trial__python-index">{{ String(index + 1).padStart(2, '0') }}</span>
               <div class="student-trial__python-copy">
                 <strong>
-                  {{ question.title }}
+                  {{ formatQuestionLabel(question) }}
                   <span v-if="question.id === recommendedQuestionId" class="student-trial__rec-badge">推荐优先</span>
                 </strong>
                 <small>{{ question.topic }} · {{ question.difficulty }} · 约 {{ question.durationMin }} 分钟</small>
@@ -326,12 +327,6 @@ onMounted(() => {
         </ul>
         <p v-else class="student-trial__state">暂无已解锁板块，请先在星轨路径中推进进度。</p>
         </section>
-
-        <TrialRecommendationPanel
-          v-if="activeQuestions.length"
-          :recommendation="pageRecommendation"
-          :node-label="selectedNodeLabel"
-        />
       </div>
 
       <section class="student-trial__section" aria-label="班级试炼">
@@ -387,16 +382,6 @@ onMounted(() => {
         </ul>
       </section>
       </template>
-
-      <!-- 代码文件上传 -->
-      <section class="student-trial__upload" aria-label="代码文件上传">
-        <article class="student-upload-card">
-          <plex-file-uploader
-            role="student"
-            v-bind="STUDENT_PRESETS.codeFile"
-          />
-        </article>
-      </section>
     </section>
   </DashboardShell>
 </template>
@@ -413,10 +398,7 @@ onMounted(() => {
 }
 
 .student-trial__python-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
-  gap: 1.1rem;
-  align-items: start;
+  display: block;
   margin-bottom: 1.75rem;
 }
 
@@ -783,25 +765,5 @@ onMounted(() => {
 
 .student-trial__python-list--list .student-trial__tags {
   display: none;
-}
-
-@media (max-width: 1024px) {
-  .student-trial__python-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.student-trial__upload {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0 0 0.5rem;
-}
-
-.student-upload-card {
-  width: 100%;
-  padding: 1rem 1.1rem;
-  border-radius: 12px;
-  background: var(--plex-bg-card);
-  border: 1px solid var(--plex-border-subtle);
 }
 </style>

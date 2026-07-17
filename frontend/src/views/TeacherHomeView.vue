@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { NButton, NIcon, NSelect } from 'naive-ui'
 import {
   CompassOutline,
@@ -10,21 +11,18 @@ import {
   SparklesOutline,
 } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
-import ClassActivityFeed from '../components/teacher/ClassActivityFeed.vue'
 import ClassHeatmapPanel from '../components/teacher/ClassHeatmapPanel.vue'
 import ClassRankingBoard from '../components/teacher/ClassRankingBoard.vue'
 import KnowledgeOrbitMap from '../components/teacher/KnowledgeOrbitMap.vue'
-import TeacherInsightCard from '../components/teacher/TeacherInsightCard.vue'
-import TeacherClassAnswerBoard from '../components/teacher/TeacherClassAnswerBoard.vue'
 import PlexBarChart from '../components/charts/PlexBarChart.vue'
 import PlexPieChart from '../components/charts/PlexPieChart.vue'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
-import { buildClassStarfieldNodes, buildStarfieldInsight, polylineFromPoints } from '../data/teacherStarfield'
+import { buildClassStarfieldNodes, polylineFromPoints } from '../data/teacherStarfield'
 import { fetchTeacherClassStats, type TeacherClassStatsResult } from '../api/teacherOverview'
 import { downloadClassEvaluationExport, fetchClassEvaluation } from '../api/learningReport'
 import type { ClassEvaluationStudent } from '../api/learningReport'
-import { teacherAgentSuggestion, type TeacherSuggestionResult } from '../api/agentService'
-import PlexTeacherSuggestionPanel from '../components/agent/PlexTeacherSuggestionPanel.vue'
+
+const router = useRouter()
 
 const {
   overview,
@@ -42,12 +40,13 @@ const {
   changePeriod,
 } = useTeacherOverviewInjected()
 
+function goExplorer(studentId: number) {
+  void router.push({ path: '/teacher/starfield', query: { studentId: String(studentId) } })
+}
+
 const classStats = ref<TeacherClassStatsResult | null>(null)
 const classEvaluation = ref<Awaited<ReturnType<typeof fetchClassEvaluation>> | null>(null)
 const exportingCsv = ref(false)
-const teacherAgentLoading = ref(false)
-const teacherAgentResult = ref<TeacherSuggestionResult | null>(null)
-const teacherAgentError = ref('')
 
 async function loadClassStats() {
   if (!selectedClassId.value) {
@@ -85,32 +84,8 @@ onMounted(() => {
 })
 
 watch([selectedClassId, period], () => {
-  teacherAgentResult.value = null
-  teacherAgentError.value = ''
   void loadClassStats()
 })
-
-async function generateTeacherAgentSuggestion() {
-  if (!selectedClassId.value || teacherAgentLoading.value) return
-  teacherAgentLoading.value = true
-  teacherAgentError.value = ''
-  try {
-    const weakPointStats = (classStats.value?.mistake_types ?? []).map((item) => ({
-      knowledgePoint: item.name,
-      count: Math.round(item.value),
-    }))
-    teacherAgentResult.value = await teacherAgentSuggestion({
-      classId: String(selectedClassId.value),
-      weakPointStats,
-      commonErrorTypes: weakPointStats.slice(0, 2).map((item) => item.knowledgePoint),
-      recentExercises: classEvaluation.value?.students?.slice(0, 3).map((s) => s.username) ?? [],
-    })
-  } catch (error) {
-    teacherAgentError.value = error instanceof Error ? error.message : '生成教学建议失败'
-  } finally {
-    teacherAgentLoading.value = false
-  }
-}
 
 const domainChartData = computed(() => {
   const items = classStats.value?.domain_mastery ?? []
@@ -138,7 +113,6 @@ const DAILY_QUEST_LABELS = ['晨间启动', '修复知识碎片', '试炼挑战'
 
 const heatmap = computed(() => overview.value?.heatmap ?? { days: [], rows: [] })
 const ranking = computed(() => overview.value?.ranking ?? [])
-const recentActivity = computed(() => overview.value?.recent_activity ?? [])
 
 const missionTotal = computed(() => {
   const total = students.value.reduce((sum, s) => sum + (s.today_total ?? 0), 0)
@@ -167,15 +141,6 @@ const trendPoints = computed(() => {
 })
 
 const trendPolyline = computed(() => polylineFromPoints(trendPoints.value, 290, 100))
-
-const aiInsight = computed(() => {
-  const base = buildStarfieldInsight(overview.value, orbitNodes.value)
-  const attention = metrics.value?.attention_count ?? 0
-  return {
-    ...base,
-    copy: `${base.copy} 当前有 ${attention} 名 Explorer 需要跟进。`,
-  }
-})
 
 function studentsCompletedQuestThreshold(threshold: number) {
   return students.value.filter((s) => {
@@ -233,12 +198,6 @@ function riskText(student: { reasons?: string[] }, index: number) {
   return '低风险'
 }
 
-function activityDescription() {
-  if (activityScore.value >= 80) return '班级探索状态活跃，适合推进挑战任务。'
-  if (activityScore.value >= 50) return '班级处于稳定推进，需要关注少数掉队学生。'
-  return '班级活跃度偏低，建议先启动基础修复训练。'
-}
-
 </script>
 
 <template>
@@ -281,14 +240,6 @@ function activityDescription() {
           </div>
         </aside>
 
-        <teacher-insight-card
-          class="overview-card insight-card teacher-quad-layout__side-bottom" data-tour="teacher-ai-suggestion"
-          title="AI 教学洞察"
-          :rate="aiInsight.rate"
-          :subject="aiInsight.subject"
-          :copy="`${aiInsight.copy} ${activityDescription()}`"
-        />
-
         <div class="navigator-home__row3 teacher-quad-layout__full-row teacher-quad-layout__cols-3">
           <article class="overview-card trend-card teacher-panel">
             <header class="teacher-panel__head">
@@ -311,18 +262,24 @@ function activityDescription() {
               <h2 class="teacher-panel__title">需要关注的 Explorer</h2>
             </header>
             <div class="explorer-row">
-              <article v-for="student in focusedExplorers" :key="student.id" class="explorer-chip">
+              <button
+                v-for="student in focusedExplorers"
+                :key="student.id"
+                type="button"
+                class="explorer-chip"
+                @click="goExplorer(student.id)"
+              >
                 <span class="student-avatar" :class="`student-avatar--${student.avatarTone}`">
                   {{ (student.real_name || student.username || '?').slice(0, 1) }}
                 </span>
                 <strong>{{ student.real_name || student.username }}</strong>
                 <small>{{ student.risk }}</small>
-              </article>
+              </button>
               <span v-if="mergedAttentionStudents.length > 5" class="more-chip">+{{ mergedAttentionStudents.length - 5 }}</span>
             </div>
           </article>
 
-          <article class="overview-card mission-card teacher-panel">
+          <article class="overview-card mission-card teacher-panel" data-tour="teacher-assignment-analysis">
             <header class="teacher-panel__head">
               <h2 class="teacher-panel__title">今日委托进度</h2>
             </header>
@@ -349,12 +306,6 @@ function activityDescription() {
           <class-heatmap-panel class="overview-card heatmap-card" :heatmap="heatmap" />
           <class-ranking-board class="overview-card ranking-card" :ranking="ranking" />
         </div>
-
-        <teacher-class-answer-board
-          class="overview-card teacher-quad-layout__full-row" data-tour="teacher-assignment-analysis" :class-id="selectedClassId"
-        />
-
-        <class-activity-feed class="overview-card activity-card teacher-quad-layout__full-row" :activities="recentActivity" />
 
         <div class="navigator-home__charts teacher-quad-layout__full-row teacher-quad-layout__cols-2">
           <div v-if="selectedClassId" class="navigator-home__export-row teacher-quad-layout__full-row">
@@ -388,25 +339,6 @@ function activityDescription() {
           </article>
         </div>
 
-        <section class="navigator-home__agent teacher-quad-layout__full-row" data-tour="teacher-agent-suggestion">
-          <header class="teacher-panel__head navigator-home__agent-head">
-            <h2 class="teacher-panel__title">AI 班级教学建议</h2>
-            <n-button
-              size="small"
-              type="warning"
-              :loading="teacherAgentLoading"
-              :disabled="!selectedClassId"
-              @click="generateTeacherAgentSuggestion"
-            >
-              生成 AI 教学建议
-            </n-button>
-          </header>
-          <plex-teacher-suggestion-panel
-            :result="teacherAgentResult"
-            :loading="teacherAgentLoading"
-            :error="teacherAgentError"
-          />
-        </section>
       </template>
     </section>
   </TeacherDashboardShell>
@@ -453,29 +385,8 @@ function activityDescription() {
   margin-top: 0.5rem;
 }
 
-.navigator-home__agent {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.navigator-home__agent-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
 .navigator-home__row4 {
   grid-row: 4;
-}
-
-.navigator-home .activity-card {
-  grid-row: 6;
-}
-
-.navigator-home .overview-card.teacher-quad-layout__full-row:has(.class-answer-board) {
-  grid-row: 5;
 }
 
 .cosmos-panel {
@@ -602,6 +513,11 @@ function activityDescription() {
   justify-items: center;
   gap: 0.35rem;
   min-width: 60px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
 }
 
 .student-avatar {
@@ -751,8 +667,7 @@ function activityDescription() {
   }
 
   .navigator-home__row3,
-  .navigator-home__row4,
-  .navigator-home .activity-card {
+  .navigator-home__row4 {
     grid-row: auto;
   }
 }

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { NButton, NCollapse, NCollapseItem, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
-import { fetchAiHealth, type AiHealth } from '../api/health'
+import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
 import {
   createResourceTask,
   fetchPersonalizedResources,
@@ -13,9 +13,12 @@ import {
   type PersonalizedResource,
   type ResourceTask,
 } from '../api/personalizedResources'
+import { xiaoEResourceProgressHint } from '../utils/xiaoEPersona'
 
 const message = useMessage()
 const knowledgeKey = ref('loop')
+const learningStage = ref('学习')
+const learningStyles = ref(['案例', '代码实验', '图文'])
 const resourceFilter = ref('all')
 const task = ref<ResourceTask | null>(null)
 const taskHistory = ref<ResourceTask[]>([])
@@ -25,7 +28,7 @@ const loading = ref(true)
 const loadError = ref('')
 const pollingTimedOut = ref(false)
 const selected = ref<PersonalizedResource | null>(null)
-const aiHealth = ref<AiHealth | null>(null)
+const detailPanelRef = ref<HTMLElement | null>(null)
 
 const knowledgeOptions = [
   { label: '程序结构', value: 'intro' }, { label: '注释', value: 'comment' },
@@ -39,6 +42,7 @@ const knowledgeOptions = [
 ]
 
 const typeLabels: Record<string, string> = {
+  learning_bundle: '完整资源包',
   lesson_document: '讲解文档',
   mind_map: '思维导图',
   exercise_set: '分层题库',
@@ -46,6 +50,31 @@ const typeLabels: Record<string, string> = {
   coding_lab: '代码实操',
   audio_explanation: '语音讲解',
 }
+
+const typeOrder: Record<string, number> = {
+  learning_bundle: 0,
+  lesson_document: 1,
+  mind_map: 2,
+  exercise_set: 3,
+  extended_reading: 4,
+  coding_lab: 5,
+  audio_explanation: 6,
+}
+
+const stageOptions = [
+  { label: '预习', value: '预习' },
+  { label: '学习', value: '学习' },
+  { label: '练习', value: '练习' },
+  { label: '复习', value: '复习' },
+  { label: '考试', value: '考试' },
+]
+
+const styleOptions = [
+  { label: '图文', value: '图文' },
+  { label: '案例', value: '案例' },
+  { label: '代码实验', value: '代码实验' },
+  { label: '交互', value: '交互' },
+]
 
 const typeOptions = computed(() => [
   { label: '全部类型', value: 'all' },
@@ -71,15 +100,50 @@ const groupedResources = computed(() => {
   }
   return Array.from(groups, ([label, items]) => ({
     label,
-    items: items.sort((a, b) => a.resource_type.localeCompare(b.resource_type)),
+    items: items.sort(
+      (a, b) => (typeOrder[a.resource_type] ?? 99) - (typeOrder[b.resource_type] ?? 99),
+    ),
   }))
 })
 
 const latestTaskStatus = computed(() => {
   const active = task.value ?? taskHistory.value[0]
   if (!active) return '暂无生成任务'
-  return `${active.status} · 画像 v${active.profile_version} · ${active.backend}`
+  if (active.status === 'completed') return '已完成'
+  if (active.status === 'failed') return '生成失败'
+  return `小E 准备中 · ${Math.round(active.progress)}%`
 })
+
+const taskProgressHint = computed(() => {
+  if (!task.value) return ''
+  return xiaoEResourceProgressHint(task.value.status, task.value.progress, task.value.current_agent)
+})
+
+const flatResources = computed(() =>
+  groupedResources.value.flatMap((group) => group.items),
+)
+
+const pendingCount = computed(
+  () => resources.value.filter((item) => item.review_status === 'pending_review').length,
+)
+
+function bundleForTask(taskId: string) {
+  return resources.value.find(
+    (item) => item.generation_task_id === taskId && item.resource_type === 'learning_bundle',
+  )
+}
+
+function pickDefaultSelection() {
+  const first = flatResources.value[0]
+  if (first && !selected.value) selected.value = first
+}
+
+function selectResource(item: PersonalizedResource) {
+  selected.value = item
+  window.requestAnimationFrame(() => {
+    detailPanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  })
+}
 
 async function load() {
   loading.value = true
@@ -91,6 +155,7 @@ async function load() {
     ])
     resources.value = resourceResult.items
     taskHistory.value = taskResult.items
+    pickDefaultSelection()
   } catch (error) {
     loadError.value = error instanceof Error ? error.message : '资源加载失败'
   } finally {
@@ -111,12 +176,22 @@ async function poll(id: string) {
 async function generate() {
   generating.value = true
   try {
-    task.value = await createResourceTask(knowledgeKey.value)
+    task.value = await createResourceTask(knowledgeKey.value, undefined, undefined, {
+      target: '大学',
+      learning_stage: learningStage.value,
+      learning_style: learningStyles.value,
+    })
     if (task.value.status !== 'completed') await poll(task.value.task_id)
     if (task.value.status === 'failed') throw new Error(task.value.error || '生成任务失败')
     await load()
+    if (task.value.resources?.length) {
+      const preferred =
+        task.value.resources.find((item) => item.resource_type === 'learning_bundle')
+        ?? task.value.resources[0]
+      if (preferred) selectResource(preferred)
+    }
     if (pollingTimedOut.value) message.info('任务仍在处理中，可稍后从任务历史继续查看')
-    else message.success('五类个性化资源已生成')
+    else message.success('学习资源包已生成')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '生成失败')
   } finally {
@@ -134,28 +209,14 @@ async function retry(item: ResourceTask) {
   }
 }
 
-function contentText(item: PersonalizedResource) {
-  return typeof item.content.markdown === 'string' ? item.content.markdown : JSON.stringify(item.content, null, 2)
-}
-
-function summaryText(value?: Record<string, unknown>) {
-  if (!value || !Object.keys(value).length) return '等待执行'
-  const formatValue = (item: unknown) => {
-    if (Array.isArray(item)) {
-      return item.map((entry) => (
-        typeof entry === 'object' ? JSON.stringify(entry) : String(entry)
-      )).join('、')
-    }
-    return typeof item === 'object' && item !== null ? JSON.stringify(item) : String(item)
-  }
-  return Object.entries(value)
-    .map(([key, item]) => `${key}: ${formatValue(item)}`)
-    .join('；')
+function reviewStatusLabel(status: PersonalizedResource['review_status']) {
+  if (status === 'pending_review') return '待教师审核'
+  if (status === 'rejected') return '已驳回'
+  return '已发布'
 }
 
 onMounted(() => {
   void load()
-  void fetchAiHealth().then((value) => { aiHealth.value = value }).catch(() => undefined)
 })
 </script>
 
@@ -163,7 +224,7 @@ onMounted(() => {
   <DashboardShell
     active-nav="track"
     page-title="个性化资源中心"
-    page-subtitle="按知识点收拢资源包，优先看最新可用材料"
+    page-subtitle="左侧选资源、右侧看内容；待审核资源也可先预览"
     search-placeholder=""
     hide-search
   >
@@ -171,15 +232,20 @@ onMounted(() => {
     <main class="resource-page">
       <section class="generator">
         <div class="generator__copy">
-          <h2>生成学习资源包</h2>
-          <p>画像解释、知识检索、教学设计、资源生成和质量审核会作为一条任务轨迹保留。</p>
-          <n-tag v-if="aiHealth" :type="aiHealth.effective_backend === 'iflytek_spark' ? 'success' : 'warning'">
-            当前 AI 后端：{{ aiHealth.effective_backend }}
-          </n-tag>
+          <h2>生成多模态学习资源</h2>
+          <p>小E 会根据你的学习情况，生成讲解文档、思维导图、分层题库、代码实操与语音讲解。</p>
         </div>
         <div class="generator__controls">
           <n-select v-model:value="knowledgeKey" :options="knowledgeOptions" class="knowledge-select" />
-          <n-button type="primary" :loading="generating" @click="generate">生成五类资源</n-button>
+          <n-select v-model:value="learningStage" :options="stageOptions" class="stage-select" />
+          <n-select
+            v-model:value="learningStyles"
+            :options="styleOptions"
+            multiple
+            class="style-select"
+            placeholder="学习方式"
+          />
+          <n-button type="primary" :loading="generating" @click="generate">生成学习资源包</n-button>
         </div>
       </section>
 
@@ -196,35 +262,24 @@ onMounted(() => {
           <span>最新任务</span>
           <strong>{{ latestTaskStatus }}</strong>
         </article>
+        <article>
+          <span>待教师审核</span>
+          <strong>{{ pendingCount }}</strong>
+        </article>
       </section>
+
+      <p v-if="pendingCount" class="pending-note">
+        有 {{ pendingCount }} 项资源待教师审核，审核通过前也可在本页预览学习内容。
+      </p>
 
       <section v-if="task" class="task-panel">
         <header>
-          <strong>{{ task.status }} · {{ task.backend }}</strong>
-          <span v-if="task.fallback_reason">已降级：{{ task.fallback_reason }}</span>
+          <strong>小E 正在准备资源</strong>
+          <span v-if="task.fallback_reason">网络较慢，小E 已切换备用方案</span>
         </header>
         <n-progress :percentage="task.progress" color="#25f5ee" />
-        <div class="agent-trace">
-          <article v-for="step in task.steps" :key="step.agent" class="trace-step" :class="`trace-step--${step.status}`">
-            <header>
-              <div>
-                <strong>{{ step.name || step.agent }}</strong>
-                <small>{{ step.agent }} · {{ step.contract_version || 'legacy' }}</small>
-              </div>
-              <n-tag :type="step.status === 'completed' ? 'success' : step.status === 'running' ? 'warning' : step.status === 'failed' ? 'error' : 'default'">
-                {{ step.status }}
-              </n-tag>
-            </header>
-            <p><b>输入摘要</b>{{ summaryText(step.input_summary) }}</p>
-            <p><b>输出摘要</b>{{ summaryText(step.output_summary) }}</p>
-            <footer>
-              <span>{{ step.backend || '等待分配后端' }}<template v-if="step.model"> · {{ step.model }}</template></span>
-              <span v-if="step.latency_ms !== null && step.latency_ms !== undefined">{{ step.latency_ms }} ms</span>
-              <span v-if="step.depends_on">上游：{{ step.depends_on }}</span>
-            </footer>
-            <em v-if="step.error">{{ step.error }}</em>
-          </article>
-        </div>
+        <p class="task-panel__hint">{{ taskProgressHint }}</p>
+        <p v-if="task.status === 'failed' && task.error" class="task-panel__error">{{ task.error }}</p>
       </section>
 
       <p v-if="pollingTimedOut" class="processing-note">任务仍在后台处理中，页面未将其标记为成功。</p>
@@ -240,68 +295,106 @@ onMounted(() => {
           <n-select v-model:value="resourceFilter" :options="typeOptions" class="type-select" />
         </section>
 
-        <section v-if="groupedResources.length" class="resource-groups">
-          <article v-for="group in groupedResources" :key="group.label" class="resource-group">
-            <header>
-              <h3>{{ group.label }}</h3>
-              <span>{{ group.items.length }} 类资源</span>
-            </header>
-            <div class="resource-grid">
-              <button
-                v-for="item in group.items"
-                :key="item.id"
-                type="button"
-                class="resource-card"
-                @click="selected = item"
+        <div v-if="groupedResources.length" class="resource-layout">
+          <div class="resource-layout__list">
+            <section class="resource-groups">
+              <article v-for="group in groupedResources" :key="group.label" class="resource-group">
+                <header>
+                  <h3>{{ group.label }}</h3>
+                  <span>{{ group.items.length }} 类资源</span>
+                </header>
+                <div class="resource-grid">
+                  <button
+                    v-for="item in group.items"
+                    :key="item.id"
+                    type="button"
+                    class="resource-card"
+                    :class="{ 'resource-card--active': selected?.id === item.id }"
+                    @click="selectResource(item)"
+                  >
+                    <span class="resource-card__tags">
+                      <n-tag type="info">{{ typeLabels[item.resource_type] }}</n-tag>
+                      <n-tag
+                        v-if="item.review_status === 'pending_review'"
+                        type="warning"
+                        size="small"
+                      >
+                        {{ reviewStatusLabel(item.review_status) }}
+                      </n-tag>
+                      <n-tag :type="item.backend === 'iflytek_spark' ? 'success' : 'warning'">
+                        {{ item.backend }}
+                      </n-tag>
+                    </span>
+                    <strong>{{ item.title }}</strong>
+                    <p>{{ item.recommendation_reason }}</p>
+                    <span class="resource-card__meta">
+                      <em>置信度 {{ Math.round(item.confidence * 100) }}%</em>
+                      <em>{{ item.estimated_minutes }} 分钟</em>
+                    </span>
+                  </button>
+                </div>
+              </article>
+            </section>
+          </div>
+
+          <section
+            ref="detailPanelRef"
+            class="resource-detail"
+            :class="{ 'resource-detail--empty': !selected }"
+            aria-label="资源详情"
+          >
+            <template v-if="selected">
+              <header>
+                <div>
+                  <h2>{{ selected.title }}</h2>
+                  <p>{{ selected.knowledge_label }} · {{ typeLabels[selected.resource_type] }}</p>
+                </div>
+                <n-button quaternary @click="selected = null">关闭</n-button>
+              </header>
+              <n-tag
+                v-if="selected.review_status === 'pending_review'"
+                type="warning"
+                class="pending-tag"
               >
-                <span class="resource-card__tags">
-                  <n-tag type="info">{{ typeLabels[item.resource_type] }}</n-tag>
-                  <n-tag :type="item.backend === 'iflytek_spark' ? 'success' : 'warning'">{{ item.backend }}</n-tag>
-                </span>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.recommendation_reason }}</p>
-                <span class="resource-card__meta">
-                  <em>置信度 {{ Math.round(item.confidence * 100) }}%</em>
-                  <em>{{ item.estimated_minutes }} 分钟</em>
-                </span>
-              </button>
+                待教师审核 · 可先学习，正式发布以教师批准为准
+              </n-tag>
+              <PersonalizedResourceContentViewer
+                :item="selected"
+                :bundle-item="bundleForTask(selected.generation_task_id)"
+                theme="student"
+              />
+              <h4>知识库引用</h4>
+              <ul>
+                <li
+                  v-for="citation in selected.citations"
+                  :key="`${citation.document_id}-${citation.section}`"
+                >
+                  {{ citation.title }} · {{ citation.section }}：{{ citation.snippet }}
+                </li>
+              </ul>
+            </template>
+            <div v-else class="resource-detail__placeholder">
+              <p>点击左侧资源卡片，在这里查看讲解、案例、代码与练习。</p>
             </div>
-          </article>
-        </section>
+          </section>
+        </div>
         <section v-else class="resource-state">暂无匹配资源。可以切换类型筛选，或生成新的资源包。</section>
 
         <n-collapse v-if="visibleTasks.length" class="task-history">
           <n-collapse-item title="生成任务历史" name="history">
             <article v-for="item in visibleTasks" :key="item.task_id" class="task-history__row">
               <div>
-                <strong>{{ item.task_id }}</strong>
-                <span>{{ item.status }} · 画像 v{{ item.profile_version }} · {{ item.backend }}</span>
+                <strong>{{ item.task_id.slice(0, 8) }}…</strong>
+                <span>{{ item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '进行中' }}</span>
               </div>
               <div class="task-history__actions">
-                <n-button size="small" secondary @click="task = item">查看轨迹</n-button>
+                <n-button size="small" secondary @click="task = item">查看进度</n-button>
                 <n-button v-if="item.status === 'failed' && item.recoverable" size="small" @click="retry(item)">重试</n-button>
               </div>
             </article>
           </n-collapse-item>
         </n-collapse>
       </template>
-
-      <section v-if="selected" class="resource-detail" aria-label="资源详情">
-        <header>
-          <div>
-            <h2>{{ selected.title }}</h2>
-            <p>{{ selected.knowledge_label }} · {{ typeLabels[selected.resource_type] }}</p>
-          </div>
-          <n-button quaternary @click="selected = null">关闭</n-button>
-        </header>
-        <pre>{{ contentText(selected) }}</pre>
-        <h4>知识库引用</h4>
-        <ul>
-          <li v-for="citation in selected.citations" :key="`${citation.document_id}-${citation.section}`">
-            {{ citation.title }} · {{ citation.section }}：{{ citation.snippet }}
-          </li>
-        </ul>
-      </section>
     </main>
   </DashboardShell>
 </template>
@@ -358,15 +451,61 @@ onMounted(() => {
 }
 
 .knowledge-select,
-.type-select {
+.type-select,
+.stage-select,
+.style-select {
   width: 190px;
+}
+
+.style-select {
+  min-width: 220px;
 }
 
 .resource-summary {
   display: grid;
-  grid-template-columns: 0.8fr 0.8fr 1.4fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.8rem;
   margin-top: 1rem;
+}
+
+.pending-note {
+  margin: 0.75rem 0 0;
+  color: #ffd28a;
+  font-size: 0.9rem;
+}
+
+.resource-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 1rem;
+  margin-top: 0.75rem;
+  align-items: start;
+}
+
+.resource-layout__list {
+  min-width: 0;
+}
+
+.resource-card--active {
+  border-color: rgba(37, 245, 238, 0.55);
+  box-shadow: 0 0 0 1px rgba(37, 245, 238, 0.25);
+}
+
+.resource-detail--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+}
+
+.resource-detail__placeholder {
+  text-align: center;
+  color: rgba(125, 165, 182, 0.95);
+  padding: 1.5rem;
+}
+
+.pending-tag {
+  margin-bottom: 0.75rem;
 }
 
 .resource-summary article {
@@ -399,66 +538,17 @@ onMounted(() => {
   margin-bottom: 0.7rem;
 }
 
-.agent-trace {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.trace-step {
-  padding: 0.9rem;
-  border: 1px solid rgba(120, 150, 170, 0.16);
-  border-radius: 0.6rem;
-  background: rgba(2, 10, 18, 0.7);
-}
-
-.trace-step--completed {
-  border-color: rgba(37, 245, 238, 0.22);
-}
-
-.trace-step--failed {
-  border-color: rgba(248, 113, 113, 0.4);
-}
-
-.trace-step header {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.trace-step header div {
-  display: flex;
-  flex-direction: column;
-}
-
-.trace-step small,
-.trace-step p,
-.trace-step footer {
-  color: #7da5b6;
-  font-size: 0.76rem;
-}
-
-.trace-step p {
+.task-panel__hint {
+  margin: 0.75rem 0 0;
+  color: #8fb7c4;
+  font-size: 0.86rem;
   line-height: 1.55;
 }
 
-.trace-step p b {
-  display: block;
-  color: #b9e9e6;
-}
-
-.trace-step footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.4rem;
-}
-
-.trace-step em {
-  display: block;
-  margin-top: 0.5rem;
+.task-panel__error {
+  margin: 0.55rem 0 0;
   color: #fca5a5;
+  font-size: 0.84rem;
 }
 
 .processing-note {
@@ -593,8 +683,12 @@ onMounted(() => {
 }
 
 .resource-detail {
-  margin-top: 1rem;
+  margin-top: 0;
   padding: 1.2rem;
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 7rem);
+  overflow: auto;
 }
 
 .resource-detail header {
@@ -604,8 +698,8 @@ onMounted(() => {
 }
 
 .resource-detail pre {
-  max-height: 520px;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
   white-space: pre-wrap;
   color: #cce6ef;
   line-height: 1.6;
@@ -617,9 +711,17 @@ onMounted(() => {
 }
 
 @media (max-width: 1050px) {
-  .resource-grid,
-  .agent-trace {
+  .resource-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .resource-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .resource-detail {
+    position: static;
+    max-height: none;
   }
 }
 
@@ -642,8 +744,7 @@ onMounted(() => {
   }
 
   .resource-summary,
-  .resource-grid,
-  .agent-trace {
+  .resource-grid {
     grid-template-columns: 1fr;
   }
 }

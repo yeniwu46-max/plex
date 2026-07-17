@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { destroyActiveTour } from './composables/usePlexTour'
 import { NConfigProvider, NMessageProvider, darkTheme, zhCN, dateZhCN } from 'naive-ui'
 import { getPlexNaiveOverrides } from './theme/plexTokens'
 import { useThemeStore } from './stores/theme'
@@ -15,8 +16,12 @@ const themeOverrides = computed(() =>
 
 // 根据路由路径写入角色标记
 watch(
-  () => route.path,
-  (path) => {
+  () => route.fullPath,
+  (fullPath, previous) => {
+    if (previous && previous !== fullPath) {
+      destroyActiveTour()
+    }
+    const path = route.path
     let persona = 'default'
     if (path.startsWith('/student')) persona = 'student'
     else if (path.startsWith('/teacher')) persona = 'teacher'

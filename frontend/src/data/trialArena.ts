@@ -7,6 +7,7 @@ import {
   PeopleOutline,
   SparklesOutline,
 } from '@vicons/ionicons5'
+import { TRIAL_ARENA_LEVELS } from '../constants/starPathUnlock'
 import type { StudentTrial } from '../api/studentTrials'
 
 export type TrialPosition = 'tl' | 'tr' | 'bl' | 'br'
@@ -66,7 +67,7 @@ export const TRIAL_MODES: TrialMode[] = [
     icon: HardwareChipOutline,
     theme: 'teal',
     position: 'tl',
-    requiredLevel: 1,
+    requiredLevel: TRIAL_ARENA_LEVELS.aiDuel,
     durationMin: 15,
     difficulty: 3,
     rewardCrystal: 12,
@@ -81,7 +82,7 @@ export const TRIAL_MODES: TrialMode[] = [
     icon: TrophyOutline,
     theme: 'purple',
     position: 'tr',
-    requiredLevel: 5,
+    requiredLevel: TRIAL_ARENA_LEVELS.starArena,
     durationMin: 20,
     difficulty: 4,
     rewardCrystal: 18,
@@ -96,7 +97,7 @@ export const TRIAL_MODES: TrialMode[] = [
     icon: TimerOutline,
     theme: 'orange',
     position: 'bl',
-    requiredLevel: 3,
+    requiredLevel: TRIAL_ARENA_LEVELS.echoRun,
     durationMin: 10,
     difficulty: 2,
     rewardCrystal: 8,
@@ -111,7 +112,7 @@ export const TRIAL_MODES: TrialMode[] = [
     icon: DiamondOutline,
     theme: 'pink',
     position: 'br',
-    requiredLevel: 20,
+    requiredLevel: TRIAL_ARENA_LEVELS.abyss,
     durationMin: 45,
     difficulty: 5,
     rewardCrystal: 50,
@@ -137,7 +138,7 @@ export function mapApiTrialsToArenaModes(trials: StudentTrial[], userLevel = 1):
       number: String(index + 1).padStart(2, '0'),
       title: trial.title,
       titleEn: TYPE_EN[trial.trial_type] ?? 'CLASS TRIAL',
-      description: `班级试炼 · 难度 ${trial.difficulty} · 奖励 ${trial.reward_points} XP`,
+      description: `试炼 · 难度 ${trial.difficulty} · 奖励 ${trial.reward_points} XP`,
       icon,
       theme,
       position,

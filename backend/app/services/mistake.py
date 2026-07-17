@@ -29,17 +29,33 @@ class MistakeService:
             question_ref=ref,
         ).first()
 
-        if passed:
-            if not row:
-                return None
-            row.last_passed_at = now
-            db.session.commit()
-            return row
-
         merged_meta = dict(meta or {})
         if question_title:
             merged_meta['question_title'] = question_title
         merged_meta['knowledge_label'] = QuestionGenerator.label_for_key(key)
+
+        if passed:
+            if not row:
+                row = StudentMistake(
+                    user_id=user_id,
+                    source=source,
+                    knowledge_key=key,
+                    question_ref=ref,
+                    question_title=question_title,
+                    fail_count=0,
+                    last_failed_at=now,
+                    last_passed_at=now,
+                    meta=merged_meta or None,
+                )
+                db.session.add(row)
+            else:
+                row.last_passed_at = now
+                if merged_meta:
+                    existing = row.meta if isinstance(row.meta, dict) else {}
+                    existing.update(merged_meta)
+                    row.meta = existing
+            db.session.commit()
+            return row
 
         if row:
             row.fail_count = (row.fail_count or 0) + 1
@@ -164,6 +180,19 @@ class MistakeService:
                 question_title=(stem or '')[:200],
                 error_type='wrong_answer',
             )
+
+    @staticmethod
+    def is_accepted(row: StudentMistake) -> bool:
+        if not row.last_passed_at:
+            return False
+        if not row.last_failed_at:
+            return True
+        return row.last_passed_at >= row.last_failed_at
+
+    @staticmethod
+    def list_accepted_question_refs(user_id: int) -> list[str]:
+        rows = StudentMistake.query.filter_by(user_id=user_id).all()
+        return [row.question_ref for row in rows if MistakeService.is_accepted(row)]
 
     @staticmethod
     def _is_active(row: StudentMistake) -> bool:

@@ -1,6 +1,24 @@
 import { http, type ApiEnvelope } from './http'
 import type { KgEdge, KgNode } from '../data/knowledgeGraphData'
 
+export interface KnowledgeGraphWeakNode {
+  id: string
+  label: string
+  status?: string
+  weak_score: number
+  fail_count: number
+  wrong_count: number
+  accuracy?: number | null
+  affected_student_count: number
+}
+
+export interface KnowledgeGraphSummary {
+  top_weak_nodes: KnowledgeGraphWeakNode[]
+  student_count: number
+  total_mistakes: number
+  max_weak_score: number
+}
+
 export interface KnowledgeGraphPayload {
   nodes: KgNode[]
   edges: KgEdge[]
@@ -8,6 +26,9 @@ export interface KnowledgeGraphPayload {
   user_id?: number
   class_id?: number
   student_count?: number
+  graph_backend?: string
+  summary?: KnowledgeGraphSummary
+  recommended_node_ids?: string[]
 }
 
 export async function fetchStudentKnowledgeGraph() {

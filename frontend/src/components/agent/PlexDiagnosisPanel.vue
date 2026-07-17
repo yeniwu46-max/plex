@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { NCollapse, NCollapseItem } from 'naive-ui'
 import type { ErrorLayer, StudentDiagnoseResult } from '../../api/agentService'
 
 const props = defineProps<{
@@ -36,15 +37,21 @@ const isCanButWrong = computed(() => props.result.diagnosis.proficiency === 'can
 const relatedKp = computed(() => props.result.diagnosis.relatedKnowledgePoints || [])
 const strategy = computed(() => props.result.diagnosis.remediationStrategy)
 
+const expandedSections = computed(() => {
+  const names = ['code-analysis', 'knowledge']
+  if (strategy.value) names.push('strategy')
+  return names
+})
+
 function masteryMeta(m: string) {
   return MASTERY_META[m] || MASTERY_META.unknown
 }
 </script>
 
 <template>
-  <section class="plex-diagnosis" aria-label="AI 学习诊断">
+  <section class="plex-diagnosis" aria-label="小E 学习诊断">
     <header class="plex-diagnosis__head">
-      <h3>当前问题诊断</h3>
+      <h3>小E · 学习诊断</h3>
       <span v-if="result.diagnosis.confidence" class="plex-diagnosis__badge">
         置信度 {{ Math.round(result.diagnosis.confidence * 100) }}%
       </span>
@@ -71,42 +78,52 @@ function masteryMeta(m: string) {
         判别依据：{{ proficiencyReason }}
       </p>
 
-      <article class="plex-diagnosis__block">
-        <h4>代码错误解释</h4>
-        <p><strong>{{ result.codeAnalysis.codeIssueSummary }}</strong></p>
-        <p>{{ result.codeAnalysis.possibleCause }}</p>
-        <p class="plex-diagnosis__hint">{{ result.codeAnalysis.fixDirection }}</p>
-      </article>
+      <n-collapse
+        class="plex-diagnosis__collapse"
+        :default-expanded-names="expandedSections"
+        arrow-placement="right"
+      >
+        <n-collapse-item title="代码错误解释" name="code-analysis">
+          <article class="plex-diagnosis__block">
+            <p><strong>{{ result.codeAnalysis.codeIssueSummary }}</strong></p>
+            <p>{{ result.codeAnalysis.possibleCause }}</p>
+            <p class="plex-diagnosis__hint">{{ result.codeAnalysis.fixDirection }}</p>
+          </article>
+        </n-collapse-item>
 
-      <article class="plex-diagnosis__block">
-        <h4>关联知识点</h4>
-        <div v-if="relatedKp.length" class="plex-diagnosis__kplist">
-          <span v-for="kp in relatedKp" :key="kp.node" class="plex-diagnosis__kp">
-            {{ kp.node }}
-            <em class="plex-diagnosis__mastery" :class="masteryMeta(kp.mastery).cls">
-              {{ masteryMeta(kp.mastery).label }}
-            </em>
-          </span>
-        </div>
-        <div v-else class="plex-diagnosis__tags plex-diagnosis__tags--nodes">
-          <span v-for="node in result.graphInsight.relatedNodes" :key="node">{{ node }}</span>
-        </div>
-        <p class="plex-diagnosis__reason">{{ result.graphInsight.graphReason }}</p>
-        <small v-if="result.graphInsight.prerequisiteNodes.length">
-          前置：{{ result.graphInsight.prerequisiteNodes.join('、') }}
-        </small>
-      </article>
+        <n-collapse-item title="关联知识点" name="knowledge">
+          <article class="plex-diagnosis__block">
+            <div v-if="relatedKp.length" class="plex-diagnosis__kplist">
+              <span v-for="kp in relatedKp" :key="kp.node" class="plex-diagnosis__kp">
+                {{ kp.node }}
+                <em class="plex-diagnosis__mastery" :class="masteryMeta(kp.mastery).cls">
+                  {{ masteryMeta(kp.mastery).label }}
+                </em>
+              </span>
+            </div>
+            <div v-else class="plex-diagnosis__tags plex-diagnosis__tags--nodes">
+              <span v-for="node in result.graphInsight.relatedNodes" :key="node">{{ node }}</span>
+            </div>
+            <p class="plex-diagnosis__reason">{{ result.graphInsight.graphReason }}</p>
+            <small v-if="result.graphInsight.prerequisiteNodes.length">
+              前置：{{ result.graphInsight.prerequisiteNodes.join('、') }}
+            </small>
+          </article>
+        </n-collapse-item>
 
-      <article v-if="strategy" class="plex-diagnosis__block plex-diagnosis__strategy">
-        <h4>建议策略 · {{ strategy.title }}</h4>
-        <p class="plex-diagnosis__strategy-detail">{{ strategy.detail }}</p>
-        <ol v-if="strategy.steps.length" class="plex-diagnosis__steps">
-          <li v-for="(step, idx) in strategy.steps" :key="idx">{{ step }}</li>
-        </ol>
-        <p v-if="strategy.microExercise" class="plex-diagnosis__micro">
-          <strong>微型修复题：</strong>{{ strategy.microExercise }}
-        </p>
-      </article>
+        <n-collapse-item v-if="strategy" title="建议策略 · 微型修复题" name="strategy">
+          <article class="plex-diagnosis__block plex-diagnosis__strategy">
+            <p class="plex-diagnosis__strategy-title">{{ strategy.title }}</p>
+            <p class="plex-diagnosis__strategy-detail">{{ strategy.detail }}</p>
+            <ol v-if="strategy.steps.length" class="plex-diagnosis__steps">
+              <li v-for="(step, idx) in strategy.steps" :key="idx">{{ step }}</li>
+            </ol>
+            <p v-if="strategy.microExercise" class="plex-diagnosis__micro">
+              <strong>微型修复题：</strong>{{ strategy.microExercise }}
+            </p>
+          </article>
+        </n-collapse-item>
+      </n-collapse>
     </template>
   </section>
 </template>
@@ -163,11 +180,6 @@ function masteryMeta(m: string) {
   background: rgba(34, 197, 94, 0.12);
   color: #86efac;
   font-size: 0.72rem;
-}
-
-.plex-diagnosis__type {
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .plex-diagnosis__judge {
@@ -229,8 +241,11 @@ function masteryMeta(m: string) {
 .plex-diagnosis__mastery.m-weak { background: rgba(251, 146, 60, 0.22); color: #fed7aa; }
 .plex-diagnosis__mastery.m-unlearned { background: rgba(148, 163, 184, 0.22); color: #e2e8f0; }
 
-.plex-diagnosis__strategy {
-  border-top: 1px solid rgba(74, 222, 128, 0.18);
+.plex-diagnosis__strategy-title {
+  margin: 0 0 0.25rem;
+  color: #d1fae5;
+  font-size: 0.84rem;
+  font-weight: 650;
 }
 
 .plex-diagnosis__strategy-detail {
@@ -260,15 +275,7 @@ function masteryMeta(m: string) {
 }
 
 .plex-diagnosis__block {
-  padding-top: 0.35rem;
-  border-top: 1px solid rgba(74, 222, 128, 0.12);
-}
-
-.plex-diagnosis__block h4 {
-  margin: 0 0 0.35rem;
-  color: #d1fae5;
-  font-size: 0.82rem;
-  font-weight: 650;
+  padding-top: 0.15rem;
 }
 
 .plex-diagnosis__block p {
@@ -287,6 +294,16 @@ function masteryMeta(m: string) {
   color: rgba(203, 213, 225, 0.72);
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.plex-diagnosis__collapse :deep(.n-collapse-item__header) {
+  color: #d1fae5;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.plex-diagnosis__collapse :deep(.n-collapse-item) {
+  border-top: 1px solid rgba(74, 222, 128, 0.12);
 }
 
 .plex-diagnosis__skeleton {

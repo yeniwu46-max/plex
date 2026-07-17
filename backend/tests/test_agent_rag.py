@@ -77,6 +77,14 @@ class AgentPipelineTests(unittest.TestCase):
         self.assertIn('recommendation', result)
         self.assertTrue(result['diagnosis']['weakPoints'])
 
+    def test_messenger_quick_actions(self):
+        student = User.query.filter_by(username='student001').first()
+        for action in ('weak_points', 'next_trial', 'repair_path', 'recent_growth'):
+            result = AgentOrchestrator.messenger_quick_action(student.id, action)
+            self.assertEqual(result['action'], action)
+            self.assertTrue(result['reply'])
+            self.assertNotIn('小E 帮你看完最近的学习情况啦', result['reply'])
+
     def test_agent_backend_detects_crewai_or_mock(self):
         name = AgentOrchestrator.backend_name()
         self.assertIn(name, ('mock', 'crewai'))

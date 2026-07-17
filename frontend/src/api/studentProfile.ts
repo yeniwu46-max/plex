@@ -18,9 +18,7 @@ export async function updateMyProfile(payload: UpdateProfilePayload) {
 export async function uploadMyAvatar(file: File) {
   const form = new FormData()
   form.append('file', file)
-  const { data } = await http.post<ApiEnvelope<{ avatar_url: string }>>('/v1/uploads/avatar', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const { data } = await http.post<ApiEnvelope<{ avatar_url: string }>>('/v1/uploads/avatar', form)
   if (data.code !== 0) throw new Error(data.message || '头像上传失败')
   return data.data.avatar_url
 }

@@ -13,21 +13,35 @@ from datetime import datetime, timedelta
 from flask import current_app
 from jsonschema import Draft202012Validator
 
-from app.data.course_knowledge import catalog_points, document_ids
+from app.data.course_knowledge import catalog_points, document_ids, knowledge_section
 from app.models import PersonalizedLearningResource, ResourceGenerationTask, db
 from app.services.course_safety import CourseSafetyService
 from app.services.iflytek_spark import IflytekSparkService
-from app.services.question_generator import QuestionGenerator
+from app.services.pedagogical_resource import (
+    BUNDLE_SCHEMA,
+    analyze_pedagogy,
+    build_knowledge_node,
+    build_local_bundle,
+    cases_for_knowledge,
+    infer_learning_stage,
+    infer_learning_styles,
+    infer_target,
+    spark_bundle,
+    split_bundle_to_legacy_types,
+    validate_bundle_risks,
+)
+from app.services.resource_audit import ResourceAuditService
 from app.services.student_profile import StudentProfileService
 from app.utils.time import utc_now
 
-RESOURCE_TYPES = (
+LEGACY_RESOURCE_TYPES = (
     'lesson_document',
     'mind_map',
     'exercise_set',
     'extended_reading',
     'coding_lab',
 )
+RESOURCE_TYPES = ('learning_bundle',) + LEGACY_RESOURCE_TYPES
 OPTIONAL_RESOURCE_TYPES = ('audio_explanation',)
 ALLOWED_RESOURCE_TYPES = RESOURCE_TYPES + OPTIONAL_RESOURCE_TYPES
 PIPELINE_STEPS = (
@@ -38,7 +52,7 @@ PIPELINE_STEPS = (
     ('quality_reviewer', 90),
     ('path_planner', 100),
 )
-AGENT_CONTRACT_VERSION = 'resource-pipeline-v1'
+AGENT_CONTRACT_VERSION = 'resource-pipeline-v2'
 AGENT_LABELS = {
     'profile_interpreter': '画像解释智能体',
     'knowledge_retriever': '知识检索智能体',
@@ -54,6 +68,7 @@ POINTS = catalog_points()
 DOCUMENT_IDS = document_ids()
 VALID_DOCUMENT_IDS = frozenset(DOCUMENT_IDS.values())
 RESOURCE_SCHEMAS = {
+    'learning_bundle': BUNDLE_SCHEMA,
     'lesson_document': {
         'type': 'object', 'required': ['format', 'markdown'],
         'properties': {'format': {'const': 'markdown'}, 'markdown': {'type': 'string', 'minLength': 20}},
@@ -176,12 +191,30 @@ class PersonalizedResourceService:
         return {'failed_stale': len(rows), 'resubmitted_pending': len(pending) if app else 0}
 
     @staticmethod
-    def _fingerprint(user_id: int, profile_version: int, knowledge_key: str, resource_types: list[str]) -> str:
+    def _pedagogical_context_from_payload(payload: dict, profile: dict) -> dict:
+        styles = payload.get('learning_style')
+        if isinstance(styles, str):
+            styles = [styles]
+        return {
+            'target': infer_target(payload.get('target')),
+            'learning_stage': infer_learning_stage(profile, payload.get('learning_stage')),
+            'learning_style': infer_learning_styles(profile, styles if isinstance(styles, list) else None),
+        }
+
+    @staticmethod
+    def _fingerprint(
+        user_id: int,
+        profile_version: int,
+        knowledge_key: str,
+        resource_types: list[str],
+        pedagogical_context: dict | None = None,
+    ) -> str:
         raw = json.dumps({
             'user_id': user_id,
             'profile_version': profile_version,
             'knowledge_key': knowledge_key,
             'resource_types': sorted(resource_types),
+            'pedagogical_context': pedagogical_context or {},
         }, sort_keys=True, ensure_ascii=True)
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
@@ -194,10 +227,18 @@ class PersonalizedResourceService:
         CourseSafetyService.ensure_safe(str(payload), enforce_course_scope=True)
         PersonalizedResourceService._validate_request(knowledge_key, resource_types)
 
-        profile = StudentProfileService.get_or_create(user_id)
-        profile_version = profile.version if profile.id else 0
+        profile_row = StudentProfileService.get_or_create(user_id)
+        profile_version = profile_row.version if profile_row.id else 0
+        profile = {
+            key: value.get('value')
+            for key, value in (profile_row.to_dict().get('dimensions') or {}).items()
+            if value.get('value')
+        }
+        pedagogical_context = PersonalizedResourceService._pedagogical_context_from_payload(
+            payload, profile
+        )
         fingerprint = PersonalizedResourceService._fingerprint(
-            user_id, profile_version, knowledge_key, resource_types
+            user_id, profile_version, knowledge_key, resource_types, pedagogical_context
         )
         idempotency_key = str(payload.get('idempotency_key') or '').strip()[:100] or None
 
@@ -216,12 +257,14 @@ class PersonalizedResourceService:
                 if active:
                     return PersonalizedResourceService.get_task(user_id, active.task_id)
 
+            steps = PersonalizedResourceService._steps()
+            steps[0]['input_summary'] = {'pedagogical_context': pedagogical_context}
             row = ResourceGenerationTask(
                 task_id='rg_' + uuid.uuid4().hex[:20],
                 user_id=user_id,
                 knowledge_key=knowledge_key,
                 requested_types=resource_types,
-                steps=PersonalizedResourceService._steps(),
+                steps=steps,
                 retry_of=payload.get('retry_of'),
                 profile_version=profile_version,
                 request_fingerprint=fingerprint,
@@ -289,13 +332,16 @@ class PersonalizedResourceService:
     @staticmethod
     def _knowledge_context(knowledge_key: str, profile_strategy: dict) -> dict:
         citation = PersonalizedResourceService._citation(knowledge_key)
+        node = build_knowledge_node(knowledge_key)
         return {
             'knowledge_key': knowledge_key,
             'knowledge_label': POINTS[knowledge_key],
             'document_id': citation['document_id'],
             'section': citation['section'],
             'citation_count': 1,
+            'retrieved_snippet': citation['snippet'][:120],
             'difficulty_target': profile_strategy['difficulty_target'],
+            'knowledge_node': node,
         }
 
     @staticmethod
@@ -303,8 +349,21 @@ class PersonalizedResourceService:
         requested_types: list[str],
         profile_strategy: dict,
         knowledge_context: dict,
+        pedagogical_context: dict,
+        profile: dict,
     ) -> dict:
+        node = knowledge_context.get('knowledge_node') or build_knowledge_node(
+            knowledge_context['knowledge_key']
+        )
+        analysis = analyze_pedagogy(
+            node,
+            target=pedagogical_context.get('target', infer_target()),
+            learning_stage=pedagogical_context.get('learning_stage', infer_learning_stage(profile)),
+            learning_styles=pedagogical_context.get('learning_style') or infer_learning_styles(profile),
+            profile=profile,
+        )
         return {
+            **analysis,
             'knowledge_key': knowledge_context['knowledge_key'],
             'resource_types': requested_types,
             'difficulty_target': profile_strategy['difficulty_target'],
@@ -319,16 +378,46 @@ class PersonalizedResourceService:
         }
 
     @staticmethod
-    def _quality_report(generated: list[dict], knowledge_key: str) -> dict:
+    def _audit_risk_codes(audit_report: dict | None) -> list[str]:
+        if not audit_report:
+            return []
+        codes: list[str] = []
+        for step in audit_report.get('steps') or []:
+            for check in step.get('checks') or []:
+                if check.get('level') == 'FAIL':
+                    check_id = str(check.get('id') or 'unknown')
+                    codes.append(f'audit_{check_id}')
+        return list(dict.fromkeys(codes))
+
+    @staticmethod
+    def _quality_report(
+        generated: list[dict],
+        knowledge_key: str,
+        *,
+        profile: dict | None = None,
+        audit_report: dict | None = None,
+    ) -> dict:
+        audit_risks = PersonalizedResourceService._audit_risk_codes(audit_report)
         items = []
+        bundle_risks: list[str] = []
         for item in generated:
             risks = PersonalizedResourceService._risk_reasons(item, knowledge_key)
+            if audit_risks:
+                risks = list(dict.fromkeys(risks + audit_risks))
+            if item.get('resource_type') == 'learning_bundle':
+                bundle_risks = list(risks)
             items.append({
                 'resource_type': item.get('resource_type'),
                 'confidence': round(float(item.get('confidence') or 0), 2),
                 'risk_reasons': risks,
                 'review_status': 'approved' if not risks else 'pending_review',
             })
+        if bundle_risks:
+            for entry in items:
+                if entry['resource_type'] != 'learning_bundle' and bundle_risks:
+                    merged = list(dict.fromkeys(entry['risk_reasons'] + bundle_risks))
+                    entry['risk_reasons'] = merged
+                    entry['review_status'] = 'approved' if not merged else 'pending_review'
         return {
             'items': items,
             'resource_count': len(items),
@@ -342,6 +431,8 @@ class PersonalizedResourceService:
             'citation_pass_count': sum(
                 1 for item in items if 'invalid_citation' not in item['risk_reasons']
             ),
+            'audit_report': audit_report,
+            'suggested_verdict': (audit_report or {}).get('verdict'),
         }
 
     @staticmethod
@@ -419,11 +510,16 @@ class PersonalizedResourceService:
 
     @staticmethod
     def _citation(knowledge_key: str) -> dict:
+        section = knowledge_section(knowledge_key)
+        snippet = (
+            section.get('concept')
+            or f'{POINTS[knowledge_key]}课程知识库中的概念、示例与常见错误。'
+        )
         return {
             'document_id': DOCUMENT_IDS[knowledge_key],
             'title': f"《Python程序设计基础》：{POINTS[knowledge_key]}",
             'section': knowledge_key,
-            'snippet': f'{POINTS[knowledge_key]}课程知识库中的概念、示例与常见错误。',
+            'snippet': snippet[:200],
         }
 
     @staticmethod
@@ -463,6 +559,8 @@ class PersonalizedResourceService:
             risks.append('safety_blocked')
         if knowledge_key not in POINTS:
             risks.append('out_of_scope')
+        if resource_type == 'learning_bundle' and isinstance(content, dict):
+            risks.extend(validate_bundle_risks(content))
         if resource_type == 'exercise_set' and isinstance(content, dict):
             questions = [
                 str(row.get('question') or '').strip()
@@ -479,133 +577,80 @@ class PersonalizedResourceService:
         return list(dict.fromkeys(risks))
 
     @staticmethod
-    def _local_resources(knowledge_key: str, resource_types: list[str], profile: dict) -> list[dict]:
-        label = POINTS[knowledge_key]
-        preference = profile.get('explanation_preference') or '分步骤讲解'
-        interest = profile.get('interest_direction') or '校园学习'
-        pace = profile.get('learning_pace') or '每次15分钟'
+    def _resource_meta(knowledge_key: str, profile: dict, analysis: dict) -> dict:
         foundation = str(profile.get('knowledge_foundation') or '')
         beginner = '零基础' in foundation
-        code_first = '先看代码' in str(preference)
-        difficulty = 40 if beginner else 65
-        estimated_minutes = 15 if beginner else 30
-        if code_first:
-            lesson_sections = (
-                f'## 先看代码\n```python\nprint("{label}")\n```\n\n'
-                f'## 原理拆解\n围绕 {label} 分析执行过程、复杂度和边界条件。'
-            )
-        else:
-            lesson_sections = (
-                f'## 核心概念\n围绕 {label} 理解语法、执行过程和适用场景。\n\n'
-                f'## 生活化案例\n用“{interest}”场景分步骤解释。\n\n'
-                f'## 示例\n```python\nprint("{label}")\n```'
-            )
-        exercise_levels = ('基础', '巩固') if beginner else ('进阶', '挑战')
-        common = {
-            'difficulty': difficulty,
-            'estimated_minutes': estimated_minutes,
-            'recommendation_reason': f'根据你的讲解偏好“{preference}”、学习节奏“{pace}”生成。',
+        preference = profile.get('explanation_preference') or '分步骤讲解'
+        pace = profile.get('learning_pace') or '每次15分钟'
+        return {
+            'difficulty': 40 if beginner else 65,
+            'estimated_minutes': 20 if beginner else 35,
+            'recommendation_reason': (
+                f'根据{analysis.get("learning_stage", "学习")}阶段、'
+                f'讲解偏好「{preference}」与学习节奏「{pace}」生成。'
+            ),
             'citations': [PersonalizedResourceService._citation(knowledge_key)],
-            'confidence': 0.88,
+            'confidence': 0.9,
         }
-        builders = {
-            'lesson_document': {
-                'title': f'{label}个性化讲解',
-                'content': {
-                    'format': 'markdown',
-                    'markdown': f'# {label}\n\n采用{preference}。\n\n{lesson_sections}\n\n## 常见错误\n注意缩进、边界与数据类型。',
-                },
-            },
-            'mind_map': {
-                'title': f'{label}思维导图',
-                'content': {
-                    'format': 'tree',
-                    'root': label,
-                    'children': [
-                        {'label': '概念'},
-                        {'label': '语法'},
-                        {'label': '示例'},
-                        {'label': '常见错误'},
-                    ],
-                },
-            },
-            'exercise_set': {
-                'title': f'{label}分层题库',
-                'content': {
-                    'format': 'questions',
-                    'questions': [
-                        {
-                            'level': exercise_levels[0],
-                            'question': f'解释 {label} 的基本作用并给出最小示例。',
-                        },
-                        {
-                            'level': exercise_levels[1],
-                            'question': f'使用 {label} 解决一个与{interest}有关的小任务。',
-                        },
-                    ],
-                },
-            },
-            'extended_reading': {
-                'title': f'{label}拓展阅读',
-                # Local fallback cannot independently verify broader reading claims.
-                'confidence': 0.78,
-                'content': {
-                    'format': 'markdown',
-                    'markdown': f'# 从 {label} 到真实项目\n\n结合你的兴趣“{interest}”，观察该知识点如何用于数据处理、自动化或小游戏。',
-                },
-            },
-            'coding_lab': {
-                'title': f'{label}代码实操',
-                'content': {
-                    'format': 'coding_lab',
-                    'scenario': f'围绕{interest}完成一个使用{label}的程序。',
-                    'starter_code': '# 在这里编写代码\n',
-                    'checks': ['程序可运行', f'正确使用{label}', '至少包含一个测试样例'],
-                },
-            },
-            'audio_explanation': {
-                'title': f'{label}语音讲解',
-                'content': {
-                    'format': 'audio_fallback',
-                    'transcript': f'这是关于{label}的简短讲解。当前语音服务量不可用，展示文本降级内容。',
-                },
-                'content_url': None,
-            },
-        }
-        return [{**common, **builders[item], 'resource_type': item} for item in resource_types]
 
     @staticmethod
-    def _spark_resources(knowledge_key: str, resource_types: list[str], profile: dict) -> list[dict]:
-        system = (
-            '你是Python程序设计基础课程资源生成器。只输出JSON对象，包含resources数组。'
-            '每项必须有resource_type,title,content,difficulty,estimated_minutes,recommendation_reason,confidence。'
-            'resource_type只能来自请求列表，禁止引用课程范围外事实。'
-        )
-        result = IflytekSparkService.chat_json(
-            system,
-            str({
-                'knowledge_key': knowledge_key,
-                'knowledge_label': POINTS[knowledge_key],
-                'resource_types': resource_types,
-                'profile': profile,
-                'required_citation': PersonalizedResourceService._citation(knowledge_key),
-            }),
-            timeout=45,
-        )
-        rows = result.get('resources')
-        if not isinstance(rows, list):
-            raise ValueError('spark_resources_invalid')
-        by_type = {item.get('resource_type'): item for item in rows if isinstance(item, dict)}
-        if any(item not in by_type for item in resource_types):
-            raise ValueError('spark_resources_incomplete')
-        return [
-            {
-                **by_type[item],
-                'resource_type': item,
-                'citations': [PersonalizedResourceService._citation(knowledge_key)],
-            }
-            for item in resource_types
-        ]
+    def _generate_from_bundle(
+        knowledge_key: str,
+        resource_types: list[str],
+        profile: dict,
+        analysis: dict,
+    ) -> tuple[list[dict], str, dict]:
+        node = build_knowledge_node(knowledge_key)
+        try:
+            if not IflytekSparkService.configured():
+                raise RuntimeError('spark_not_available')
+            bundle = spark_bundle(
+                knowledge_key,
+                node=node,
+                analysis=analysis,
+                profile=profile,
+                case_candidates=cases_for_knowledge(knowledge_key, 2),
+            )
+            backend = 'iflytek_spark'
+        except Exception:
+            bundle = build_local_bundle(knowledge_key, analysis=analysis, profile=profile)
+            backend = 'local_rules'
+        split_rows = split_bundle_to_legacy_types(bundle, knowledge_key)
+        meta = PersonalizedResourceService._resource_meta(knowledge_key, profile, analysis)
+        by_type = {row['resource_type']: row for row in split_rows}
+        generated = []
+        for resource_type in resource_types:
+            if resource_type == 'audio_explanation':
+                label = POINTS[knowledge_key]
+                generated.append({
+                    **meta,
+                    'resource_type': 'audio_explanation',
+                    'title': f'{label}语音讲解',
+                    'confidence': 0.78,
+                    'content': {
+                        'format': 'audio_fallback',
+                        'transcript': bundle.get('explain', '')[:500],
+                    },
+                    'content_url': None,
+                })
+                continue
+            row = by_type.get(resource_type)
+            if not row:
+                continue
+            item = {**meta, **row}
+            if resource_type == 'extended_reading':
+                item['confidence'] = 0.85
+            generated.append(item)
+        return generated, backend, bundle
+
+    @staticmethod
+    def _extract_pedagogical_context(row: ResourceGenerationTask) -> dict:
+        steps = row.steps or []
+        if steps and isinstance(steps[0].get('input_summary'), dict):
+            ctx = steps[0]['input_summary'].get('pedagogical_context')
+            if isinstance(ctx, dict):
+                return ctx
+        return {}
 
     @staticmethod
     def run_task(app, task_id: str):
@@ -621,8 +666,11 @@ class PersonalizedResourceService:
                 return
             row = ResourceGenerationTask.query.filter_by(task_id=task_id).first()
             active_index = None
+            step_backend = 'in_process'
+            step_model = 'deterministic_contract'
             try:
                 profile = PersonalizedResourceService._profile_snapshot(row.user_id)
+                pedagogical_context = PersonalizedResourceService._extract_pedagogical_context(row)
                 artifacts = {}
                 for index, (agent, progress) in enumerate(PIPELINE_STEPS):
                     active_index = index
@@ -660,29 +708,46 @@ class PersonalizedResourceService:
                             row.requested_types,
                             artifacts['profile_interpreter'],
                             artifacts['knowledge_retriever'],
+                            pedagogical_context,
+                            profile,
                         )
                     elif agent == 'resource_generator':
-                        generation_context = {
-                            **profile,
-                            '_instructional_design': artifacts['instructional_designer'],
-                        }
+                        analysis = artifacts['instructional_designer']
+                        bundle = None
                         try:
-                            if not IflytekSparkService.configured():
-                                raise RuntimeError('spark_not_available')
-                            generated = PersonalizedResourceService._spark_resources(
-                                row.knowledge_key, row.requested_types, generation_context
+                            generated, gen_backend, bundle = PersonalizedResourceService._generate_from_bundle(
+                                row.knowledge_key, row.requested_types, profile, analysis
                             )
-                            row.backend = 'iflytek_spark'
-                            step_backend = 'iflytek_spark'
-                            step_model = os.getenv('IFLYTEK_SPARK_MODEL', 'lite')
+                            row.backend = gen_backend
+                            step_backend = gen_backend
+                            step_model = (
+                                os.getenv('IFLYTEK_SPARK_MODEL', 'lite')
+                                if gen_backend == 'iflytek_spark'
+                                else 'pedagogical-v2'
+                            )
+                            if gen_backend == 'local_rules':
+                                row.fallback_reason = row.fallback_reason or 'spark_unavailable_or_invalid'
                         except Exception as exc:
-                            generated = PersonalizedResourceService._local_resources(
-                                row.knowledge_key, row.requested_types, generation_context
+                            bundle = build_local_bundle(
+                                row.knowledge_key,
+                                analysis=analysis,
+                                profile=profile,
                             )
+                            split_rows = split_bundle_to_legacy_types(bundle, row.knowledge_key)
+                            meta = PersonalizedResourceService._resource_meta(
+                                row.knowledge_key, profile, analysis
+                            )
+                            by_type = {item['resource_type']: item for item in split_rows}
+                            generated = [
+                                {**meta, **by_type[rt]}
+                                for rt in row.requested_types
+                                if rt in by_type
+                            ]
                             row.backend = 'local_rules'
                             row.fallback_reason = str(exc)[:255]
                             step_backend = 'local_rules'
-                            step_model = 'rules-v1'
+                            step_model = 'pedagogical-v2'
+                        artifacts['_bundle'] = bundle
                         output = {
                             'resource_count': len(generated),
                             'resource_types': [
@@ -696,8 +761,32 @@ class PersonalizedResourceService:
                         artifacts['_generated_resources'] = generated
                     elif agent == 'quality_reviewer':
                         generated = artifacts['_generated_resources']
+                        bundle = artifacts.get('_bundle')
+                        audit_report_dict = None
+                        if isinstance(bundle, dict):
+                            bundle_item = next(
+                                (item for item in generated if item.get('resource_type') == 'learning_bundle'),
+                                None,
+                            )
+                            citations = (bundle_item or {}).get('citations') or []
+                            confidence = float((bundle_item or generated[0] if generated else {}).get('confidence') or 0.9)
+                            audit = ResourceAuditService.audit_bundle(
+                                bundle,
+                                row.knowledge_key,
+                                profile,
+                                confidence=confidence,
+                                citations=citations,
+                            )
+                            audit = ResourceAuditService.enrich_with_crewai_notes(
+                                audit, bundle, row.knowledge_key
+                            )
+                            audit_report_dict = audit.to_dict()
+                            row.audit_report = audit_report_dict
                         output = PersonalizedResourceService._quality_report(
-                            generated, row.knowledge_key
+                            generated,
+                            row.knowledge_key,
+                            profile=profile,
+                            audit_report=audit_report_dict,
                         )
                         PersonalizedResourceService._store_generated_resources(
                             row, generated, profile, output
@@ -791,7 +880,10 @@ class PersonalizedResourceService:
 
     @staticmethod
     def list_student(user_id: int, args) -> dict:
-        query = PersonalizedLearningResource.query.filter_by(user_id=user_id, review_status='approved')
+        query = PersonalizedLearningResource.query.filter(
+            PersonalizedLearningResource.user_id == user_id,
+            PersonalizedLearningResource.review_status.in_(('approved', 'pending_review')),
+        )
         if args.get('knowledge_key'):
             query = query.filter_by(knowledge_key=args['knowledge_key'])
         if args.get('resource_type'):
@@ -808,6 +900,82 @@ class PersonalizedResourceService:
         return {'items': [row.to_dict() for row in rows], 'total': len(rows)}
 
     @staticmethod
+    def _resolve_bundle_for_resource(row: PersonalizedLearningResource) -> dict | None:
+        if row.resource_type == 'learning_bundle' and isinstance(row.content, dict):
+            if row.content.get('format') == 'pedagogical_v2':
+                return row.content
+        sibling = PersonalizedLearningResource.query.filter_by(
+            generation_task_id=row.generation_task_id,
+            resource_type='learning_bundle',
+        ).first()
+        if sibling and isinstance(sibling.content, dict):
+            if sibling.content.get('format') == 'pedagogical_v2':
+                return sibling.content
+        return None
+
+    @staticmethod
+    def get_audit(resource_id: int) -> dict:
+        row = db.session.get(PersonalizedLearningResource, resource_id)
+        if not row:
+            raise LookupError('资源不存在')
+        task = ResourceGenerationTask.query.filter_by(task_id=row.generation_task_id).first()
+        if task and task.audit_report:
+            return {
+                'resource_id': resource_id,
+                'generation_task_id': row.generation_task_id,
+                'audit_report': task.audit_report,
+            }
+        bundle = PersonalizedResourceService._resolve_bundle_for_resource(row)
+        if not bundle:
+            raise LookupError('该资源尚无审核报告')
+        profile = row.profile_snapshot if isinstance(row.profile_snapshot, dict) else {}
+        audit = ResourceAuditService.audit_bundle(
+            bundle,
+            row.knowledge_key,
+            profile,
+            confidence=float(row.confidence or 0.9),
+            citations=row.citations or [],
+        )
+        audit = ResourceAuditService.enrich_with_crewai_notes(audit, bundle, row.knowledge_key)
+        report = audit.to_dict()
+        if task:
+            task.audit_report = report
+            db.session.commit()
+        return {
+            'resource_id': resource_id,
+            'generation_task_id': row.generation_task_id,
+            'audit_report': report,
+        }
+
+    @staticmethod
+    def rerun_audit(resource_id: int) -> dict:
+        row = db.session.get(PersonalizedLearningResource, resource_id)
+        if not row:
+            raise LookupError('资源不存在')
+        bundle = PersonalizedResourceService._resolve_bundle_for_resource(row)
+        if not bundle:
+            raise ValueError('无法找到 pedagogical_v2 资源包以重新审核')
+        profile = row.profile_snapshot if isinstance(row.profile_snapshot, dict) else {}
+        audit = ResourceAuditService.audit_bundle(
+            bundle,
+            row.knowledge_key,
+            profile,
+            confidence=float(row.confidence or 0.9),
+            citations=row.citations or [],
+        )
+        audit = ResourceAuditService.enrich_with_crewai_notes(audit, bundle, row.knowledge_key)
+        report = audit.to_dict()
+        task = ResourceGenerationTask.query.filter_by(task_id=row.generation_task_id).first()
+        if task:
+            task.audit_report = report
+            db.session.commit()
+        return {
+            'resource_id': resource_id,
+            'generation_task_id': row.generation_task_id,
+            'audit_report': report,
+        }
+
+    @staticmethod
     def review_metrics() -> dict:
         rows = PersonalizedLearningResource.query.all()
         status_counts = {
@@ -816,6 +984,16 @@ class PersonalizedResourceService:
         }
         risk_counts: dict[str, int] = {}
         review_minutes = []
+        verdict_counts: dict[str, int] = {}
+        dimension_totals: dict[str, float] = {}
+        dimension_samples = 0
+        task_ids = {row.generation_task_id for row in rows}
+        tasks = {
+            task.task_id: task
+            for task in ResourceGenerationTask.query.filter(
+                ResourceGenerationTask.task_id.in_(task_ids)
+            ).all()
+        } if task_ids else {}
         for row in rows:
             for risk in row.risk_reasons or []:
                 risk_counts[risk] = risk_counts.get(risk, 0) + 1
@@ -823,6 +1001,24 @@ class PersonalizedResourceService:
                 review_minutes.append(
                     max(0, (row.reviewed_at - row.created_at).total_seconds() / 60)
                 )
+        counted_tasks: set[str] = set()
+        for task_id, task in tasks.items():
+            audit = task.audit_report if task else None
+            if not isinstance(audit, dict) or task_id in counted_tasks:
+                continue
+            counted_tasks.add(task_id)
+            verdict = str(audit.get('verdict') or '')
+            if verdict:
+                verdict_counts[verdict] = verdict_counts.get(verdict, 0) + 1
+            dims = audit.get('dimensions') or {}
+            if dims:
+                dimension_samples += 1
+                for key, value in dims.items():
+                    dimension_totals[key] = dimension_totals.get(key, 0.0) + float(value or 0)
+        avg_dimensions = {
+            key: round(total / dimension_samples, 1)
+            for key, total in dimension_totals.items()
+        } if dimension_samples else {}
         return {
             'total_resources': len(rows),
             'status_counts': status_counts,
@@ -837,6 +1033,13 @@ class PersonalizedResourceService:
                     risk_counts.items(), key=lambda item: (-item[1], item[0])
                 )
             ],
+            'verdict_distribution': [
+                {'verdict': verdict, 'count': count}
+                for verdict, count in sorted(
+                    verdict_counts.items(), key=lambda item: (-item[1], item[0])
+                )
+            ],
+            'avg_dimension_scores': avg_dimensions,
         }
 
     @staticmethod

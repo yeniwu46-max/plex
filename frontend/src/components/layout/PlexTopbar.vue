@@ -20,6 +20,7 @@ import { useStudentNotificationSync } from '../../composables/useStudentNotifica
 import { useTeacherNotificationSync } from '../../composables/useTeacherNotificationSync'
 import PlexThemeSwitcher from '../shared/PlexThemeSwitcher.vue'
 import PlexLocalSearch from '../search/PlexLocalSearch.vue'
+import QuestionSearchPopover from '../search/QuestionSearchPopover.vue'
 import { useSearchScope } from '../../composables/useSearchScope'
 
 withDefaults(
@@ -161,6 +162,11 @@ async function handleUserSelect(key: string) {
         :placeholder="placeholder"
         @search-submit="emit('searchSubmit', $event)"
       />
+      <QuestionSearchPopover
+        v-if="scope === 'student'"
+        :query="search"
+        :visible="true"
+      />
     </div>
 
     <div class="plex-topbar__userbar">
@@ -291,6 +297,9 @@ async function handleUserSelect(key: string) {
 }
 
 /* PlexLocalSearch fills the topbar search slot via local-search.css */
+.plex-topbar__search {
+  position: relative;
+}
 
 .plex-topbar__userbar {
   justify-self: end;

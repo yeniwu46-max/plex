@@ -3,12 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NIcon, NInput } from 'naive-ui'
 import { postMessengerChat } from '../api/messenger'
-import {
-  diagnoseLearning,
-  planLearningPath,
-  type LearningPathPlanResult,
-  type StudentDiagnoseResult,
-} from '../api/agentService'
+import { messengerQuickAction, type MessengerQuickActionResult } from '../api/agentService'
 import {
   BarbellOutline,
   GitNetworkOutline,
@@ -17,115 +12,129 @@ import {
   TrendingUpOutline,
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
+import { xiaoEThinkingMessage, xiaoETimeoutMessage } from '../utils/xiaoEPersona'
+import { openPracticeQuestionByRef } from '../utils/practiceQuestionNav'
 
 const router = useRouter()
+
+type ChatMessage = {
+  role: 'user' | 'assistant'
+  text: string
+  questionPick?: MessengerQuickActionResult['question_pick']
+  retry?: () => void
+}
+
+function isTimeoutError(error: unknown) {
+  const msg = error instanceof Error ? error.message : String(error)
+  const code = (error as { code?: string })?.code
+  return code === 'ECONNABORTED' || /timeout/i.test(msg)
+}
+
+function assistantErrorText(error: unknown, retry?: () => void): ChatMessage {
+  if (isTimeoutError(error)) {
+    return {
+      role: 'assistant',
+      text: `${xiaoETimeoutMessage()} 点击「重试」再试一次。`,
+      retry,
+    }
+  }
+  return {
+    role: 'assistant',
+    text: error instanceof Error ? error.message : '小E 这次没能完成分析，稍后再试吧。',
+    retry,
+  }
+}
+
 const prompt = ref('')
 const chatLoading = ref(false)
 const agentLoading = ref(false)
-const chatMessages = ref<Array<{ role: 'user' | 'assistant'; text: string }>>([])
+const chatMessages = ref<ChatMessage[]>([])
 
-function formatDiagnosisReply(result: StudentDiagnoseResult) {
-  const diagnosis = result.diagnosis
-  const recommendation = result.recommendation
-  const strategy = diagnosis.remediationStrategy
-  return [
-    `知识诊断智能体已完成分析（${result.backend ?? 'learning-engine'}）。`,
-    `诊断：${diagnosis.diagnosis}`,
-    `下一试炼：${recommendation.nextKnowledgePoint || '请先完成一题短练习以收集证据。'}`,
-    strategy ? `修复策略：${strategy.title}。${strategy.steps.slice(0, 2).join('；')}` : '',
-  ].filter(Boolean).join('\n')
+function recentChatHistory() {
+  return chatMessages.value.slice(-18).map((msg) => ({
+    role: msg.role,
+    content: msg.text,
+  }))
 }
 
-function formatPathReply(result: LearningPathPlanResult) {
-  const action = result.next_best_action
-  const remediation = result.remediation_paths?.[0]
-  const steps = remediation?.steps?.slice(0, 3) ?? result.reviewPlan?.slice(0, 3) ?? []
-  return [
-    `路径规划智能体已生成修复路线（${result.graph_backend ?? result.agent_trace?.backend ?? 'learning-engine'}）。`,
-    action?.reason ? `优先动作：${action.reason}` : '',
-    steps.length ? `建议顺序：${steps.join(' → ')}` : '当前没有待修复路径，建议继续完成下一道试炼。',
-  ].filter(Boolean).join('\n')
-}
-
-async function runDiagnosisAgent() {
+async function runQuickAction(action: 'weak_points' | 'next_trial' | 'repair_path' | 'recent_growth', userText: string) {
   if (agentLoading.value || chatLoading.value) return
-  chatMessages.value.push({ role: 'user', text: '请用知识诊断智能体推荐我的下一试炼。' })
+  chatMessages.value.push({ role: 'user', text: userText })
   agentLoading.value = true
+  const retry = () => runQuickAction(action, userText)
   try {
-    chatMessages.value.push({ role: 'assistant', text: formatDiagnosisReply(await diagnoseLearning()) })
-  } catch (error) {
+    const result = await messengerQuickAction(action)
     chatMessages.value.push({
       role: 'assistant',
-      text: error instanceof Error ? error.message : '知识诊断智能体暂时无法完成本次分析。',
+      text: result.reply,
+      questionPick: result.question_pick ?? undefined,
     })
+  } catch (error) {
+    chatMessages.value.push(assistantErrorText(error, retry))
   } finally {
     agentLoading.value = false
   }
+}
+
+async function openQuestionPick(pick: NonNullable<MessengerQuickActionResult['question_pick']>) {
+  const ok = await openPracticeQuestionByRef(router, pick.id)
+  if (!ok) {
+    chatMessages.value.push({
+      role: 'assistant',
+      text: '这道题的入口暂时打不开，请稍后在星轨学习或顶部搜索里再试一次。',
+    })
+  }
+}
+
+async function runWeakPointsAction() {
+  await runQuickAction('weak_points', '小E，帮我诊断一下薄弱点。')
+}
+
+async function runNextTrialAction() {
+  await runQuickAction('next_trial', '小E，下一道试炼该练什么？')
 }
 
 async function runPathPlanningAgent() {
-  if (agentLoading.value || chatLoading.value) return
-  chatMessages.value.push({ role: 'user', text: '请用路径规划智能体生成我的修复路线。' })
-  agentLoading.value = true
-  try {
-    chatMessages.value.push({ role: 'assistant', text: formatPathReply(await planLearningPath()) })
-  } catch (error) {
-    chatMessages.value.push({
-      role: 'assistant',
-      text: error instanceof Error ? error.message : '路径规划智能体暂时无法生成修复路线。',
-    })
-  } finally {
-    agentLoading.value = false
-  }
+  await runQuickAction('repair_path', '小E，帮我规划一下修复路线。')
 }
 
-function goToArchives() {
-  void router.push('/student/me/growth')
+async function runGrowthAction() {
+  await runQuickAction('recent_growth', '小E，看看我最近成长怎么样？')
 }
 
 const actions = [
-  { label: '诊断薄弱点', icon: TelescopeOutline, handler: runDiagnosisAgent },
-  { label: '推荐下一试炼', icon: BarbellOutline, handler: runDiagnosisAgent },
+  { label: '诊断薄弱点', icon: TelescopeOutline, handler: runWeakPointsAction },
+  { label: '推荐下一试炼', icon: BarbellOutline, handler: runNextTrialAction },
   { label: '规划修复路线', icon: GitNetworkOutline, handler: runPathPlanningAgent },
-  { label: '查看最近成长', icon: TrendingUpOutline, handler: goToArchives },
+  { label: '查看最近成长', icon: TrendingUpOutline, handler: runGrowthAction },
 ] as const
 
-async function sendChat() {
-  const text = prompt.value.trim()
+async function sendChatText(text: string, appendUserMessage = true) {
   if (!text || chatLoading.value || agentLoading.value) return
-  chatMessages.value.push({ role: 'user', text })
-  prompt.value = ''
+  const history = recentChatHistory()
+  if (appendUserMessage) {
+    chatMessages.value.push({ role: 'user', text })
+  }
   chatLoading.value = true
+  const retry = () => sendChatText(text, false)
   try {
-    const result = await postMessengerChat(text)
-    const sourceLabel =
-      result.source === 'xfyun_agent'
-        ? result.rag_used
-          ? '（讯飞星辰 Agent + 课程知识库）'
-          : '（讯飞星辰 Agent）'
-        : result.source === 'spark'
-        ? result.rag_used
-          ? '（讯飞星火 + 课程知识库）'
-          : '（讯飞星火）'
-        : result.source === 'llm'
-        ? result.rag_used
-          ? '（LLM + 知识库）'
-          : ''
-        : result.source === 'rag'
-          ? '（知识库 + 学情）'
-          : '（规则分析）'
+    const result = await postMessengerChat(text, history)
     chatMessages.value.push({
       role: 'assistant',
-      text: `${result.reply}${sourceLabel}`,
+      text: result.reply,
     })
   } catch (error) {
-    chatMessages.value.push({
-      role: 'assistant',
-      text: error instanceof Error ? error.message : '对话失败，请稍后重试',
-    })
+    chatMessages.value.push(assistantErrorText(error, retry))
   } finally {
     chatLoading.value = false
   }
+}
+
+async function sendChat() {
+  const text = prompt.value.trim()
+  if (!text) return
+  prompt.value = ''
+  await sendChatText(text)
 }
 </script>
 
@@ -156,16 +165,34 @@ async function sendChat() {
           <div class="chat-thread" aria-label="与小E对话">
             <div v-if="!chatMessages.length" class="chat-thread__empty">
               <strong>向小E提一个 Python 或学习问题</strong>
-              <p>这里会直接显示智能体回复，反馈区保持专注和干净。</p>
+              <p>探索之路固然艰难，有什么疑惑我帮你解决！</p>
             </div>
             <article v-for="(msg, idx) in chatMessages" :key="idx" :class="`chat-thread__item chat-thread__item--${msg.role}`">
               <p>{{ msg.text }}</p>
+              <button
+                v-if="msg.questionPick"
+                type="button"
+                class="chat-thread__pick"
+                @click="openQuestionPick(msg.questionPick)"
+              >
+                去练 {{ msg.questionPick.code }} · {{ msg.questionPick.title }}
+              </button>
+              <button
+                v-if="msg.retry"
+                type="button"
+                class="chat-thread__retry"
+                :disabled="chatLoading || agentLoading"
+                @click="msg.retry?.()"
+              >
+                重试
+              </button>
             </article>
-            <p v-if="chatLoading || agentLoading" class="chat-thread__loading">小E 正在调用学习智能体…</p>
+            <p v-if="chatLoading || agentLoading" class="chat-thread__loading">{{ xiaoEThinkingMessage('chat') }}</p>
           </div>
         </aside>
 
-        <section class="prompt-dock" aria-label="向小E提问">
+        <section class="prompt-dock prompt-dock--tech" aria-label="向小E提问">
+          <span class="prompt-dock__glow" aria-hidden="true" />
           <div class="prompt-line">
             <n-input
               v-model:value="prompt"
@@ -174,7 +201,7 @@ async function sendChat() {
               :bordered="false"
               @keydown.enter.prevent="sendChat"
             />
-            <button type="button" aria-label="发送" :disabled="chatLoading || agentLoading" @click="sendChat">
+            <button type="button" class="prompt-send" aria-label="发送" :disabled="chatLoading || agentLoading" @click="sendChat">
               <n-icon :component="PaperPlaneOutline" />
             </button>
           </div>
@@ -186,17 +213,6 @@ async function sendChat() {
           </div>
         </section>
 
-        <div class="assistant-bot assistant-bot--corner" aria-hidden="true">
-          <span class="assistant-bot__crest" />
-          <span class="assistant-bot__head" />
-          <span class="assistant-bot__ear assistant-bot__ear--left" />
-          <span class="assistant-bot__ear assistant-bot__ear--right" />
-          <span class="assistant-bot__face" />
-          <span class="assistant-bot__body"><em></em></span>
-          <span class="assistant-bot__arm assistant-bot__arm--left" />
-          <span class="assistant-bot__arm assistant-bot__arm--right" />
-          <span class="assistant-bot__cape" />
-        </div>
       </section>
     </main>
   </DashboardShell>
@@ -1165,6 +1181,41 @@ async function sendChat() {
   color: rgba(237, 247, 255, 0.88);
 }
 
+.chat-thread__pick {
+  display: inline-flex;
+  margin-top: 0.65rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid rgba(16, 240, 192, 0.35);
+  border-radius: 999px;
+  background: rgba(16, 240, 192, 0.1);
+  color: #22ffde;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.chat-thread__pick:hover {
+  background: rgba(16, 240, 192, 0.18);
+}
+
+.chat-thread__retry {
+  display: inline-flex;
+  margin-top: 0.55rem;
+  margin-left: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(255, 197, 109, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 197, 109, 0.1);
+  color: #ffc56d;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.chat-thread__retry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .chat-thread__loading {
   margin: 0;
   color: rgba(237, 247, 255, 0.55);
@@ -1186,6 +1237,35 @@ async function sendChat() {
     linear-gradient(180deg, rgba(8, 25, 39, 0.78), rgba(4, 15, 26, 0.72)),
     rgba(4, 14, 24, 0.72);
   backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.prompt-dock--tech {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 28px rgba(37, 245, 238, 0.08);
+}
+
+.prompt-dock__glow {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, transparent, rgba(37, 245, 238, 0.18), transparent 65%);
+  opacity: 0.35;
+  animation: prompt-border-glow 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes prompt-border-glow {
+  0%,
+  100% {
+    transform: translateX(-30%);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translateX(30%);
+    opacity: 0.55;
+  }
 }
 
 .prompt-line {
@@ -1203,7 +1283,8 @@ async function sendChat() {
   font-size: 1rem;
 }
 
-.prompt-line button {
+.prompt-line button,
+.prompt-send {
   display: grid;
   width: 42px;
   height: 42px;
@@ -1216,6 +1297,21 @@ async function sendChat() {
   font-size: 1.6rem;
 }
 
+.prompt-send {
+  border-radius: 50%;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.prompt-send:hover:not(:disabled) {
+  background: rgba(37, 245, 238, 0.1);
+  box-shadow: 0 0 18px rgba(37, 245, 238, 0.35);
+}
+
+.prompt-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .prompt-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1224,11 +1320,13 @@ async function sendChat() {
 }
 
 .prompt-actions button {
+  position: relative;
   display: inline-flex;
   min-height: 42px;
   align-items: center;
   justify-content: center;
   gap: 0.65rem;
+  overflow: hidden;
   border: 1px solid rgba(130, 212, 255, 0.12);
   border-radius: 0.7rem;
   background: rgba(6, 18, 31, 0.55);
@@ -1236,6 +1334,36 @@ async function sendChat() {
   cursor: pointer;
   font-size: 0.86rem;
   font-weight: 650;
+  transition:
+    border-color 0.22s ease,
+    background 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.22s ease;
+}
+
+.prompt-actions button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent, rgba(37, 245, 238, 0.12), transparent);
+  transform: translateX(-120%);
+  transition: transform 0.45s ease;
+}
+
+.prompt-actions button:hover:not(:disabled) {
+  border-color: rgba(37, 245, 238, 0.35);
+  background: rgba(8, 28, 42, 0.78);
+  box-shadow: 0 0 20px rgba(37, 245, 238, 0.12);
+  transform: translateY(-1px);
+}
+
+.prompt-actions button:hover:not(:disabled)::before {
+  transform: translateX(120%);
+}
+
+.prompt-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .prompt-actions .n-icon {

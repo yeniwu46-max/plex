@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import re
 import json
 import sys
 from datetime import datetime, timezone
@@ -14,11 +15,58 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.data.course_knowledge import validate_course_knowledge
+from app.services.pedagogical_resource import (
+    analyze_pedagogy,
+    build_knowledge_node,
+    build_local_bundle,
+    split_bundle_to_legacy_types,
+    validate_bundle_risks,
+)
 from app.services.personalized_resource import (
     POINTS,
     RESOURCE_TYPES,
     PersonalizedResourceService,
 )
+
+
+def _generate_resources(knowledge_key: str, profile: dict) -> list[dict]:
+    node = build_knowledge_node(knowledge_key)
+    analysis = analyze_pedagogy(
+        node,
+        target='大学',
+        learning_stage='学习',
+        learning_styles=['案例'],
+        profile=profile,
+    )
+    bundle = build_local_bundle(knowledge_key, analysis=analysis, profile=profile)
+    split_rows = split_bundle_to_legacy_types(bundle, knowledge_key)
+    meta = PersonalizedResourceService._resource_meta(knowledge_key, profile, analysis)
+    by_type = {row['resource_type']: row for row in split_rows}
+    return [{**meta, **by_type[rt]} for rt in RESOURCE_TYPES if rt in by_type]
+
+
+def _pedagogical_metrics(resources: list[dict]) -> dict:
+    bundle = next((item for item in resources if item['resource_type'] == 'learning_bundle'), None)
+    content = (bundle or {}).get('content') or {}
+    exercises = content.get('exercises') or []
+    type_counts = {'choice': 0, 'fill': 0, 'coding': 0}
+    for ex in exercises:
+        t = ex.get('type')
+        if t in type_counts:
+            type_counts[t] += 1
+    explain = str(content.get('explain') or '')
+    explain_len = len(re.sub(r'\s+', '', explain))
+    return {
+        'case_count': len(content.get('cases') or []),
+        'exercise_complete': all(type_counts[t] >= 2 for t in type_counts),
+        'has_mermaid': any(
+            (d.get('mermaid') or '').strip().startswith(('flowchart', 'graph'))
+            for d in (content.get('diagrams') or [])
+            if isinstance(d, dict)
+        ),
+        'explain_length_ok': explain_len <= 800,
+        'bundle_risk_count': len(validate_bundle_risks(content)) if content else 99,
+    }
 
 
 PROFILES = {
@@ -48,10 +96,9 @@ def _serialized_bundle(resources: list[dict]) -> str:
 
 
 def _bundle_metrics(knowledge_key: str, profile_name: str, profile: dict) -> dict:
-    resources = PersonalizedResourceService._local_resources(
-        knowledge_key, list(RESOURCE_TYPES), profile
-    )
+    resources = _generate_resources(knowledge_key, profile)
     quality = PersonalizedResourceService._quality_report(resources, knowledge_key)
+    pedagogical = _pedagogical_metrics(resources)
     serialized = _serialized_bundle(resources)
     expected_difficulty = 40 if '零基础' in profile['knowledge_foundation'] else 65
     constraints = {
@@ -78,6 +125,7 @@ def _bundle_metrics(knowledge_key: str, profile_name: str, profile: dict) -> dic
         'constraint_coverage_rate': round(
             sum(constraints.values()) / len(constraints), 4
         ),
+        'pedagogical': pedagogical,
         'bundle_hash': hashlib.sha256(serialized.encode('utf-8')).hexdigest(),
         'resources': resources,
     }
@@ -85,6 +133,7 @@ def _bundle_metrics(knowledge_key: str, profile_name: str, profile: dict) -> dic
 
 def _resource_features(resources: list[dict]) -> dict:
     by_type = {item['resource_type']: item for item in resources}
+    bundle = by_type.get('learning_bundle', {}).get('content') or {}
     return {
         'difficulty': [item['difficulty'] for item in resources],
         'estimated_minutes': [item['estimated_minutes'] for item in resources],
@@ -92,12 +141,13 @@ def _resource_features(resources: list[dict]) -> dict:
             item['recommendation_reason'] for item in resources
         ],
         'lesson_markdown': by_type['lesson_document']['content']['markdown'],
-        'exercise_levels': [
-            item['level']
+        'bundle_explain': bundle.get('explain', ''),
+        'exercise_types': [
+            item.get('type') or item.get('level')
             for item in by_type['exercise_set']['content']['questions']
         ],
         'exercise_questions': [
-            item['question']
+            item.get('question') or item.get('stem')
             for item in by_type['exercise_set']['content']['questions']
         ],
         'reading_markdown': by_type['extended_reading']['content']['markdown'],
@@ -108,9 +158,7 @@ def _resource_features(resources: list[dict]) -> dict:
 def _counterfactual_checks() -> list[dict]:
     knowledge_key = 'loop'
     base_profile = dict(PROFILES['beginner_lifestyle'])
-    base = _resource_features(PersonalizedResourceService._local_resources(
-        knowledge_key, list(RESOURCE_TYPES), base_profile
-    ))
+    base = _resource_features(_generate_resources(knowledge_key, base_profile))
     changes = {
         'knowledge_foundation': '具备 Python 编程基础',
         'explanation_preference': '先看代码和挑战题',
@@ -120,42 +168,36 @@ def _counterfactual_checks() -> list[dict]:
     rows = []
     for dimension, value in changes.items():
         profile = {**base_profile, dimension: value}
-        changed = _resource_features(PersonalizedResourceService._local_resources(
-            knowledge_key, list(RESOURCE_TYPES), profile
-        ))
+        changed = _resource_features(_generate_resources(knowledge_key, profile))
         if dimension == 'knowledge_foundation':
             expected_changes = (
                 base['difficulty'] != changed['difficulty']
                 and base['estimated_minutes'] != changed['estimated_minutes']
-                and base['exercise_levels'] != changed['exercise_levels']
             )
             stable_unrelated = (
-                base['lesson_markdown'] == changed['lesson_markdown']
-                and base['exercise_questions'] == changed['exercise_questions']
+                base['exercise_types'] == changed['exercise_types']
                 and base['coding_scenario'] == changed['coding_scenario']
             )
         elif dimension == 'explanation_preference':
             expected_changes = (
                 base['lesson_markdown'] != changed['lesson_markdown']
+                and base['bundle_explain'] != changed['bundle_explain']
                 and base['recommendation_reasons'] != changed['recommendation_reasons']
             )
             stable_unrelated = (
                 base['difficulty'] == changed['difficulty']
                 and base['estimated_minutes'] == changed['estimated_minutes']
-                and base['exercise_levels'] == changed['exercise_levels']
                 and base['coding_scenario'] == changed['coding_scenario']
             )
         elif dimension == 'interest_direction':
             expected_changes = (
-                base['lesson_markdown'] != changed['lesson_markdown']
-                and base['exercise_questions'] != changed['exercise_questions']
+                base['bundle_explain'] != changed['bundle_explain']
                 and base['reading_markdown'] != changed['reading_markdown']
                 and base['coding_scenario'] != changed['coding_scenario']
             )
             stable_unrelated = (
                 base['difficulty'] == changed['difficulty']
                 and base['estimated_minutes'] == changed['estimated_minutes']
-                and base['exercise_levels'] == changed['exercise_levels']
                 and base['recommendation_reasons'] == changed['recommendation_reasons']
             )
         else:
@@ -168,7 +210,8 @@ def _counterfactual_checks() -> list[dict]:
                     'difficulty',
                     'estimated_minutes',
                     'lesson_markdown',
-                    'exercise_levels',
+                    'bundle_explain',
+                    'exercise_types',
                     'exercise_questions',
                     'reading_markdown',
                     'coding_scenario',
@@ -228,8 +271,10 @@ def evaluate() -> dict:
                 and PROFILES['algorithm_improver']['interest_direction'] in advanced_text
             ),
             'exercise_level_difference': (
-                beginner_resources['exercise_set']['content']['questions'][0]['level']
-                != advanced_resources['exercise_set']['content']['questions'][0]['level']
+                beginner_resources['exercise_set']['content']['questions'][0].get('type')
+                == advanced_resources['exercise_set']['content']['questions'][0].get('type')
+                and beginner['pedagogical']['exercise_complete']
+                and advanced['pedagogical']['exercise_complete']
             ),
             'changed_resource_type_count': len(changed_types),
             'changed_resource_types': changed_types,
@@ -244,6 +289,14 @@ def evaluate() -> dict:
         item['resource_count'] == len(RESOURCE_TYPES) for item in bundles
     )
     counterfactuals = _counterfactual_checks()
+    pedagogical_passes = sum(
+        1 for item in bundles
+        if item['pedagogical']['case_count'] >= 2
+        and item['pedagogical']['exercise_complete']
+        and item['pedagogical']['has_mermaid']
+        and item['pedagogical']['explain_length_ok']
+        and item['pedagogical']['bundle_risk_count'] == 0
+    )
     return {
         'run_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
         'backend': 'local_rules',
@@ -288,6 +341,9 @@ def evaluate() -> dict:
                 sum(item['passed'] for item in counterfactuals)
                 / len(counterfactuals),
                 4,
+            ),
+            'pedagogical_pass_rate': round(
+                pedagogical_passes / len(bundles), 4
             ),
         },
         'profiles': PROFILES,

@@ -2,7 +2,6 @@ import type { TourStepConfig } from './types'
 
 /**
  * 学生端导览步骤
- * 混合策略：侧栏入口指代跨页功能，知识图谱/学习报告跳转对应页面
  */
 export const studentTour: TourStepConfig[] = [
   {
@@ -19,6 +18,7 @@ export const studentTour: TourStepConfig[] = [
     element: '[data-tour="student-knowledge-graph"]',
     title: '知识图谱',
     description: '知识图谱会展示知识点之间的关系，帮助你发现薄弱环节和前置知识。',
+    prepareRoute: '/student/me/growth',
   },
   {
     element: '[data-tour="student-ai-assistant"]',
@@ -29,5 +29,6 @@ export const studentTour: TourStepConfig[] = [
     element: '[data-tour="student-learning-report"]',
     title: '学习报告',
     description: '这里会汇总你的练习表现、能力画像和学习趋势，帮助你了解自己的成长变化。',
+    prepareRoute: '/student/me/growth',
   },
 ]

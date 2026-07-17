@@ -38,13 +38,19 @@ defineProps<{
           :key="group.groupName"
           class="plex-teacher-agent__group"
         >
-          <strong>{{ group.groupName }}</strong>
+          <div class="plex-teacher-agent__group-head">
+            <strong>{{ group.groupName }}</strong>
+            <span v-if="group.studentCount" class="plex-teacher-agent__group-count">{{ group.studentCount }} 人</span>
+          </div>
           <p>{{ group.focus }}</p>
+          <div v-if="group.students && group.students.length" class="plex-teacher-agent__members">
+            <span v-for="name in group.students" :key="name" class="plex-teacher-agent__member">{{ name }}</span>
+          </div>
         </div>
       </article>
     </template>
 
-    <p v-else class="plex-teacher-agent__empty">点击「生成 AI 教学建议」获取班级分析。</p>
+    <p v-else class="plex-teacher-agent__empty">暂无班级分析，点击「刷新洞察」生成。</p>
   </section>
 </template>
 
@@ -100,9 +106,42 @@ defineProps<{
   background: rgba(249, 115, 22, 0.1);
 }
 
+.plex-teacher-agent__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .plex-teacher-agent__group strong {
   color: #fdba74;
   font-size: 0.82rem;
+}
+
+.plex-teacher-agent__group-count {
+  flex-shrink: 0;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(251, 146, 60, 0.18);
+  color: #fed7aa;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.plex-teacher-agent__members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.plex-teacher-agent__member {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid rgba(251, 146, 60, 0.22);
+  border-radius: 999px;
+  background: rgba(8, 14, 22, 0.5);
+  color: rgba(254, 243, 226, 0.9);
+  font-size: 0.72rem;
 }
 
 .plex-teacher-agent__group p {

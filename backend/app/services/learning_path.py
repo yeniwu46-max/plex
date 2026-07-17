@@ -24,7 +24,7 @@ STATUS_TO_SCORE = {
     'unlearned': 0.0,
 }
 
-MASTERY_THRESHOLD = 0.8
+from app.constants.star_path_unlock import MASTERY_THRESHOLD
 
 
 class LearningPathService:

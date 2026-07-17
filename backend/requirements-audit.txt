@@ -1,0 +1,6 @@
+# Optional dev/CI dependencies for Step 5 static analysis.
+# Not included in backend/requirements.txt (production Flask stack).
+ruff>=0.8.0
+black>=24.0.0
+mypy>=1.11.0
+bandit>=1.7.0

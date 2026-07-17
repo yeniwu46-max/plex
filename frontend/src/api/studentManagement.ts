@@ -25,6 +25,7 @@ export interface ClassSummary {
   grade_level: number | null
   teacher_id: number
   teacher_name: string | null
+  join_code?: string | null
   student_count: number
 }
 

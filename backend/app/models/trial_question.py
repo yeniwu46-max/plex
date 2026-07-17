@@ -68,6 +68,7 @@ class TrialQuestionProgress(db.Model):
     submitted_code = db.Column(db.Text)
     code_passed = db.Column(db.Boolean)
     code_results_json = db.Column(db.Text)
+    agent_trace_json = db.Column(db.Text)
     started_at = db.Column(db.DateTime)
     answered_at = db.Column(db.DateTime)
     time_spent_sec = db.Column(db.Integer)
@@ -88,6 +89,18 @@ class TrialQuestionProgress(db.Model):
     def set_code_results(self, results: list) -> None:
         self.code_results_json = json.dumps(results, ensure_ascii=False) if results else None
 
+    def agent_trace(self) -> list:
+        if not self.agent_trace_json:
+            return []
+        try:
+            parsed = json.loads(self.agent_trace_json)
+            return parsed if isinstance(parsed, list) else []
+        except (TypeError, json.JSONDecodeError):
+            return []
+
+    def set_agent_trace(self, trace: list) -> None:
+        self.agent_trace_json = json.dumps(trace, ensure_ascii=False) if trace else None
+
     def to_dict(self, include_timing=False):
         payload = {
             'id': self.id,
@@ -100,6 +113,7 @@ class TrialQuestionProgress(db.Model):
             'code_passed': self.code_passed,
             'submitted_code': self.submitted_code,
             'code_results': self.code_results(),
+            'agent_trace': self.agent_trace(),
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'answered_at': self.answered_at.isoformat() if self.answered_at else None,
             'time_spent_sec': self.time_spent_sec,

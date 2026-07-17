@@ -52,6 +52,7 @@ class AssignmentService:
                 'started_at': progress.started_at.isoformat() if progress and progress.started_at else None,
                 'answered_at': None,
                 'time_spent_sec': None,
+                'agent_trace': [],
             }
 
         qtype = question.question_type or 'mcq'
@@ -70,6 +71,7 @@ class AssignmentService:
                 'started_at': progress.started_at.isoformat() if progress.started_at else None,
                 'answered_at': progress.answered_at.isoformat() if progress.answered_at else None,
                 'time_spent_sec': progress.time_spent_sec,
+                'agent_trace': progress.agent_trace(),
             }
 
         selected_index = progress.selected_index
@@ -89,6 +91,7 @@ class AssignmentService:
             'started_at': progress.started_at.isoformat() if progress.started_at else None,
             'answered_at': progress.answered_at.isoformat() if progress.answered_at else None,
             'time_spent_sec': progress.time_spent_sec,
+            'agent_trace': progress.agent_trace(),
         }
 
     @staticmethod
@@ -360,6 +363,18 @@ class AssignmentService:
         progress.is_correct = is_correct
         progress.answered_at = now
         progress.time_spent_sec = int(elapsed)
+
+        from app.services.grading_orchestrator import GradingOrchestrator
+
+        grade_result = {'correct': is_correct}
+        agent_trace = GradingOrchestrator.run_after_submit(
+            user_id=user_id,
+            question=question,
+            progress=progress,
+            grade_result=grade_result,
+        )
+        progress.set_agent_trace(agent_trace)
+        agent_trace_summary = GradingOrchestrator.summarize_trace(agent_trace)
         db.session.commit()
 
         from app.services.mistake import MistakeService
@@ -392,6 +407,7 @@ class AssignmentService:
             'incentive': incentive,
             'trial_complete': trial_complete,
             'adaptation': adaptation,
+            'agent_trace': agent_trace_summary,
         }
 
     @staticmethod
@@ -444,6 +460,24 @@ class AssignmentService:
         progress.set_code_results(results)
         progress.answered_at = now
         progress.time_spent_sec = int(elapsed)
+
+        from app.services.grading_orchestrator import GradingOrchestrator
+
+        grade_result = {
+            'code_passed': all_passed,
+            'passed_count': submit_result.get('passed_count', 0),
+            'total': submit_result.get('total', len(test_cases)),
+            'results': results,
+            'execution_backend': submit_result.get('backend'),
+        }
+        agent_trace = GradingOrchestrator.run_after_submit(
+            user_id=user_id,
+            question=question,
+            progress=progress,
+            grade_result=grade_result,
+        )
+        progress.set_agent_trace(agent_trace)
+        agent_trace_summary = GradingOrchestrator.summarize_trace(agent_trace)
         db.session.commit()
 
         from app.services.mistake import MistakeService
@@ -472,6 +506,7 @@ class AssignmentService:
             'answered_at': progress.answered_at.isoformat() if progress.answered_at else None,
             'trial_complete': trial_complete,
             'adaptation': adaptation,
+            'agent_trace': agent_trace_summary,
         }
 
     @staticmethod

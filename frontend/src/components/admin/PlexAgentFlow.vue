@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -37,6 +37,24 @@ const STATUS_LABEL: Record<AgentStatus, string> = {
   pending: '待触发',
 }
 
+const props = withDefaults(
+  defineProps<{
+    enabledLearningIds?: string[]
+  }>(),
+  {
+    enabledLearningIds: () => [],
+  },
+)
+
+const FLOW_TO_BACKEND: Record<string, string> = {
+  diagnose: 'learning_diagnosis',
+  kg: 'knowledge_graph',
+  path: 'learning_path',
+  code: 'code_analysis',
+  feedback: 'feedback',
+  teacher: 'teacher_assistant',
+}
+
 const AGENT_DEFS = [
   { id: 'diagnose', name: '学习诊断智能体', nameEn: 'Learning Diagnostics', desc: '分析学生答题记录与代码运行结果，识别薄弱点', icon: '🔍', x: 60, y: 200 },
   { id: 'kg', name: '知识图谱智能体', nameEn: 'Knowledge Graph', desc: '基于知识图谱定位相关前置知识与关联节点', icon: '🗺️', x: 320, y: 100 },
@@ -45,6 +63,14 @@ const AGENT_DEFS = [
   { id: 'feedback', name: '反馈生成智能体', nameEn: 'Feedback Generator', desc: '整合诊断与路径结果，生成自然语言学习反馈', icon: '💬', x: 580, y: 300 },
   { id: 'teacher', name: '教师助理智能体', nameEn: 'Teacher Assistant', desc: '汇总班级数据，生成教学干预建议与讲解重点', icon: '👩‍🏫', x: 840, y: 200 },
 ]
+
+function isNodeEnabled(flowId: string): boolean {
+  if (!props.enabledLearningIds.length) return true
+  const backendId = FLOW_TO_BACKEND[flowId]
+  return props.enabledLearningIds.includes(backendId)
+}
+
+const enabledNodeCount = computed(() => AGENT_DEFS.filter((def) => isNodeEnabled(def.id)).length)
 
 const agentStatuses = ref<Record<string, AgentStatus>>({
   diagnose: 'idle',
@@ -107,26 +133,29 @@ onBeforeUnmount(() => {
 
 function makeNodes(): Node[] {
   return AGENT_DEFS.map((def) => {
-    const status = agentStatuses.value[def.id]
-    const color = STATUS_COLOR[status]
+    const enabled = isNodeEnabled(def.id)
+    const status = enabled ? agentStatuses.value[def.id] : 'idle'
+    const color = enabled ? STATUS_COLOR[status] : '#334155'
     return {
       id: def.id,
       type: 'default',
       position: { x: def.x, y: def.y },
       label: def.name,
-      data: { ...def, status },
+      data: { ...def, status, enabled },
+      selectable: enabled,
       style: {
         background: `${color}15`,
         border: `1.5px solid ${color}`,
         borderRadius: '10px',
         padding: '10px 14px',
-        color: '#e2e8f0',
+        color: enabled ? '#e2e8f0' : '#64748b',
         fontSize: '12px',
         fontFamily: 'Microsoft YaHei, sans-serif',
         minWidth: '140px',
         textAlign: 'center',
-        cursor: 'pointer',
-        boxShadow: status === 'running' ? `0 0 12px ${color}55` : 'none',
+        cursor: enabled ? 'pointer' : 'not-allowed',
+        opacity: enabled ? 1 : 0.38,
+        boxShadow: status === 'running' && enabled ? `0 0 12px ${color}55` : 'none',
         transition: 'all 0.3s',
       },
     }
@@ -144,11 +173,26 @@ const FLOW_EDGES: Edge[] = [
 ]
 
 const nodes = ref<Node[]>(makeNodes())
-const edges = ref<Edge[]>(FLOW_EDGES)
+
+function makeEdges(): Edge[] {
+  return FLOW_EDGES.filter((edge) => isNodeEnabled(String(edge.source)) && isNodeEnabled(String(edge.target)))
+}
+
+const edges = ref<Edge[]>(makeEdges())
+
+watch(
+  () => props.enabledLearningIds,
+  () => {
+    nodes.value = makeNodes()
+    edges.value = makeEdges()
+  },
+  { deep: true },
+)
 
 const { onNodeClick } = useVueFlow()
 
 onNodeClick(({ node }) => {
+  if (!isNodeEnabled(node.id)) return
   const def = AGENT_DEFS.find((d) => d.id === node.id)
   if (def) selectedAgent.value = def
 })
@@ -181,6 +225,7 @@ async function simulate() {
   const sampleCode = 'for i in range(1, n):\n    total += i'
 
   try {
+    addLog('system', `收到模拟样本提交 · 平台启用 ${enabledNodeCount.value}/${AGENT_DEFS.length} 个流水线节点`, 'info')
     addLog('system', '收到学生代码提交，启动多智能体协同推理…', 'info')
 
     setStatus('diagnose', 'running')
@@ -196,6 +241,11 @@ async function simulate() {
     })
     setStatus('diagnose', 'done')
     addLog('diagnose', pipeline.diagnosis.diagnosis, 'success')
+    for (const row of pipeline.pipelineTrace ?? []) {
+      const latency = row.latencyMs != null ? ` · ${row.latencyMs}ms` : ''
+      const source = row.source ? ` · ${row.source}` : ''
+      addLog(row.agentId ?? 'system', `${row.summary ?? '已完成'}${latency}${source}`, row.status === 'error' ? 'error' : 'info')
+    }
 
     setStatus('code', 'running')
     setStatus('kg', 'running')
@@ -237,6 +287,7 @@ async function simulate() {
 function resetFlow() {
   Object.keys(agentStatuses.value).forEach((k) => (agentStatuses.value[k] = 'idle' as AgentStatus))
   nodes.value = makeNodes()
+  edges.value = makeEdges()
   logs.value = [{ time: '00:00:00', agentId: 'system', agentName: 'PLEX Core', message: '多智能体协同系统已重置', level: 'info' }]
   selectedAgent.value = null
 }
@@ -358,6 +409,13 @@ function resetFlow() {
 
 <style scoped>
 .plex-agent-flow {
+  --admin-text-title: 1.08rem;
+  --admin-text-subtitle: 0.78rem;
+  --admin-text-body: 0.82rem;
+  --admin-text-card-title: 0.86rem;
+  --admin-text-muted: 0.78rem;
+  --admin-text-meta: 0.74rem;
+
   display: grid;
   grid-template-columns: 1fr 280px;
   gap: 1rem;
@@ -390,7 +448,7 @@ function resetFlow() {
   border: 1px solid rgba(129, 140, 248, 0.28);
   background: rgba(129, 140, 248, 0.08);
   color: rgba(203, 213, 225, 0.85);
-  font-size: 0.8rem;
+  font-size: var(--admin-text-body);
   cursor: pointer;
   transition: background 0.2s;
   white-space: nowrap;
@@ -427,7 +485,7 @@ function resetFlow() {
   align-items: center;
   gap: 0.3rem;
   color: rgba(203, 213, 225, 0.6);
-  font-size: 0.68rem;
+  font-size: var(--admin-text-meta);
 }
 
 .plex-agent-flow__legend-item i {
@@ -468,7 +526,7 @@ function resetFlow() {
 .plex-agent-flow__agent-placeholder p {
   margin: 0;
   color: rgba(148, 163, 184, 0.55);
-  font-size: 0.8rem;
+  font-size: var(--admin-text-body);
   text-align: center;
   padding: 1rem 0;
 }
@@ -481,24 +539,24 @@ function resetFlow() {
 .plex-agent-flow__agent-detail h3 {
   margin: 0 0 0.15rem;
   color: #fff;
-  font-size: 0.95rem;
+  font-size: var(--admin-text-card-title);
 }
 
 .plex-agent-flow__agent-en {
   margin: 0 0 0.5rem;
   color: rgba(167, 139, 250, 0.8);
-  font-size: 0.72rem;
+  font-size: var(--admin-text-meta);
 }
 
 .plex-agent-flow__agent-desc {
   margin: 0 0 0.65rem;
   color: rgba(203, 213, 225, 0.72);
-  font-size: 0.78rem;
+  font-size: var(--admin-text-muted);
   line-height: 1.5;
 }
 
 .plex-agent-flow__agent-status {
-  font-size: 0.78rem;
+  font-size: var(--admin-text-muted);
   color: rgba(203, 213, 225, 0.65);
   margin-bottom: 0.65rem;
 }
@@ -517,7 +575,7 @@ function resetFlow() {
 
 .plex-agent-flow__param-title {
   color: rgba(167, 139, 250, 0.8);
-  font-size: 0.7rem;
+  font-size: var(--admin-text-meta);
   margin-bottom: 0.3rem;
 }
 
@@ -525,13 +583,13 @@ function resetFlow() {
   display: block;
   color: #7dd3fc;
   font-family: monospace;
-  font-size: 0.78rem;
+  font-size: var(--admin-text-muted);
   margin-bottom: 0.3rem;
 }
 
 .plex-agent-flow__param-hint {
   color: rgba(148, 163, 184, 0.5);
-  font-size: 0.68rem;
+  font-size: var(--admin-text-meta);
 }
 
 .plex-agent-flow__log-area {
@@ -549,7 +607,7 @@ function resetFlow() {
   margin: 0;
   padding: 0.6rem 0.85rem;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.82rem;
+  font-size: var(--admin-text-body);
   border-bottom: 1px solid rgba(129, 140, 248, 0.1);
   flex-shrink: 0;
 }
@@ -571,7 +629,7 @@ function resetFlow() {
   gap: 0.1rem 0.4rem;
   padding: 0.35rem 0.75rem;
   border-bottom: 1px solid rgba(129, 140, 248, 0.05);
-  font-size: 0.72rem;
+  font-size: var(--admin-text-meta);
   line-height: 1.4;
 }
 
@@ -585,7 +643,7 @@ function resetFlow() {
 
 .plex-agent-flow__log-agent {
   grid-row: 1;
-  font-size: 0.7rem;
+  font-size: var(--admin-text-meta);
 }
 
 .plex-agent-flow__log-item--info .plex-agent-flow__log-agent { color: #7dd3fc; }
@@ -611,6 +669,6 @@ function resetFlow() {
 .plex-agent-flow__status-grid h4 {
   margin: 0;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.82rem;
+  font-size: var(--admin-text-body);
 }
 </style>

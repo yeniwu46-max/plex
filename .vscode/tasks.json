@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "在 Cursor 内打开管理端",
+      "type": "vscode",
+      "command": "simpleBrowser.show",
+      "args": ["http://localhost:5173/admin"],
+      "problemMatcher": []
+    },
+    {
+      "label": "在 Cursor 内打开登录页",
+      "type": "vscode",
+      "command": "simpleBrowser.show",
+      "args": ["http://localhost:5173/login"],
+      "problemMatcher": []
+    }
+  ]
+}

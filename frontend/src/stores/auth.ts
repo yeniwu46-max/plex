@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import axios, { type AxiosError } from 'axios'
 import { http, storageKeys, type ApiEnvelope } from '../api/http'
 
+const API_PROXY_HINT = import.meta.env.VITE_API_PROXY || 'http://127.0.0.1:5100'
+
 export interface LoginPayload {
   id: number
   username: string
@@ -89,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
         const status = ax.response?.status
         if (status === 502 || status === 503 || ax.code === 'ERR_NETWORK') {
           throw new Error(
-            '无法连接后端 API（502）。请先在 backend 目录执行 python run.py，并确认 http://127.0.0.1:5000 可访问。',
+            `无法连接后端 API（502）。请先在 backend 目录执行 python run.py，并确认 ${API_PROXY_HINT} 可访问。`,
           )
         }
       }

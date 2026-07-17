@@ -21,6 +21,17 @@ export interface TrialMistakeRecord {
   lastPassedAt: string | null
 }
 
+export interface TrialAttemptRecord {
+  questionId: string
+  submittedAt: string
+  durationMs: number
+  passed: boolean
+  failedCaseLabels: string[]
+  errorReason: string | null
+}
+
+const ATTEMPT_PREFIX = 'plex:trial-attempts:'
+
 export interface TrialRunCaseSnapshot {
   label: string
   passed: boolean
@@ -44,6 +55,65 @@ function readAll(userId: number | string): TrialMistakeRecord[] {
 
 function writeAll(userId: number | string, records: TrialMistakeRecord[]) {
   localStorage.setItem(storageKey(userId), JSON.stringify(records))
+}
+
+function attemptStorageKey(userId: number | string) {
+  return `${ATTEMPT_PREFIX}${userId}`
+}
+
+function readAttempts(userId: number | string): TrialAttemptRecord[] {
+  try {
+    const raw = localStorage.getItem(attemptStorageKey(userId))
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as TrialAttemptRecord[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function writeAttempts(userId: number | string, records: TrialAttemptRecord[]) {
+  localStorage.setItem(attemptStorageKey(userId), JSON.stringify(records.slice(0, 80)))
+}
+
+export function getTrialAttemptHistory(
+  userId: number | string,
+  questionId?: string,
+): TrialAttemptRecord[] {
+  const rows = readAttempts(userId).sort(
+    (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
+  )
+  return questionId ? rows.filter((item) => item.questionId === questionId) : rows
+}
+
+function summarizeErrorReason(cases: TrialRunCaseSnapshot[]) {
+  const failed = cases.filter((item) => !item.passed)
+  if (!failed.length) return null
+  const runtime = failed.find((item) => item.error)?.error
+  if (runtime) return runtime
+  return `未通过：${failed.map((item) => item.label).join('、')}`
+}
+
+export function recordTrialAttempt(
+  userId: number | string,
+  questionId: string,
+  cases: TrialRunCaseSnapshot[],
+  durationMs: number,
+) {
+  if (!cases.length) return
+  const allPassed = cases.every((item) => item.passed)
+  const failed = cases.filter((item) => !item.passed)
+  const attempt: TrialAttemptRecord = {
+    questionId,
+    submittedAt: new Date().toISOString(),
+    durationMs: Math.max(0, Math.round(durationMs)),
+    passed: allPassed,
+    failedCaseLabels: failed.map((item) => item.label),
+    errorReason: summarizeErrorReason(cases),
+  }
+  const records = readAttempts(userId)
+  records.unshift(attempt)
+  writeAttempts(userId, records)
 }
 
 export function getTrialMistakeRecords(userId: number | string): TrialMistakeRecord[] {
@@ -104,8 +174,11 @@ export function recordTrialRun(
   userId: number | string,
   question: PythonTrialQuestion,
   cases: TrialRunCaseSnapshot[],
+  durationMs = 0,
 ) {
   if (!cases.length) return
+
+  recordTrialAttempt(userId, question.id, cases, durationMs)
 
   const allPassed = cases.every((item) => item.passed)
   const failed = cases.filter((item) => !item.passed)
@@ -121,10 +194,27 @@ export function recordTrialRun(
   const index = records.findIndex((item) => item.questionId === question.id)
 
   if (allPassed) {
+    const patch: TrialMistakeRecord = index >= 0
+      ? { ...records[index], lastPassedAt: now }
+      : {
+          questionId: question.id,
+          questionTitle: question.title,
+          topic: question.topic,
+          tags: question.tags,
+          starPathNodeId: node?.id ?? null,
+          starPathNodeTitle: nodeTitle,
+          failedCaseLabels: [],
+          errorTypes: [],
+          failCount: 0,
+          lastFailedAt: now,
+          lastPassedAt: now,
+        }
     if (index >= 0) {
-      records[index] = { ...records[index], lastPassedAt: now }
-      writeAll(userId, records)
+      records[index] = patch
+    } else {
+      records.push(patch)
     }
+    writeAll(userId, records)
     return
   }
 

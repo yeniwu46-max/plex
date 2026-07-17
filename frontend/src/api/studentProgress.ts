@@ -70,6 +70,7 @@ export interface LearningPathResult {
   next_best_action?: NextBestAction
   remediation_paths?: RemediationPath[]
   graph_backend?: string
+  question_ac_status?: string[]
 }
 
 export interface ArchiveSkill {

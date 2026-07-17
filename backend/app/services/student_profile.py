@@ -179,12 +179,37 @@ class StudentProfileService:
 
     @staticmethod
     def diagnostic_questions() -> list[dict]:
-        specs = [('syntax','Python 输出函数？',['print','echo','write','show'],0),('var','x=3 的类型？',['str','int','list','bool'],1),('cond','条件分支关键字？',['if','for','def','import'],0),('cond','条件不成立时？',['else','pass','return','break'],0),('loop','遍历序列常用？',['for','class','try','with'],0),('range','range(3) 产生几个数？',['2','3','4','无限'],1),('func','定义函数使用？',['def','func','lambda','function'],0),('func','函数返回值使用？',['yield','return','print','import'],1),('list','列表首项索引？',['0','1','-1','first'],0),('list','列表末尾添加？',['append','push','add','insert_last'],0),('except','捕获异常使用？',['catch','except','error','finally'],1),('except','可能出错代码块？',['try','check','guard','safe'],0)]
-        types = ['single_choice', 'single_choice', 'scenario', 'scenario', 'code_reading', 'code_reading', 'single_choice', 'code_reading', 'code_reading', 'scenario', 'scenario', 'scenario']
-        previews = {4: 'for item in items:\n    print(item)', 5: 'for i in range(3):\n    print(i)', 7: 'def add(a, b):\n    return a + b', 8: 'items = ["a", "b"]\nprint(items[0])'}
+        # (knowledge_key, question_type, stem, options, correct_index, code_preview)
+        specs = [
+            ('syntax', 'single_choice', '在 Python 中，用于把文本输出到屏幕的内置函数是？',
+             ['print()', 'echo()', 'write()', 'console.log()'], 0, None),
+            ('var', 'code_reading', '运行下面这段代码，输出结果是什么？',
+             ['True', 'False', '报错', '3'], 1, 'x = 3\ny = "3"\nprint(x == y)'),
+            ('cond', 'scenario', '你要根据分数判断是否及格（≥60 及格，否则不及格），最合适的结构是？',
+             ['if / else 条件判断', 'for 循环遍历', '直接 def 定义函数', 'import 导入模块'], 0, None),
+            ('cond', 'code_reading', '阅读代码，程序会打印出什么？',
+             ['及格', '不及格', '报错', '没有任何输出'], 1, 'score = 45\nif score >= 60:\n    print("及格")\nelse:\n    print("不及格")'),
+            ('loop', 'code_reading', '下面的循环会依次输出哪些内容？',
+             ['a 和 b（各占一行）', 'ab', '0 和 1', '报错'], 0, 'for ch in "ab":\n    print(ch)'),
+            ('range', 'code_reading', 'range(3) 配合循环，会打印出哪些数字？',
+             ['0 1 2', '1 2 3', '0 1 2 3', '只打印 3'], 0, 'for i in range(3):\n    print(i)'),
+            ('func', 'fill_blank', '补全空格：定义函数后，用于把结果交还给调用者的关键字是 ____',
+             ['return', 'yield', 'print', 'out'], 0, 'def add(a, b):\n    ____ a + b'),
+            ('func', 'code_reading', '调用函数后，最终会打印什么？',
+             ['16', '8', '4', 'nn'], 0, 'def square(n):\n    return n * n\n\nprint(square(4))'),
+            ('list', 'code_reading', '列表索引从 0 开始，下面代码会输出？',
+             ['a', 'b', 'c', '1'], 1, 'items = ["a", "b", "c"]\nprint(items[1])'),
+            ('list', 'true_false', '判断对错：列表（list）创建后，其中的元素仍然可以被修改。',
+             ['正确', '错误'], 0, None),
+            ('except', 'scenario', '程序可能因用户输入而崩溃，为了优雅地处理错误，应该怎么做？',
+             ['把可能出错的代码放进 try 块，并用 except 捕获', '把代码全部写在最外层', '把出错的代码注释掉', '用 print 把代码包起来'], 0, None),
+            ('except', 'true_false', '判断对错：try 后面必须紧跟 finally，程序才能正常运行。',
+             ['正确', '错误'], 1, None),
+        ]
         return [
-            {'id': f'q{i+1}', 'knowledge_key': key, 'question_type': types[i], 'stem': stem, 'options': options, 'correct_index': answer, 'code_preview': previews.get(i)}
-            for i, (key, stem, options, answer) in enumerate(specs)
+            {'id': f'q{i+1}', 'knowledge_key': key, 'question_type': qtype, 'stem': stem,
+             'options': options, 'correct_index': answer, 'code_preview': preview}
+            for i, (key, qtype, stem, options, answer, preview) in enumerate(specs)
         ]
 
     @staticmethod

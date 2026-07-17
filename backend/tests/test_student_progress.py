@@ -65,6 +65,8 @@ class StudentProgressTestCase(unittest.TestCase):
         data = path_resp.get_json()['data']
         self.assertIn('ordered_nodes', data)
         self.assertIsInstance(data['ordered_nodes'], list)
+        self.assertIn('question_ac_status', data)
+        self.assertIsInstance(data['question_ac_status'], list)
 
         archive_resp = self.client.get('/api/v1/student/archive-insights', headers=self.auth(self.student_token))
         self.assertEqual(archive_resp.status_code, 200)

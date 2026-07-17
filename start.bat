@@ -9,14 +9,19 @@ set "FRONTEND=%ROOT%\frontend"
 set "VENV=%ROOT%\.venv"
 set "BUNDLED_PYTHON=C:\Users\BX\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 set "PYTHON="
+set "BACKEND_PORT=5100"
+set "FRONTEND_PORT=5180"
 set "NPM_CACHE=%ROOT%\.npm-cache"
 set "CHECK_ONLY=0"
 set "OPEN_BROWSER=1"
 set "BACKEND_RUNNING=0"
 set "FRONTEND_RUNNING=0"
+set "WAIT_SECONDS=30"
+set "HELP_ONLY=0"
 
-if /I "%~1"=="--check" set "CHECK_ONLY=1"
-if /I "%~1"=="--no-browser" set "OPEN_BROWSER=0"
+call :parse_args %*
+if errorlevel 1 exit /b 1
+if "%HELP_ONLY%"=="1" exit /b 0
 
 echo ========================================
 echo PLEX one-click startup
@@ -116,26 +121,66 @@ call :check_frontend
 if errorlevel 1 exit /b 1
 
 if "%BACKEND_RUNNING%"=="0" (
-    echo Starting backend at http://127.0.0.1:5000
-    start "PLEX Backend" /min /D "%BACKEND%" "%PYTHON%" run.py
+    echo Starting backend at http://127.0.0.1:%BACKEND_PORT%
+    start "PLEX Backend" /min /D "%BACKEND%" cmd /c "set SERVER_PORT=%BACKEND_PORT%&& \"%PYTHON%\" run.py"
 ) else (
-    echo Backend already running at http://127.0.0.1:5000
+    echo Backend already running at http://127.0.0.1:%BACKEND_PORT%
 )
 if "%FRONTEND_RUNNING%"=="0" (
-    echo Starting frontend at http://localhost:5173
+    echo Starting frontend at http://localhost:%FRONTEND_PORT%
     start "PLEX Frontend" /min /D "%FRONTEND%" cmd /k "npm run dev"
 ) else (
-    echo Frontend already running at http://localhost:5173
+    echo Frontend already running at http://localhost:%FRONTEND_PORT%
 )
+
+echo Waiting for services to become ready...
+call :wait_backend
+if errorlevel 1 exit /b 1
+call :wait_frontend
+if errorlevel 1 exit /b 1
 
 if "%OPEN_BROWSER%"=="1" (
-    start "" powershell -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 4; Start-Process 'http://localhost:5173'"
+    start "" "http://localhost:%FRONTEND_PORT%"
 )
 
-echo PLEX startup commands launched.
+echo PLEX is ready.
 echo Student: student001 / student123
 echo Teacher: teacher001 / teacher123
 echo Admin:   admin / admin123
+exit /b 0
+
+:parse_args
+if "%~1"=="" exit /b 0
+if /I "%~1"=="--check" (
+    set "CHECK_ONLY=1"
+    shift
+    goto :parse_args
+)
+if /I "%~1"=="--no-browser" (
+    set "OPEN_BROWSER=0"
+    shift
+    goto :parse_args
+)
+if /I "%~1"=="--help" (
+    call :show_help
+    set "HELP_ONLY=1"
+    exit /b 0
+)
+if /I "%~1"=="/?" (
+    call :show_help
+    set "HELP_ONLY=1"
+    exit /b 0
+)
+echo [ERROR] Unknown option: %~1
+echo.
+call :show_help
+exit /b 1
+
+:show_help
+echo Usage: start.bat [--check] [--no-browser]
+echo.
+echo   --check       Run environment, database, health, and demo-account checks only.
+echo   --no-browser  Start or reuse services without opening the browser.
 exit /b 0
 
 :use_venv
@@ -147,26 +192,52 @@ set "PYTHON=%~1\Scripts\python.exe"
 exit /b 0
 
 :check_backend
-netstat -ano | findstr /R /C:":5000 .*LISTENING" >nul 2>&1
+netstat -ano | findstr /R /C:":%BACKEND_PORT% .*LISTENING" >nul 2>&1
 if errorlevel 1 exit /b 0
-powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:5000/api/v1/health' -TimeoutSec 3; if ($r.StatusCode -eq 200 -and $r.Content -match 'code' -and $r.Content -match ': 0') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:%BACKEND_PORT%/api/v1/health' -TimeoutSec 3; $json = $r.Content | ConvertFrom-Json; if ($r.StatusCode -eq 200 -and $json.code -eq 0) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Port 5000 is already in use, but it does not look like the PLEX Flask backend.
+    echo [ERROR] Port %BACKEND_PORT% is already in use, but it does not look like the PLEX Flask backend.
     exit /b 1
 )
 set "BACKEND_RUNNING=1"
 exit /b 0
 
 :check_frontend
-netstat -ano | findstr /R /C:":5173 .*LISTENING" >nul 2>&1
+netstat -ano | findstr /R /C:":%FRONTEND_PORT% .*LISTENING" >nul 2>&1
 if errorlevel 1 exit /b 0
-powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:5173' -TimeoutSec 3; if ($r.StatusCode -eq 200 -and $r.Content -match '/@vite/client' -and $r.Content -match '<div id=') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:%FRONTEND_PORT%' -TimeoutSec 3; if ($r.StatusCode -eq 200 -and $r.Content -match '/@vite/client' -and $r.Content -match '<div id=') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Port 5173 is already in use, but it does not look like the PLEX Vite frontend.
+    echo [ERROR] Port %FRONTEND_PORT% is already in use, but it does not look like the PLEX Vite frontend.
     exit /b 1
 )
 set "FRONTEND_RUNNING=1"
 exit /b 0
+
+:wait_backend
+for /L %%I in (1,1,%WAIT_SECONDS%) do (
+    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:%BACKEND_PORT%/api/v1/health' -TimeoutSec 2; $json = $r.Content | ConvertFrom-Json; if ($r.StatusCode -eq 200 -and $json.code -eq 0) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+    if not errorlevel 1 (
+        echo Backend health check passed.
+        exit /b 0
+    )
+    timeout /t 1 /nobreak >nul
+)
+echo [ERROR] Backend did not become healthy within %WAIT_SECONDS% seconds.
+echo Check the PLEX Backend window for the Flask error.
+exit /b 1
+
+:wait_frontend
+for /L %%I in (1,1,%WAIT_SECONDS%) do (
+    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:%FRONTEND_PORT%' -TimeoutSec 2; if ($r.StatusCode -eq 200 -and $r.Content -match '/@vite/client') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+    if not errorlevel 1 (
+        echo Frontend health check passed.
+        exit /b 0
+    )
+    timeout /t 1 /nobreak >nul
+)
+echo [ERROR] Frontend did not become ready within %WAIT_SECONDS% seconds.
+echo Check the PLEX Frontend window for the Vite error.
+exit /b 1
 
 :missing_backend
 echo [ERROR] backend\manage.py was not found.

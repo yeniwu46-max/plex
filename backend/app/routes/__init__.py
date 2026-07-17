@@ -14,6 +14,7 @@ from .teacher_resources import teacher_resources_bp
 from .announcements import announcements_bp
 from .student_notifications import student_notifications_bp
 from .class_requests import class_requests_bp
+from .class_enrollments import class_enrollments_bp
 from .uploads import uploads_bp
 from .code import code_bp
 from .knowledge_base import kb_bp
@@ -23,6 +24,7 @@ from .search import search_bp
 from .file_upload import upload_bp
 from .student_profile import student_profile_bp
 from .personalized_resources import personalized_resources_bp
+from .trial_comments import trial_comments_bp
 from .health import health_bp
 
 def register_routes(app):
@@ -41,6 +43,7 @@ def register_routes(app):
     app.register_blueprint(announcements_bp)
     app.register_blueprint(student_notifications_bp)
     app.register_blueprint(class_requests_bp)
+    app.register_blueprint(class_enrollments_bp)
     app.register_blueprint(uploads_bp)
     app.register_blueprint(code_bp)
     app.register_blueprint(kb_bp)
@@ -50,4 +53,5 @@ def register_routes(app):
     app.register_blueprint(upload_bp)
     app.register_blueprint(student_profile_bp)
     app.register_blueprint(personalized_resources_bp)
+    app.register_blueprint(trial_comments_bp)
     app.register_blueprint(health_bp)

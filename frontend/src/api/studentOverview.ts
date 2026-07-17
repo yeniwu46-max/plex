@@ -52,6 +52,7 @@ export interface CurrentStudent {
   class: {
     id: number
     name: string
+    join_code?: string | null
   } | null
 }
 
@@ -172,6 +173,25 @@ export async function fetchCurrentStudent() {
   const { data } = await http.get<ApiEnvelope<CurrentStudent>>('/v1/users/me')
   if (data.code !== 0) {
     throw new Error(data.message || '获取学生信息失败')
+  }
+  return data.data
+}
+
+export interface AchievementCatalogItem {
+  id: number
+  name: string
+  description: string | null
+  icon_url: string | null
+  rarity: string
+  condition_type: string | null
+  condition_value: number | null
+  created_at?: string | null
+}
+
+export async function fetchAchievementsCatalog() {
+  const { data } = await http.get<ApiEnvelope<AchievementCatalogItem[]>>('/v1/achievements')
+  if (data.code !== 0) {
+    throw new Error(data.message || '获取成就目录失败')
   }
   return data.data
 }

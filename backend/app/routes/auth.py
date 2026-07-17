@@ -13,7 +13,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 
 
 def _frontend_oauth_redirect(params):
-    base = current_app.config.get('FRONTEND_BASE_URL', 'http://localhost:5173').rstrip('/')
+    base = current_app.config.get('FRONTEND_BASE_URL', 'http://localhost:5180').rstrip('/')
     return redirect(f"{base}/oauth/callback#{urlencode(params)}")
 
 

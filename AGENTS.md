@@ -1,6 +1,6 @@
 # 仓库说明（给 AI 与新成员）
 
-**最后更新**：2026-05-27
+**最后更新**：2026-07-15
 
 本文档是**新会话入口**：用户只说「了解项目」时，请先按下方阅读顺序加载上下文，再回答或改代码，避免默认成 React；正式前端在 [`frontend/`](frontend/)（Vue 3 + Vite）。
 
@@ -27,8 +27,8 @@
 
 ## 仓库现状（避免误判）
 
-- **后端代码**：[`backend/`](backend/)，REST JSON；API 路径以 **`/api/v1`** 为前缀（细节以 [backend_api_design.md](backend_api_design.md) 为准）。本地默认 `http://127.0.0.1:5000`（见 [backend/QUICKSTART.md](backend/QUICKSTART.md)）。
-- **前端源码**：[`frontend/`](frontend/)（Vue 3 + Vite + Naive UI + Pinia + Axios）。开发时 `npm run dev`（默认 `http://localhost:5173`），经 Vite 代理访问 `/api` → 后端（代理目标见 `frontend/.env.development` 的 `VITE_API_PROXY`，默认 `http://127.0.0.1:5000`）。UI/UX 与游戏化规范见 [frontend_design_v2.md](frontend_design_v2.md)。外部 React 原型仅作参考，正式功能以 Vue 实现，见《技术选型与约定》。
+- **后端代码**：[`backend/`](backend/)，REST JSON；API 路径以 **`/api/v1`** 为前缀（细节以 [backend_api_design.md](backend_api_design.md) 为准）。本地默认 `http://127.0.0.1:5100`（见 [backend/QUICKSTART.md](backend/QUICKSTART.md)）。
+- **前端源码**：[`frontend/`](frontend/)（Vue 3 + Vite + Naive UI + Pinia + Axios）。开发时 `npm run dev`（默认 `http://localhost:5180`），经 Vite 代理访问 `/api` → 后端（代理目标见 `frontend/.env.development` 的 `VITE_API_PROXY`，默认 `http://127.0.0.1:5100`）。UI/UX 与游戏化规范见 [frontend_design_v2.md](frontend_design_v2.md)。外部 React 原型仅作参考，正式功能以 Vue 实现，见《技术选型与约定》。
 - **教师端路由**：`/teacher`（领航总览）、`/teacher/starfield`（星域观测）、`/teacher/explorers`（Explorer 档案）；试炼/设置入口 `/trial-arena`、`/admin`。班级数据由 [`TeacherOverviewLayout.vue`](frontend/src/layouts/TeacherOverviewLayout.vue) 注入，勿在页面组件顶层对 Shell 使用 `inject`。
 - **学生端近期能力**（2026-05-27 沉淀见 [docs/2026-05-27-student-exploration-summary.md](docs/2026-05-27-student-exploration-summary.md)）：教师发布试炼 → 探索舱/今日委托题目；补给站紧急任务；星轨六大学域知识点导航（`/student/star-path`）。
 
@@ -41,6 +41,27 @@
 3. 按需：[backend_api_design.md](backend_api_design.md)（接口与表）、[backend/QUICKSTART.md](backend/QUICKSTART.md)（安装与测试账号）、[backend/README.md](backend/README.md)（模块与端点列表）、[docs/2026-05-27-student-exploration-summary.md](docs/2026-05-27-student-exploration-summary.md)（学生探索链路变更摘要）
 
 **不要**把大段 API 表或设计稿复制进对话；用 Read 工具读上述文件即可。
+
+---
+
+## Cursor 开发智能体索引
+
+本仓库在 [`.cursor/skills/`](.cursor/skills/) 配置了 **8 个项目级 Skill**，协助全栈功能开发（与产品内运行时智能体 `backend/agents/` 分离）。全局约定见 [`.cursor/rules/a3-stack.mdc`](.cursor/rules/a3-stack.mdc)。
+
+| Skill | 职责 | 典型触发语 |
+|-------|------|------------|
+| `a3-navigator` | 项目导航、架构定位 | 了解项目、该改哪里 |
+| `a3-fullstack-feature` | 全栈功能编排（核心调度） | 加功能、API 到 UI 打通 |
+| `a3-backend-flask` | Flask 路由 / 服务 / JWT | 加接口、改后端 |
+| `a3-frontend-vue` | Vue 3 页面与组件 | 做页面、改前端 |
+| `a3-api-contract` | 前后端字段对齐 | 对齐接口、响应结构 |
+| `a3-database` | 模型与迁移 | 新表、加字段 |
+| `a3-testing` | pytest 与验收 | 写测试、跑 pytest |
+| `a3-code-review` | PR 前审查 | 审查一下、review |
+
+端到端走查示例：[`.cursor/skills/a3-fullstack-feature/examples/class-enrollment-walkthrough.md`](.cursor/skills/a3-fullstack-feature/examples/class-enrollment-walkthrough.md)。
+
+CrewAI 脚手架 Skill 仍在 [`.agents/skills/`](.agents/skills/)，仅用于改 `backend/agents/` 或 CrewAI 流水线。
 
 ---
 

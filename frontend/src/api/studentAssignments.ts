@@ -1,4 +1,5 @@
 import { http, type ApiEnvelope } from './http'
+import type { AgentTraceSummary } from './agentOrchestration'
 import type { CompleteTrialResult, IncentiveFeedbackPayload } from './studentTrials'
 
 export interface CodingMeta {
@@ -51,6 +52,7 @@ export interface SubmitAssignmentResult {
   daily: import('./studentOverview').DailyQuestTodayResult | null
   incentive?: IncentiveFeedbackPayload
   trial_complete?: CompleteTrialResult | null
+  agent_trace?: AgentTraceSummary
 }
 
 export interface SubmitCodeAssignmentResult {
@@ -68,6 +70,7 @@ export interface SubmitCodeAssignmentResult {
   time_spent_sec?: number
   answered_at?: string | null
   trial_complete?: CompleteTrialResult | null
+  agent_trace?: AgentTraceSummary
 }
 
 export async function submitTrialCodeAnswer(questionId: number, code: string, timeSpentSec?: number) {

@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NIcon } from 'naive-ui'
+import { NButton, NIcon, useMessage } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain, type LearningPathOrderedNode, type NextBestAction, type RemediationPath } from '../api/studentProgress'
 import { planLearningPath } from '../api/agentService'
 import type { LearningRecommendation } from '../api/learningReport'
@@ -33,16 +33,24 @@ import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import PlexLearningPathPanel from '../components/agent/PlexLearningPathPanel.vue'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
-
+import { useAuthStore } from '../stores/auth'
+import { fetchServerMistakeRecords } from '../utils/trialMistakeLog'
+import { mergeAcceptedQuestionIds } from '../utils/starPathProgress'
 import { kgIdFromStarPath } from '../data/knowledgeNodeRegistry'
 import {
   resolveQuestionById,
   resolveStarPathQuestion,
 } from '../utils/starPathQuestionGenerator'
+import { MIN_QUESTIONS_PER_KP } from '../data/starPathKnowledgeTracks'
+import { ensurePracticeQuestionsLoaded } from '../utils/practiceQuestionCache'
+import { openPracticeQuestion, searchPracticeQuestions } from '../utils/practiceQuestionNav'
+import { formatQuestionLabel } from '../utils/questionNaming'
 
 const router = useRouter()
 const route = useRoute()
+const message = useMessage()
 const workspace = useStudentWorkspaceStore()
+const auth = useAuthStore()
 
 type Domain = {
   key: string
@@ -57,9 +65,10 @@ const loading = ref(true)
 const errorMessage = ref('')
 const domains = ref<Domain[]>([])
 const activeTabKey = ref<string>(STAR_PATH_TAB_ALL)
-const activeDomainKey = ref('stage1')
+const activeDomainKey = ref('data-vars')
 const selectedKnowledgeId = ref<string | null>(null)
 const selectedNodeId = ref('stage1-intro')
+const activeQuestionSlot = ref(0)
 const pathRecommendations = ref<LearningRecommendation[]>([])
 const knowledgeResources = ref<LearningResourceItem[]>([])
 const personalizedResources = ref<PersonalizedResource[]>([])
@@ -71,6 +80,9 @@ const pathAgentTrace = ref<{ backend?: string; steps?: Array<{ agentId: string; 
 const graphBackend = ref<string | undefined>()
 const pathPanelLoading = ref(false)
 const pageSearch = ref('')
+const questionSearchHits = ref<PythonTrialQuestion[]>([])
+const questionSearchLoading = ref(false)
+const acceptedQuestionIds = ref<Set<string>>(new Set())
 
 const activeDomain = computed(() => domains.value.find((item) => item.key === activeDomainKey.value) ?? domains.value[0])
 const activeDomainMeta = computed(() => getStarPathDomain(activeDomainKey.value))
@@ -79,7 +91,12 @@ const showDomainTrack = computed(() => activeTabKey.value !== STAR_PATH_TAB_ALL)
 
 const starPathNodes = computed<StarPathNode[]>(() => {
   if (!showDomainTrack.value) return []
-  return buildKnowledgeTrack(activeDomainKey.value, orderedNodes.value, activePathNodeId.value)
+  return buildKnowledgeTrack(
+    activeDomainKey.value,
+    orderedNodes.value,
+    activePathNodeId.value,
+    acceptedQuestionIds.value,
+  )
 })
 
 const trackVariant = computed<'seven' | 'four'>(() =>
@@ -130,9 +147,14 @@ const selectedNode = computed(
 
 const selectedQuestion = computed(() => {
   const kp = selectedKnowledge.value?.point
-  if (kp) return resolveStarPathQuestion(kp)
-  const qid = selectedNode.value ? getPrimaryQuestionId(selectedNode.value) : null
-  return qid ? getPythonTrialQuestion(qid) : null
+  const qid = activeQuestionId.value
+  if (kp && qid) {
+    const resolved = resolveQuestionById(qid, kp)
+    if (resolved) return resolved
+  }
+  if (kp) return resolveStarPathQuestion(kp, { slot: activeQuestionSlot.value })
+  const qidFallback = selectedNode.value ? getPrimaryQuestionId(selectedNode.value) : null
+  return qidFallback ? getPythonTrialQuestion(qidFallback) : null
 })
 
 const detailMode = computed<'knowledge' | 'node'>(() =>
@@ -141,10 +163,23 @@ const detailMode = computed<'knowledge' | 'node'>(() =>
 
 const nodeQuestionIds = computed(() => selectedNode.value?.questionIds ?? [])
 
+const activeQuestionId = computed(() => {
+  const ids = nodeQuestionIds.value
+  if (!ids.length) return null
+  const slot = Math.min(activeQuestionSlot.value, ids.length - 1)
+  return ids[slot] ?? ids[0] ?? null
+})
+
+function slotForQuestionId(qid: string): number {
+  const index = nodeQuestionIds.value.indexOf(qid)
+  return index >= 0 ? index : 0
+}
+
 function syncKnowledgeFromNode(node: StarPathNode) {
   if (node.id.includes('-')) {
     selectedKnowledgeId.value = node.id
   }
+  activeQuestionSlot.value = 0
 }
 
 function onNodeClick(node: StarPathNode) {
@@ -152,57 +187,117 @@ function onNodeClick(node: StarPathNode) {
   syncKnowledgeFromNode(node)
 }
 
+function onGemSelect(payload: { node: StarPathNode; slot: number }) {
+  selectedNodeId.value = payload.node.id
+  syncKnowledgeFromNode(payload.node)
+  activeQuestionSlot.value = payload.slot
+  const qid = payload.node.questionIds[payload.slot]
+  if (!qid) {
+    message.warning('该试炼槽位尚未解锁')
+    return
+  }
+  void (async () => {
+    await ensurePracticeQuestionsLoaded()
+    const question = questionForNode(payload.node, qid)
+    if (question) {
+      message.info(`已切换至第 ${payload.slot + 1} 题 · ${formatQuestionLabel(question)}`)
+    }
+  })()
+}
+
 function questionForNode(node: StarPathNode, questionId?: string) {
   const qid = questionId ?? getPrimaryQuestionId(node)
-  if (!qid) return null
   const kp = node.id.includes('-') ? getStarPathKnowledgePoint(node.id)?.point : selectedKnowledge.value?.point
-  return resolveQuestionById(qid, kp ?? null) ?? getPythonTrialQuestion(qid)
+  if (kp) {
+    if (qid) {
+      const resolved = resolveQuestionById(qid, kp)
+      if (resolved) return resolved
+    }
+    return resolveStarPathQuestion(kp)
+  }
+  if (!qid) return null
+  return getPythonTrialQuestion(qid)
 }
 
 function openPractice(questionId?: string) {
-  const kp = selectedKnowledge.value?.point
-  const node = selectedNode.value
-  if (node && !isStarPathNodeUnlocked(node)) return
+  void (async () => {
+    await ensurePracticeQuestionsLoaded()
+    if (questionId) {
+      activeQuestionSlot.value = slotForQuestionId(questionId)
+    }
+    const kp = selectedKnowledge.value?.point
+    const targetId = questionId ?? activeQuestionId.value ?? undefined
+    if (kp) {
+      const question = targetId
+        ? resolveQuestionById(targetId, kp)
+        : resolveStarPathQuestion(kp, { slot: activeQuestionSlot.value })
+      if (question) {
+        launchPractice(question)
+        return
+      }
+    }
 
-  // “全部阶段”展示的是知识点卡片，不会填充当前星域的节点轨道；
-  // 因此优先按知识点解析题目，避免卡片选中后被空节点误判为不可练习。
-  if (kp) {
-    const question = questionId
-      ? resolveQuestionById(questionId, kp)
-      : resolveStarPathQuestion(kp)
-    if (question) launchPractice(question)
-    return
-  }
+    const node = selectedNode.value
+    if (!node || !isStarPathNodeUnlocked(node)) {
+      message.warning('请先选择一个可练习的星轨节点')
+      return
+    }
+    const qid = targetId ?? getPrimaryQuestionId(node)
+    let question = qid ? questionForNode(node, qid) : null
+    if (!question && kp) {
+      question = resolveStarPathQuestion(kp, { slot: activeQuestionSlot.value })
+    }
+    if (!question) {
+      message.warning('题库加载中或未找到匹配题目，请稍后重试')
+      return
+    }
+    launchPractice(question)
+  })()
+}
 
-  if (!node) return
-  const qid = questionId ?? getPrimaryQuestionId(node)
-  if (!qid) {
-    return
-  }
-  const question = questionForNode(node, qid)
-  if (!question) return
-  launchPractice(question)
+function selectQuestionSlot(slot: number, qid: string) {
+  if (activeQuestionSlot.value === slot) return
+  activeQuestionSlot.value = slot
+  void (async () => {
+    await ensurePracticeQuestionsLoaded()
+    const kp = selectedKnowledge.value?.point
+    const node = selectedNode.value
+    const question = kp
+      ? resolveQuestionById(qid, kp)
+      : node
+        ? questionForNode(node, qid)
+        : null
+    if (question) {
+      message.info(`已切换至第 ${slot + 1} 题 · ${formatQuestionLabel(question)}`)
+    }
+  })()
 }
 
 function launchPractice(question: PythonTrialQuestion) {
-  sessionStorage.setItem('plex:active-practice-question', JSON.stringify(question))
-  void router.push(`/student/trials/practice/${encodeURIComponent(question.id)}`)
+  void openPracticeQuestion(router, question)
 }
 
 function rerollQuestion() {
   const kp = selectedKnowledge.value?.point
   if (kp) {
-    const generated = resolveStarPathQuestion(kp, { reroll: true })
-    if (generated) launchPractice(generated)
+    const nextSlot = (activeQuestionSlot.value + 1) % MIN_QUESTIONS_PER_KP
+    activeQuestionSlot.value = nextSlot
+    const generated = resolveStarPathQuestion(kp, { slot: nextSlot })
+    if (generated) {
+      message.info(`已切换至第 ${nextSlot + 1} 题 · ${formatQuestionLabel(generated)}`)
+      launchPractice(generated)
+    }
     return
   }
   const ids = nodeQuestionIds.value
   if (!ids.length || !selectedNode.value) return
-  const question = questionForNode(
-    selectedNode.value,
-    ids[Math.floor(Math.random() * ids.length)],
-  )
-  if (question) launchPractice(question)
+  const nextIndex = (activeQuestionSlot.value + 1) % ids.length
+  activeQuestionSlot.value = nextIndex
+  const question = questionForNode(selectedNode.value, ids[nextIndex])
+  if (question) {
+    message.info(`已切换至第 ${nextIndex + 1} 题 · ${formatQuestionLabel(question)}`)
+    launchPractice(question)
+  }
 }
 
 function continueExplore() {
@@ -242,6 +337,25 @@ function selectDomainCard(domain: Domain) {
   selectTab(domain.key)
 }
 
+async function runQuestionSearch(query: string) {
+  pageSearch.value = query
+  const q = query.trim()
+  if (!q) {
+    questionSearchHits.value = []
+    return
+  }
+  questionSearchLoading.value = true
+  try {
+    questionSearchHits.value = await searchPracticeQuestions(q, 12)
+  } finally {
+    questionSearchLoading.value = false
+  }
+}
+
+function openSearchHit(question: PythonTrialQuestion) {
+  launchPractice(question)
+}
+
 async function refreshPathPlan(focusNode?: string | null) {
   pathPanelLoading.value = true
   try {
@@ -266,6 +380,16 @@ async function onPathNodeSelect(node: LearningPathOrderedNode) {
     jumpToKnowledgeById(node.star_path_id)
   }
   await refreshPathPlan(node.id)
+}
+
+function onPathAction(action: NextBestAction) {
+  const node = orderedNodes.value.find((item) => item.id === action.node_id)
+  if (node?.star_path_id) {
+    jumpToKnowledgeById(node.star_path_id)
+  }
+  if (action.action === 'practice') {
+    openPractice()
+  }
 }
 
 function jumpToKnowledgeById(kpId: string) {
@@ -307,7 +431,7 @@ function applyRouteQuery() {
 }
 
 function continueKnowledgeTrial() {
-  openPractice(selectedKnowledge.value?.point.questionId)
+  void openPractice()
 }
 
 function mapDomain(item: LearningDomain): Domain {
@@ -317,8 +441,14 @@ function mapDomain(item: LearningDomain): Domain {
     progress: item.progress,
     state: item.state,
     active: item.active,
-    locked: item.locked,
+    locked: item.locked ?? false,
   }
+}
+
+async function refreshAcceptedQuestions(serverIds?: string[]) {
+  const userId = auth.profile?.id ?? 'guest'
+  const localRecords = await fetchServerMistakeRecords(userId)
+  acceptedQuestionIds.value = mergeAcceptedQuestionIds(serverIds, localRecords)
 }
 
 const starPathAdviceText = computed(() => {
@@ -343,6 +473,7 @@ async function loadPath() {
     nextBestAction.value = data.next_best_action ?? null
     remediationPaths.value = data.remediation_paths ?? []
     graphBackend.value = data.graph_backend
+    await refreshAcceptedQuestions(data.question_ac_status)
     if (!route.query.domain) {
       activeDomainKey.value = data.active_domain_key
     }
@@ -379,7 +510,12 @@ watch(
 )
 
 onMounted(() => {
+  void ensurePracticeQuestionsLoaded()
   void loadPath()
+})
+
+onActivated(() => {
+  void refreshAcceptedQuestions()
 })
 </script>
 
@@ -388,8 +524,8 @@ onMounted(() => {
     active-nav="track"
     page-title="星轨学习"
     page-subtitle="探索编程知识宇宙，点亮你的能力星图"
-    search-placeholder="搜索当前星轨知识点…"
-    @search-submit="pageSearch = $event"
+    search-placeholder="搜索题号、关键词或知识点…"
+    @search-submit="runQuestionSearch"
   >
     <main class="starpath-main">
       <StudentSectionTabs area="learning" />
@@ -405,6 +541,27 @@ onMounted(() => {
         >
           {{ tab.label }}
         </button>
+      </section>
+
+      <section
+        v-if="pageSearch.trim()"
+        class="question-search-panel"
+        aria-label="题目搜索结果"
+      >
+        <header>
+          <strong>题目搜索</strong>
+          <span v-if="questionSearchLoading">检索中…</span>
+          <span v-else>{{ questionSearchHits.length ? `共 ${questionSearchHits.length} 条` : '无匹配题目' }}</span>
+        </header>
+        <ul v-if="questionSearchHits.length" class="question-search-list">
+          <li v-for="item in questionSearchHits" :key="item.id">
+            <button type="button" @click="openSearchHit(item)">
+              <em>{{ item.code || item.id }}</em>
+              <strong>{{ formatQuestionLabel(item) }}</strong>
+              <span>{{ item.topic }}</span>
+            </button>
+          </li>
+        </ul>
       </section>
 
       <div v-if="loading" class="starpath-state">正在同步星轨路径…</div>
@@ -427,7 +584,7 @@ onMounted(() => {
               </div>
               <p>星域探索进度</p>
               <strong>{{ activeDomain?.progress ?? 0 }}%</strong>
-              <div class="progress-line"><span /></div>
+              <div class="progress-line"><span :style="{ width: `${activeDomain?.progress ?? 0}%` }" /></div>
               <p class="domain-copy__desc">
                 <template v-if="activeDomainMeta">
                   {{ activeDomainMeta.description }}
@@ -443,8 +600,11 @@ onMounted(() => {
                 v-if="showDomainTrack"
                 :nodes="filteredStarPathNodes"
                 :selected-id="selectedNodeId"
+                :highlight-gem-slot="activeQuestionSlot"
                 :variant="trackVariant"
+                :domain-key="activeDomainKey"
                 @select="onNodeClick"
+                @select-gem="onGemSelect"
               />
               <div v-else class="knowledge-map" aria-label="全部星域知识点">
                 <p v-if="pageSearch.trim() && !filteredKnowledgePoints.length" class="plex-local-search-empty">
@@ -509,6 +669,7 @@ onMounted(() => {
             :graph-backend="graphBackend"
             :loading="pathPanelLoading"
             @select-node="onPathNodeSelect"
+            @action="onPathAction"
           />
           <div class="detail-panel__body">
             <template v-if="detailMode === 'knowledge' && selectedKnowledge">
@@ -535,10 +696,10 @@ onMounted(() => {
                     :key="qid"
                     type="button"
                     class="sub-trials__chip"
-                    :disabled="!selectedNode || !isStarPathNodeUnlocked(selectedNode)"
-                    @click="openPractice(qid)"
+                    :class="{ 'sub-trials__chip--active': activeQuestionSlot === idx }"
+                    @click="selectQuestionSlot(idx, qid)"
                   >
-                    第 {{ idx + 1 }} 题
+                    s{{ idx }} · 第 {{ idx + 1 }} 题
                   </button>
                 </div>
               </div>
@@ -571,7 +732,7 @@ onMounted(() => {
               </div>
 
               <p v-if="selectedQuestion" class="detail-panel__trial">
-                对应试炼：<strong>{{ selectedQuestion.title }}</strong>
+                对应试炼：<strong>{{ formatQuestionLabel(selectedQuestion) }}</strong>
                 <small>{{ selectedQuestion.topic }}</small>
               </p>
 
@@ -589,15 +750,16 @@ onMounted(() => {
                     :key="qid"
                     type="button"
                     class="sub-trials__chip"
-                    @click="openPractice(qid)"
+                    :class="{ 'sub-trials__chip--active': activeQuestionSlot === idx }"
+                    @click="selectQuestionSlot(idx, qid)"
                   >
-                    第 {{ idx + 1 }} 题
+                    s{{ idx }} · 第 {{ idx + 1 }} 题
                   </button>
                 </div>
               </div>
             </template>
 
-          <div class="panel-bot" aria-hidden="true">
+          <div class="panel-bot panel-bot--hidden" aria-hidden="true">
             <span class="panel-bot__head" />
             <span class="panel-bot__body" />
             <span class="panel-bot__card panel-bot__card--left" />
@@ -633,13 +795,14 @@ onMounted(() => {
             </div>
           </div>
 
+          <div class="detail-panel__actions">
           <button
             type="button"
             class="continue-btn continue-btn--launch"
-            :disabled="!selectedNode || !isStarPathNodeUnlocked(selectedNode)"
+            :disabled="detailMode === 'node' && (!selectedNode || !isStarPathNodeUnlocked(selectedNode))"
             @click="detailMode === 'knowledge' ? continueKnowledgeTrial() : continueExplore()"
           >
-            {{ isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
+            {{ detailMode === 'knowledge' || isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
           </button>
           <button
             v-if="(detailMode === 'knowledge' && !selectedKnowledge?.point.questionId) || (detailMode === 'node' && nodeQuestionIds.length > 1)"
@@ -649,6 +812,7 @@ onMounted(() => {
           >
             换一题
           </button>
+          </div>
         </aside>
       </section>
     </main>
@@ -786,6 +950,71 @@ onMounted(() => {
     radial-gradient(1px 1px at 62% 47%, rgba(255, 255, 255, 0.18), transparent),
     radial-gradient(1px 1px at 86% 18%, rgba(166, 111, 255, 0.36), transparent);
   background-size: 340px 340px;
+}
+
+.question-search-panel {
+  position: relative;
+  z-index: 2;
+  margin: 0 var(--plex-page-gutter-x) 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(16, 240, 192, 0.18);
+  border-radius: 14px;
+  background: rgba(4, 14, 24, 0.82);
+}
+
+.question-search-panel header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+  color: rgba(224, 237, 247, 0.78);
+  font-size: 0.82rem;
+}
+
+.question-search-panel header strong {
+  color: #22ffde;
+}
+
+.question-search-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.question-search-list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(130, 212, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(8, 22, 36, 0.72);
+  color: #edf7ff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.question-search-list button:hover {
+  border-color: rgba(16, 240, 192, 0.35);
+}
+
+.question-search-list em {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(16, 240, 192, 0.14);
+  color: #22ffde;
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.question-search-list span {
+  color: rgba(190, 208, 224, 0.72);
+  font-size: 0.78rem;
 }
 
 .starpath-top {
@@ -979,12 +1208,11 @@ onMounted(() => {
   z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
-  grid-template-rows: minmax(0, 1fr);
   align-items: stretch;
   gap: 1rem;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 0 var(--plex-page-gutter-x) var(--plex-page-gutter-bottom);
 }
 
@@ -1011,7 +1239,8 @@ onMounted(() => {
 .path-board {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(420px, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -1019,7 +1248,12 @@ onMounted(() => {
 .domain-copy {
   position: relative;
   z-index: 2;
-  padding: 1.65rem 0 1.2rem 1.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.85rem 1.25rem;
+  padding: 1rem 1.25rem 0.85rem;
+  border-bottom: 1px solid rgba(90, 208, 255, 0.1);
 }
 
 .domain-copy__head {
@@ -1052,23 +1286,23 @@ onMounted(() => {
 }
 
 .domain-copy p {
-  margin: 1.35rem 0 0;
+  margin: 0;
   color: rgba(224, 237, 247, 0.68);
   font-size: 0.88rem;
 }
 
 .domain-copy strong {
   display: block;
-  margin-top: 0.5rem;
+  margin-top: 0.15rem;
   color: #ffffff;
-  font-size: 1.9rem;
+  font-size: 1.55rem;
   line-height: 1;
 }
 
 .progress-line {
-  width: 155px;
+  width: 120px;
   height: 6px;
-  margin-top: 0.9rem;
+  margin-top: 0.35rem;
   overflow: hidden;
   border-radius: 99px;
   background: rgba(197, 219, 236, 0.12);
@@ -1200,23 +1434,26 @@ onMounted(() => {
 .sub-trials__list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.55rem;
+  gap: 0.6rem;
+  margin-top: 0.65rem;
 }
 
 .sub-trials__chip {
-  padding: 0.35rem 0.65rem;
-  border: 1px solid rgba(130, 212, 255, 0.14);
-  border-radius: 0.4rem;
-  background: rgba(7, 22, 36, 0.75);
+  min-height: 2.2rem;
+  padding: 0.5rem 0.9rem;
+  border: 1.5px solid rgba(130, 212, 255, 0.2);
+  border-radius: 0.55rem;
+  background: rgba(7, 22, 36, 0.82);
   color: #edf7ff;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.92rem;
+  font-weight: 500;
 }
 
 .sub-trials__chip--active {
-  border-color: rgba(35, 255, 222, 0.55);
-  background: rgba(16, 240, 192, 0.12);
+  border-color: rgba(35, 255, 222, 0.65);
+  background: rgba(16, 240, 192, 0.16);
+  box-shadow: 0 0 16px rgba(35, 255, 222, 0.2);
 }
 
 .sub-trials__chip:disabled {
@@ -1649,15 +1886,27 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
+  max-height: 100%;
+  align-self: stretch;
   overflow: hidden;
-  padding: 1.65rem 1.55rem 1rem;
+  padding: 1rem 1.55rem 1rem;
 }
 
 .detail-panel__body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding-bottom: 0.35rem;
+}
+
+.detail-panel__actions {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  padding-top: 0.75rem;
+  background: linear-gradient(180deg, rgba(4, 14, 24, 0) 0%, rgba(4, 14, 24, 0.92) 28%, rgba(4, 14, 24, 0.98) 100%);
+  border-top: 1px solid rgba(130, 212, 255, 0.1);
 }
 
 .detail-panel__head {
@@ -1734,6 +1983,10 @@ onMounted(() => {
   position: relative;
   height: 165px;
   margin: 0.55rem 0 0;
+}
+
+.panel-bot--hidden {
+  display: none;
 }
 
 .panel-bot__head {
@@ -1890,7 +2143,7 @@ onMounted(() => {
   flex-shrink: 0;
   width: 100%;
   min-height: 48px;
-  margin-top: 0.75rem;
+  margin-top: 0;
   border: 0;
   border-radius: 0.38rem;
   background: linear-gradient(90deg, rgba(16, 240, 192, 0.8), rgba(18, 150, 130, 0.88));
@@ -1944,6 +2197,7 @@ onMounted(() => {
   .detail-panel {
     min-height: 520px;
   }
+
 }
 
 @media (max-width: 900px) {
@@ -2027,6 +2281,7 @@ onMounted(() => {
     position: sticky;
     bottom: 0.75rem;
   }
+
 }
 
 </style>

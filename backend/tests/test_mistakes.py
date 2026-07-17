@@ -97,6 +97,26 @@ class MistakesTestCase(unittest.TestCase):
         data = list_resp.get_json()['data']
         self.assertGreaterEqual(data['total'], 1)
 
+    def test_code_trial_pass_creates_accepted_record(self):
+        run_resp = self.client.post(
+            '/api/v1/student/code-trial/runs',
+            json={
+                'question_id': 'gen-stage1-intro-s0',
+                'question_title': 'Hello World',
+                'knowledge_key': 'intro',
+                'topic': '输出',
+                'tags': ['intro'],
+                'cases': [{'label': '样例1', 'passed': True}],
+            },
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(run_resp.status_code, 200)
+
+        path_resp = self.client.get('/api/v1/student/learning-path', headers=self.auth(self.student_token))
+        self.assertEqual(path_resp.status_code, 200)
+        ac_status = path_resp.get_json()['data'].get('question_ac_status', [])
+        self.assertIn('gen-stage1-intro-s0', ac_status)
+
     def test_teacher_can_view_student_mistakes(self):
         with self.app.app_context():
             from app.services.mistake import MistakeService

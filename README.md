@@ -70,7 +70,7 @@ PLEX Universe 是一个面向编程学习场景的个性化学习平台，项目
 2. 按需安装前后端依赖。
 3. 非破坏性初始化或升级数据库。
 4. 分别启动 Flask 后端和 Vue 前端。
-5. 自动打开 `http://localhost:5173`。
+5. 自动打开 `http://localhost:5180`。
 
 只检查环境、不启动服务：
 
@@ -93,7 +93,7 @@ python manage.py init
 python run.py
 ```
 
-默认后端地址：`http://127.0.0.1:5000`
+默认后端地址：`http://127.0.0.1:5100`
 
 ### 手动启动前端
 
@@ -103,7 +103,7 @@ npm install
 npm run dev
 ```
 
-默认前端地址：`http://localhost:5173`
+默认前端地址：`http://localhost:5180`
 
 前端开发环境通过 Vite 代理访问 `/api`，转发到 Flask 后端。
 

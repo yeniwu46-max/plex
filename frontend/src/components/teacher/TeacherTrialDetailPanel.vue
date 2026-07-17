@@ -186,6 +186,7 @@ watch(
                     <th>结果</th>
                     <th>用时</th>
                     <th>提交时间</th>
+                    <th>智能体检查</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,6 +213,18 @@ watch(
                     </td>
                     <td>{{ formatDurationSec(answer.time_spent_sec) }}</td>
                     <td>{{ formatDateTimeText(answer.answered_at) }}</td>
+                    <td>
+                      <details v-if="answer.agent_trace?.length" class="trial-detail__trace">
+                        <summary>{{ answer.agent_trace.length }} 条记录</summary>
+                        <ul>
+                          <li v-for="(trace, idx) in answer.agent_trace" :key="`${trace.agentId}-${idx}`">
+                            <strong>{{ trace.name ?? trace.agentId }}</strong>
+                            <span>{{ trace.summary }}</span>
+                          </li>
+                        </ul>
+                      </details>
+                      <span v-else class="trial-detail__pending">—</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -366,6 +379,28 @@ watch(
 
 .trial-detail__pending {
   color: var(--plex-text-muted, #8ea3b8);
+}
+
+.trial-detail__trace {
+  font-size: 0.78rem;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+.trial-detail__trace summary {
+  cursor: pointer;
+  color: #a78bfa;
+}
+
+.trial-detail__trace ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.trial-detail__trace li span {
+  display: block;
+  color: rgba(226, 232, 240, 0.62);
 }
 
 .trial-detail__empty {

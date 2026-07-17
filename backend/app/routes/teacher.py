@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import User, db
+from app.services.agent_orchestrator import AgentOrchestrator
 from app.services.assignment import AssignmentService
 from app.services.evaluation import EvaluationService
 from app.services.mistake import MistakeService
@@ -16,6 +17,19 @@ teacher_bp = Blueprint('teacher', __name__, url_prefix='/api/v1/teacher')
 def _role_name(user_id):
     user = db.session.get(User, int(user_id))
     return user.role.name if user and user.role else None
+
+
+def _guard_teacher_student(current_user_id, student_id):
+    """确认当前教师有权访问该学生，并返回学生对象。"""
+    from app.services.trial import TrialService
+
+    student = db.session.get(User, int(student_id))
+    if not student or not student.class_id:
+        raise ValueError('学生不存在或未分班')
+    if not student.role or student.role.name != 'student':
+        raise ValueError('目标用户不是学生')
+    TrialService._get_teacher_class(student.class_id, current_user_id, _role_name(current_user_id))
+    return student
 
 
 @teacher_bp.route('/overview', methods=['GET'])
@@ -181,6 +195,63 @@ def get_class_evaluation():
         return success_response(
             EvaluationService.get_class_evaluation(current_user_id, class_id, period)
         )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/class-diagnosis', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_class_diagnosis():
+    """班级一键学情诊断：聚合班级错题与知识图谱薄弱点，调用教师助理智能体。"""
+    try:
+        from app.services.trial import TrialService
+
+        current_user_id = int(get_jwt_identity())
+        class_id = request.args.get('class_id', type=int)
+        if not class_id:
+            return error_response('class_id 必填', 40001, None, 400)
+        TrialService._get_teacher_class(class_id, current_user_id, _role_name(current_user_id))
+        return success_response(AgentOrchestrator.class_diagnosis(class_id))
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/students/<int:student_id>/diagnose', methods=['POST'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def diagnose_student(student_id):
+    """教师视角：基于该学生已留存的错题证据运行一次学情诊断。"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        _guard_teacher_student(current_user_id, student_id)
+        return success_response(AgentOrchestrator.diagnose_learning_overview(student_id))
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/students/<int:student_id>/plan-path', methods=['POST'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def plan_student_path(student_id):
+    """教师视角：为指定学生规划个性化学习路径。"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        _guard_teacher_student(current_user_id, student_id)
+        body = request.get_json(silent=True) or {}
+        return success_response(AgentOrchestrator.plan_learning_path(student_id, body))
     except PermissionError as exc:
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:

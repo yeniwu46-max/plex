@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { NCollapse, NCollapseItem } from 'naive-ui'
 import type { AgentTraceStep } from '../../api/agentService'
 
 const props = defineProps<{
@@ -34,15 +35,16 @@ const totalLatency = computed(() =>
 
 <template>
   <section class="plex-trace" aria-label="智能体协作过程">
-    <header class="plex-trace__head">
-      <h3>智能体协作流程</h3>
-      <span v-if="totalLatency > 0" class="plex-trace__total">
-        共 {{ Math.round(totalLatency) }} ms
-      </span>
-      <span v-else-if="loading" class="plex-trace__total plex-trace__total--live">运行中</span>
-    </header>
+    <n-collapse arrow-placement="right">
+      <n-collapse-item title="智能体协作流程" name="trace">
+        <header class="plex-trace__head">
+          <span v-if="totalLatency > 0" class="plex-trace__total">
+            共 {{ Math.round(totalLatency) }} ms
+          </span>
+          <span v-else-if="loading" class="plex-trace__total plex-trace__total--live">运行中</span>
+        </header>
 
-    <ol class="plex-trace__list">
+        <ol class="plex-trace__list">
       <li
         v-for="(step, idx) in steps"
         :key="step.id"
@@ -63,6 +65,8 @@ const totalLatency = computed(() =>
         </div>
       </li>
     </ol>
+      </n-collapse-item>
+    </n-collapse>
   </section>
 </template>
 
@@ -80,12 +84,12 @@ const totalLatency = computed(() =>
 .plex-trace__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
-.plex-trace__head h3 {
-  margin: 0;
+.plex-trace :deep(.n-collapse-item__header) {
   color: #bae6fd;
   font-size: 0.95rem;
   font-weight: 700;

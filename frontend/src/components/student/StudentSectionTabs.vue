@@ -7,13 +7,12 @@ defineProps<{
 
 const groups = {
   learning: [
-    { label: '学习路径', to: '/student/star-path' },
-    { label: '个性化资源', to: '/student/star-path/resources' },
+    { label: '学习路径', to: '/student/star-path', exact: true },
+    { label: '个性化资源', to: '/student/star-path/resources', exact: false },
   ],
   me: [
-    { label: '成长档案', to: '/student/me/growth' },
-    { label: '学习画像', to: '/student/me/profile' },
-    { label: '账号设置', to: '/student/me/settings' },
+    { label: '成长档案', to: '/student/me/growth', exact: false },
+    { label: '账号设置', to: '/student/me/settings', exact: false },
   ],
 }
 </script>
@@ -26,7 +25,7 @@ const groups = {
       :to="item.to"
       class="section-tabs__item"
       active-class="section-tabs__item--active"
-      :exact-active-class="item.to === '/student/star-path' ? 'section-tabs__item--active' : undefined"
+      :exact="item.exact"
     >
       {{ item.label }}
     </RouterLink>

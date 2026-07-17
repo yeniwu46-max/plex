@@ -204,6 +204,25 @@ def get_agents_status() -> list[dict]:
     return rows
 
 
+def get_agents_health() -> dict:
+    """内存态运行健康摘要，供管理端指标使用。"""
+    agents = get_agents_status()
+    latencies = [a['avgLatency'] for a in agents if a.get('avgLatency') is not None]
+    errors = sum(1 for a in agents if a.get('status') == 'error')
+    avg_latency = round(sum(latencies) / len(latencies), 1) if latencies else None
+    success_rate = round((len(agents) - errors) / max(len(agents), 1) * 100, 1)
+    return {
+        'avg_latency_ms': avg_latency,
+        'success_rate': success_rate,
+        'error_count': errors,
+        'registered_count': len(agents),
+    }
+
+
+def crewai_venv_available() -> bool:
+    return _crewai_subprocess_ok()
+
+
 def _run_mock_student_pipeline(payload: dict) -> dict:
     trace: list[dict] = []
 
@@ -355,7 +374,18 @@ def run_student_diagnose(payload: dict) -> dict:
             return crew_result
     except Exception:
         pass
-    return _run_mock_student_pipeline(payload)
+    baseline = _run_mock_student_pipeline(payload)
+    try:
+        from agents.llm_client import api_key_configured
+        from agents.pipeline_llm import enhance_student_pipeline
+
+        if api_key_configured():
+            enhanced = enhance_student_pipeline(baseline, payload)
+            if enhanced.get('llmEnhanced'):
+                return enhanced
+    except Exception:
+        pass
+    return baseline
 
 
 def run_learning_path_plan(payload: dict) -> dict:

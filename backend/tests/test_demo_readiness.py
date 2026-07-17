@@ -261,18 +261,29 @@ class DemoReadinessTestCase(unittest.TestCase):
         self.assertEqual(after_reject['profile_version'], version_before_reject)
 
         task = self.generate('a', 'demo-review')
-        pending_resource = next(
-            item for item in task['resources']
-            if item['review_status'] == 'pending_review'
-        )
+        visible_ids = {
+            item['id']
+            for item in task['resources']
+            if item['review_status'] != 'rejected'
+        }
         student_listing = self.client.get(
             '/api/v1/student/personalized-resources',
             headers=self.auth(self.student_tokens['a']),
         ).get_json()['data']
-        self.assertNotIn(
-            pending_resource['id'],
-            {item['id'] for item in student_listing['items']},
+        self.assertTrue(
+            visible_ids.issubset({item['id'] for item in student_listing['items']}),
+            '学生应能预览已生成且未驳回的资源',
         )
+        pending_resources = [
+            item for item in task['resources'] if item['review_status'] == 'pending_review'
+        ]
+        if not pending_resources:
+            return
+        pending_resource = pending_resources[0]
+        pending_row = next(
+            item for item in student_listing['items'] if item['id'] == pending_resource['id']
+        )
+        self.assertEqual(pending_row['review_status'], 'pending_review')
         review_listing = self.client.get(
             '/api/v1/teacher/personalized-resources/review',
             headers=self.auth(self.teacher_token),

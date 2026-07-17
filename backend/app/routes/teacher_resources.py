@@ -73,7 +73,10 @@ def publish_template(template_id):
     try:
         teacher_id = int(get_jwt_identity())
         payload = request.get_json() or {}
-        class_id = payload.get('class_id', type=int)
+        try:
+            class_id = int(payload.get('class_id') or 0)
+        except (TypeError, ValueError):
+            class_id = 0
         if not class_id:
             return error_response('class_id 不能为空', 40001, None, 400)
         notify = payload.get('notify_students', True)

@@ -1,4 +1,4 @@
-import axios, { AxiosHeaders, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosHeaders, isAxiosError, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
 const LS_ACCESS = 'a3_access_token'
 const LS_REFRESH = 'a3_refresh_token'
@@ -22,6 +22,9 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem(LS_ACCESS)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
   }
   return config
 })
@@ -67,3 +70,20 @@ http.interceptors.response.use(
     return Promise.reject(err)
   },
 )
+
+export function formatHttpError(error: unknown, fallback = '请求失败'): string {
+  if (isAxiosError<ApiEnvelope>(error)) {
+    const apiMessage = error.response?.data?.message
+    if (apiMessage) return apiMessage
+    const status = error.response?.status
+    if (status === 404) {
+      return '服务接口未找到，请重启后端服务后再试'
+    }
+    if (status === 502 || status === 503) {
+      return '后端服务未启动或暂时不可用'
+    }
+    if (error.message) return error.message
+  }
+  if (error instanceof Error) return error.message
+  return fallback
+}

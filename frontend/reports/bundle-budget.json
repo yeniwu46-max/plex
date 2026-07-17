@@ -2,7 +2,7 @@
   "passed": true,
   "checks": {
     "initial_gzip": {
-      "actual_bytes": 111571,
+      "actual_bytes": 121116,
       "budget_bytes": 153600,
       "passed": true
     },
@@ -10,116 +10,126 @@
       "actual_bytes": 399872,
       "budget_bytes": 460800,
       "passed": true,
-      "file": "assets/esm-RFwsRNEx.js"
+      "file": "assets/esm-CUUdDOSU.js"
     }
   },
   "initial_assets": [
     {
       "key": "index.html",
-      "file": "assets/index-CGThQcNL.js",
-      "gzip_bytes": 44482
+      "file": "assets/index-C2jJ75ly.js",
+      "gzip_bytes": 42816
     },
     {
-      "key": "_light-b7q8TdFO.js",
-      "file": "assets/light-b7q8TdFO.js",
-      "gzip_bytes": 16894
+      "key": "_light-Bc1lUJ47.js",
+      "file": "assets/light-Bc1lUJ47.js",
+      "gzip_bytes": 16924
     },
     {
-      "key": "_http-Bp080YnT.js",
-      "file": "assets/http-Bp080YnT.js",
-      "gzip_bytes": 41531
+      "key": "_runtime-core.esm-bundler-DHwWx_Hl.js",
+      "file": "assets/runtime-core.esm-bundler-DHwWx_Hl.js",
+      "gzip_bytes": 25780
+    },
+    {
+      "key": "_light-Nk7epgZ-.js",
+      "file": "assets/light-Nk7epgZ-.js",
+      "gzip_bytes": 787
+    },
+    {
+      "key": "_replaceable-DKxLGfT-.js",
+      "file": "assets/replaceable-DKxLGfT-.js",
+      "gzip_bytes": 1311
+    },
+    {
+      "key": "_light-ThCjvRRm.js",
+      "file": "assets/light-ThCjvRRm.js",
+      "gzip_bytes": 2910
+    },
+    {
+      "key": "_light-Baxt0VJD.js",
+      "file": "assets/light-Baxt0VJD.js",
+      "gzip_bytes": 456
+    },
+    {
+      "key": "_pinia-kqiZPAHo.js",
+      "file": "assets/pinia-kqiZPAHo.js",
+      "gzip_bytes": 2821
+    },
+    {
+      "key": "_auth-DuMkd4BI.js",
+      "file": "assets/auth-DuMkd4BI.js",
+      "gzip_bytes": 10460
+    },
+    {
+      "key": "_http-CYiPR15z.js",
+      "file": "assets/http-CYiPR15z.js",
+      "gzip_bytes": 16429
     },
     {
       "key": "_chunk-CilyBKbf.js",
       "file": "assets/chunk-CilyBKbf.js",
       "gzip_bytes": 422
-    },
-    {
-      "key": "_light-CATDyE2v.js",
-      "file": "assets/light-CATDyE2v.js",
-      "gzip_bytes": 787
-    },
-    {
-      "key": "_replaceable-Utx2_Gk9.js",
-      "file": "assets/replaceable-Utx2_Gk9.js",
-      "gzip_bytes": 1296
-    },
-    {
-      "key": "_light-CAiIYxE3.js",
-      "file": "assets/light-CAiIYxE3.js",
-      "gzip_bytes": 2891
-    },
-    {
-      "key": "_light-DWowzStj.js",
-      "file": "assets/light-DWowzStj.js",
-      "gzip_bytes": 455
-    },
-    {
-      "key": "_pinia-_8yqM758.js",
-      "file": "assets/pinia-_8yqM758.js",
-      "gzip_bytes": 2813
     }
   ],
   "largest_lazy_assets": [
     {
       "key": "node_modules/@antv/g6/esm/index.js",
-      "file": "assets/esm-RFwsRNEx.js",
+      "file": "assets/esm-CUUdDOSU.js",
       "gzip_bytes": 399872,
       "dynamic_entry": true
     },
     {
-      "key": "_echartsTheme-dGMAwqyC.js",
-      "file": "assets/echartsTheme-dGMAwqyC.js",
-      "gzip_bytes": 160538,
+      "key": "_PlexBarChart-CXcOMHxH.js",
+      "file": "assets/PlexBarChart-CXcOMHxH.js",
+      "gzip_bytes": 175594,
       "dynamic_entry": false
     },
     {
       "key": "src/components/admin/AdminAgentOrchestrationPanel.vue",
-      "file": "assets/AdminAgentOrchestrationPanel-bMbdZhuT.js",
-      "gzip_bytes": 57765,
+      "file": "assets/AdminAgentOrchestrationPanel-CqSjZYUS.js",
+      "gzip_bytes": 59237,
       "dynamic_entry": true
     },
     {
-      "key": "src/views/TeacherExplorersView.vue",
-      "file": "assets/TeacherExplorersView-Bq3-NA-h.js",
-      "gzip_bytes": 23310,
+      "key": "src/views/TeacherTrialCreateView.vue",
+      "file": "assets/TeacherTrialCreateView-CRdgFYdQ.js",
+      "gzip_bytes": 45906,
+      "dynamic_entry": true
+    },
+    {
+      "key": "src/views/StarPathLabView.vue",
+      "file": "assets/StarPathLabView-Ce_Y2GK_.js",
+      "gzip_bytes": 23859,
       "dynamic_entry": true
     },
     {
       "key": "src/views/StudentControlView.vue",
-      "file": "assets/StudentControlView-hL3UXOIk.js",
-      "gzip_bytes": 22357,
+      "file": "assets/StudentControlView-GXJJ3aOS.js",
+      "gzip_bytes": 22424,
       "dynamic_entry": true
     },
     {
-      "key": "_PlexFileUploader-BMyVw4ao.js",
-      "file": "assets/PlexFileUploader-BMyVw4ao.js",
-      "gzip_bytes": 21952,
+      "key": "_PlexFileUploader-CeSGnmMt.js",
+      "file": "assets/PlexFileUploader-CeSGnmMt.js",
+      "gzip_bytes": 21961,
       "dynamic_entry": false
     },
     {
-      "key": "_PlexLocalSearch-Dl96mhIb.js",
-      "file": "assets/PlexLocalSearch-Dl96mhIb.js",
-      "gzip_bytes": 16611,
+      "key": "_PythonTrialWorkspace-B7zyYlzn.js",
+      "file": "assets/PythonTrialWorkspace-B7zyYlzn.js",
+      "gzip_bytes": 18220,
       "dynamic_entry": false
     },
     {
-      "key": "src/views/TrialArenaView.vue",
-      "file": "assets/TrialArenaView-CRBhknjK.js",
-      "gzip_bytes": 16568,
-      "dynamic_entry": true
-    },
-    {
-      "key": "_PythonTrialWorkspace-CzN2SAxk.js",
-      "file": "assets/PythonTrialWorkspace-CzN2SAxk.js",
-      "gzip_bytes": 16189,
+      "key": "_PlexTopbar-CDiX2YeM.js",
+      "file": "assets/PlexTopbar-CDiX2YeM.js",
+      "gzip_bytes": 17444,
       "dynamic_entry": false
     },
     {
-      "key": "src/views/DiscoveryCabinView.vue",
-      "file": "assets/DiscoveryCabinView-mmhdfzY6.js",
-      "gzip_bytes": 16050,
-      "dynamic_entry": true
+      "key": "_Select-BGehr_-X.js",
+      "file": "assets/Select-BGehr_-X.js",
+      "gzip_bytes": 15802,
+      "dynamic_entry": false
     }
   ]
 }

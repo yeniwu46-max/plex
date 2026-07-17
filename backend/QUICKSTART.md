@@ -14,7 +14,7 @@
 3. ✅ 启动 Flask 与 Vue
 4. ✅ 打开前端页面
 
-然后在浏览器中打开：**http://localhost:5173**
+然后在浏览器中打开：**http://localhost:5180**
 
 ### macOS / Linux 用户
 
@@ -71,10 +71,50 @@ python run.py
 ```
  * Serving Flask app 'app'
  * Debug mode: on
- * Running on http://127.0.0.1:5000
+ * Running on http://127.0.0.1:5100
 ```
 
-然后打开浏览器访问：**http://localhost:5000**
+然后打开浏览器访问：**http://localhost:5180**（前端）或 **http://127.0.0.1:5100**（仅后端 API）
+
+---
+
+## 启用 CrewAI 智能体编排（管理端）
+
+管理端「智能体编排」支持将学生提交后的学习流水线从规则引擎升级为 **CrewAI + LLM 增强**。
+
+### 1. 安装 CrewAI 虚拟环境（Python 3.12）
+
+```powershell
+cd backend
+powershell -ExecutionPolicy Bypass -File scripts\install_crewai.ps1
+```
+
+### 2. 配置环境变量（`backend/.env`）
+
+```env
+AGENT_BACKEND=auto
+OPENAI_API_KEY=sk-...
+# 或使用 OpenRouter
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=openai/gpt-4o-mini
+```
+
+### 3. 重启 Flask 并验收
+
+```powershell
+python run.py
+```
+
+- 管理端 `/admin` → 智能体编排：运行态横幅应显示 **CrewAI 就绪**（venv + Key 均 OK）
+- `GET /api/v1/admin/agent-orchestration`（需 admin JWT）→ `agent_backend: "crewai"`，`runtime.ready_for_llm: true`
+- 点击「运行协同推理」→ 日志末尾 `backend: crewai`，trace 含 `crewai_llm` 来源
+- 联调脚本：
+
+```powershell
+python verify_real_submit.py
+```
+
+更多说明见 [docs/AI-Agent-Python栈.md](../docs/AI-Agent-Python栈.md)。
 
 ---
 
@@ -84,7 +124,7 @@ python run.py
 
 #### 注册新用户
 ```bash
-curl -X POST http://localhost:5000/api/v1/auth/register \
+curl -X POST http://localhost:5100/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "test_user",
@@ -97,7 +137,7 @@ curl -X POST http://localhost:5000/api/v1/auth/register \
 
 #### 登录
 ```bash
-curl -X POST http://localhost:5000/api/v1/auth/login \
+curl -X POST http://localhost:5100/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
@@ -127,7 +167,7 @@ curl -X POST http://localhost:5000/api/v1/auth/login \
 
 #### 获取当前用户信息（需要 Token）
 ```bash
-curl -X GET http://localhost:5000/api/v1/users/me \
+curl -X GET http://localhost:5100/api/v1/users/me \
   -H "Authorization: Bearer {access_token}"
 ```
 
@@ -144,7 +184,7 @@ import requests
 
 # 登录
 response = requests.post(
-    'http://localhost:5000/api/v1/auth/login',
+    'http://localhost:5100/api/v1/auth/login',
     json={
         'username': 'admin',
         'password': 'admin123'
@@ -157,7 +197,7 @@ token = data['data']['access_token']
 # 获取用户信息
 headers = {'Authorization': f'Bearer {token}'}
 response = requests.get(
-    'http://localhost:5000/api/v1/users/me',
+    'http://localhost:5100/api/v1/users/me',
     headers=headers
 )
 
@@ -261,7 +301,7 @@ python scripts/verify_clean_environment.py
 FLASK_ENV=development
 FLASK_DEBUG=1
 DATABASE_URL=sqlite:///learning_system.db
-SERVER_PORT=5000
+SERVER_PORT=5100
 ```
 
 如果要使用 MySQL，修改 `.env`：
@@ -286,7 +326,7 @@ rm learning_system.db  # 删除旧数据库
 python init_db.py      # 重新初始化
 ```
 
-### Q: 端口 5000 已被占用
+### Q: 端口 5100 已被占用
 **A:** 修改 `.env` 文件中的 `SERVER_PORT` 为其他端口，如 5001
 
 ### Q: Token 认证失败

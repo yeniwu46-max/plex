@@ -38,11 +38,31 @@ export interface TeacherTrialsResult {
   summary: TeacherTrialSummary
 }
 
+export type TrialQuestionKind =
+  | 'mcq'
+  | 'multiple'
+  | 'true_false'
+  | 'fill_blank'
+  | 'short_answer'
+  | 'coding'
+
 export interface CustomTrialQuestion {
-  question_type?: 'mcq' | 'coding'
+  question_type?: TrialQuestionKind
   stem: string
   options?: string[]
   correct_index?: number
+  /** 多选题正确项索引集合（后端按单选 MCQ 兼容存储，完整数据保留在草稿 JSON） */
+  correct_indexes?: number[]
+  /** 填空题答案（按空位顺序） */
+  blanks?: string[]
+  /** 简答题参考答案 */
+  reference_answer?: string
+  /** 题目解析 */
+  analysis?: string
+  /** 题目分值 */
+  score?: number
+  /** 题目难度 0-100 */
+  difficulty?: number
   knowledge_key?: string
   starter_code?: string
   run_mode?: 'stdout' | 'expression'
@@ -108,10 +128,21 @@ export interface CreateTrialPayload {
   draft_questions?: CustomTrialQuestion[]
 }
 
-export async function aiGenerateTrialQuestions(knowledgeKeys: string[], count = 3) {
+export interface AiGenerateOptions {
+  /** 期望题型（后端暂以选择题为主，附加参数向后兼容） */
+  question_type?: TrialQuestionKind
+  /** 难度 0-100 */
+  difficulty?: number
+}
+
+export async function aiGenerateTrialQuestions(
+  knowledgeKeys: string[],
+  count = 3,
+  options: AiGenerateOptions = {},
+) {
   const { data } = await http.post<ApiEnvelope<{ questions: CustomTrialQuestion[] }>>(
     '/v1/teacher/trials/ai-generate-questions',
-    { knowledge_keys: knowledgeKeys, count },
+    { knowledge_keys: knowledgeKeys, count, ...options },
   )
   if (data.code !== 0) throw new Error(data.message || 'AI 出题失败')
   return data.data.questions
@@ -232,6 +263,16 @@ export interface TrialStudentAnswerRecord {
   started_at: string | null
   answered_at: string | null
   time_spent_sec: number | null
+  agent_trace?: AgentTraceRecord[]
+}
+
+export interface AgentTraceRecord {
+  agentId: string
+  name?: string
+  status?: string
+  summary?: string
+  latencyMs?: number
+  backend?: string
 }
 
 export interface TrialStudentProgressRow {

@@ -1,6 +1,14 @@
 import type { PythonTrialQuestion } from './pythonTrialQuestions'
+import {
+  DEFAULT_MOCK_EXAM_SET_ID,
+  getDefaultMockExamQuestions,
+  getMockExamQuestionsForSet,
+  MOCK_EXAM_SETS,
+} from './mockExamSets'
+import { normalizeQuestion } from '../utils/questionNaming'
+import { wrapExploration } from '../utils/explorationNarrative'
 
-/** 班级试炼场 · 高难度编程题池 */
+/** 试炼场 · 编程题池（对战 / 模拟考试 / 遗留教师题） */
 export const CLASS_HARD_QUESTIONS: PythonTrialQuestion[] = [
   {
     id: 'class-hard-sum-two',
@@ -10,8 +18,10 @@ export const CLASS_HARD_QUESTIONS: PythonTrialQuestion[] = [
     rewardXp: 80,
     durationMin: 25,
     tags: ['班级', 'I/O', '限时'],
-    description:
-      '给定两个整数 a、b（由测试注入）。请输出它们的和。教师试炼场题目，要求一次通过全部隐藏用例。',
+    description: wrapExploration(
+      '班级试炼场的限时对决中，两路信号 `a` 与 `b` 已注入',
+      '请输出它们的和，一次通过全部隐藏用例。',
+    ),
     constraints: ['使用 print 输出', '不要额外输出'],
     examples: [
       { input: 'a = 3, b = 5', output: '8' },
@@ -75,9 +85,13 @@ export const CLASS_HARD_QUESTIONS: PythonTrialQuestion[] = [
   },
 ]
 
-export const GLADIATOR_DUEL_TIME_SEC = 300
+export const STUDENT_DUEL_TIME_SEC = 3600
 
-export const GLADIATOR_DUEL_QUESTIONS: PythonTrialQuestion[] = [
+/** @deprecated 使用 STUDENT_DUEL_TIME_SEC */
+export const GLADIATOR_DUEL_TIME_SEC = STUDENT_DUEL_TIME_SEC
+
+/** 学生对战 · 随机题池（ACM 赛制，从中抽 3 题） */
+export const STUDENT_DUEL_QUESTION_POOL: PythonTrialQuestion[] = [
   {
     id: 'arena-gladiator-sum',
     title: '两数之和',
@@ -149,8 +163,28 @@ export const GLADIATOR_DUEL_QUESTIONS: PythonTrialQuestion[] = [
   },
 ]
 
-/** @deprecated 使用 GLADIATOR_DUEL_QUESTIONS */
-export const GLADIATOR_DUEL_QUESTION = GLADIATOR_DUEL_QUESTIONS[0]
+/** @deprecated 使用 STUDENT_DUEL_QUESTION_POOL */
+export const GLADIATOR_DUEL_QUESTIONS = STUDENT_DUEL_QUESTION_POOL
+
+/** @deprecated 使用 STUDENT_DUEL_QUESTION_POOL */
+export const GLADIATOR_DUEL_QUESTION = STUDENT_DUEL_QUESTION_POOL[0]
+
+export {
+  MOCK_EXAM_SETS,
+  DEFAULT_MOCK_EXAM_SET_ID,
+  getMockExamQuestionsForSet,
+  getDefaultMockExamQuestions,
+}
+
+export function pickRandomStudentDuelQuestions(count = 3): PythonTrialQuestion[] {
+  const pool = [...STUDENT_DUEL_QUESTION_POOL]
+  const picked: PythonTrialQuestion[] = []
+  while (pool.length && picked.length < count) {
+    const index = Math.floor(Math.random() * pool.length)
+    picked.push(pool.splice(index, 1)[0])
+  }
+  return picked
+}
 
 export const RPS_STRATEGY_QUESTION: PythonTrialQuestion = {
   id: 'arena-rps-move',
@@ -200,10 +234,10 @@ export function buildTrialWorkspaceQuestion(
 ): PythonTrialQuestion {
   const base = getClassArenaQuestion(pickClassTrialQuestionId(trialId))
   if (!base) throw new Error('未找到班级试炼题目')
-  return {
+  return normalizeQuestion({
     ...base,
-    title: `${trialTitle} · ${base.title}`,
+    title: base.title,
     description: `【教师试炼】${trialTitle}\n\n${base.description}`,
     tags: [...base.tags, '教师发布'],
-  }
+  })
 }

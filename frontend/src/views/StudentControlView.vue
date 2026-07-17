@@ -1,25 +1,20 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { usePlexTour } from '../composables/usePlexTour'
 import { useRouter } from 'vue-router'
-import { NAvatar, NButton, NInput, NRadio, NRadioGroup, NSwitch, NUpload, useMessage, type UploadFileInfo } from 'naive-ui'
-import { useThemeStore, type ColorMode } from '../stores/theme'
+import { NAvatar, NButton, NInput, NUpload, useMessage, type UploadFileInfo } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import { useAuthStore } from '../stores/auth'
 import type { StudentOverview } from '../api/studentOverview'
-import type { LearningReportResult } from '../api/learningReport'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import { resolveAvatarUrl, updateMyProfile, uploadMyAvatar } from '../api/studentProfile'
-import PlexRadarChart from '../components/charts/PlexRadarChart.vue'
-import PlexLineChart from '../components/charts/PlexLineChart.vue'
+import StudentJoinClassPanel from '../components/student/StudentJoinClassPanel.vue'
 
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
 const workspace = useStudentWorkspaceStore()
 const overview = ref<StudentOverview | null>(null)
-const learningReport = ref<LearningReportResult | null>(null)
 const loading = ref(true)
 const savingProfile = ref(false)
 const uploadingAvatar = ref(false)
@@ -35,20 +30,15 @@ const displayName = computed(
 const classLabel = computed(() => {
   const cls = profile.value?.class
   if (!cls) return '暂未加入班级'
-  return cls.name || `班级 #${cls.id}`
+  const code = cls.join_code ? ` · 编号 ${cls.join_code}` : ''
+  return `${cls.name || `班级 #${cls.id}`}${code}`
 })
+const hasClass = computed(() => Boolean(profile.value?.class?.id))
 
 const avatarSrc = computed(() => {
   const url = avatarPreview.value || profile.value?.avatar_url || null
   return resolveAvatarUrl(url)
 })
-
-const themeStore = useThemeStore()
-
-const notifyTrial = ref(true)
-const notifyQuest = ref(true)
-const notifyRank = ref(false)
-const focusMode = ref(false)
 
 function syncFormFromProfile() {
   editName.value = profile.value?.real_name || auth.profile?.real_name || ''
@@ -59,12 +49,7 @@ function syncFormFromProfile() {
 async function loadProfile() {
   loading.value = true
   try {
-    const [overviewResult, report] = await Promise.all([
-      workspace.loadOverview(),
-      workspace.loadLearningReport('7d').catch(() => null),
-    ])
-    overview.value = overviewResult
-    learningReport.value = report
+    overview.value = await workspace.loadOverview()
     syncFormFromProfile()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '资料加载失败')
@@ -72,26 +57,6 @@ async function loadProfile() {
     loading.value = false
   }
 }
-
-const radarDimensions = computed(
-  () => learningReport.value?.radar.dimensions ?? ['抽象建模', '算法设计', '分解问题', '调试能力', '逻辑推理'],
-)
-const radarValues = computed(() => learningReport.value?.radar.values ?? [0, 0, 0, 0, 0])
-const trendXData = computed(
-  () => learningReport.value?.trend.x_data ?? ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-)
-const trendSeries = computed(() => [
-  {
-    name: '正确率(%)',
-    data: learningReport.value?.trend.correct_rate ?? [0, 0, 0, 0, 0, 0, 0],
-    color: '#22c55e',
-  },
-  {
-    name: '练习次数',
-    data: learningReport.value?.trend.practice_count ?? [0, 0, 0, 0, 0, 0, 0],
-    color: '#38bdf8',
-  },
-])
 
 async function saveProfile() {
   const name = editName.value.trim()
@@ -145,16 +110,6 @@ async function onAvatarUpload(fileInfo: UploadFileInfo) {
   }
 }
 
-const { startTour, resetTour } = usePlexTour()
-async function restartStudentTour() {
-  resetTour('student')
-  await startTour('student')
-}
-
-function savePreferences() {
-  message.success('偏好已保存到当前浏览器')
-}
-
 async function logout() {
   await auth.logout()
   void router.replace('/login')
@@ -169,28 +124,34 @@ onMounted(() => {
   <DashboardShell
     active-nav="me"
     page-title="账号设置"
-    page-subtitle="管理个人资料、外观偏好与账号状态"
+    page-subtitle="管理个人资料与班级归属"
     search-placeholder="搜索设置项…"
     hide-search
   >
     <template #toolbar><StudentSectionTabs area="me" /></template>
     <section class="student-control" aria-label="学生账号设置">
       <div class="student-control__hero">
+        <span class="student-control__hero-scan" aria-hidden="true" />
+        <span class="student-control__hero-corner student-control__hero-corner--tl" aria-hidden="true" />
+        <span class="student-control__hero-corner student-control__hero-corner--tr" aria-hidden="true" />
+        <span class="student-control__hero-corner student-control__hero-corner--bl" aria-hidden="true" />
+        <span class="student-control__hero-corner student-control__hero-corner--br" aria-hidden="true" />
         <div class="student-control__hero-main">
           <n-upload
             :show-file-list="false"
             accept="image/png,image/jpeg,image/gif,image/webp"
             @before-upload="handleBeforeUpload"
           >
-            <button type="button" class="avatar-upload" :disabled="uploadingAvatar" aria-label="上传头像">
+            <div class="avatar-upload" :class="{ 'avatar-upload--disabled': uploadingAvatar }" role="button" tabindex="0" aria-label="上传头像">
+              <span class="avatar-upload__ring" aria-hidden="true" />
               <n-avatar round :size="72" :src="avatarSrc || undefined" class="avatar-upload__img">
                 {{ displayName.slice(0, 1) }}
               </n-avatar>
               <span class="avatar-upload__hint">{{ uploadingAvatar ? '上传中…' : '更换头像' }}</span>
-            </button>
+            </div>
           </n-upload>
           <div>
-            <p class="student-control__eyebrow">EXPLORER CONTROL</p>
+            <p class="student-control__eyebrow"><span class="student-control__status-dot" aria-hidden="true" />EXPLORER CONTROL</p>
             <h2>{{ displayName }}</h2>
             <p class="student-control__meta">
               <span>@{{ profile?.username || auth.profile?.username }}</span>
@@ -225,6 +186,10 @@ onMounted(() => {
           </label>
           <dl class="info-list info-list--compact">
             <div>
+              <dt>所属班级</dt>
+              <dd>{{ classLabel }}</dd>
+            </div>
+            <div>
               <dt>邮箱</dt>
               <dd>{{ profile?.email || auth.profile?.email || '—' }}</dd>
             </div>
@@ -246,98 +211,7 @@ onMounted(() => {
           </n-button>
         </article>
 
-        <article class="panel">
-          <header>
-            <h3>探索偏好</h3>
-            <p>通知开关与专注模式会保存到当前浏览器</p>
-          </header>
-          <ul class="pref-list">
-            <li>
-              <div>
-                <strong>试炼提醒</strong>
-                <span>班级试炼开放或即将结束时通知</span>
-              </div>
-              <n-switch v-model:value="notifyTrial" />
-            </li>
-            <li>
-              <div>
-                <strong>委托提醒</strong>
-                <span>今日委托进度与奖励可领取时提醒</span>
-              </div>
-              <n-switch v-model:value="notifyQuest" />
-            </li>
-            <li>
-              <div>
-                <strong>排名变动</strong>
-                <span>班级周榜名次变化时推送</span>
-              </div>
-              <n-switch v-model:value="notifyRank" />
-            </li>
-            <li>
-              <div>
-                <strong>专注模式</strong>
-                <span>隐藏非必要动效，保持探索舱简洁</span>
-              </div>
-              <n-switch v-model:value="focusMode" />
-            </li>
-          </ul>
-          <n-button type="primary" class="save-btn" :loading="loading" @click="savePreferences">保存偏好</n-button>
-          <n-button secondary class="tour-btn" style="margin-top:0.75rem;width:100%" @click="restartStudentTour">重新查看功能导览</n-button>
-        </article>
-
-        <article class="panel appearance-panel">
-          <header>
-            <h3>外观模式</h3>
-            <p>界面主题会保存到当前浏览器，可随时切换</p>
-          </header>
-          <n-radio-group
-            :value="themeStore.mode"
-            class="appearance-radio-group"
-            @update:value="(v: ColorMode) => themeStore.setMode(v)"
-          >
-            <n-radio value="dark" class="appearance-radio">
-              <span class="appearance-radio__icon">🌙</span>
-              <span>深色模式</span>
-            </n-radio>
-            <n-radio value="light" class="appearance-radio">
-              <span class="appearance-radio__icon">☀️</span>
-              <span>浅色模式</span>
-            </n-radio>
-            <n-radio value="auto" class="appearance-radio">
-              <span class="appearance-radio__icon">🖥️</span>
-              <span>跟随系统</span>
-            </n-radio>
-          </n-radio-group>
-        </article>
-      </div>
-
-      <div class="student-control__charts" data-tour="student-learning-report">
-        <article class="panel">
-          <header>
-            <h3>能力画像</h3>
-            <p>基于历次试炼与星轨练习生成的多维能力雷达图</p>
-          </header>
-          <div class="student-control__chart-wrap">
-            <plex-radar-chart
-              :dimensions="radarDimensions"
-              :values="radarValues"
-              color="#22c55e"
-            />
-          </div>
-        </article>
-
-        <article class="panel">
-          <header>
-            <h3>近 7 天学习趋势</h3>
-            <p>练习次数与正确率变化曲线</p>
-          </header>
-          <div class="student-control__chart-wrap">
-            <plex-line-chart
-              :x-data="trendXData"
-              :series="trendSeries"
-            />
-          </div>
-        </article>
+        <student-join-class-panel class="panel" :has-class="hasClass" @joined="loadProfile" />
       </div>
 
       <p class="student-control__hint">
@@ -359,6 +233,7 @@ onMounted(() => {
 }
 
 .student-control__hero {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -370,6 +245,64 @@ onMounted(() => {
   background:
     radial-gradient(circle at 12% 20%, rgba(37, 245, 238, 0.12), transparent 42%),
     linear-gradient(135deg, rgba(8, 32, 48, 0.92), rgba(4, 14, 24, 0.96));
+  backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 32px rgba(37, 245, 238, 0.06);
+  overflow: hidden;
+}
+
+.student-control__hero-scan {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(37, 245, 238, 0.04) 50%, transparent 100%);
+  background-size: 100% 220%;
+  animation: hero-scan 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.student-control__hero-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(37, 245, 238, 0.55);
+  border-style: solid;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.student-control__hero-corner--tl {
+  top: 10px;
+  left: 10px;
+  border-width: 2px 0 0 2px;
+}
+
+.student-control__hero-corner--tr {
+  top: 10px;
+  right: 10px;
+  border-width: 2px 2px 0 0;
+}
+
+.student-control__hero-corner--bl {
+  bottom: 10px;
+  left: 10px;
+  border-width: 0 0 2px 2px;
+}
+
+.student-control__hero-corner--br {
+  right: 10px;
+  bottom: 10px;
+  border-width: 0 2px 2px 0;
+}
+
+@keyframes hero-scan {
+  0%,
+  100% {
+    background-position: 0 -120%;
+  }
+  50% {
+    background-position: 0 120%;
+  }
 }
 
 .student-control__hero-main {
@@ -379,6 +312,7 @@ onMounted(() => {
 }
 
 .avatar-upload {
+  position: relative;
   display: grid;
   gap: 0.35rem;
   justify-items: center;
@@ -390,13 +324,34 @@ onMounted(() => {
   font-size: 0.75rem;
 }
 
-.avatar-upload:disabled {
+.avatar-upload__ring {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 1px dashed rgba(37, 245, 238, 0.45);
+  transform: translateX(-50%);
+  animation: avatar-ring-spin 10s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes avatar-ring-spin {
+  to {
+    transform: translateX(-50%) rotate(360deg);
+  }
+}
+
+.avatar-upload--disabled {
   opacity: 0.65;
   cursor: wait;
+  pointer-events: none;
 }
 
 .avatar-upload__img {
   border: 2px solid rgba(37, 245, 238, 0.35);
+  box-shadow: 0 0 22px rgba(37, 245, 238, 0.22);
 }
 
 .avatar-upload__hint {
@@ -404,11 +359,35 @@ onMounted(() => {
 }
 
 .student-control__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0 0 0.35rem;
   color: #52fff1;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.14em;
+}
+
+.student-control__status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #52fff1;
+  box-shadow: 0 0 10px rgba(82, 255, 241, 0.85);
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
 }
 
 .student-control__hero h2 {
@@ -498,77 +477,8 @@ onMounted(() => {
   font-weight: 650;
 }
 
-.pref-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.95rem;
-}
-
-.pref-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.65rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.pref-list strong {
-  display: block;
-  color: #edf7ff;
-  font-size: 0.95rem;
-}
-
-.pref-list span {
-  display: block;
-  margin-top: 0.2rem;
-  color: rgba(198, 214, 230, 0.62);
-  font-size: 0.8rem;
-}
-
 .save-btn {
   margin-top: 0.25rem;
-}
-
-.appearance-panel {
-  grid-column: 1 / -1;
-}
-
-.appearance-radio-group {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.appearance-radio {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.65rem 1.1rem;
-  border: 1px solid var(--plex-border-subtle, rgba(255,255,255,0.08));
-  border-radius: 10px;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.appearance-radio__icon {
-  font-size: 1.1rem;
-}
-
-.student-control__charts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-  margin-top: 1.25rem;
-  width: 100%;
-}
-
-.student-control__chart-wrap {
-  height: 260px;
-  margin-top: 0.5rem;
 }
 
 .student-control__hint {
@@ -579,8 +489,7 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
-  .student-control__grid,
-  .student-control__charts {
+  .student-control__grid {
     grid-template-columns: 1fr;
   }
 

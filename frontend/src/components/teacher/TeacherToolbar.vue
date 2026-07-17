@@ -63,14 +63,6 @@ const {
       <i :style="{ width: activeLineWidth }" />
     </div>
 
-    <div class="teacher-toolbar__keeper">
-      <span class="teacher-toolbar__keeper-avatar" aria-hidden="true"><span /></span>
-      <div>
-        <strong>Waystation Keeper</strong>
-        <small>在线</small>
-      </div>
-    </div>
-
     <slot name="trailing" />
 
     <n-button
@@ -155,60 +147,6 @@ const {
   box-shadow: 0 0 16px var(--teacher-orange-glow);
 }
 
-.teacher-toolbar__keeper {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding-left: 1.1rem;
-  border-left: 1px solid rgba(219, 235, 249, 0.1);
-  flex-shrink: 0;
-}
-
-.teacher-toolbar__keeper strong {
-  display: block;
-  color: rgba(255, 247, 237, 0.88);
-  font-size: 0.88rem;
-  white-space: nowrap;
-}
-
-.teacher-toolbar__keeper small {
-  display: block;
-  color: var(--teacher-muted);
-  font-size: 0.78rem;
-  white-space: nowrap;
-}
-
-.teacher-toolbar__keeper small::before {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 0.3rem;
-  border-radius: 50%;
-  background: #22cfa4;
-  content: '';
-}
-
-.teacher-toolbar__keeper-avatar {
-  display: grid;
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
-  place-items: center;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background:
-    radial-gradient(circle at center, rgba(59, 130, 246, 0.28), transparent 62%),
-    #061827;
-}
-
-.teacher-toolbar__keeper-avatar span {
-  width: 28px;
-  height: 20px;
-  border-radius: 9px;
-  background: #e9f3fb;
-  box-shadow: inset 0 -7px #111926;
-}
-
 .teacher-toolbar__refresh {
   flex-shrink: 0;
   color: #fed7aa !important;
@@ -235,8 +173,7 @@ const {
     min-width: 0;
   }
 
-  .teacher-toolbar__activity,
-  .teacher-toolbar__keeper {
+  .teacher-toolbar__activity {
     padding-left: 0;
     border-left: 0;
   }

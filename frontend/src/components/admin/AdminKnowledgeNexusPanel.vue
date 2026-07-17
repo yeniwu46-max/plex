@@ -262,6 +262,13 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 
 <style scoped>
 .knowledge-layout {
+  --admin-text-title: 1.08rem;
+  --admin-text-subtitle: 0.78rem;
+  --admin-text-body: 0.82rem;
+  --admin-text-card-title: 0.86rem;
+  --admin-text-muted: 0.78rem;
+  --admin-text-meta: 0.74rem;
+
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -289,7 +296,10 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
   align-items: start;
   margin-bottom: 1rem;
   color: #c4b5fd;
-  font-size: 1.35rem;
+}
+
+.section-head > .n-icon {
+  font-size: 1.25rem;
 }
 
 .section-head--compact {
@@ -299,13 +309,14 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 .section-head h2 {
   margin: 0;
   color: #fff;
-  font-size: 1.05rem;
+  font-size: var(--admin-text-title);
 }
 
 .section-head p {
-  margin: 0.3rem 0 0;
+  margin: 0.35rem 0 0;
   color: rgba(226, 232, 240, 0.58);
-  font-size: 0.76rem;
+  font-size: var(--admin-text-subtitle);
+  line-height: 1.45;
 }
 
 .domain-grid {
@@ -333,12 +344,12 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 
 .domain-head strong {
   color: rgba(255, 255, 255, 0.92);
-  font-size: 0.88rem;
+  font-size: var(--admin-text-card-title);
 }
 
 .domain-head em {
   color: rgba(167, 139, 250, 0.75);
-  font-size: 0.72rem;
+  font-size: var(--admin-text-meta);
   font-style: normal;
 }
 
@@ -356,13 +367,13 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
   align-items: center;
   gap: 0.5rem;
   color: rgba(226, 232, 240, 0.78);
-  font-size: 0.8rem;
+  font-size: var(--admin-text-body);
 }
 
 .point-list code {
   flex-shrink: 0;
   color: rgba(167, 139, 250, 0.6);
-  font-size: 0.65rem;
+  font-size: var(--admin-text-meta);
 }
 
 .starpath-grid {
@@ -389,27 +400,27 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 .starpath-head strong {
   display: block;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 0.9rem;
+  font-size: var(--admin-text-card-title);
 }
 
 .starpath-head small {
   display: block;
   margin-top: 0.2rem;
   color: rgba(167, 139, 250, 0.7);
-  font-size: 0.72rem;
+  font-size: var(--admin-text-meta);
 }
 
 .starpath-head em {
   flex-shrink: 0;
   color: rgba(167, 139, 250, 0.75);
-  font-size: 0.72rem;
+  font-size: var(--admin-text-meta);
   font-style: normal;
 }
 
 .starpath-desc {
   margin: 0 0 0.65rem;
   color: rgba(226, 232, 240, 0.58);
-  font-size: 0.76rem;
+  font-size: var(--admin-text-muted);
   line-height: 1.45;
 }
 
@@ -438,14 +449,14 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 
 .kp-title span {
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.82rem;
+  font-size: var(--admin-text-body);
 }
 
 .kp-list small {
   display: block;
   color: rgba(226, 232, 240, 0.6);
-  font-size: 0.74rem;
-  line-height: 1.4;
+  font-size: var(--admin-text-muted);
+  line-height: 1.45;
 }
 
 .kp-tags {
@@ -486,7 +497,7 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
   align-items: center;
   padding: 0.45rem 0;
   border-bottom: 1px solid rgba(167, 139, 250, 0.08);
-  font-size: 0.78rem;
+  font-size: var(--admin-text-body);
 }
 
 .relation-list li:last-child {
@@ -500,7 +511,7 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 
 .relation-list em {
   color: #a78bfa;
-  font-size: 0.68rem;
+  font-size: var(--admin-text-meta);
   font-style: normal;
   white-space: nowrap;
 }
@@ -521,14 +532,14 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 .bank-list strong {
   display: block;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.8rem;
+  font-size: var(--admin-text-body);
 }
 
 .bank-list small {
   display: block;
   margin-top: 0.15rem;
   color: rgba(226, 232, 240, 0.52);
-  font-size: 0.7rem;
+  font-size: var(--admin-text-muted);
 }
 
 .sync-list li {
@@ -546,21 +557,21 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 
 .sync-list time {
   color: rgba(167, 139, 250, 0.75);
-  font-size: 0.72rem;
+  font-size: var(--admin-text-meta);
 }
 
 .sync-list strong {
   display: block;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.78rem;
+  font-size: var(--admin-text-body);
 }
 
 .sync-list small {
   display: block;
   margin-top: 0.15rem;
   color: rgba(226, 232, 240, 0.55);
-  font-size: 0.72rem;
-  line-height: 1.35;
+  font-size: var(--admin-text-muted);
+  line-height: 1.45;
 }
 
 .kb-doc-list {
@@ -580,7 +591,7 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
   border-radius: 8px;
   background: rgba(129, 140, 248, 0.08);
   border: 1px solid rgba(129, 140, 248, 0.15);
-  font-size: 0.82rem;
+  font-size: var(--admin-text-body);
 }
 
 .kb-doc-list strong {
@@ -595,7 +606,7 @@ const syncTone: Record<string, 'success' | 'warning' | 'default'> = {
 .kb-doc-list em {
   color: rgba(226, 232, 240, 0.55);
   font-style: normal;
-  font-size: 0.75rem;
+  font-size: var(--admin-text-meta);
 }
 
 @media (max-width: 1280px) {

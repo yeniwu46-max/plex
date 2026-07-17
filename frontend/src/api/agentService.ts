@@ -37,6 +37,8 @@ export interface AgentTraceStep {
   status?: 'success' | 'error' | 'running'
   latencyMs: number
   summary: string
+  source?: string
+  backend?: string
 }
 
 export interface LearningPathPlanResult {
@@ -180,6 +182,7 @@ export interface TeacherSuggestionResult {
   interventionGroups: Array<{
     groupName: string
     students: string[]
+    studentCount?: number
     focus: string
   }>
   backend?: string
@@ -249,10 +252,46 @@ export interface CodeHintResult {
   backend?: string
 }
 
-const AGENT_TIMEOUT_MS = 15_000
+export type TrialCoachIntent = 'error_diagnosis' | 'code_quality' | 'optimization' | 'custom'
 
-async function postAgent<T>(path: string, body: Record<string, unknown> = {}) {
-  const { data } = await http.post<ApiEnvelope<T>>(path, body, { timeout: AGENT_TIMEOUT_MS })
+export interface TrialCoachPayload {
+  intent: TrialCoachIntent
+  exerciseId: string
+  questionTitle?: string
+  questionPrompt?: string
+  topic?: string
+  constraints?: string[]
+  code: string
+  stderr?: string
+  stdout?: string
+  expectedOutput?: string
+  failedCases?: Array<{ label: string; expected: string; actual: string; error?: string }>
+  caseResults?: Array<{ passed: boolean }>
+  allPassed?: boolean
+  answerStatus?: 'correct' | 'wrong' | 'partial' | 'not_run'
+  userQuestion?: string
+  conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+}
+
+export interface TrialCoachResult {
+  agentId: string
+  agentName: string
+  intent: TrialCoachIntent
+  contextSummary: string
+  response: string
+  guidingQuestions?: string[]
+  strengths?: string[]
+  improvements?: string[]
+  policy: 'no_direct_answer'
+  backend?: string
+}
+
+const AGENT_TIMEOUT_MS = 15_000
+const MESSENGER_TIMEOUT_MS = 5_000
+const TRIAL_COACH_TIMEOUT_MS = 45_000
+
+async function postAgent<T>(path: string, body: Record<string, unknown> = {}, timeout = AGENT_TIMEOUT_MS) {
+  const { data } = await http.post<ApiEnvelope<T>>(path, body, { timeout })
   if (data.code !== 0) throw new Error(data.message || '智能体调用失败')
   return data.data
 }
@@ -276,6 +315,31 @@ export function studentDiagnose(payload: StudentDiagnosePayload) {
 /** 根据服务端留存的错题与运行证据执行一次学习诊断，供小E快捷操作使用。 */
 export function diagnoseLearning() {
   return postAgent<StudentDiagnoseResult>('/v1/agents/diagnose-learning')
+}
+
+export type MessengerQuickAction = 'weak_points' | 'next_trial' | 'repair_path' | 'recent_growth'
+
+export interface MessengerQuickActionResult {
+  action: MessengerQuickAction
+  reply: string
+  question_pick?: {
+    code: string
+    id: string
+    title: string
+    topic?: string
+    knowledge_key?: string
+    practice_path?: string
+  } | null
+}
+
+/** 驿站快捷按钮 · 上下文化小E 回复（真实 LLM，5s 超时） */
+export function messengerQuickAction(action: MessengerQuickAction) {
+  return postAgent<MessengerQuickActionResult>('/v1/agents/messenger-quick-action', { action }, MESSENGER_TIMEOUT_MS)
+}
+
+/** 试炼页按需请求小E 反馈（不在运行测试时自动触发） */
+export function requestTrialFeedback(payload: StudentDiagnosePayload) {
+  return postAgent<StudentDiagnoseResult>('/v1/agents/trial-feedback', payload as unknown as Record<string, unknown>)
 }
 
 /** 学生端主闭环：提交代码后一次性获得沙箱、诊断、资源、辅导、图谱和报告。 */
@@ -329,6 +393,11 @@ function localCodeHint(payload: CodeHintPayload): CodeHintResult {
     policy: 'hint_only_no_direct_answer',
     backend: 'local_rules',
   }
+}
+
+/** 试炼编程页 · 三类辅导智能体（报错/质量/优化），禁止直接给答案 */
+export function trialCoach(payload: TrialCoachPayload) {
+  return postAgent<TrialCoachResult>('/v1/agents/trial-coach', payload as unknown as Record<string, unknown>, TRIAL_COACH_TIMEOUT_MS)
 }
 
 /** 学生端 · 代码题提示，只返回注释式提示，不直接给答案 */

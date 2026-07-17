@@ -6,6 +6,7 @@ from app.models import User, db
 from app.services.admin_dashboard import AdminDashboardService
 from app.services.learning_resource import LearningResourceService
 from app.services.system_setting import SystemSettingService
+from app.data.agent_registry import normalize_orchestration, registry_payload
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
 
@@ -60,6 +61,39 @@ def save_admin_settings():
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/agent-orchestration', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_agent_orchestration():
+    try:
+        config = SystemSettingService.get_global_orchestration()
+        payload = registry_payload(config)
+        payload['config'] = config
+        return success_response(payload)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/agent-orchestration', methods=['PUT'])
+@jwt_required()
+@role_required('admin')
+def save_agent_orchestration():
+    try:
+        user_id = int(get_jwt_identity())
+        body = request.get_json() or {}
+        incoming = {
+            'enabled': body.get('enabled', True),
+            'grading_agents': body.get('grading_agents') or [],
+            'learning_pipeline': body.get('learning_pipeline') or [],
+        }
+        saved = SystemSettingService.save_global_orchestration(user_id, incoming)
+        payload = registry_payload(saved)
+        payload['config'] = saved
+        return success_response(payload, '智能体编排已保存')
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 

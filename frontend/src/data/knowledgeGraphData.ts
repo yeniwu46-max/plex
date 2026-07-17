@@ -7,6 +7,17 @@ export interface KgNode {
   status: KgNodeStatus
   description: string
   level: 'basic' | 'intermediate' | 'advanced'
+  answered_count?: number
+  correct_count?: number
+  wrong_count?: number
+  accuracy?: number | null
+  fail_count?: number
+  weak_score?: number
+  affected_student_count?: number
+  student_count?: number
+  weak_count?: number
+  not_mastered_percent?: number
+  top_error_types?: Array<{ error_type: string; count: number }>
   x?: number
   y?: number
 }

@@ -1,6 +1,7 @@
 """控制中枢配置读写"""
 import copy
 
+from app.data.agent_registry import DEFAULT_ORCHESTRATION, normalize_orchestration
 from app.models import Class, SystemSetting, User, db
 
 from .base import BaseService
@@ -31,6 +32,7 @@ DEFAULT_SETTINGS = {
         'wechat': False,
         'sms': False,
     },
+    'agent_orchestration': copy.deepcopy(DEFAULT_ORCHESTRATION),
 }
 
 
@@ -106,3 +108,22 @@ class SystemSettingService(BaseService):
         row.updated_by = user_id
         db.session.commit()
         return SystemSettingService.get_settings(user_id, role_name, class_id)
+
+    @staticmethod
+    def get_global_orchestration() -> dict:
+        row = SystemSetting.query.filter_by(class_id=None).first()
+        merged = SystemSettingService._merge_defaults(row.get_payload() if row else {})
+        return normalize_orchestration(merged.get('agent_orchestration'))
+
+    @staticmethod
+    def save_global_orchestration(user_id: int, payload: dict) -> dict:
+        row = SystemSetting.query.filter_by(class_id=None).first()
+        if not row:
+            row = SystemSetting(class_id=None)
+            db.session.add(row)
+        merged = SystemSettingService._merge_defaults(row.get_payload())
+        merged['agent_orchestration'] = normalize_orchestration(payload)
+        row.set_payload(merged)
+        row.updated_by = user_id
+        db.session.commit()
+        return normalize_orchestration(merged['agent_orchestration'])

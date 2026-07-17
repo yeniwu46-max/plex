@@ -45,7 +45,7 @@ function close() {
 
 function goExplorer(studentId: number) {
   close()
-  void router.push({ path: '/teacher/explorers', query: { studentId: String(studentId) } })
+  void router.push({ path: '/teacher/starfield', query: { studentId: String(studentId) } })
 }
 </script>
 
@@ -97,7 +97,7 @@ function goExplorer(studentId: number) {
       </section>
 
       <n-button v-if="attentionStudents[0]" type="primary" block class="domain-drawer__cta" @click="goExplorer(attentionStudents[0].id)">
-        在 Explorer 档案中查看
+        在星域观测中查看该生
       </n-button>
     </n-drawer-content>
   </n-drawer>

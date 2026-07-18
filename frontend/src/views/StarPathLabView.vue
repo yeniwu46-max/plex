@@ -32,6 +32,7 @@ import DashboardShell from '../components/layout/DashboardShell.vue'
 import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import PlexLearningPathPanel from '../components/agent/PlexLearningPathPanel.vue'
+import PythonTrialWorkspace from '../components/trial/PythonTrialWorkspace.vue'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import { useAuthStore } from '../stores/auth'
 import { fetchServerMistakeRecords } from '../utils/trialMistakeLog'
@@ -40,11 +41,15 @@ import { kgIdFromStarPath } from '../data/knowledgeNodeRegistry'
 import {
   resolveQuestionById,
   resolveStarPathQuestion,
+  generatedQuestionId,
 } from '../utils/starPathQuestionGenerator'
 import { MIN_QUESTIONS_PER_KP } from '../data/starPathKnowledgeTracks'
-import { ensurePracticeQuestionsLoaded } from '../utils/practiceQuestionCache'
+import { ensurePracticeQuestionsLoaded, getCachedPracticeQuestion } from '../utils/practiceQuestionCache'
 import { openPracticeQuestion, searchPracticeQuestions } from '../utils/practiceQuestionNav'
-import { formatQuestionLabel } from '../utils/questionNaming'
+import { formatQuestionLabel, normalizeQuestion } from '../utils/questionNaming'
+import { fetchPracticeQuestionByRef } from '../api/practiceQuestions'
+import { wrapEpisodeNarrative } from '../utils/explorationNarrative'
+import { sanitizeQuestionContent } from '../utils/questionStemSanitizer'
 
 const router = useRouter()
 const route = useRoute()
@@ -83,6 +88,10 @@ const pageSearch = ref('')
 const questionSearchHits = ref<PythonTrialQuestion[]>([])
 const questionSearchLoading = ref(false)
 const acceptedQuestionIds = ref<Set<string>>(new Set())
+const inlinePracticeOpen = ref(false)
+const inlineQuestion = ref<PythonTrialQuestion | null>(null)
+const inlinePracticeReady = ref(false)
+const questionTransitionKey = ref(0)
 
 const activeDomain = computed(() => domains.value.find((item) => item.key === activeDomainKey.value) ?? domains.value[0])
 const activeDomainMeta = computed(() => getStarPathDomain(activeDomainKey.value))
@@ -170,6 +179,127 @@ const activeQuestionId = computed(() => {
   return ids[slot] ?? ids[0] ?? null
 })
 
+const activeKnowledgePoint = computed(() => selectedKnowledge.value?.point ?? null)
+
+const inlineSlotIds = computed(() => {
+  const kp = activeKnowledgePoint.value
+  if (kp) {
+    return Array.from({ length: MIN_QUESTIONS_PER_KP }, (_, slot) => generatedQuestionId(kp.id, slot))
+  }
+  return nodeQuestionIds.value.length ? [...nodeQuestionIds.value] : []
+})
+
+function wrapWithArc(base: PythonTrialQuestion): PythonTrialQuestion {
+  const cleaned = sanitizeQuestionContent(base)
+  if (cleaned.description.includes('星球探险') || cleaned.description.includes('🛸')) {
+    return cleaned
+  }
+  const kp = activeKnowledgePoint.value
+  if (kp && /^gen-.+-s\d+$/.test(cleaned.id)) {
+    const slotMatch = /^gen-.+-s(\d+)$/.exec(cleaned.id)
+    const slot = slotMatch ? Number(slotMatch[1]) : activeQuestionSlot.value
+    const taskLine = cleaned.description.split('\n').filter(Boolean).pop() ?? cleaned.description
+    return {
+      ...cleaned,
+      description: wrapEpisodeNarrative(kp.id, kp.domainKey, slot, taskLine),
+    }
+  }
+  return cleaned
+}
+
+function resolveInlineQuestion(qid: string): PythonTrialQuestion | null {
+  const cached = getCachedPracticeQuestion(qid)
+  if (cached) return wrapWithArc(cached)
+  const staticQuestion = getPythonTrialQuestion(qid)
+  if (staticQuestion) return wrapWithArc(staticQuestion)
+  const kp = activeKnowledgePoint.value
+  if (kp) {
+    const resolved = resolveQuestionById(qid, kp)
+    if (resolved) return wrapWithArc(resolved)
+  }
+  const node = selectedNode.value
+  if (node) {
+    const question = questionForNode(node, qid)
+    if (question) return wrapWithArc(question)
+  }
+  return null
+}
+
+async function loadInlineQuestion(qid?: string) {
+  inlinePracticeReady.value = false
+  await ensurePracticeQuestionsLoaded()
+  const targetId = qid ?? activeQuestionId.value
+  if (!targetId) {
+    inlineQuestion.value = null
+    inlinePracticeReady.value = true
+    return
+  }
+  let question = resolveInlineQuestion(targetId)
+  if (!question) {
+    try {
+      const item = await fetchPracticeQuestionByRef(targetId)
+      question = wrapWithArc(
+        normalizeQuestion({
+          id: item.id,
+          code: item.code,
+          title: item.title,
+          topic: item.topic,
+          difficulty: item.difficulty,
+          rewardXp: item.reward_xp,
+          durationMin: item.duration_min,
+          tags: item.tags,
+          description: item.description,
+          constraints: item.constraints,
+          examples: item.examples,
+          testCases: item.test_cases,
+          starterCode: item.starter_code,
+          runMode: item.run_mode,
+          hint: item.hint,
+        }),
+      )
+    } catch {
+      question = null
+    }
+  }
+  inlineQuestion.value = question ? sanitizeQuestionContent(question) : null
+  inlinePracticeReady.value = true
+  questionTransitionKey.value += 1
+}
+
+function openInlinePractice(question?: PythonTrialQuestion) {
+  inlinePracticeOpen.value = true
+  if (question) {
+    inlineQuestion.value = sanitizeQuestionContent(wrapWithArc(question))
+    inlinePracticeReady.value = true
+    questionTransitionKey.value += 1
+    return
+  }
+  void loadInlineQuestion()
+}
+
+function closeInlinePractice() {
+  inlinePracticeOpen.value = false
+}
+
+function launchFullscreenPractice() {
+  const question = inlineQuestion.value ?? selectedQuestion.value
+  if (!question) {
+    message.warning('请先选择一道试炼题')
+    return
+  }
+  void openPracticeQuestion(router, question)
+}
+
+async function onInlinePassed() {
+  message.success('试炼通过！宝石进度已更新')
+  const data = await fetchLearningPath().catch(() => null)
+  await refreshAcceptedQuestions(data?.question_ac_status)
+}
+
+function selectInlineSlot(slot: number) {
+  selectQuestionSlot(slot, inlineSlotIds.value[slot] ?? '')
+}
+
 function slotForQuestionId(qid: string): number {
   const index = nodeQuestionIds.value.indexOf(qid)
   return index >= 0 ? index : 0
@@ -201,6 +331,9 @@ function onGemSelect(payload: { node: StarPathNode; slot: number }) {
     const question = questionForNode(payload.node, qid)
     if (question) {
       message.info(`已切换至第 ${payload.slot + 1} 题 · ${formatQuestionLabel(question)}`)
+      if (inlinePracticeOpen.value) {
+        await loadInlineQuestion(qid)
+      }
     }
   })()
 }
@@ -269,12 +402,15 @@ function selectQuestionSlot(slot: number, qid: string) {
         : null
     if (question) {
       message.info(`已切换至第 ${slot + 1} 题 · ${formatQuestionLabel(question)}`)
+      if (inlinePracticeOpen.value) {
+        await loadInlineQuestion(qid)
+      }
     }
   })()
 }
 
 function launchPractice(question: PythonTrialQuestion) {
-  void openPracticeQuestion(router, question)
+  openInlinePractice(question)
 }
 
 function rerollQuestion() {
@@ -285,7 +421,9 @@ function rerollQuestion() {
     const generated = resolveStarPathQuestion(kp, { slot: nextSlot })
     if (generated) {
       message.info(`已切换至第 ${nextSlot + 1} 题 · ${formatQuestionLabel(generated)}`)
-      launchPractice(generated)
+      if (inlinePracticeOpen.value) {
+        void loadInlineQuestion(generated.id)
+      }
     }
     return
   }
@@ -296,7 +434,9 @@ function rerollQuestion() {
   const question = questionForNode(selectedNode.value, ids[nextIndex])
   if (question) {
     message.info(`已切换至第 ${nextIndex + 1} 题 · ${formatQuestionLabel(question)}`)
-    launchPractice(question)
+    if (inlinePracticeOpen.value) {
+      void loadInlineQuestion(question.id)
+    }
   }
 }
 
@@ -802,7 +942,15 @@ onActivated(() => {
             :disabled="detailMode === 'node' && (!selectedNode || !isStarPathNodeUnlocked(selectedNode))"
             @click="detailMode === 'knowledge' ? continueKnowledgeTrial() : continueExplore()"
           >
-            {{ detailMode === 'knowledge' || isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
+            {{ inlinePracticeOpen ? '继续内嵌试炼' : detailMode === 'knowledge' || isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
+          </button>
+          <button
+            v-if="inlinePracticeOpen && inlineQuestion"
+            type="button"
+            class="continue-btn continue-btn--ghost"
+            @click="launchFullscreenPractice"
+          >
+            全屏试炼
           </button>
           <button
             v-if="(detailMode === 'knowledge' && !selectedKnowledge?.point.questionId) || (detailMode === 'node' && nodeQuestionIds.length > 1)"
@@ -814,6 +962,39 @@ onActivated(() => {
           </button>
           </div>
         </aside>
+      </section>
+
+      <section
+        v-if="inlinePracticeOpen"
+        class="inline-practice"
+        aria-label="星轨内嵌试炼"
+      >
+        <header class="inline-practice__head">
+          <div>
+            <span class="inline-practice__eyebrow">星轨 · 内嵌试炼</span>
+            <h3 v-if="inlineQuestion">{{ formatQuestionLabel(inlineQuestion) }}</h3>
+            <h3 v-else>加载题目中…</h3>
+          </div>
+          <div class="inline-practice__head-actions">
+            <n-button quaternary size="small" @click="launchFullscreenPractice">全屏试炼</n-button>
+            <n-button quaternary size="small" @click="closeInlinePractice">收起</n-button>
+          </div>
+        </header>
+        <PythonTrialWorkspace
+          v-if="inlinePracticeReady && inlineQuestion"
+          :key="`${inlineQuestion.id}-${questionTransitionKey}`"
+          embedded
+          back-label="收起"
+          :question="inlineQuestion"
+          :slot-ids="inlineSlotIds"
+          :active-slot="activeQuestionSlot"
+          @back="closeInlinePractice"
+          @passed="onInlinePassed"
+          @change-question="rerollQuestion"
+          @select-slot="selectInlineSlot"
+        />
+        <div v-else-if="!inlinePracticeReady" class="inline-practice__loading">正在加载练习题库…</div>
+        <div v-else class="inline-practice__loading">未找到匹配题目，请稍后重试或切换节点。</div>
       </section>
     </main>
   </DashboardShell>
@@ -2282,6 +2463,57 @@ onActivated(() => {
     bottom: 0.75rem;
   }
 
+}
+
+.inline-practice {
+  margin: 1rem var(--plex-page-gutter-x, 1.25rem) 1.5rem;
+  padding: 1rem 1rem 0.5rem;
+  border: 1px solid rgba(35, 255, 222, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(35, 255, 222, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(4, 18, 30, 0.96), rgba(2, 10, 18, 0.98));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+}
+
+.inline-practice__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(130, 212, 255, 0.12);
+}
+
+.inline-practice__eyebrow {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: rgba(35, 255, 222, 0.78);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.inline-practice__head h3 {
+  margin: 0;
+  color: #f3fbff;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.inline-practice__head-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.35rem;
+}
+
+.inline-practice__loading {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(214, 230, 244, 0.72);
 }
 
 </style>

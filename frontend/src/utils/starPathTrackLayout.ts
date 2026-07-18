@@ -26,20 +26,20 @@ function layoutRecursionIterVertical(
 ): Record<string, TrackNodePosition> {
   const count = nodes.length
   if (count === 0) return {}
-  if (count === 1) return { [nodes[0]!.id]: { x: 50, y: 42 } }
+  if (count === 1) return { [nodes[0]!.id]: { x: 50, y: 38 } }
 
   const positions: Record<string, TrackNodePosition> = {}
-  const xStops = [28, 72, 28, 72, 50]
-  const yStart = 14
-  const yStep = Math.min(18, 72 / Math.max(count - 1, 1))
+  const xStops = [22, 78, 22, 78, 50, 72]
+  const yStart = 10
+  const yStep = Math.min(16, 78 / Math.max(count - 1, 1))
 
   nodes.forEach((node, index) => {
     const x = xStops[index % xStops.length] ?? 50
     const y = yStart + index * yStep
     positions[node.id] = {
       x,
-      y: Math.min(88, y),
-      anchor: x < 35 ? 'left' : x > 65 ? 'right' : undefined,
+      y: Math.min(90, y),
+      anchor: x < 30 ? 'left' : x > 70 ? 'right' : undefined,
     }
   })
   return positions

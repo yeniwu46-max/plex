@@ -326,12 +326,12 @@ function gemSlots(node: StarPathNode) {
 
 .track-node {
   --node-color: #26ffee;
-  --node-orb: 56px;
+  --node-orb: 60px;
   position: absolute;
   z-index: 2;
   display: grid;
   width: max-content;
-  max-width: 118px;
+  max-width: 128px;
   justify-items: center;
   align-items: center;
   text-align: center;

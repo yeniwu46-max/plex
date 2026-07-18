@@ -2,7 +2,7 @@
   "passed": true,
   "checks": {
     "initial_gzip": {
-      "actual_bytes": 121116,
+      "actual_bytes": 121083,
       "budget_bytes": 153600,
       "passed": true
     },
@@ -16,8 +16,8 @@
   "initial_assets": [
     {
       "key": "index.html",
-      "file": "assets/index-C2jJ75ly.js",
-      "gzip_bytes": 42816
+      "file": "assets/index-ByrxS0mc.js",
+      "gzip_bytes": 42783
     },
     {
       "key": "_light-Bc1lUJ47.js",
@@ -78,57 +78,57 @@
       "dynamic_entry": true
     },
     {
-      "key": "_PlexBarChart-CXcOMHxH.js",
-      "file": "assets/PlexBarChart-CXcOMHxH.js",
-      "gzip_bytes": 175594,
+      "key": "_PlexBarChart-rxkUjlbg.js",
+      "file": "assets/PlexBarChart-rxkUjlbg.js",
+      "gzip_bytes": 175593,
       "dynamic_entry": false
     },
     {
       "key": "src/components/admin/AdminAgentOrchestrationPanel.vue",
-      "file": "assets/AdminAgentOrchestrationPanel-CqSjZYUS.js",
-      "gzip_bytes": 59237,
+      "file": "assets/AdminAgentOrchestrationPanel-CrnWGvHj.js",
+      "gzip_bytes": 59233,
       "dynamic_entry": true
     },
     {
       "key": "src/views/TeacherTrialCreateView.vue",
-      "file": "assets/TeacherTrialCreateView-CRdgFYdQ.js",
-      "gzip_bytes": 45906,
+      "file": "assets/TeacherTrialCreateView-sF9BAIAO.js",
+      "gzip_bytes": 45909,
       "dynamic_entry": true
     },
     {
+      "key": "_PythonTrialWorkspace-FxQr6NT0.js",
+      "file": "assets/PythonTrialWorkspace-FxQr6NT0.js",
+      "gzip_bytes": 28925,
+      "dynamic_entry": false
+    },
+    {
       "key": "src/views/StarPathLabView.vue",
-      "file": "assets/StarPathLabView-Ce_Y2GK_.js",
-      "gzip_bytes": 23859,
+      "file": "assets/StarPathLabView-vyRszWIZ.js",
+      "gzip_bytes": 24879,
       "dynamic_entry": true
     },
     {
       "key": "src/views/StudentControlView.vue",
-      "file": "assets/StudentControlView-GXJJ3aOS.js",
-      "gzip_bytes": 22424,
+      "file": "assets/StudentControlView-VLde-WTk.js",
+      "gzip_bytes": 22423,
       "dynamic_entry": true
     },
     {
-      "key": "_PlexFileUploader-CeSGnmMt.js",
-      "file": "assets/PlexFileUploader-CeSGnmMt.js",
-      "gzip_bytes": 21961,
+      "key": "_PlexFileUploader-D_6H53M-.js",
+      "file": "assets/PlexFileUploader-D_6H53M-.js",
+      "gzip_bytes": 21963,
       "dynamic_entry": false
     },
     {
-      "key": "_PythonTrialWorkspace-B7zyYlzn.js",
-      "file": "assets/PythonTrialWorkspace-B7zyYlzn.js",
-      "gzip_bytes": 18220,
+      "key": "_PlexTopbar-C9uTVKXX.js",
+      "file": "assets/PlexTopbar-C9uTVKXX.js",
+      "gzip_bytes": 17443,
       "dynamic_entry": false
     },
     {
-      "key": "_PlexTopbar-CDiX2YeM.js",
-      "file": "assets/PlexTopbar-CDiX2YeM.js",
-      "gzip_bytes": 17444,
-      "dynamic_entry": false
-    },
-    {
-      "key": "_Select-BGehr_-X.js",
-      "file": "assets/Select-BGehr_-X.js",
-      "gzip_bytes": 15802,
+      "key": "_Select-kR3fGd-q.js",
+      "file": "assets/Select-kR3fGd-q.js",
+      "gzip_bytes": 15801,
       "dynamic_entry": false
     }
   ]

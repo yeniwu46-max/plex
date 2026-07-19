@@ -78,6 +78,7 @@ class AdminDashboardService:
         weekday_labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
         activity_submissions = []
         activity_passed = []
+        health_scores = []
         x_data = []
         today = date.today()
         for offset in range(6, -1, -1):
@@ -91,7 +92,12 @@ class AdminDashboardService:
                 TrialQuestionProgress.answered_at <= day_end,
             ).all()
             activity_submissions.append(len(rows))
-            activity_passed.append(len([r for r in rows if r.is_correct]))
+            passed_count = len([r for r in rows if r.is_correct])
+            activity_passed.append(passed_count)
+            if rows:
+                health_scores.append(round((passed_count / len(rows)) * 100, 1))
+            else:
+                health_scores.append(95.0)
 
         class_completion = []
         for cls in Class.query.order_by(Class.id.asc()).limit(8).all():
@@ -166,6 +172,10 @@ class AdminDashboardService:
                     'x_data': x_data,
                     'submissions': activity_submissions,
                     'passed': activity_passed,
+                },
+                'health_trend': {
+                    'x_data': x_data,
+                    'scores': health_scores,
                 },
                 'class_completion': class_completion,
             },

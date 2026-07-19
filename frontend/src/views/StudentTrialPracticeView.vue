@@ -190,6 +190,11 @@ watch(
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  padding-top: 0;
+}
+
+:deep(.topbar) {
+  padding-bottom: 0.35rem;
 }
 
 .practice-workspace {

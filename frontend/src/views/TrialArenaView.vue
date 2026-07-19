@@ -225,13 +225,11 @@ watch(selectedClassId, () => {
             <button type="button" :class="{ active: activeTab === 'templates' }" @click="activeTab = 'templates'">我的模板</button>
             <n-button
               v-if="activeTab === 'manage'"
-              type="primary"
-              size="small"
-              class="tabbar__create-toggle"
+              class="tabbar__create-btn"
               @click="goCreate"
             >
-              <template #icon><n-icon :component="AddOutline" /></template>
-              创建试炼
+              <n-icon :component="AddOutline" />
+              <span>创建试炼</span>
             </n-button>
           </header>
 
@@ -457,7 +455,7 @@ watch(selectedClassId, () => {
 }
 
 .keeper-chip small {
-  color: #34d399;
+  color: #fbbf24;
 }
 
 .trial-arena-page {
@@ -471,7 +469,7 @@ watch(selectedClassId, () => {
 .trial-command {
   --orange: #fb923c;
   --gold: #fbbf24;
-  --teal: #2efff1;
+  --gold: #fbbf24;
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--teacher-quad-gap, 1.1rem);
@@ -514,10 +512,36 @@ watch(selectedClassId, () => {
   border-bottom: 1px solid rgba(219, 235, 249, 0.08);
 }
 
-.tabbar__create-toggle {
+.tabbar__create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   margin-left: auto;
   margin-bottom: 0.65rem;
-  color: var(--orange) !important;
+  padding: 0 1.15rem;
+  height: 36px;
+  border: 1px solid rgba(251, 146, 60, 0.55);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(251, 191, 36, 0.08));
+  color: #fdba74;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(251, 146, 60, 0.14), inset 0 1px rgba(255, 255, 255, 0.06);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.tabbar__create-btn:hover {
+  border-color: rgba(251, 146, 60, 0.85);
+  box-shadow: 0 0 22px rgba(251, 146, 60, 0.28);
+  transform: translateY(-1px);
+}
+
+.tabbar__create-btn :deep(.n-icon) {
+  font-size: 1rem;
 }
 
 .command-panel {
@@ -827,9 +851,9 @@ watch(selectedClassId, () => {
 }
 
 .template-card--teal span {
-  color: #34d399;
-  border-color: rgba(52, 211, 153, 0.42);
-  background: rgba(52, 211, 153, 0.12);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.42);
+  background: rgba(251, 191, 36, 0.12);
 }
 
 .template-card--purple span {

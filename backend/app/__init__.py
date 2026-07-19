@@ -203,6 +203,13 @@ def create_app(config_name='development'):
             except Exception:
                 db.session.rollback()
                 app.logger.exception('Test sandbox bootstrap skipped.')
+            from scripts.ensure_demo_class_trial import ensure_demo_class_trial
+
+            try:
+                ensure_demo_class_trial()
+            except Exception:
+                db.session.rollback()
+                app.logger.exception('Demo class trial bootstrap skipped.')
         from app.services.daily_quest import DailyQuestService
 
         DailyQuestService.ensure_default_quests()

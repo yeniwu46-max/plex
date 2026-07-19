@@ -75,6 +75,13 @@ const groupedAgents = computed(() =>
 
 const flowLearningPipeline = computed(() => selectedLearningIds.value)
 
+function backendDisplayLabel(backend: string): string {
+  if (backend === 'mock' || backend === 'rules') return '规则引擎'
+  if (backend === 'crewai') return 'CrewAI'
+  if (backend === 'auto') return '自动选择'
+  return backend
+}
+
 const runtimeBannerTone = computed(() => {
   const runtime = agentRuntime.value
   if (!runtime) return 'idle'
@@ -92,18 +99,18 @@ const runtimeBannerMessage = computed(() => {
     return 'CrewAI 虚拟环境与 API Key 已就绪，学习流水线将使用 LLM 增强'
   }
   if (runtime.llm_available && !runtime.crewai_venv) {
-    return 'API Key 已配置：学习流水线将通过主进程 LLM 增强（CrewAI venv 缺失时可降级运行）'
+    return 'API Key 已配置：学习流水线将通过主进程 LLM 增强（CrewAI 环境未就绪时使用规则引擎）'
   }
   if (runtime.degraded_reason === 'missing_api_key') {
-    return '已检测到 CrewAI 环境，但未配置 OPENAI_API_KEY / OPENROUTER_API_KEY，将降级为规则引擎'
+    return 'AI 环境已就绪，但未配置 API Key，当前使用规则引擎运行'
   }
   if (runtime.degraded_reason === 'missing_crewai_venv') {
-    return '缺少 backend/.venv-crewai，请运行 scripts/install_crewai.ps1 后重启后端'
+    return 'CrewAI 运行环境尚未就绪，请联系运维完成部署后重启服务'
   }
   if (agentBackend.value === 'mock') {
-    return '当前为 mock 规则后端；配置 AGENT_BACKEND=auto 并安装 CrewAI venv 可启用 LLM'
+    return '当前使用规则引擎运行；配置 API Key 并启用 AI 环境后可切换至 LLM 增强模式'
   }
-  return `运行时后端：${agentBackend.value}`
+  return `运行后端：${backendDisplayLabel(agentBackend.value)}`
 })
 
 function applyOrchestrationPayload(payload: AgentOrchestrationResult) {
@@ -212,8 +219,8 @@ onMounted(() => {
     <article class="panel grading-panel">
       <header class="panel-head panel-head--stack">
         <div>
-          <h2>教师检查智能体</h2>
-          <p>勾选参与学生做题自动检查；保存后写入平台配置，学生提交试炼时按编排执行</p>
+          <h2>检查智能体</h2>
+          <p>勾选参与学生做题自动检查的智能体，保存后写入平台配置</p>
         </div>
         <div class="grading-actions">
           <label class="enable-switch">
@@ -243,11 +250,11 @@ onMounted(() => {
       >
         <n-icon :component="runtimeBannerTone === 'ok' ? CheckmarkCircleOutline : WarningOutline" />
         <span>{{ runtimeBannerMessage }}</span>
-        <span v-if="agentRuntime">后端 {{ agentBackend }} · venv {{ agentRuntime.crewai_venv ? 'OK' : '缺失' }} · Key {{ agentRuntime.api_key_configured ? 'OK' : '未配置' }}</span>
+        <span v-if="agentRuntime">后端 {{ backendDisplayLabel(agentBackend) }} · 环境 {{ agentRuntime.crewai_venv ? '就绪' : '未就绪' }} · Key {{ agentRuntime.api_key_configured ? '已配置' : '未配置' }}</span>
       </div>
 
       <div class="backend-banner">
-        <span>运行时后端：{{ agentBackend }}</span>
+        <span>运行后端：{{ backendDisplayLabel(agentBackend) }}</span>
         <span v-if="loading">加载配置中…</span>
       </div>
 

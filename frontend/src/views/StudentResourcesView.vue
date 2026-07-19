@@ -297,12 +297,16 @@ onMounted(() => {
 
         <div v-if="groupedResources.length" class="resource-layout">
           <div class="resource-layout__list">
-            <section class="resource-groups">
-              <article v-for="group in groupedResources" :key="group.label" class="resource-group">
-                <header>
-                  <h3>{{ group.label }}</h3>
-                  <span>{{ group.items.length }} 类资源</span>
-                </header>
+            <n-collapse class="resource-groups-collapse" :default-expanded-names="groupedResources.map((g) => g.label)">
+              <n-collapse-item
+                v-for="group in groupedResources"
+                :key="group.label"
+                :title="group.label"
+                :name="group.label"
+              >
+                <template #header-extra>
+                  <span class="resource-group__count">{{ group.items.length }} 类资源</span>
+                </template>
                 <div class="resource-grid">
                   <button
                     v-for="item in group.items"
@@ -328,13 +332,12 @@ onMounted(() => {
                     <strong>{{ item.title }}</strong>
                     <p>{{ item.recommendation_reason }}</p>
                     <span class="resource-card__meta">
-                      <em>置信度 {{ Math.round(item.confidence * 100) }}%</em>
-                      <em>{{ item.estimated_minutes }} 分钟</em>
+                      <em>约 {{ item.estimated_minutes }} 分钟</em>
                     </span>
                   </button>
                 </div>
-              </article>
-            </section>
+              </n-collapse-item>
+            </n-collapse>
           </div>
 
           <section
@@ -363,7 +366,7 @@ onMounted(() => {
                 :bundle-item="bundleForTask(selected.generation_task_id)"
                 theme="student"
               />
-              <h4>知识库引用</h4>
+              <h4>参考来源</h4>
               <ul>
                 <li
                   v-for="citation in selected.citations"
@@ -381,10 +384,10 @@ onMounted(() => {
         <section v-else class="resource-state">暂无匹配资源。可以切换类型筛选，或生成新的资源包。</section>
 
         <n-collapse v-if="visibleTasks.length" class="task-history">
-          <n-collapse-item title="生成任务历史" name="history">
+          <n-collapse-item title="最近生成记录" name="history">
             <article v-for="item in visibleTasks" :key="item.task_id" class="task-history__row">
               <div>
-                <strong>{{ item.task_id.slice(0, 8) }}…</strong>
+                <strong>{{ item.resources[0]?.knowledge_label || item.resources[0]?.title || '学习资源' }}</strong>
                 <span>{{ item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '进行中' }}</span>
               </div>
               <div class="task-history__actions">
@@ -578,25 +581,32 @@ onMounted(() => {
   margin: 1rem 0 0.75rem;
 }
 
-.resource-groups {
+.resource-groups-collapse {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.65rem;
 }
 
-.resource-group {
-  padding: 1rem;
+.resource-groups-collapse :deep(.n-collapse-item) {
+  border: 1px solid rgba(37, 245, 238, 0.15);
+  border-radius: 0.75rem;
+  background: rgba(3, 16, 28, 0.84);
+  overflow: hidden;
 }
 
-.resource-group > header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
+.resource-groups-collapse :deep(.n-collapse-item__header) {
+  padding: 0.85rem 1rem;
+  color: #f2fbff;
+  font-weight: 650;
 }
 
-.resource-group > header span {
+.resource-group__count {
   color: rgba(125, 165, 182, 0.9);
   font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.resource-groups-collapse :deep(.n-collapse-item__content-inner) {
+  padding: 0 1rem 1rem;
 }
 
 .resource-grid {

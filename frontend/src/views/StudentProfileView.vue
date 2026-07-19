@@ -74,7 +74,7 @@ async function finishDiagnostic(skip = false) {
   try {
     const result = await submitProfileDiagnostic(answers.value, skip)
     profile.value = result.profile; diagnosticStatus.value = skip ? 'skipped' : 'completed'; diagnosticVisible.value = false
-    await load(); message.success(skip ? '已跳过测验，系统将根据后续练习补全画像' : '诊断完成，AI 学习报告已刷新')
+    await load(); message.success(skip ? '已跳过测验，小E 会根据后续练习补全画像' : '诊断完成，学习报告已刷新')
   } catch (error) { message.error(error instanceof Error ? error.message : '诊断提交失败') } finally { saving.value = false }
 }
 async function applyCalibration(value: string) {
@@ -88,30 +88,30 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 </script>
 
 <template>
-  <DashboardShell active-nav="me" page-title="学习画像" page-subtitle="你的 AI 学习报告会随练习持续更新" search-placeholder="" hide-search>
+  <DashboardShell active-nav="me" page-title="学习画像" page-subtitle="小E 会根据你的练习持续更新学习报告" search-placeholder="" hide-search>
     <template #toolbar><StudentSectionTabs area="me" /></template>
     <main class="profile-page">
       <section class="profile-header">
-        <div><p class="eyebrow">AI LEARNING PROFILE · V{{ profile?.version ?? 1 }}</p><h2>今天，先让学习路径更懂你</h2><p>基于诊断、对话和练习行为生成。每一条结论都可以通过“校准画像”调整。</p></div>
+        <div><p class="eyebrow">学习画像 · 第 {{ profile?.version ?? 1 }} 版</p><h2>今天，先让学习路径更懂你</h2><p>基于诊断、对话和练习行为生成。每一条结论都可以通过“校准画像”调整。</p></div>
         <div class="header-actions"><n-progress type="circle" :percentage="profile?.completion_rate ?? 0" color="#34e6c5" /><n-button type="primary" @click="diagnosticVisible = true">{{ diagnosticStatus === 'pending' ? '开始入门诊断' : '重新进行诊断' }}</n-button></div>
       </section>
 
-      <section class="identity-card"><div class="identity-title"><span>AI 报告 A</span><h3>当前学习身份</h3></div><div class="identity-grid"><div><small>当前阶段</small><strong>{{ coreIdentity.stage }}</strong></div><div><small>当前任务</small><strong>{{ coreIdentity.mission }}</strong></div><div><small>当前学习模式</small><strong>{{ coreIdentity.mode }}</strong></div><div><small>今日推荐时长</small><strong>{{ coreIdentity.minutes }} 分钟</strong></div></div></section>
+      <section class="identity-card"><div class="identity-title"><h3>当前学习身份</h3></div><div class="identity-grid"><div><small>当前阶段</small><strong>{{ coreIdentity.stage }}</strong></div><div><small>当前任务</small><strong>{{ coreIdentity.mission }}</strong></div><div><small>当前学习模式</small><strong>{{ coreIdentity.mode }}</strong></div><div><small>今日推荐时长</small><strong>{{ coreIdentity.minutes }} 分钟</strong></div></div></section>
 
       <section class="report-grid" data-tour="student-learning-report">
-        <article class="report-card radar-card"><header><span>AI 报告 B</span><h3>知识雷达图</h3><p>只关注五个会直接影响下一步学习的核心能力。</p></header><plex-radar-chart :dimensions="radarLabels" :values="radarValues" title="当前掌握度" color="#34e6c5" /></article>
-        <article class="report-card"><header><span>AI 报告 C</span><h3>易错模式</h3><p>系统从近期作答中提取，优先安排针对性练习。</p></header><ul class="mistake-list"><li v-for="item in mistakes" :key="item.id"><i>!</i><div><strong>{{ item.knowledge_label }}</strong><span>{{ item.question_title || '高频错误，建议用微练习巩固' }}</span></div></li><li v-if="!mistakes.length" class="empty">完成几道练习后，系统会识别你的高频错误。</li></ul></article>
-        <article class="report-card state-card"><header><span>AI 报告 D</span><h3>学习状态提醒</h3></header><p>{{ stateText }}</p><div v-if="adaptations.length" class="adaptation"><n-tag type="warning">已自动介入</n-tag><strong>{{ adaptations[0].action_plan.resources.join(' + ') }}</strong><small>{{ adaptations[0].action_plan.recovery_rule }}</small></div><div v-else class="adaptation stable"><n-tag type="success">节奏稳定</n-tag><strong>继续保持 25 分钟短时专注</strong><small>下一次练习会根据正确率自动调整。</small></div></article>
+        <article class="report-card radar-card"><header><h3>知识雷达图</h3><p>只关注五个会直接影响下一步学习的核心能力。</p></header><plex-radar-chart :dimensions="radarLabels" :values="radarValues" title="当前掌握度" color="#34e6c5" /></article>
+        <article class="report-card"><header><h3>易错模式</h3><p>小E 从近期作答中提取，优先安排针对性练习。</p></header><ul class="mistake-list"><li v-for="item in mistakes" :key="item.id"><i>!</i><div><strong>{{ item.knowledge_label }}</strong><span>{{ item.question_title || '高频错误，建议用微练习巩固' }}</span></div></li><li v-if="!mistakes.length" class="empty">完成几道练习后，小E 会帮你找出高频错误。</li></ul></article>
+        <article class="report-card state-card"><header><h3>学习状态提醒</h3></header><p>{{ stateText }}</p><div v-if="adaptations.length" class="adaptation"><n-tag type="warning">小E 已介入</n-tag><strong>{{ adaptations[0].action_plan.resources.join(' + ') }}</strong><small>{{ adaptations[0].action_plan.recovery_rule }}</small></div><div v-else class="adaptation stable"><n-tag type="success">节奏稳定</n-tag><strong>继续保持 25 分钟短时专注</strong><small>下一次练习会根据正确率自动调整。</small></div></article>
       </section>
 
-      <section class="ai-summary"><header><div><span>AI 深度分析</span><h3>{{ aiReport?.headline || '正在生成你的阶段学习报告' }}</h3></div><n-tag size="small">{{ aiReport ? '已基于近 7 天数据' : '等待学习证据' }}</n-tag></header><p v-for="line in aiReport?.summary" :key="line">{{ line }}</p><div class="next-actions"><strong>下一步建议</strong><ol><li v-for="item in aiReport?.next_actions" :key="item">{{ item }}</li><li v-if="!aiReport?.next_actions">先完成一轮短练习，AI 会给出更具体的下一步。</li></ol></div></section>
+      <section class="ai-summary"><header><div><span>小E 的阶段分析</span><h3>{{ aiReport?.headline || '正在整理你的阶段学习报告' }}</h3></div><n-tag size="small">{{ aiReport ? '已基于近 7 天数据' : '等待学习证据' }}</n-tag></header><p v-for="line in aiReport?.summary" :key="line">{{ line }}</p><div class="next-actions"><strong>下一步建议</strong><ol><li v-for="item in aiReport?.next_actions" :key="item">{{ item }}</li><li v-if="!aiReport?.next_actions">先完成一轮短练习，小E 会给出更具体的下一步。</li></ol></div></section>
 
-      <section class="calibration"><div><span>不是填表，而是让 AI 更准确</span><h3>校准我的学习画像</h3><p>选择更接近你的真实偏好，系统会立刻重排资源和学习节奏。</p></div><n-button secondary type="primary" @click="calibrationVisible = true">优化画像</n-button></section>
+      <section class="calibration"><div><span>不是填表，而是让小E 更懂你</span><h3>校准我的学习画像</h3><p>选择更接近你的真实偏好，小E 会立刻重排资源和学习节奏。</p></div><n-button secondary type="primary" @click="calibrationVisible = true">优化画像</n-button></section>
     </main>
 
     <n-modal v-model:show="diagnosticVisible" preset="card" class="diagnostic-modal" title="Python 入门诊断">
       <template #header-extra><n-tag size="small" round type="info">已答 {{ Object.keys(answers).length }} / {{ questions.length }}</n-tag></template>
-      <p class="modal-intro">这不是考试，而是帮 AI 识别你的起点，生成更合适的首周学习计划。</p>
+      <p class="modal-intro">这不是考试，而是帮小E 了解你的起点，生成更合适的首周学习计划。</p>
       <n-progress class="diagnostic-progress" type="line" :height="6" :show-indicator="false" :percentage="questions.length ? Math.round(Object.keys(answers).length / questions.length * 100) : 0" color="#34e6c5" />
       <div class="diagnostic-body">
         <article v-for="(question, index) in questions" :key="question.id" class="question">

@@ -55,7 +55,7 @@ function difficultyLabel(node: LearningPathOrderedNode) {
     >
       <strong>下一步建议</strong>
       <p>{{ nextBestAction.reason }}</p>
-      <em>{{ nextBestAction.action === 'practice' ? '进入练习' : '先复习前置' }}</em>
+      <em>{{ nextBestAction.action === 'practice' ? '去练一题' : '先复习前置' }}</em>
     </button>
 
     <ol v-if="displayNodes.length" class="plex-learning-path__timeline">
@@ -80,8 +80,8 @@ function difficultyLabel(node: LearningPathOrderedNode) {
         </div>
         <p class="plex-learning-path__meta">
           掌握度 {{ masteryPct(node) }}%
-          <template v-if="node.locked"> · 前置未满足</template>
-          <template v-else-if="node.remediation"> · 补救中</template>
+          <template v-if="node.locked"> · 先把前面学完</template>
+          <template v-else-if="node.remediation"> · 我在帮你补强</template>
         </p>
         <ul v-if="node.recommended_resources?.length" class="plex-learning-path__resources">
           <li v-for="res in node.recommended_resources.slice(0, 2)" :key="res.id">{{ res.title }}</li>
@@ -90,7 +90,7 @@ function difficultyLabel(node: LearningPathOrderedNode) {
     </ol>
 
     <div v-if="remediationPaths?.length" class="plex-learning-path__remediation">
-      <strong>补救路径</strong>
+      <strong>我会带你补这些环节</strong>
       <ul>
         <li v-for="(path, idx) in remediationPaths" :key="idx">
           {{ path.steps.join(' → ') }}
@@ -105,9 +105,14 @@ function difficultyLabel(node: LearningPathOrderedNode) {
 .plex-learning-path {
   border: 1px solid rgba(56, 189, 248, 0.25);
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   background: rgba(15, 23, 42, 0.55);
-  margin-bottom: 16px;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .plex-learning-path__head {
@@ -152,10 +157,13 @@ function difficultyLabel(node: LearningPathOrderedNode) {
 .plex-learning-path__timeline {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 2px 4px 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .plex-learning-path__step {
@@ -172,6 +180,7 @@ function difficultyLabel(node: LearningPathOrderedNode) {
 
 .plex-learning-path__step--active {
   border: 1px solid rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.12);
 }
 
 .plex-learning-path__step--locked {

@@ -83,6 +83,10 @@ export interface AdminDashboardResult {
       submissions: number[]
       passed: number[]
     }
+    health_trend?: {
+      x_data: string[]
+      scores: number[]
+    }
     class_completion: Array<{ label: string; rate: number }>
   }
 }

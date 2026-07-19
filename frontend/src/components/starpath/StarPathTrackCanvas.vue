@@ -410,6 +410,14 @@ function gemSlots(node: StarPathNode) {
   background: linear-gradient(135deg, #5ffff3, #12d8c8);
   box-shadow: 0 0 14px rgba(35, 255, 222, 0.65);
   transform: rotate(45deg) scale(1.15);
+  animation: track-gem-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes track-gem-pulse {
+  50% {
+    box-shadow: 0 0 20px rgba(35, 255, 222, 0.85);
+    transform: rotate(45deg) scale(1.22);
+  }
 }
 
 .track-gem--locked {
@@ -507,12 +515,44 @@ function gemSlots(node: StarPathNode) {
 
 .track-node--selected {
   filter: drop-shadow(0 0 16px rgba(37, 245, 238, 0.52));
+  z-index: 4;
 }
 
 .track-node--selected .track-node__orb {
+  animation: track-node-pulse 2.2s ease-in-out infinite;
   box-shadow:
     0 0 0 8px rgba(35, 255, 222, 0.14),
     0 0 32px rgba(35, 255, 222, 0.52);
+}
+
+.track-node--selected .track-node__orb::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border: 2px solid rgba(35, 255, 222, 0.55);
+  border-radius: 50%;
+  animation: track-node-ring 2.2s ease-out infinite;
+}
+
+@keyframes track-node-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes track-node-ring {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
 }
 
 .track-node--locked {

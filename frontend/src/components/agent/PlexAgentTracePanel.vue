@@ -23,7 +23,7 @@ const steps = computed(() =>
       ...stage,
       status: hit?.status ?? (props.loading ? 'running' : 'pending'),
       latencyMs: hit?.latencyMs,
-      summary: hit?.summary ?? (props.loading ? '智能体协作处理中…' : ''),
+      summary: hit?.summary ?? (props.loading ? '小E 正在整理建议…' : ''),
     }
   }),
 )
@@ -34,9 +34,9 @@ const totalLatency = computed(() =>
 </script>
 
 <template>
-  <section class="plex-trace" aria-label="智能体协作过程">
+  <section class="plex-trace" aria-label="小E 思考过程">
     <n-collapse arrow-placement="right">
-      <n-collapse-item title="智能体协作流程" name="trace">
+      <n-collapse-item title="小E 是怎么想的" name="trace">
         <header class="plex-trace__head">
           <span v-if="totalLatency > 0" class="plex-trace__total">
             共 {{ Math.round(totalLatency) }} ms

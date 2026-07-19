@@ -8,9 +8,9 @@ defineProps<{
 </script>
 
 <template>
-  <aside class="trial-recommend" aria-label="题目推荐逻辑">
+  <aside class="trial-recommend" aria-label="小E 推荐练习">
     <header class="trial-recommend__head">
-      <h2>小E · 推荐逻辑</h2>
+      <h2>小E · 推荐练习</h2>
       <span>{{ nodeLabel }}</span>
     </header>
 

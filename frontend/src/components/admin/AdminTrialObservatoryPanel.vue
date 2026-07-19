@@ -5,6 +5,7 @@ import { fetchAdminTrials, type AdminTrialRow } from '../../api/adminTrials'
 import { fetchTeacherTrialDetail, type TeacherTrialDetailResult } from '../../api/teacherTrials'
 import { fetchAdminDashboard } from '../../api/adminSettings'
 import { http, type ApiEnvelope } from '../../api/http'
+import { stripListTitlePrefix } from '../../utils/questionNaming'
 import PlexLineChart from '../charts/PlexLineChart.vue'
 import PlexBarChart from '../charts/PlexBarChart.vue'
 
@@ -109,11 +110,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="admin-trials" aria-label="试炼数据观测">
+  <section class="admin-trials" aria-label="试炼数据观测" data-tour="admin-trial-observatory">
     <header class="admin-trials__head">
       <div>
         <h2>试炼关卡数据</h2>
-        <p>查看全校试炼发布、学生答题与完成进度（数据来自数据库）</p>
+        <p>查看全校试炼发布、学生答题与完成进度</p>
       </div>
       <div class="admin-trials__filters">
         <n-select
@@ -142,7 +143,7 @@ onMounted(() => {
             @click="openDetail(trial.id)"
           >
             <div>
-              <strong>{{ trial.title }}</strong>
+              <strong>{{ stripListTitlePrefix(trial.title) }}</strong>
               <p>
                 {{ trial.class_name }} · {{ trial.teacher_name }}
                 · {{ statusLabels[trial.effective_status ?? trial.status] ?? trial.status }}
@@ -190,7 +191,7 @@ onMounted(() => {
       <aside class="admin-trials__detail">
         <div v-if="detailLoading" class="admin-trials__state">加载详情…</div>
         <template v-else-if="detail">
-          <h3>{{ detail.trial.title }}</h3>
+          <h3>{{ stripListTitlePrefix(detail.trial.title) }}</h3>
           <p class="admin-trials__detail-meta">
             {{ detail.class_name }} · 完成率 {{ detail.summary.completion_rate }}% · 平均分
             {{ detail.summary.avg_score }}
@@ -232,11 +233,11 @@ onMounted(() => {
 
 .admin-trials__body {
   display: grid;
-  grid-template-columns: minmax(220px, 0.38fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(160px, 1fr);
+  grid-template-columns: minmax(280px, 0.42fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(320px, 1fr);
   gap: 1rem;
   flex: 1;
-  min-height: 0;
+  min-height: 560px;
 }
 
 .admin-trials__list {
@@ -281,7 +282,7 @@ onMounted(() => {
 }
 
 .admin-trials__chart-wrap {
-  height: 200px;
+  height: 220px;
 }
 
 .admin-trials__head {
@@ -346,8 +347,8 @@ onMounted(() => {
   border-radius: 12px;
   padding: 0.85rem 1rem;
   background: rgba(11, 22, 40, 0.72);
-  overflow: auto;
-  min-height: 0;
+  overflow: visible;
+  min-height: 320px;
   max-height: none;
 }
 
@@ -360,7 +361,7 @@ onMounted(() => {
   .admin-trials__list {
     grid-column: 1;
     grid-row: 1;
-    max-height: 220px;
+    max-height: 280px;
   }
 
   .admin-trials__charts {
@@ -371,7 +372,8 @@ onMounted(() => {
   .admin-trials__detail {
     grid-column: 1;
     grid-row: 3;
-    max-height: 280px;
+    min-height: 320px;
+    max-height: none;
   }
 }
 

@@ -4,6 +4,8 @@ import { TEACHER_KNOWLEDGE_UNIVERSE } from './teacherKnowledgeCatalog'
 
 export type OrbitNodeTone = 'amber' | 'gold' | 'teal' | 'red'
 
+/** 教师端星域节点：teal 仅作类型兼容，视觉映射为橙黄主题 */
+
 export interface OrbitNode {
   label: string
   tone: OrbitNodeTone
@@ -22,7 +24,7 @@ const ORBIT_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
   algo: { tone: 'amber', x: 43, y: 16 },
   fe: { tone: 'gold', x: 72, y: 26 },
   be: { tone: 'red', x: 73, y: 70 },
-  cs: { tone: 'teal', x: 50, y: 78 },
+  cs: { tone: 'gold', x: 48, y: 72 },
   db: { tone: 'amber', x: 21, y: 66 },
   ds: { tone: 'red', x: 12, y: 39 },
 }
@@ -42,26 +44,26 @@ export const STARFIELD_DOMAINS: Omit<OrbitNode, 'score' | 'delta'>[] = TEACHER_K
 const DELTA_CYCLE: OrbitNode['delta'][] = ['上升', '稳定', '下降']
 
 const STUDENT_DOMAIN_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
-  stage1: { tone: 'teal', x: 11, y: 30 },
-  stage2: { tone: 'amber', x: 34, y: 10 },
-  stage3: { tone: 'gold', x: 72, y: 18 },
-  stage4: { tone: 'teal', x: 86, y: 62 },
-  lang: { tone: 'teal', x: 18, y: 28 },
+  stage1: { tone: 'gold', x: 16, y: 28 },
+  stage2: { tone: 'amber', x: 34, y: 12 },
+  stage3: { tone: 'gold', x: 68, y: 16 },
+  stage4: { tone: 'amber', x: 78, y: 58 },
+  lang: { tone: 'gold', x: 20, y: 26 },
   algo: { tone: 'amber', x: 43, y: 16 },
-  dp: { tone: 'gold', x: 68, y: 24 },
-  geom: { tone: 'teal', x: 78, y: 52 },
-  graph: { tone: 'red', x: 58, y: 76 },
-  ds: { tone: 'amber', x: 24, y: 72 },
-  'data-vars': { tone: 'teal', x: 12, y: 26 },
+  dp: { tone: 'gold', x: 64, y: 24 },
+  geom: { tone: 'amber', x: 72, y: 50 },
+  graph: { tone: 'red', x: 56, y: 70 },
+  ds: { tone: 'amber', x: 26, y: 68 },
+  'data-vars': { tone: 'gold', x: 14, y: 24 },
   operators: { tone: 'amber', x: 30, y: 10 },
-  'flow-control': { tone: 'gold', x: 52, y: 8 },
-  strings: { tone: 'teal', x: 74, y: 22 },
-  'lists-dicts': { tone: 'amber', x: 88, y: 48 },
-  functions: { tone: 'gold', x: 70, y: 74 },
-  'recursion-iter': { tone: 'red', x: 26, y: 76 },
+  'flow-control': { tone: 'gold', x: 50, y: 10 },
+  strings: { tone: 'amber', x: 68, y: 22 },
+  'lists-dicts': { tone: 'gold', x: 74, y: 42 },
+  functions: { tone: 'gold', x: 66, y: 68 },
+  'recursion-iter': { tone: 'red', x: 28, y: 72 },
 }
 
-const ORBIT_TONE_CYCLE: OrbitNodeTone[] = ['teal', 'amber', 'gold', 'teal', 'amber', 'red', 'gold']
+const ORBIT_TONE_CYCLE: OrbitNodeTone[] = ['gold', 'amber', 'gold', 'amber', 'gold', 'red', 'amber']
 
 /** 将节点均匀分布在椭圆轨道上，避免默认 (50,50) 堆叠 */
 export function layoutOrbitPosition(index: number, total: number): Pick<OrbitNode, 'x' | 'y'> {

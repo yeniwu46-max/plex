@@ -78,6 +78,35 @@ const pageRecommendation = computed(() =>
 
 const recommendedQuestionId = computed(() => pageRecommendation.value.recommendedQuestionId)
 
+function isInternalSandboxTrial(trial: StudentTrial) {
+  const title = (trial.title || '').trim()
+  if (title.endsWith('通关试炼') && !trial.reward_points) return true
+  if (trial.difficulty >= 100 && !trial.reward_points) return true
+  return false
+}
+
+const visibleTrials = computed(() => trials.value.filter((trial) => !isInternalSandboxTrial(trial)))
+
+const visibleTrialStats = computed(() => {
+  if (!trialStats.value) return null
+  const recent = trialStats.value.recent_completions.filter(
+    (item) => !item.title.endsWith('通关试炼') && !(item.score === 100 && item.title.includes('通关')),
+  )
+  const completedCount = recent.length
+  const avgScore = completedCount
+    ? Math.round(recent.reduce((sum, item) => sum + item.score, 0) / completedCount)
+    : trialStats.value.summary.avg_score
+  return {
+    ...trialStats.value,
+    summary: {
+      ...trialStats.value.summary,
+      completed_count: completedCount || trialStats.value.summary.completed_count,
+      avg_score: avgScore,
+    },
+    recent_completions: recent,
+  }
+})
+
 
 const questionAcStatus = computed(() => {
   const records = serverMistakes.value.length
@@ -232,7 +261,7 @@ onActivated(() => {
           <div class="student-trial__stats-grid">
             <article class="student-trial__stat-card">
               <span class="student-trial__stat-label">已完成</span>
-              <strong>{{ trialStats.summary.completed_count }}</strong>
+              <strong>{{ visibleTrialStats?.summary.completed_count ?? trialStats.summary.completed_count }}</strong>
             </article>
             <article class="student-trial__stat-card">
               <span class="student-trial__stat-label">进行中</span>
@@ -240,15 +269,15 @@ onActivated(() => {
             </article>
             <article class="student-trial__stat-card">
               <span class="student-trial__stat-label">均分</span>
-              <strong>{{ trialStats.summary.avg_score }}</strong>
+              <strong>{{ visibleTrialStats?.summary.avg_score ?? trialStats.summary.avg_score }}</strong>
             </article>
             <article class="student-trial__stat-card">
               <span class="student-trial__stat-label">累计参与</span>
               <strong>{{ trialStats.summary.total_participations }}</strong>
             </article>
           </div>
-          <ul v-if="trialStats.recent_completions.length" class="student-trial__recent">
-            <li v-for="item in trialStats.recent_completions" :key="`${item.trial_id}-${item.completed_at}`">
+          <ul v-if="visibleTrialStats?.recent_completions.length" class="student-trial__recent">
+            <li v-for="item in visibleTrialStats.recent_completions" :key="`${item.trial_id}-${item.completed_at}`">
               <span>{{ item.title }}</span>
               <em>{{ item.score }} 分</em>
             </li>
@@ -342,11 +371,11 @@ onActivated(() => {
           <span>{{ errorMessage }}</span>
           <n-button secondary size="small" @click="loadTrials()">重试</n-button>
         </div>
-        <p v-else-if="!trials.length" class="student-trial__state">当前没有进行中的班级试炼，可先完成上方 Python 入门题。</p>
+        <p v-else-if="!visibleTrials.length" class="student-trial__state">当前没有进行中的班级试炼，可先完成上方 Python 入门题。</p>
 
         <ul v-else class="student-trial__list">
           <li
-            v-for="trial in trials"
+            v-for="trial in visibleTrials"
             :key="trial.id"
             class="student-trial__card"
             :class="{ 'student-trial__card--highlight': highlightTrialId === trial.id }"

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { VueFlow, useVueFlow, type Node, type Edge } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
+import { NModal } from 'naive-ui'
 import {
   fetchAgentsStatus,
   studentDiagnose,
@@ -48,7 +49,6 @@ const props = withDefaults(
 
 const FLOW_TO_BACKEND: Record<string, string> = {
   diagnose: 'learning_diagnosis',
-  kg: 'knowledge_graph',
   path: 'learning_path',
   code: 'code_analysis',
   feedback: 'feedback',
@@ -56,12 +56,11 @@ const FLOW_TO_BACKEND: Record<string, string> = {
 }
 
 const AGENT_DEFS = [
-  { id: 'diagnose', name: '学习诊断智能体', nameEn: 'Learning Diagnostics', desc: '分析学生答题记录与代码运行结果，识别薄弱点', icon: '🔍', x: 60, y: 200 },
-  { id: 'kg', name: '知识图谱智能体', nameEn: 'Knowledge Graph', desc: '基于知识图谱定位相关前置知识与关联节点', icon: '🗺️', x: 320, y: 100 },
-  { id: 'path', name: '路径推荐智能体', nameEn: 'Path Planner', desc: '结合能力画像生成个性化学习路径', icon: '🧭', x: 320, y: 300 },
-  { id: 'code', name: '代码分析智能体', nameEn: 'Code Analyzer', desc: '解析编译错误、运行时错误与逻辑问题', icon: '💻', x: 580, y: 100 },
-  { id: 'feedback', name: '反馈生成智能体', nameEn: 'Feedback Generator', desc: '整合诊断与路径结果，生成自然语言学习反馈', icon: '💬', x: 580, y: 300 },
-  { id: 'teacher', name: '教师助理智能体', nameEn: 'Teacher Assistant', desc: '汇总班级数据，生成教学干预建议与讲解重点', icon: '👩‍🏫', x: 840, y: 200 },
+  { id: 'diagnose', name: '学习诊断', nameEn: 'Diagnostics', desc: '识别薄弱知识点与能力画像', icon: '🔍', x: 80, y: 200 },
+  { id: 'path', name: '路径推荐', nameEn: 'Path Planner', desc: '生成下一步学习路径', icon: '🧭', x: 380, y: 120 },
+  { id: 'code', name: '代码分析', nameEn: 'Code Analyzer', desc: '解析代码与运行错误', icon: '💻', x: 380, y: 280 },
+  { id: 'feedback', name: '反馈生成', nameEn: 'Feedback', desc: '输出分层学习反馈', icon: '💬', x: 680, y: 200 },
+  { id: 'teacher', name: '教师助理', nameEn: 'Teacher Assist', desc: '汇总班级学情与干预建议', icon: '👩‍🏫', x: 960, y: 200 },
 ]
 
 function isNodeEnabled(flowId: string): boolean {
@@ -74,7 +73,6 @@ const enabledNodeCount = computed(() => AGENT_DEFS.filter((def) => isNodeEnabled
 
 const agentStatuses = ref<Record<string, AgentStatus>>({
   diagnose: 'idle',
-  kg: 'idle',
   path: 'idle',
   code: 'idle',
   feedback: 'idle',
@@ -88,6 +86,8 @@ const logs = ref<AgentLog[]>([
 const selectedAgent = ref<(typeof AGENT_DEFS)[number] | null>(null)
 const isSimulating = ref(false)
 const agentStatusRows = ref<AgentStatusItem[]>([])
+const showLogsModal = ref(false)
+const showStatusModal = ref(false)
 let statusTimer: ReturnType<typeof setInterval> | undefined
 
 async function refreshAgentStatus() {
@@ -100,15 +100,13 @@ async function refreshAgentStatus() {
           ? 'diagnose'
           : agent.id === 'code_analysis'
             ? 'code'
-            : agent.id === 'knowledge_graph'
-              ? 'kg'
-              : agent.id === 'path_recommendation' || agent.id === 'learning_path'
-                ? 'path'
-                : agent.id === 'feedback'
-                  ? 'feedback'
-                  : agent.id === 'teacher_assistant'
-                    ? 'teacher'
-                    : agent.id
+            : agent.id === 'path_recommendation' || agent.id === 'learning_path'
+              ? 'path'
+              : agent.id === 'feedback'
+                ? 'feedback'
+                : agent.id === 'teacher_assistant'
+                  ? 'teacher'
+                  : agent.id
       if (mapped in agentStatuses.value) {
         agentStatuses.value[mapped] =
           agent.status === 'success' ? 'done' : agent.status === 'running' ? 'running' : agent.status === 'error' ? 'error' : 'idle'
@@ -151,7 +149,7 @@ function makeNodes(): Node[] {
         color: enabled ? '#e2e8f0' : '#64748b',
         fontSize: '12px',
         fontFamily: 'Microsoft YaHei, sans-serif',
-        minWidth: '140px',
+        minWidth: '120px',
         textAlign: 'center',
         cursor: enabled ? 'pointer' : 'not-allowed',
         opacity: enabled ? 1 : 0.38,
@@ -163,13 +161,11 @@ function makeNodes(): Node[] {
 }
 
 const FLOW_EDGES: Edge[] = [
-  { id: 'e1', source: 'diagnose', target: 'kg', label: '薄弱知识点', animated: true, style: { stroke: '#38bdf8', strokeWidth: 1.5 }, labelStyle: { fill: '#7dd3fc', fontSize: 10 } },
-  { id: 'e2', source: 'diagnose', target: 'path', label: '能力画像', animated: true, style: { stroke: '#38bdf8', strokeWidth: 1.5 }, labelStyle: { fill: '#7dd3fc', fontSize: 10 } },
-  { id: 'e3', source: 'diagnose', target: 'code', label: '代码错误', animated: true, style: { stroke: '#38bdf8', strokeWidth: 1.5 }, labelStyle: { fill: '#7dd3fc', fontSize: 10 } },
-  { id: 'e4', source: 'kg', target: 'feedback', label: '知识上下文', style: { stroke: '#a78bfa', strokeWidth: 1.5 }, labelStyle: { fill: '#c4b5fd', fontSize: 10 } },
-  { id: 'e5', source: 'path', target: 'feedback', label: '推荐路径', style: { stroke: '#a78bfa', strokeWidth: 1.5 }, labelStyle: { fill: '#c4b5fd', fontSize: 10 } },
-  { id: 'e6', source: 'code', target: 'feedback', label: '分析结论', style: { stroke: '#a78bfa', strokeWidth: 1.5 }, labelStyle: { fill: '#c4b5fd', fontSize: 10 } },
-  { id: 'e7', source: 'feedback', target: 'teacher', label: '学情摘要', style: { stroke: '#22c55e', strokeWidth: 1.5 }, labelStyle: { fill: '#86efac', fontSize: 10 } },
+  { id: 'e1', source: 'diagnose', target: 'path', label: '能力画像', animated: true, style: { stroke: '#38bdf8', strokeWidth: 1.5 }, labelStyle: { fill: '#7dd3fc', fontSize: 10 } },
+  { id: 'e2', source: 'diagnose', target: 'code', label: '代码错误', animated: true, style: { stroke: '#38bdf8', strokeWidth: 1.5 }, labelStyle: { fill: '#7dd3fc', fontSize: 10 } },
+  { id: 'e3', source: 'path', target: 'feedback', label: '推荐路径', style: { stroke: '#a78bfa', strokeWidth: 1.5 }, labelStyle: { fill: '#c4b5fd', fontSize: 10 } },
+  { id: 'e4', source: 'code', target: 'feedback', label: '分析结论', style: { stroke: '#a78bfa', strokeWidth: 1.5 }, labelStyle: { fill: '#c4b5fd', fontSize: 10 } },
+  { id: 'e5', source: 'feedback', target: 'teacher', label: '学情摘要', style: { stroke: '#22c55e', strokeWidth: 1.5 }, labelStyle: { fill: '#86efac', fontSize: 10 } },
 ]
 
 const nodes = ref<Node[]>(makeNodes())
@@ -248,13 +244,10 @@ async function simulate() {
     }
 
     setStatus('code', 'running')
-    setStatus('kg', 'running')
     setStatus('path', 'running')
     addLog('code', pipeline.codeAnalysis.codeIssueSummary, 'success')
-    addLog('kg', pipeline.graphInsight.graphReason, 'success')
     addLog('path', pipeline.recommendation.nextKnowledgePoint, 'success')
     setStatus('code', 'done')
-    setStatus('kg', 'done')
     setStatus('path', 'done')
 
     setStatus('feedback', 'running')
@@ -271,7 +264,8 @@ async function simulate() {
     setStatus('teacher', 'done')
     addLog('teacher', teacher.classSummary, 'success')
 
-    addLog('system', `✓ 多智能体协同推理完成（backend: ${pipeline.backend ?? 'mock'}）`, 'success')
+    const backendLabel = pipeline.backend === 'mock' || !pipeline.backend ? '规则引擎' : pipeline.backend
+    addLog('system', `✓ 多智能体协同推理完成（${backendLabel}）`, 'success')
     await refreshAgentStatus()
   } catch (error) {
     addLog('system', error instanceof Error ? error.message : '智能体链路失败', 'error')
@@ -306,6 +300,8 @@ function resetFlow() {
           {{ isSimulating ? '⏳ 推理中…' : '▶ 运行协同推理' }}
         </button>
         <button class="plex-agent-flow__btn" type="button" @click="resetFlow">↺ 重置</button>
+        <button class="plex-agent-flow__btn" type="button" @click="showLogsModal = true">运行日志</button>
+        <button class="plex-agent-flow__btn" type="button" @click="showStatusModal = true">智能体状态</button>
         <div class="plex-agent-flow__status-legend">
           <span v-for="(color, key) in STATUS_COLOR" :key="key" class="plex-agent-flow__legend-item">
             <i :style="{ background: color }" />
@@ -334,7 +330,6 @@ function resetFlow() {
       <div v-if="selectedAgent" class="plex-agent-flow__agent-detail">
         <div class="plex-agent-flow__agent-icon">{{ selectedAgent.icon }}</div>
         <h3>{{ selectedAgent.name }}</h3>
-        <p class="plex-agent-flow__agent-en">{{ selectedAgent.nameEn }}</p>
         <p class="plex-agent-flow__agent-desc">{{ selectedAgent.desc }}</p>
         <div class="plex-agent-flow__agent-status">
           <span>状态：</span>
@@ -342,36 +337,32 @@ function resetFlow() {
             {{ STATUS_LABEL[agentStatuses[selectedAgent.id]] }}
           </em>
         </div>
-        <div class="plex-agent-flow__params">
-          <div class="plex-agent-flow__param-title">接口预留</div>
-          <code>/api/v1/agents/{{ selectedAgent.id === 'diagnose' ? 'student-diagnose' : selectedAgent.id === 'teacher' ? 'teacher-suggestion' : 'status' }}</code>
-          <div class="plex-agent-flow__param-hint">顺序流水线 · Mock / CrewAI 可切换</div>
-        </div>
       </div>
       <div v-else class="plex-agent-flow__agent-placeholder">
-        <p>点击节点查看智能体详情</p>
-      </div>
-
-      <div class="plex-agent-flow__log-area">
-        <h4>运行日志</h4>
-        <ul class="plex-agent-flow__logs">
-          <li
-            v-for="(log, i) in logs"
-            :key="i"
-            :class="`plex-agent-flow__log-item--${log.level}`"
-          >
-            <time>{{ log.time }}</time>
-            <span class="plex-agent-flow__log-agent">{{ log.agentName }}</span>
-            <span class="plex-agent-flow__log-msg">{{ log.message }}</span>
-          </li>
-        </ul>
-      </div>
-
-      <div v-if="agentStatusRows.length" class="plex-agent-flow__status-grid">
-        <h4>智能体状态</h4>
-        <plex-agent-status-card v-for="agent in agentStatusRows" :key="agent.id" :agent="agent" />
+        <p>点击流程图节点查看智能体详情</p>
       </div>
     </aside>
+
+    <n-modal v-model:show="showLogsModal" preset="card" title="运行日志" :style="{ maxWidth: '640px', width: '92vw' }">
+      <ul class="plex-agent-flow__logs plex-agent-flow__logs--modal">
+        <li
+          v-for="(log, i) in logs"
+          :key="i"
+          :class="`plex-agent-flow__log-item--${log.level}`"
+        >
+          <time>{{ log.time }}</time>
+          <span class="plex-agent-flow__log-agent">{{ log.agentName }}</span>
+          <span class="plex-agent-flow__log-msg">{{ log.message }}</span>
+        </li>
+      </ul>
+    </n-modal>
+
+    <n-modal v-model:show="showStatusModal" preset="card" title="智能体状态" :style="{ maxWidth: '560px', width: '92vw' }">
+      <div v-if="agentStatusRows.length" class="plex-agent-flow__status-grid plex-agent-flow__status-grid--modal">
+        <plex-agent-status-card v-for="agent in agentStatusRows" :key="agent.id" :agent="agent" />
+      </div>
+      <p v-else class="plex-agent-flow__status-empty">暂无运行态数据</p>
+    </n-modal>
   </div>
 </template>
 
@@ -417,7 +408,7 @@ function resetFlow() {
   --admin-text-meta: 0.74rem;
 
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 200px;
   gap: 1rem;
   height: 520px;
   min-height: 0;
@@ -510,7 +501,6 @@ function resetFlow() {
 .plex-agent-flow__sidebar {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   overflow: hidden;
 }
 
@@ -520,7 +510,7 @@ function resetFlow() {
   border-radius: 10px;
   background: rgba(8, 10, 26, 0.88);
   border: 1px solid rgba(129, 140, 248, 0.15);
-  flex-shrink: 0;
+  flex: 1;
 }
 
 .plex-agent-flow__agent-placeholder p {
@@ -537,15 +527,9 @@ function resetFlow() {
 }
 
 .plex-agent-flow__agent-detail h3 {
-  margin: 0 0 0.15rem;
+  margin: 0 0 0.5rem;
   color: #fff;
   font-size: var(--admin-text-card-title);
-}
-
-.plex-agent-flow__agent-en {
-  margin: 0 0 0.5rem;
-  color: rgba(167, 139, 250, 0.8);
-  font-size: var(--admin-text-meta);
 }
 
 .plex-agent-flow__agent-desc {
@@ -558,7 +542,6 @@ function resetFlow() {
 .plex-agent-flow__agent-status {
   font-size: var(--admin-text-muted);
   color: rgba(203, 213, 225, 0.65);
-  margin-bottom: 0.65rem;
 }
 
 .plex-agent-flow__agent-status em {
@@ -566,58 +549,16 @@ function resetFlow() {
   font-weight: 600;
 }
 
-.plex-agent-flow__params {
-  padding: 0.6rem 0.75rem;
-  border-radius: 7px;
-  background: rgba(4, 8, 18, 0.55);
-  border: 1px solid rgba(129, 140, 248, 0.1);
-}
-
-.plex-agent-flow__param-title {
-  color: rgba(167, 139, 250, 0.8);
-  font-size: var(--admin-text-meta);
-  margin-bottom: 0.3rem;
-}
-
-.plex-agent-flow__params code {
-  display: block;
-  color: #7dd3fc;
-  font-family: monospace;
-  font-size: var(--admin-text-muted);
-  margin-bottom: 0.3rem;
-}
-
-.plex-agent-flow__param-hint {
-  color: rgba(148, 163, 184, 0.5);
-  font-size: var(--admin-text-meta);
-}
-
-.plex-agent-flow__log-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border-radius: 10px;
-  background: rgba(8, 10, 26, 0.88);
-  border: 1px solid rgba(129, 140, 248, 0.15);
-  overflow: hidden;
-  min-height: 0;
-}
-
-.plex-agent-flow__log-area h4 {
-  margin: 0;
-  padding: 0.6rem 0.85rem;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: var(--admin-text-body);
-  border-bottom: 1px solid rgba(129, 140, 248, 0.1);
-  flex-shrink: 0;
-}
-
 .plex-agent-flow__logs {
   list-style: none;
   margin: 0;
-  padding: 0.5rem 0;
+  padding: 0;
+  max-height: 420px;
   overflow-y: auto;
-  flex: 1;
+}
+
+.plex-agent-flow__logs--modal {
+  max-height: 60vh;
 }
 
 .plex-agent-flow__log-item--info,
@@ -661,14 +602,30 @@ function resetFlow() {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  margin-top: 0.65rem;
-  max-height: 220px;
+}
+
+.plex-agent-flow__status-grid--modal {
+  max-height: 60vh;
   overflow-y: auto;
 }
 
-.plex-agent-flow__status-grid h4 {
+.plex-agent-flow__status-empty {
   margin: 0;
-  color: rgba(255, 255, 255, 0.88);
+  padding: 1.5rem 0;
+  text-align: center;
+  color: rgba(148, 163, 184, 0.65);
   font-size: var(--admin-text-body);
+}
+
+@media (max-width: 900px) {
+  .plex-agent-flow {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 480px;
+  }
+
+  .plex-agent-flow__sidebar {
+    min-height: 120px;
+  }
 }
 </style>

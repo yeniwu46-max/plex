@@ -337,7 +337,7 @@ function onNodeSelect(node: OrbitNode) {
 
 <style scoped>
 .starfield-page {
-  grid-template-rows: minmax(480px, 1fr) auto auto;
+  grid-template-rows: minmax(480px, auto) auto auto;
 }
 
 .starfield-page__state {
@@ -345,20 +345,21 @@ function onNodeSelect(node: OrbitNode) {
 }
 
 .starfield-page__diagnosis {
-  grid-row: 1 / span 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
   padding: 1.25rem;
-  min-height: 520px;
+  min-height: 0;
+  max-height: 520px;
   overflow: hidden;
 }
 
 .starfield-page__diagnosis-panel {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-  mask-image: linear-gradient(180deg, #000 72%, transparent 100%);
+  overflow: auto;
+  padding-right: 0.15rem;
 }
 
 .starfield-page__diagnosis-actions {
@@ -460,7 +461,18 @@ function onNodeSelect(node: OrbitNode) {
 }
 
 .starfield-page__map {
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+  max-height: 520px;
   padding: 1.25rem 1.5rem 1rem;
+  overflow: hidden;
+}
+
+.starfield-page__map :deep(.orbit-panel) {
+  flex: 1;
+  min-height: 0;
 }
 
 .starfield-page__map-head {

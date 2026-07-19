@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { NButton, NIcon, NInput, NSpin } from 'naive-ui'
 import { ChatbubbleEllipsesOutline, CloseOutline, SendOutline } from '@vicons/ionicons5'
-import { trialCoach, type TrialCoachIntent, type TrialCoachPayload, type TrialCoachResult } from '../../api/agentService'
-import { xiaoEStripAsterisks } from '../../utils/xiaoEPersona'
+import { trialCoach, messengerQuickAction, type TrialCoachIntent, type TrialCoachPayload, type TrialCoachResult } from '../../api/agentService'
+import { xiaoECleanProse, xiaoEThinkingMessage, XIAO_E_PERSONA_INTRO } from '../../utils/xiaoEPersona'
+import { openPracticeQuestionByRef } from '../../utils/practiceQuestionNav'
 
 export type TrialCoachContext = {
   exerciseId: string
@@ -25,11 +27,14 @@ type ChatMessage = {
   role: 'user' | 'assistant'
   content: string
   agentName?: string
+  questionPick?: { code: string; id: string; title: string }
 }
 
 const props = defineProps<{
   context: TrialCoachContext
 }>()
+
+const router = useRouter()
 
 const BALL_SIZE = 52
 const MARGIN = 20
@@ -41,6 +46,8 @@ const MIN_DIALOG_HEIGHT = 420
 
 const dialogOpen = ref(false)
 const loading = ref(false)
+const contextLoading = ref(false)
+const contextLoaded = ref(false)
 const inputText = ref('')
 const messages = ref<ChatMessage[]>([])
 const messagesEl = ref<HTMLElement | null>(null)
@@ -224,12 +231,52 @@ function buildPayload(intent: TrialCoachIntent, userQuestion: string) {
   }
 }
 
-function pushMessage(role: ChatMessage['role'], content: string, agentName?: string) {
+async function openQuestionPick(pick: NonNullable<ChatMessage['questionPick']>) {
+  const ok = await openPracticeQuestionByRef(router, pick.id)
+  if (!ok) {
+    pushMessage('assistant', '这道题的入口暂时打不开，稍后在星轨学习或顶部搜索里再试一次。')
+  }
+}
+
+async function loadPracticeContext() {
+  if (contextLoading.value || contextLoaded.value) return
+  contextLoading.value = true
+  try {
+    const result = await messengerQuickAction('next_trial')
+    const weakHint = xiaoECleanProse(result.reply)
+    const status = runStatusLabel.value
+    const intro = `${XIAO_E_PERSONA_INTRO} 当前题目「${props.context.questionTitle}」，运行状态：${status}。`
+    const body = weakHint ? `结合你最近的练习情况：${weakHint}` : '结合你最近的练习情况，先把当前这题的核心步骤写完整再运行测试。'
+    pushMessage('assistant', `${intro}\n${body}`, '小E')
+    if (result.question_pick) {
+      pushMessage('assistant', '如果这题已经掌握，可以按推荐去练下一道。', '小E', result.question_pick)
+    }
+    contextLoaded.value = true
+  } catch {
+    pushMessage(
+      'assistant',
+      `你好，我是小E。当前题目是「${props.context.questionTitle}」，状态：${runStatusLabel.value}。运行测试后我可以帮你看报错和思路。`,
+      '小E',
+    )
+    contextLoaded.value = true
+  } finally {
+    contextLoading.value = false
+    await scrollToBottom()
+  }
+}
+
+function pushMessage(
+  role: ChatMessage['role'],
+  content: string,
+  agentName?: string,
+  questionPick?: ChatMessage['questionPick'],
+) {
   messages.value.push({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     role,
     content,
     agentName,
+    questionPick,
   })
 }
 
@@ -252,7 +299,7 @@ async function sendQuestion(question: string, intent: TrialCoachIntent = activeI
 
   try {
     const result: TrialCoachResult = await trialCoach(buildPayload(intent, text))
-    pushMessage('assistant', xiaoEStripAsterisks(result.response), result.agentName)
+    pushMessage('assistant', xiaoECleanProse(result.response), result.agentName)
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'AI 辅导请求失败'
     pushMessage('assistant', msg.includes('404') ? '辅导服务未就绪，请确认后端已重启。' : msg)
@@ -283,12 +330,7 @@ function closeDialog() {
 
 watch(dialogOpen, (open) => {
   if (open && !messages.value.length) {
-    pushMessage(
-      'assistant',
-      `你好，我是小E。当前题目是「${props.context.questionTitle}」，状态：${runStatusLabel.value}。有什么疑惑都可以问我。`,
-      '小E',
-    )
-    void scrollToBottom()
+    void loadPracticeContext()
   }
 })
 
@@ -358,10 +400,18 @@ onBeforeUnmount(() => {
                 <small>{{ msg.agentName }}</small>
               </header>
               <p>{{ msg.content }}</p>
+              <button
+                v-if="msg.questionPick"
+                type="button"
+                class="trial-ai-float__pick"
+                @click="openQuestionPick(msg.questionPick)"
+              >
+                去练 {{ msg.questionPick.code }} · {{ msg.questionPick.title }}
+              </button>
             </article>
-            <div v-if="loading" class="trial-ai-float__typing">
+            <div v-if="contextLoading || loading" class="trial-ai-float__typing">
               <n-spin size="small" />
-              <span>小E 正在思考…</span>
+              <span>{{ contextLoading ? xiaoEThinkingMessage('diagnosis') : xiaoEThinkingMessage('trial') }}</span>
             </div>
           </div>
 
@@ -369,7 +419,7 @@ onBeforeUnmount(() => {
             <n-input
               v-model:value="inputText"
               type="textarea"
-              placeholder="请输入你的疑惑，小E会帮您解决:"
+              placeholder="有问题尽管问我，小E 来帮你～"
               :autosize="{ minRows: 2, maxRows: 5 }"
               :disabled="loading"
               @keydown="onInputKeydown"
@@ -594,6 +644,22 @@ onBeforeUnmount(() => {
 .trial-ai-float__msg p {
   margin: 0;
   white-space: pre-wrap;
+}
+
+.trial-ai-float__pick {
+  display: inline-flex;
+  margin-top: 0.55rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(16, 240, 192, 0.35);
+  border-radius: 999px;
+  background: rgba(16, 240, 192, 0.1);
+  color: #22ffde;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.trial-ai-float__pick:hover {
+  background: rgba(16, 240, 192, 0.18);
 }
 
 .trial-ai-float__typing {

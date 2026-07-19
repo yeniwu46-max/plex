@@ -12,7 +12,7 @@ import {
   TrendingUpOutline,
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
-import { xiaoEThinkingMessage, xiaoETimeoutMessage, xiaoEStripAsterisks } from '../utils/xiaoEPersona'
+import { xiaoEThinkingMessage, xiaoETimeoutMessage, xiaoENormalizeReply } from '../utils/xiaoEPersona'
 import { openPracticeQuestionByRef } from '../utils/practiceQuestionNav'
 
 const router = useRouter()
@@ -65,7 +65,7 @@ async function runQuickAction(action: 'weak_points' | 'next_trial' | 'repair_pat
     const result = await messengerQuickAction(action)
     chatMessages.value.push({
       role: 'assistant',
-      text: xiaoEStripAsterisks(result.reply),
+      text: xiaoENormalizeReply(result.reply),
       questionPick: result.question_pick ?? undefined,
     })
   } catch (error) {
@@ -120,7 +120,7 @@ async function sendChatText(text: string, appendUserMessage = true) {
     const result = await postMessengerChat(text, history)
     chatMessages.value.push({
       role: 'assistant',
-      text: xiaoEStripAsterisks(result.reply),
+      text: xiaoENormalizeReply(result.reply),
     })
   } catch (error) {
     chatMessages.value.push(assistantErrorText(error, retry))

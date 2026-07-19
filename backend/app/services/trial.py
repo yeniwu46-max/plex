@@ -12,6 +12,16 @@ class TrialService(BaseService):
     """教师发布与学生参与试炼"""
 
     @staticmethod
+    def is_internal_sandbox_trial(trial: Trial) -> bool:
+        """测试账号 bootstrap 写入的内部通关试炼，不在学生端展示。"""
+        title = (trial.title or '').strip()
+        if title.endswith('通关试炼') and int(trial.reward_points or 0) == 0:
+            return True
+        if int(trial.difficulty or 0) >= 100 and int(trial.reward_points or 0) == 0 and trial.status == 'ended':
+            return True
+        return False
+
+    @staticmethod
     def _parse_datetime(value):
         if not value:
             return None
@@ -314,6 +324,8 @@ class TrialService(BaseService):
             effective = TrialService.effective_status(trial)
             if trial.status == 'draft' or effective not in allowed:
                 continue
+            if TrialService.is_internal_sandbox_trial(trial):
+                continue
             row = trial.to_dict(include_stats=True, effective_status=effective)
             part = participations.get(trial.id)
             row['my_status'] = part.status if part else None
@@ -470,7 +482,6 @@ class TrialService(BaseService):
         )
         completed = [p for p in parts if p.status == 'completed']
         joined = [p for p in parts if p.status == 'joined']
-        avg_score = round(sum(p.score or 0 for p in completed) / len(completed)) if completed else 0
 
         weekday_labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
         x_data = []
@@ -485,7 +496,10 @@ class TrialService(BaseService):
             day_parts = [
                 p
                 for p in completed
-                if p.completed_at and day_start <= p.completed_at <= day_end
+                if p.completed_at
+                and day_start <= p.completed_at <= day_end
+                and p.trial
+                and not TrialService.is_internal_sandbox_trial(p.trial)
             ]
             completed_counts.append(len(day_parts))
             if day_parts:
@@ -493,8 +507,26 @@ class TrialService(BaseService):
             else:
                 avg_scores.append(0)
 
+        visible_completed = [
+            p for p in completed
+            if p.trial and not TrialService.is_internal_sandbox_trial(p.trial)
+        ]
+        visible_joined = [
+            p for p in joined
+            if p.trial and not TrialService.is_internal_sandbox_trial(p.trial)
+        ]
+        visible_parts = [
+            p for p in parts
+            if p.trial and not TrialService.is_internal_sandbox_trial(p.trial)
+        ]
+        visible_avg = (
+            round(sum(p.score or 0 for p in visible_completed) / len(visible_completed))
+            if visible_completed
+            else 0
+        )
+
         recent = []
-        for part in completed[:8]:
+        for part in visible_completed[:8]:
             trial = part.trial
             recent.append(
                 {
@@ -508,10 +540,10 @@ class TrialService(BaseService):
 
         return {
             'summary': {
-                'total_participations': len(parts),
-                'completed_count': len(completed),
-                'active_count': len(joined),
-                'avg_score': avg_score,
+                'total_participations': len(visible_parts),
+                'completed_count': len(visible_completed),
+                'active_count': len(visible_joined),
+                'avg_score': visible_avg,
             },
             'trend': {
                 'x_data': x_data,

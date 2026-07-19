@@ -95,6 +95,17 @@ function onSelect(index: number) {
   box-shadow: 0 0 22px rgba(35, 255, 222, 0.32);
   color: #eaffff;
   transform: scale(1.04);
+  animation: slot-gem-pulse 2s ease-in-out infinite;
+}
+
+@keyframes slot-gem-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(35, 255, 222, 0.35), 0 0 18px rgba(35, 255, 222, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(35, 255, 222, 0), 0 0 26px rgba(35, 255, 222, 0.45);
+  }
 }
 
 .slot-gem--done .slot-gem__diamond {

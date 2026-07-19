@@ -447,7 +447,7 @@ function formatDuration(ms: number) {
       </div>
       <QuestionSlotGems
         v-if="showSlotNav"
-        class="py-workspace__slots"
+        class="py-workspace__slots py-workspace__slots--inline"
         :slots="slotIds"
         :active-index="activeSlot"
         @select="emit('selectSlot', $event)"
@@ -692,23 +692,46 @@ function formatDuration(ms: number) {
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  padding: 0 0.65rem 0.65rem;
+  padding: 0 0.45rem 0.45rem;
 }
 
 .py-workspace__bar {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.55rem 0.75rem;
-  margin-bottom: 0.55rem;
-  padding: 0.45rem 0;
+  gap: 0.4rem 0.65rem;
+  margin-bottom: 0.35rem;
+  padding: 0.2rem 0;
   border-bottom: 1px solid rgba(130, 212, 255, 0.1);
 }
 
 .py-workspace__slots {
   grid-column: 1 / -1;
   justify-content: center;
-  margin: 0.25rem 0 0.35rem;
+  margin: 0.15rem 0 0.2rem;
+}
+
+.py-workspace__slots--inline {
+  grid-column: auto;
+  justify-content: flex-end;
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .py-workspace__bar {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  .py-workspace__slots--inline {
+    grid-column: 3;
+    justify-content: center;
+  }
+
+  .py-workspace__actions {
+    grid-column: 4;
+  }
 }
 
 .py-side-panel__content--fade {

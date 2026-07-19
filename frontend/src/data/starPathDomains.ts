@@ -8,6 +8,8 @@ export interface StarPathKnowledgePoint {
   detail: string
   tags: string[]
   level: '入门' | '进阶' | '挑战'
+  /** 初识导引步骤（仅首个知识点） */
+  introSteps?: string[]
   /** 关联 Python 试炼题 id */
   questionId?: string
 }
@@ -46,6 +48,11 @@ export const STAR_PATH_DOMAINS: StarPathDomainMeta[] = [
         title: 'Python 与 print',
         summary: '小E 的探测器需要发出第一束信号——用 print 向宇宙问好。',
         detail: '运行环境、print 函数、字符串字面量与换行。',
+        introSteps: [
+          '在编辑器里写 print("Hello")，点击运行测试确认输出。',
+          '尝试用逗号连接多个内容：print("XP", 100)。',
+          '完成左侧示例后，点击「开始编程试炼」进入第一题。',
+        ],
         tags: ['intro', 'print'],
         level: '入门',
         questionId: 'hello-print',

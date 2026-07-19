@@ -371,8 +371,50 @@ onMounted(() => {
       </div>
 
       <div v-else class="trial-create__grid">
-        <!-- 左：试卷配置 + 知识点 + AI -->
+        <!-- 左：AI 出题优先 + 知识点 + 试卷配置 -->
         <aside class="trial-create__col trial-create__config">
+          <section class="trial-create__card trial-create__ai trial-create__ai--hero">
+            <header class="trial-create__ai-head">
+              <h3><n-icon :component="SparklesOutline" /> AI 智能出题</h3>
+              <span>推荐</span>
+            </header>
+            <p class="trial-create__ai-lead">基于所选知识点与题型批量生成题目，生成后可在中间栏继续编辑与微调。</p>
+            <div class="tc-field">
+              <span>题型（可多选）</span>
+              <n-checkbox-group v-model:value="aiQuestionTypes">
+                <n-checkbox v-for="opt in aiTypeOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </n-checkbox>
+              </n-checkbox-group>
+            </div>
+            <div class="tc-ai-row">
+              <label class="tc-field tc-field--narrow">
+                <span>题量</span>
+                <n-input-number v-model:value="aiCount" :min="1" :max="20" />
+              </label>
+              <label class="tc-field">
+                <span>难度：{{ aiDifficulty }}</span>
+                <n-slider v-model:value="aiDifficulty" :min="0" :max="100" :step="1" />
+              </label>
+            </div>
+            <n-button
+              type="warning"
+              block
+              class="tc-ai-generate"
+              :loading="generatingAi"
+              :disabled="!selectedKnowledgeKeys.length"
+              @click="runAiGenerate"
+            >
+              <template #icon><n-icon :component="SparklesOutline" /></template>
+              一键生成并加入试卷
+            </n-button>
+          </section>
+
+          <section class="trial-create__card">
+            <h3>知识点（知识宇宙）</h3>
+            <KnowledgePointPicker v-model="selectedKnowledgeKeys" :domains="knowledgeDomains" />
+          </section>
+
           <section class="trial-create__card">
             <h3>试卷设置</h3>
             <label class="tc-field">
@@ -421,43 +463,6 @@ onMounted(() => {
             </label>
             <n-checkbox v-model:checked="notifyStudentsOnPublish">发布时通知全班学生</n-checkbox>
           </section>
-
-          <section class="trial-create__card">
-            <h3>知识点（知识宇宙）</h3>
-            <KnowledgePointPicker v-model="selectedKnowledgeKeys" :domains="knowledgeDomains" />
-          </section>
-
-          <section class="trial-create__card trial-create__ai">
-            <h3><n-icon :component="SparklesOutline" /> AI 批量出题</h3>
-            <div class="tc-field">
-              <span>题型（可多选）</span>
-              <n-checkbox-group v-model:value="aiQuestionTypes">
-                <n-checkbox v-for="opt in aiTypeOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </n-checkbox>
-              </n-checkbox-group>
-            </div>
-            <div class="tc-ai-row">
-              <label class="tc-field tc-field--narrow">
-                <span>题量</span>
-                <n-input-number v-model:value="aiCount" :min="1" :max="20" />
-              </label>
-              <label class="tc-field">
-                <span>难度：{{ aiDifficulty }}</span>
-                <n-slider v-model:value="aiDifficulty" :min="0" :max="100" :step="1" />
-              </label>
-            </div>
-            <n-button
-              secondary
-              block
-              :loading="generatingAi"
-              :disabled="!selectedKnowledgeKeys.length"
-              @click="runAiGenerate"
-            >
-              生成并加入试卷
-            </n-button>
-            <p class="tc-ai-note">基于所选知识点与题型批量生成，支持单选、多选与编程题；可在中间栏继续改写。</p>
-          </section>
         </aside>
 
         <!-- 中：题目列表与编辑 -->
@@ -496,7 +501,7 @@ onMounted(() => {
             <div class="tc-summary__block">
               <span class="tc-summary__label">知识点覆盖</span>
               <div v-if="knowledgeCoverage.length" class="tc-chips">
-                <span v-for="label in knowledgeCoverage" :key="label" class="tc-chip tc-chip--teal">
+                <span v-for="label in knowledgeCoverage" :key="label" class="tc-chip tc-chip--gold">
                   {{ label }}
                 </span>
               </div>
@@ -566,7 +571,7 @@ onMounted(() => {
 
 .trial-create__grid {
   display: grid;
-  grid-template-columns: minmax(300px, 22%) minmax(0, 1fr) minmax(300px, 24%);
+  grid-template-columns: minmax(320px, 26%) minmax(0, 1fr) minmax(300px, 24%);
   gap: 1.1rem;
   align-items: start;
 }
@@ -638,10 +643,46 @@ onMounted(() => {
   align-items: start;
 }
 
-.tc-ai-note {
-  margin: 0.6rem 0 0;
-  color: rgba(221, 230, 239, 0.5);
-  font-size: 0.74rem;
+.trial-create__ai--hero {
+  border-color: rgba(251, 146, 60, 0.42);
+  background:
+    radial-gradient(circle at 80% 0%, rgba(251, 191, 36, 0.14), transparent 42%),
+    linear-gradient(145deg, rgba(67, 20, 7, 0.55), rgba(5, 18, 30, 0.88));
+  box-shadow: 0 0 28px rgba(251, 146, 60, 0.12);
+}
+
+.trial-create__ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.trial-create__ai-head h3 {
+  margin: 0;
+}
+
+.trial-create__ai-head span {
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fcd34d;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.trial-create__ai-lead {
+  margin: 0 0 0.85rem;
+  color: rgba(254, 215, 170, 0.78);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.tc-ai-generate {
+  margin-top: 0.25rem;
+  font-weight: 750 !important;
 }
 
 .trial-create__sticky {
@@ -710,10 +751,10 @@ onMounted(() => {
   font-size: 0.74rem;
 }
 
-.tc-chip--teal {
-  border-color: rgba(251, 146, 60, 0.38);
-  background: rgba(251, 146, 60, 0.1);
-  color: #fdba74;
+.tc-chip--gold {
+  border-color: rgba(251, 191, 36, 0.42);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fcd34d;
 }
 
 .tc-actions {

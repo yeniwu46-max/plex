@@ -140,7 +140,7 @@ const trendChartData = computed(() => {
       series: [
         { name: '探索活跃度', data: [24, 34, 22, 48, 36, 68, 50], color: '#fb923c' },
         { name: '知识修复率', data: [20, 28, 18, 42, 32, 58, 44], color: '#fbbf24' },
-        { name: '试炼完成率', data: [18, 26, 16, 38, 28, 52, 40], color: '#2efff1' },
+        { name: '试炼完成率', data: [18, 26, 16, 38, 28, 52, 40], color: '#f59e0b' },
       ],
     }
   }
@@ -156,7 +156,7 @@ const trendChartData = computed(() => {
     series: [
       { name: '探索活跃度', data: activeRates, color: '#fb923c' },
       { name: '知识修复率', data: repairRates, color: '#fbbf24' },
-      { name: '试炼完成率', data: trialRates, color: '#2efff1' },
+      { name: '试炼完成率', data: trialRates, color: '#f59e0b' },
     ],
   }
 })
@@ -193,7 +193,7 @@ const focusedExplorers = computed(() => {
   return source.slice(0, 5).map((student, index) => ({
     ...student,
     risk: riskText(student, index),
-    avatarTone: ['orange', 'red', 'yellow', 'amber', 'teal'][index] ?? 'orange',
+    avatarTone: ['orange', 'red', 'yellow', 'amber', 'gold'][index] ?? 'orange',
   }))
 })
 
@@ -381,7 +381,7 @@ function riskText(student: { reasons?: string[] }, index: number) {
 .navigator-home {
   --orange: var(--teacher-orange, #fb923c);
   --gold: var(--teacher-gold, #fbbf24);
-  --teal: var(--teacher-teal, #2efff1);
+  --gold: var(--teacher-gold, #fbbf24);
   grid-template-rows: minmax(480px, 1fr) auto auto auto auto auto;
 }
 
@@ -536,12 +536,12 @@ function riskText(student: { reasons?: string[] }, index: number) {
   font-weight: 900;
 }
 
-.student-avatar--teal {
-  background: linear-gradient(145deg, #124e4b, #8cffef);
-}
-
 .student-avatar--red {
   background: linear-gradient(145deg, #4f1616, #ff8a7d);
+}
+
+.student-avatar--gold {
+  background: linear-gradient(145deg, #613f10, #ffd68a);
 }
 
 .student-avatar--yellow,

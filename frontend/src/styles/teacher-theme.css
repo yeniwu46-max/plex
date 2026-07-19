@@ -6,7 +6,7 @@
   --teacher-orange-soft: rgba(251, 146, 60, 0.12);
   --teacher-orange-glow: rgba(251, 146, 60, 0.52);
   --teacher-gold: #fbbf24;
-  --teacher-teal: #2efff1;
+  --teacher-gold-soft: rgba(251, 191, 36, 0.12);
   --teacher-red: #ff554d;
   --teacher-text: #fff7ed;
   --teacher-muted: rgba(221, 230, 239, 0.62);
@@ -165,7 +165,7 @@ html[data-theme='light'] .teacher-shell {
   --teacher-orange-soft: rgba(234, 88, 12, 0.1);
   --teacher-orange-glow: rgba(234, 88, 12, 0.35);
   --teacher-gold: #d97706;
-  --teacher-teal: #0891b2;
+  --teacher-gold-soft: rgba(217, 119, 6, 0.1);
   --teacher-red: #dc2626;
   --teacher-text: #0f172a;
   --teacher-muted: rgba(71, 85, 105, 0.75);

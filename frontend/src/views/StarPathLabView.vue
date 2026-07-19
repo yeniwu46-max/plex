@@ -4,9 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon, useMessage } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain, type LearningPathOrderedNode, type NextBestAction, type RemediationPath } from '../api/studentProgress'
 import { planLearningPath } from '../api/agentService'
-import type { LearningRecommendation } from '../api/learningReport'
-import type { PersonalizedResource } from '../api/personalizedResources'
-import { fetchStudentLearningResources, type LearningResourceItem } from '../api/learningResources'
 import { getPythonTrialQuestion, type PythonTrialQuestion } from '../data/pythonTrialQuestions'
 import {
   STAR_PATH_DOMAINS,
@@ -24,20 +21,15 @@ import {
   getPrimaryQuestionId,
   type StarPathNode,
 } from '../data/starPathTrail'
-import {
-  ChevronForwardOutline,
-  LockClosedOutline,
-} from '@vicons/ionicons5'
+import { LockClosedOutline } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import PlexLearningPathPanel from '../components/agent/PlexLearningPathPanel.vue'
 import PythonTrialWorkspace from '../components/trial/PythonTrialWorkspace.vue'
-import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import { useAuthStore } from '../stores/auth'
 import { fetchServerMistakeRecords } from '../utils/trialMistakeLog'
 import { mergeAcceptedQuestionIds } from '../utils/starPathProgress'
-import { kgIdFromStarPath } from '../data/knowledgeNodeRegistry'
 import {
   resolveQuestionById,
   resolveStarPathQuestion,
@@ -54,7 +46,6 @@ import { sanitizeQuestionContent } from '../utils/questionStemSanitizer'
 const router = useRouter()
 const route = useRoute()
 const message = useMessage()
-const workspace = useStudentWorkspaceStore()
 const auth = useAuthStore()
 
 type Domain = {
@@ -74,9 +65,6 @@ const activeDomainKey = ref('data-vars')
 const selectedKnowledgeId = ref<string | null>(null)
 const selectedNodeId = ref('stage1-intro')
 const activeQuestionSlot = ref(0)
-const pathRecommendations = ref<LearningRecommendation[]>([])
-const knowledgeResources = ref<LearningResourceItem[]>([])
-const personalizedResources = ref<PersonalizedResource[]>([])
 const orderedNodes = ref<LearningPathOrderedNode[]>([])
 const activePathNodeId = ref<string | null>(null)
 const nextBestAction = ref<NextBestAction | null>(null)
@@ -444,10 +432,6 @@ function continueExplore() {
   openPractice()
 }
 
-function goToMessenger() {
-  void router.push('/student/messenger')
-}
-
 function isTabActive(tabKey: string) {
   return activeTabKey.value === tabKey
 }
@@ -591,22 +575,11 @@ async function refreshAcceptedQuestions(serverIds?: string[]) {
   acceptedQuestionIds.value = mergeAcceptedQuestionIds(serverIds, localRecords)
 }
 
-const starPathAdviceText = computed(() => {
-  const rec = pathRecommendations.value.find((item) => item.action === 'star_path')
-  if (rec) return rec.detail
-  return null
-})
-
 async function loadPath() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const [data, rec] = await Promise.all([
-      fetchLearningPath(),
-      workspace.loadRecommendations('7d').catch(() => null),
-    ])
-    pathRecommendations.value = rec?.recommendations ?? []
-    personalizedResources.value = rec?.personalized_resources ?? []
+    const data = await fetchLearningPath()
     domains.value = data.domains.map(mapDomain)
     orderedNodes.value = data.ordered_nodes ?? []
     activePathNodeId.value = data.active_node_id ?? null
@@ -629,24 +602,6 @@ async function loadPath() {
 watch(
   () => [route.query.domain, route.query.kp],
   () => applyRouteQuery(),
-)
-
-watch(
-  () => selectedKnowledge.value?.point,
-  async (point) => {
-    if (!point) {
-      knowledgeResources.value = []
-      return
-    }
-    const knowledgeKey = point.tags[0] ?? kgIdFromStarPath(point.id) ?? point.id
-    try {
-      const data = await fetchStudentLearningResources(knowledgeKey)
-      knowledgeResources.value = data.items
-    } catch {
-      knowledgeResources.value = []
-    }
-  },
-  { immediate: true },
 )
 
 onMounted(() => {
@@ -767,10 +722,29 @@ onActivated(() => {
             </div>
           </section>
 
+          <div class="path-board-actions">
+            <button
+              type="button"
+              class="continue-btn continue-btn--launch"
+              :disabled="detailMode === 'node' && (!selectedNode || !isStarPathNodeUnlocked(selectedNode))"
+              @click="detailMode === 'knowledge' ? continueKnowledgeTrial() : continueExplore()"
+            >
+              {{ detailMode === 'knowledge' || isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
+            </button>
+            <button
+              v-if="(detailMode === 'knowledge' && !selectedKnowledge?.point.questionId) || (detailMode === 'node' && nodeQuestionIds.length > 1)"
+              type="button"
+              class="continue-btn continue-btn--ghost"
+              @click="rerollQuestion"
+            >
+              换一题
+            </button>
+          </div>
+
           <section class="domain-overview domain-overview--removed" aria-hidden="true" />
         </div>
 
-        <aside class="detail-panel" aria-label="知识点详情">
+        <aside class="detail-panel" aria-label="小E 学习路径">
           <PlexLearningPathPanel
             :ordered-nodes="orderedNodes"
             :active-node-id="activePathNodeId"
@@ -782,148 +756,6 @@ onActivated(() => {
             @select-node="onPathNodeSelect"
             @action="onPathAction"
           />
-          <div class="detail-panel__body">
-            <template v-if="detailMode === 'knowledge' && selectedKnowledge">
-              <div class="detail-panel__head">
-                <h2>{{ selectedKnowledge.point.title }}</h2>
-                <span>{{ selectedKnowledge.domain.title }}</span>
-              </div>
-              <p class="detail-panel__trial">
-                <strong>{{ selectedKnowledge.point.summary }}</strong>
-              </p>
-              <div class="tags">
-                <strong>知识详解</strong>
-                <p class="detail-panel__detail">{{ selectedKnowledge.point.detail }}</p>
-                <div>
-                  <span v-for="tag in selectedKnowledge.point.tags" :key="tag">{{ tag }}</span>
-                  <span class="detail-panel__level">{{ selectedKnowledge.point.level }}</span>
-                </div>
-              </div>
-              <div v-if="nodeQuestionIds.length" class="sub-trials">
-                <strong>试炼小题</strong>
-                <div class="sub-trials__list">
-                  <button
-                    v-for="(qid, idx) in nodeQuestionIds"
-                    :key="qid"
-                    type="button"
-                    class="sub-trials__chip"
-                    :class="{ 'sub-trials__chip--active': activeQuestionSlot === idx }"
-                    @click="selectQuestionSlot(idx, qid)"
-                  >
-                    s{{ idx }} · 第 {{ idx + 1 }} 题
-                  </button>
-                </div>
-              </div>
-              <div v-if="knowledgeResources.length" class="sub-trials">
-                <strong>学习资源</strong>
-                <ul class="resource-list">
-                  <li v-for="res in knowledgeResources" :key="res.id">
-                    <em>{{ res.type }}</em>
-                    <span>{{ res.title }}</span>
-                  </li>
-                </ul>
-              </div>
-              <div v-if="personalizedResources.length" class="sub-trials">
-                <strong>为什么推荐给我</strong>
-                <ul class="resource-list">
-                  <li v-for="res in personalizedResources.slice(0, 3)" :key="res.id">
-                    <em>{{ res.resource_type }}</em>
-                    <span>{{ res.title }}：{{ res.recommendation_reason }}</span>
-                  </li>
-                </ul>
-              </div>
-            </template>
-            <template v-else-if="selectedNode">
-              <div class="detail-panel__head">
-                <h2>{{ selectedNode.id }} {{ selectedNode.title }}</h2>
-                <span v-if="selectedNode.status === 'current'">当前所在</span>
-                <span v-else-if="selectedNode.status === 'done'">已完成</span>
-                <span v-else-if="selectedNode.status === 'progress'">进行中</span>
-                <span v-else>未解锁</span>
-              </div>
-
-              <p v-if="selectedQuestion" class="detail-panel__trial">
-                对应试炼：<strong>{{ formatQuestionLabel(selectedQuestion) }}</strong>
-                <small>{{ selectedQuestion.topic }}</small>
-              </p>
-
-              <div class="tags">
-                <strong>核心知识</strong>
-                <div>
-                  <span v-for="tag in selectedNode.knowledgeTags" :key="tag">{{ tag }}</span>
-                </div>
-              </div>
-              <div v-if="nodeQuestionIds.length > 1" class="sub-trials">
-                <strong>试炼小题</strong>
-                <div class="sub-trials__list">
-                  <button
-                    v-for="(qid, idx) in nodeQuestionIds"
-                    :key="qid"
-                    type="button"
-                    class="sub-trials__chip"
-                    :class="{ 'sub-trials__chip--active': activeQuestionSlot === idx }"
-                    @click="selectQuestionSlot(idx, qid)"
-                  >
-                    s{{ idx }} · 第 {{ idx + 1 }} 题
-                  </button>
-                </div>
-              </div>
-            </template>
-
-          <div class="panel-bot panel-bot--hidden" aria-hidden="true">
-            <span class="panel-bot__head" />
-            <span class="panel-bot__body" />
-            <span class="panel-bot__card panel-bot__card--left" />
-            <span class="panel-bot__card panel-bot__card--right" />
-          </div>
-
-          <div v-if="detailMode === 'node' && selectedNode" class="mastery">
-            <div>
-              <strong>掌握进度</strong>
-              <span>{{ selectedNode.mastery }}%</span>
-            </div>
-            <p><span :style="{ width: `${selectedNode.mastery}%` }" /></p>
-          </div>
-
-          <div class="advice">
-            <strong>驿站使者建议</strong>
-            <p v-if="detailMode === 'knowledge' && selectedKnowledge">
-              建议先通读「{{ selectedKnowledge.point.title }}」要点，再在试炼中验证理解。
-            </p>
-            <p v-else-if="selectedNode">{{ starPathAdviceText || selectedNode.advice }}</p>
-            <button type="button" class="advice-link" @click="goToMessenger">
-              前往驿站使者 <n-icon :component="ChevronForwardOutline" />
-            </button>
-          </div>
-
-            <div v-if="detailMode === 'node' && selectedNode" class="rewards">
-              <strong>星点奖励</strong>
-              <div class="reward-row">
-                <span v-if="selectedQuestion">XP <em>+{{ selectedQuestion.rewardXp }}</em></span>
-                <span>结晶 <em>+{{ selectedNode.rewardCrystal }}</em></span>
-                <span>星尘 <em>+{{ selectedNode.rewardStardust }}</em></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="detail-panel__actions">
-          <button
-            type="button"
-            class="continue-btn continue-btn--launch"
-            :disabled="detailMode === 'node' && (!selectedNode || !isStarPathNodeUnlocked(selectedNode))"
-            @click="detailMode === 'knowledge' ? continueKnowledgeTrial() : continueExplore()"
-          >
-            {{ detailMode === 'knowledge' || isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
-          </button>
-          <button
-            v-if="(detailMode === 'knowledge' && !selectedKnowledge?.point.questionId) || (detailMode === 'node' && nodeQuestionIds.length > 1)"
-            type="button"
-            class="continue-btn continue-btn--ghost"
-            @click="rerollQuestion"
-          >
-            换一题
-          </button>
-          </div>
         </aside>
       </section>
     </main>
@@ -1281,18 +1113,18 @@ onActivated(() => {
   display: flex;
   align-items: stretch;
   flex-wrap: wrap;
-  gap: 0.65rem 1.25rem;
-  padding: 0.85rem var(--plex-page-gutter-x) 1.25rem;
+  gap: 0.5rem 0.85rem;
+  padding: 0.55rem var(--plex-page-gutter-x) 0.65rem;
   border-bottom: 1px solid rgba(126, 188, 220, 0.08);
-  min-height: 72px;
+  min-height: 56px;
 }
 
 .domain-tab {
   position: relative;
   flex: 1 1 auto;
   min-width: 7.5rem;
-  min-height: 52px;
-  padding: 0.55rem 1rem;
+  min-height: 44px;
+  padding: 0.45rem 0.85rem;
   border: 1px solid rgba(130, 212, 255, 0.12);
   border-radius: 0.65rem;
   background: rgba(6, 18, 31, 0.55);
@@ -1318,7 +1150,7 @@ onActivated(() => {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
   align-items: stretch;
   gap: 1rem;
   flex: 1;
@@ -1329,11 +1161,23 @@ onActivated(() => {
 
 .content-left {
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 0.85rem;
   min-width: 0;
   min-height: 0;
   align-content: stretch;
+}
+
+.path-board-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 1rem 0.35rem;
+}
+
+.path-board-actions .continue-btn {
+  width: min(100%, 320px);
 }
 
 .path-board,
@@ -1351,7 +1195,7 @@ onActivated(() => {
   position: relative;
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: auto minmax(420px, 1fr);
+  grid-template-rows: auto minmax(320px, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -1362,8 +1206,8 @@ onActivated(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.85rem 1.25rem;
-  padding: 1rem 1.25rem 0.85rem;
+  gap: 0.55rem 1rem;
+  padding: 0.65rem 1rem 0.55rem;
   border-bottom: 1px solid rgba(90, 208, 255, 0.1);
 }
 
@@ -1584,6 +1428,33 @@ onActivated(() => {
   color: rgba(224, 237, 247, 0.78);
   font-size: 0.88rem;
   line-height: 1.65;
+}
+
+.intro-guide {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(35, 255, 222, 0.22);
+  border-radius: 0.55rem;
+  background: rgba(16, 240, 192, 0.06);
+}
+
+.intro-guide strong {
+  display: block;
+  color: #22ffde;
+  font-size: 0.86rem;
+  margin-bottom: 0.45rem;
+}
+
+.intro-guide ol {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: rgba(224, 237, 247, 0.82);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.intro-guide li + li {
+  margin-top: 0.35rem;
 }
 
 .detail-panel__level {
@@ -1998,24 +1869,15 @@ onActivated(() => {
   max-height: 100%;
   align-self: stretch;
   overflow: hidden;
-  padding: 1rem 1.55rem 1rem;
+  padding: 0.85rem 1.15rem;
 }
 
-.detail-panel__body {
+.detail-panel :deep(.plex-learning-path) {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  padding-bottom: 0.35rem;
-}
-
-.detail-panel__actions {
-  flex-shrink: 0;
-  position: sticky;
-  bottom: 0;
-  z-index: 6;
-  padding-top: 0.75rem;
-  background: linear-gradient(180deg, rgba(4, 14, 24, 0) 0%, rgba(4, 14, 24, 0.92) 28%, rgba(4, 14, 24, 0.98) 100%);
-  border-top: 1px solid rgba(130, 212, 255, 0.1);
+  max-height: none;
+  height: 100%;
+  margin-bottom: 0;
 }
 
 .detail-panel__head {
@@ -2304,9 +2166,14 @@ onActivated(() => {
   }
 
   .detail-panel {
-    min-height: 520px;
+    min-height: 360px;
+    height: auto;
+    padding: 1.1rem;
   }
 
+  .path-board-actions .continue-btn {
+    width: min(100%, 360px);
+  }
 }
 
 @media (max-width: 900px) {
@@ -2382,13 +2249,8 @@ onActivated(() => {
     padding: 1.1rem;
   }
 
-  .panel-bot {
-    display: none;
-  }
-
-  .continue-btn {
-    position: sticky;
-    bottom: 0.75rem;
+  .path-board-actions {
+    padding-bottom: 0.75rem;
   }
 
 }

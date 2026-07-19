@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { usePlexTour } from '../composables/usePlexTour'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NDropdown, NIcon, NInput, NModal, NSelect, useMessage, type DropdownOption, type SelectOption } from 'naive-ui'
+import { NButton, NDropdown, NBadge, NEmpty, NIcon, NInput, NModal, NPopover, NSelect, useMessage, type DropdownOption, type SelectOption } from 'naive-ui'
 import {
   AlertCircleOutline,
   AnalyticsOutline,
@@ -12,8 +12,6 @@ import {
   ExitOutline,
   GitNetworkOutline,
   HardwareChipOutline,
-  HelpCircleOutline,
-  NotificationsOutline,
   PeopleOutline,
   PersonCircleOutline,
   PlanetOutline,
@@ -31,13 +29,11 @@ import {
 } from '../api/adminAnnouncements'
 import AdminClassRequestPanel from '../components/admin/AdminClassRequestPanel.vue'
 import PlexThemeSwitcher from '../components/shared/PlexThemeSwitcher.vue'
-import PlexLocalSearch from '../components/search/PlexLocalSearch.vue'
+import PlexGuideTour from '../components/common/PlexGuideTour.vue'
+import { fetchClassRequests, type ClassChangeRequest } from '../api/classRequests'
 
 const AdminAgentOrchestrationPanel = defineAsyncComponent(
   () => import('../components/admin/AdminAgentOrchestrationPanel.vue'),
-)
-const AdminKnowledgeNexusPanel = defineAsyncComponent(
-  () => import('../components/admin/AdminKnowledgeNexusPanel.vue'),
 )
 const AdminTrialObservatoryPanel = defineAsyncComponent(
   () => import('../components/admin/AdminTrialObservatoryPanel.vue'),
@@ -48,7 +44,7 @@ import { fetchAgentOrchestration, type AgentOrchestrationResult } from '../api/a
 import { NInputNumber, NSwitch } from 'naive-ui'
 import { useThemeStore, type ColorMode } from '../stores/theme'
 
-type NavKey = 'nexus' | 'agents' | 'knowledge' | 'observer' | 'governance'
+type NavKey = 'nexus' | 'agents' | 'observer' | 'governance'
 type Tone = 'purple' | 'amber' | 'green' | 'red'
 
 interface MetricCard {
@@ -98,7 +94,6 @@ function formatDateTime(date: Date) {
 const currentTimeText = computed(() => `当前时间 ${formatDateTime(now.value)}`)
 const currentYear = computed(() => now.value.getFullYear())
 
-const adminSearchQuery = ref('')
 const activeNav = ref<NavKey>('nexus')
 
 const { startTour, resetTour } = usePlexTour()
@@ -143,14 +138,6 @@ const announcementTarget = ref<'teacher' | 'student' | 'all'>('teacher')
 const postingAnnouncement = ref(false)
 const recentAnnouncements = ref<SystemAnnouncement[]>([])
 
-const filteredAnnouncements = computed(() => {
-  const q = adminSearchQuery.value.trim().toLowerCase()
-  if (!q) return recentAnnouncements.value
-  return recentAnnouncements.value.filter(
-    (item) => item.title.toLowerCase().includes(q) || item.body.toLowerCase().includes(q),
-  )
-})
-
 const editingAnnouncement = ref<SystemAnnouncement | null>(null)
 const showEditAnnouncementModal = ref(false)
 const editAnnouncementTitle = ref('')
@@ -177,14 +164,21 @@ const dashboardLoading = ref(false)
 const AI_STRATEGY_LABELS: Record<string, string> = {
   auto_question_gen: '自动生成题目',
   personalized_recommend: '个性化推荐',
+  recommend: '个性化推荐',
   weakness_detection: '薄弱点检测',
   agent_grading: '智能体批改',
+  difficulty: '自适应难度',
+  risk: '学习风险预警',
 }
 const NOTICE_LABELS: Record<string, string> = {
   trial_published: '试炼发布通知',
   quest_reminder: '委托提醒',
   rank_change: '排名变化提醒',
+  done: '任务完成提醒',
+  ai: 'AI 反馈通知',
+  system: '系统公告',
 }
+const HIDDEN_SETTING_KEYS = new Set(['rhythm', 'abyss', 'punish'])
 
 async function loadSettings() {
   settingsLoading.value = true
@@ -195,21 +189,31 @@ async function loadSettings() {
     settingsOpenTime.value = s.rules?.open_time ?? '00:00'
     settingsDailyLimit.value = s.rules?.daily_limit ?? '10'
     settingsDifficulty.value = s.rules?.difficulty ?? 50
-    settingsAiStrategies.value = (s.ai_strategies ?? []).map((item) => ({
-      key: item.key,
-      label: AI_STRATEGY_LABELS[item.key] ?? item.key,
-      enabled: item.enabled,
-    }))
+    settingsAiStrategies.value = (s.ai_strategies ?? [])
+      .filter((item) => !HIDDEN_SETTING_KEYS.has(item.key))
+      .map((item) => ({
+        key: item.key,
+        label: AI_STRATEGY_LABELS[item.key] ?? item.key,
+        enabled: item.enabled,
+      }))
+      .filter((item) => AI_STRATEGY_LABELS[item.key])
     if (!settingsAiStrategies.value.length) {
-      settingsAiStrategies.value = Object.keys(AI_STRATEGY_LABELS).map((k) => ({ key: k, label: AI_STRATEGY_LABELS[k], enabled: false }))
+      settingsAiStrategies.value = Object.keys(AI_STRATEGY_LABELS)
+        .filter((k) => !HIDDEN_SETTING_KEYS.has(k))
+        .map((k) => ({ key: k, label: AI_STRATEGY_LABELS[k], enabled: false }))
     }
-    settingsNotices.value = (s.notices ?? []).map((item) => ({
-      key: item.key,
-      label: NOTICE_LABELS[item.key] ?? item.key,
-      enabled: item.enabled,
-    }))
+    settingsNotices.value = (s.notices ?? [])
+      .filter((item) => !HIDDEN_SETTING_KEYS.has(item.key))
+      .map((item) => ({
+        key: item.key,
+        label: NOTICE_LABELS[item.key] ?? item.key,
+        enabled: item.enabled,
+      }))
+      .filter((item) => NOTICE_LABELS[item.key])
     if (!settingsNotices.value.length) {
-      settingsNotices.value = Object.keys(NOTICE_LABELS).map((k) => ({ key: k, label: NOTICE_LABELS[k], enabled: true }))
+      settingsNotices.value = Object.keys(NOTICE_LABELS)
+        .filter((k) => !HIDDEN_SETTING_KEYS.has(k))
+        .map((k) => ({ key: k, label: NOTICE_LABELS[k], enabled: true }))
     }
   } catch (err) {
     settingsError.value = err instanceof Error ? err.message : '加载设置失败'
@@ -250,7 +254,6 @@ const announcementTargetOptions: SelectOption[] = [
 const navItems = [
   { key: 'nexus' as const, label: '中央总控', sub: 'Central Nexus', icon: SettingsOutline },
   { key: 'agents' as const, label: '智能体编排', sub: 'Agent Orchestration', icon: PeopleOutline },
-  { key: 'knowledge' as const, label: '知识图谱', sub: 'Knowledge Nexus', icon: GitNetworkOutline },
   { key: 'observer' as const, label: '系统观测', sub: 'System Observatory', icon: AppsOutline },
   { key: 'governance' as const, label: '权限与控制', sub: 'Governance Center', icon: ShieldCheckmarkOutline },
 ]
@@ -265,7 +268,6 @@ const metricCards: MetricCard[] = [
   { label: '活跃学习者', value: '—', sub: '近 7 日有作答记录', icon: PeopleOutline, tone: 'purple' },
   { label: '注册教师', value: '—', sub: '平台教师账号', icon: BookOutline, tone: 'amber' },
   { label: '运行试炼', value: '—', sub: '当前进行中', icon: HardwareChipOutline, tone: 'purple' },
-  { label: '试炼总数', value: '—', sub: '累计发布', icon: PlanetOutline, tone: 'purple' },
   { label: '系统健康度', value: '—', sub: '状态良好', icon: ShieldCheckmarkOutline, tone: 'purple' },
 ]
 
@@ -306,13 +308,6 @@ const liveMetricCards = computed<MetricCard[]>(() => {
       tone: 'purple',
     },
     {
-      label: '试炼完成率',
-      value: `${m.trial_completion_rate}%`,
-      sub: '参与记录完成比例',
-      icon: PlanetOutline,
-      tone: 'purple',
-    },
-    {
       label: '系统健康度',
       value: `${m.health_score}%`,
       sub: '状态良好',
@@ -339,14 +334,14 @@ const observerMetricCards = computed<MetricCard[]>(() => {
     return [
       { label: '资源任务成功率', value: '—', sub: '等待运行数据', icon: AnalyticsOutline, tone: 'purple' },
       { label: '平均任务耗时', value: '—', sub: '等待运行数据', icon: HardwareChipOutline, tone: 'purple' },
-      { label: '降级后端占比', value: '—', sub: '等待运行数据', icon: AlertCircleOutline, tone: 'purple' },
+      { label: '备用引擎占比', value: '—', sub: '等待运行数据', icon: AlertCircleOutline, tone: 'purple' },
       { label: '待审核资源', value: '—', sub: '等待运行数据', icon: ShieldCheckmarkOutline, tone: 'purple' },
     ]
   }
   return [
     { label: '资源任务成功率', value: `${ops.success_rate}%`, sub: `${ops.completed_count}/${ops.task_count} 已完成`, icon: AnalyticsOutline, tone: 'purple' },
     { label: '平均任务耗时', value: ops.average_latency_ms == null ? '—' : `${ops.average_latency_ms}ms`, sub: '生成任务端到端耗时', icon: HardwareChipOutline, tone: 'purple' },
-    { label: '降级后端占比', value: `${ops.fallback_rate}%`, sub: ops.backend_distribution.map((item) => `${item.backend} ${item.count}`).join(' · '), icon: AlertCircleOutline, tone: ops.fallback_rate > 50 ? 'amber' : 'purple' },
+    { label: '备用引擎占比', value: `${ops.fallback_rate}%`, sub: ops.backend_distribution.map((item) => `${item.backend} ${item.count}`).join(' · '), icon: AlertCircleOutline, tone: ops.fallback_rate > 50 ? 'amber' : 'purple' },
     { label: '待审核资源', value: String(ops.pending_review_count), sub: `${ops.failed_count} 个失败任务`, icon: ShieldCheckmarkOutline, tone: ops.pending_review_count ? 'amber' : 'green' },
   ]
 })
@@ -359,7 +354,8 @@ const agentsMetricCardsLive = computed<MetricCard[]>(() => {
   const config = data?.config
   const enabledCount =
     (config?.grading_agents?.length ?? 0) + (config?.learning_pipeline?.length ?? 0)
-  const backend = data?.agent_backend ?? 'mock'
+  const backend = data?.agent_backend ?? 'rules'
+  const backendLabel = backend === 'mock' || backend === 'rules' ? '规则引擎' : backend
   const avgMs = runtime?.avg_latency_ms
   const avgLabel = avgMs == null ? '—' : avgMs >= 1000 ? `${(avgMs / 1000).toFixed(1)}s` : `${avgMs}ms`
   const successRate = runtime?.success_rate ?? 100
@@ -368,7 +364,7 @@ const agentsMetricCardsLive = computed<MetricCard[]>(() => {
     {
       label: '运行智能体',
       value: String(enabledCount),
-      sub: orchestrationOn ? `后端 ${backend} · 已启用编排` : '编排已关闭',
+      sub: orchestrationOn ? `${backendLabel} · 已启用编排` : '编排已关闭',
       icon: HardwareChipOutline,
       tone: 'purple',
     },
@@ -382,7 +378,7 @@ const agentsMetricCardsLive = computed<MetricCard[]>(() => {
     {
       label: '平均响应延迟',
       value: avgLabel,
-      sub: runtime?.ready_for_llm ? 'CrewAI/LLM 就绪' : runtime?.api_key_configured ? 'LLM 增强可用' : '规则引擎或降级运行',
+      sub: runtime?.ready_for_llm ? 'AI 增强已就绪' : runtime?.api_key_configured ? 'LLM 增强可用' : '规则引擎运行中',
       icon: AnalyticsOutline,
       tone: runtime?.ready_for_llm ? 'green' : 'amber',
     },
@@ -400,13 +396,6 @@ const agentsMetricCardsLive = computed<MetricCard[]>(() => {
   ]
 })
 
-const knowledgeMetricCards: MetricCard[] = [
-  { label: '知识节点总数', value: '48', sub: '试炼 24 + 星轨 24', icon: PlanetOutline, tone: 'purple' },
-  { label: '学域数量', value: '12', sub: '6 试炼域 + 6 星轨域', icon: GitNetworkOutline, tone: 'purple' },
-  { label: '关联边数', value: '14', sub: '前置与扩展关系', icon: BookOutline, tone: 'purple' },
-  { label: '同步状态', value: '正常', sub: '最近一次 14:32', icon: ShieldCheckmarkOutline, tone: 'purple' },
-]
-
 const progressMetrics: ProgressMetric[] = [
   { label: '学习任务完成率', value: 78.6, delta: '↑ 6.2%', icon: SettingsOutline },
   { label: '试炼参与率', value: 65.3, delta: '↑ 4.8%', icon: BookOutline },
@@ -415,72 +404,155 @@ const progressMetrics: ProgressMetric[] = [
 ]
 
 const agentRows: AgentRow[] = [
-  { name: '学习画像智能体', status: '运行中' },
-  { name: '知识图谱智能体', status: '运行中' },
-  { name: '路径规划智能体', status: '运行中' },
-  { name: '认知诊断智能体', status: '运行中' },
-  { name: '试炼生成智能体', status: '运行中' },
-  { name: '反馈评估智能体', status: '运行中' },
+  { name: '学习诊断', status: '运行中' },
+  { name: '代码分析', status: '运行中' },
+  { name: '路径推荐', status: '运行中' },
+  { name: '反馈生成', status: '运行中' },
+  { name: '检查智能体', status: '运行中' },
 ]
 
 const feedItems: FeedItem[] = [
-  { title: '知识图谱新增节点', desc: '新增节点「递归算法优化」已完成人图', time: '14:32', tone: 'purple', icon: GitNetworkOutline },
-  { title: '学习路径生成完成', desc: '为用户「星航者-0421」生成个性化路径', time: '14:32', tone: 'purple', icon: BookOutline },
-  { title: '智能体任务调度', desc: '路径规划智能体已完成任务调度', time: '14:32', tone: 'purple', icon: SparklesOutline },
-  { title: '异常行为预警', desc: '检测到 3 起异常刷题行为', time: '14:32', tone: 'red', icon: AlertCircleOutline },
+  { title: '班级变更待审', desc: '有新的班级申请等待审批', time: '—', tone: 'purple', icon: BookOutline },
+  { title: '学习路径生成完成', desc: '为学生生成个性化学习路径', time: '—', tone: 'purple', icon: BookOutline },
+  { title: '智能体任务调度', desc: '路径推荐智能体已完成任务调度', time: '—', tone: 'purple', icon: SparklesOutline },
+  { title: '异常行为预警', desc: '检测到异常刷题行为', time: '—', tone: 'red', icon: AlertCircleOutline },
 ]
 
 const alertItems: AlertItem[] = [
-  { title: '数据库负载过高', desc: '主数据库负载已超过 85%', time: '14:28', level: '高', tone: 'red' },
-  { title: '知识图谱更新延迟', desc: '部分领域知识更新延迟 15 分钟', time: '14:15', level: '中', tone: 'amber' },
-  { title: '存储空间预警', desc: '试炼资源存储使用率超过 80%', time: '13:42', level: '低', tone: 'purple' },
+  { title: '数据库负载偏高', desc: '主数据库负载已超过 85%', time: '—', level: '高', tone: 'red' },
+  { title: '试炼资源同步延迟', desc: '部分试炼资源同步延迟', time: '—', level: '中', tone: 'amber' },
+  { title: '存储空间预警', desc: '试炼资源存储使用率超过 80%', time: '—', level: '低', tone: 'purple' },
 ]
 
 const trendPoints = [12, 31, 22, 36, 28, 42, 35, 39]
 const trendPolyline = computed(() => trendPoints.map((point, index) => `${index * 54},${128 - point * 2.2}`).join(' '))
-const wavePoints = [48, 55, 66, 54, 49, 72, 86, 68, 51, 50, 74, 84, 72, 64, 70, 79]
-const wavePolyline = computed(() => wavePoints.map((point, index) => `${index * 26},${130 - point}`).join(' '))
+
+const waveMetric = ref<'activity' | 'health'>('activity')
+const waveMetricOptions: SelectOption[] = [
+  { label: '活跃度', value: 'activity' },
+  { label: '健康度', value: 'health' },
+]
+
+const waveChartPoints = computed(() => {
+  const charts = dashboardData.value?.charts
+  if (waveMetric.value === 'health') {
+    const scores = charts?.health_trend?.scores
+    if (scores?.length) return scores
+    const passed = charts?.activity_trend?.passed ?? []
+    const submissions = charts?.activity_trend?.submissions ?? []
+    if (passed.length) {
+      return passed.map((p, i) => {
+        const total = submissions[i] ?? 0
+        return total > 0 ? Math.round((p / total) * 100) : 95
+      })
+    }
+    return [92, 94, 91, 96, 93, 97, 95]
+  }
+  const submissions = charts?.activity_trend?.submissions
+  if (submissions?.length) return submissions
+  return [48, 55, 66, 54, 49, 72, 86, 68, 51, 50, 74, 84, 72, 64, 70, 79]
+})
+
+const waveChartAxis = computed(() => {
+  const xData = dashboardData.value?.charts?.activity_trend?.x_data
+  if (xData?.length) return xData
+  return ['05-14', '05-15', '05-16', '05-17', '05-18', '05-19', '05-20']
+})
+
+const wavePolyline = computed(() => {
+  const points = waveChartPoints.value
+  const max = Math.max(...points, 1)
+  const step = points.length > 1 ? 390 / (points.length - 1) : 390
+  return points.map((point, index) => `${index * step},${130 - (point / max) * 100}`).join(' ')
+})
+
+const waveChartCircles = computed(() => {
+  const points = waveChartPoints.value
+  const max = Math.max(...points, 1)
+  const step = points.length > 1 ? 390 / (points.length - 1) : 390
+  return points.map((point, index) => ({
+    cx: index * step,
+    cy: 130 - (point / max) * 100,
+  }))
+})
 
 const currentNav = computed(() => navItems.find((item) => item.key === activeNav.value) ?? navItems[0])
 const pageSubtitle = computed(() => {
-  if (activeNav.value === 'observer') return '监测平台运行态势、活跃波动与全域风险信号'
-  if (activeNav.value === 'agents') return '配置教师检查智能体编排，协同完成学生做题自动校验'
-  if (activeNav.value === 'knowledge') return '浏览试炼与星轨知识节点、关联关系及题库绑定'
-  return '实时掌控 PLEX 宇宙的运行状态与关键指标'
+  if (activeNav.value === 'observer') return '观测试炼数据、平台波动与各模块运行状态'
+  if (activeNav.value === 'agents') return '配置检查智能体编排，协同完成学生做题自动校验'
+  return '实时掌控 PLEX 平台的运行状态与关键指标'
 })
 const visibleMetrics = computed(() => {
   if (activeNav.value === 'observer') return observerMetricCards.value
   if (activeNav.value === 'agents') return agentsMetricCardsLive.value
-  if (activeNav.value === 'knowledge') return knowledgeMetricCards
   return liveMetricCards.value
 })
-
-const anomalyItems = [
-  { title: '某星域活跃度下降', desc: '「北极星域」活跃度较昨日下降 12.4%', level: '中等', progress: 42, icon: GitNetworkOutline },
-  { title: '某智能体响应延迟升高', desc: '路径规划智能体平均延迟升至 0.82s', level: '偏高', progress: 48, icon: NotificationsOutline },
-  { title: '晚间访问峰值增强', desc: '20:00–22:00 访问量较昨日增长 18.7%', level: '提示', progress: 44, icon: AnalyticsOutline },
-  { title: '某模块同步状态正常', desc: '知识图谱同步任务运行正常', level: '正常', progress: 92, icon: ShieldCheckmarkOutline },
-]
 
 const moduleCards = [
   { label: '学生端', icon: BookOutline },
   { label: '教师端', icon: PersonCircleOutline },
   { label: '管理端', icon: AppsOutline },
-  { label: '知识图谱', icon: GitNetworkOutline },
   { label: 'Agent 链路', icon: PlanetOutline },
 ]
 
-const observerAlerts = [
-  { label: '紧急', value: 2, tone: 'red', icon: AlertCircleOutline },
-  { label: '重要', value: 7, tone: 'amber', icon: AlertCircleOutline },
-  { label: '提示', value: 23, tone: 'purple', icon: NotificationsOutline },
-]
+interface AdminNotificationItem {
+  id: string
+  title: string
+  body: string
+  createdAt: string
+  read: boolean
+  navTarget?: NavKey
+}
+
+const adminNotifications = ref<AdminNotificationItem[]>([])
+const showAdminNotifications = ref(false)
+const adminNotificationsLoading = ref(false)
+
+const adminUnreadCount = computed(() => adminNotifications.value.filter((item) => !item.read).length)
+
+function classRequestActionLabel(action: ClassChangeRequest['action']) {
+  if (action === 'create') return '新建班级'
+  if (action === 'delete') return '删除班级'
+  return '修改班级'
+}
+
+async function loadAdminNotifications() {
+  adminNotificationsLoading.value = true
+  try {
+    const pending = await fetchClassRequests('pending')
+    adminNotifications.value = pending.map((row) => ({
+      id: `class-req-${row.id}`,
+      title: '班级变更待审批',
+      body: `${row.requester_name || `教师#${row.requester_id}`} 申请${classRequestActionLabel(row.action)}${row.class_name ? `「${row.class_name}」` : ''}`,
+      createdAt: row.created_at ?? new Date().toISOString(),
+      read: false,
+      navTarget: 'governance',
+    }))
+  } catch {
+    adminNotifications.value = []
+  } finally {
+    adminNotificationsLoading.value = false
+  }
+}
+
+function markAdminNotificationsRead() {
+  adminNotifications.value = adminNotifications.value.map((item) => ({ ...item, read: true }))
+}
+
+function onAdminNotificationClick(item: AdminNotificationItem) {
+  adminNotifications.value = adminNotifications.value.map((row) =>
+    row.id === item.id ? { ...row, read: true } : row,
+  )
+  if (item.navTarget) setActiveNav(item.navTarget)
+  showAdminNotifications.value = false
+}
 
 function setActiveNav(key: NavKey) {
   activeNav.value = key
   if (key === 'governance') {
     void loadAnnouncements()
     void loadSettings()
+    void loadAdminNotifications()
   }
   if (key === 'nexus' || key === 'observer') {
     void loadDashboard()
@@ -601,9 +673,10 @@ onMounted(() => {
     now.value = new Date()
   }, 1000)
   void loadDashboard()
+  void loadAdminNotifications()
 
-  // Handle ?panel=xxx from global search result navigation
-  const valid: NavKey[] = ['nexus', 'agents', 'knowledge', 'observer', 'governance']
+  // Handle ?panel=xxx deep link navigation
+  const valid: NavKey[] = ['nexus', 'agents', 'observer', 'governance']
   const initPanel = route.query.panel as string | undefined
   if (initPanel && valid.includes(initPanel as NavKey)) {
     setActiveNav(initPanel as NavKey)
@@ -625,6 +698,7 @@ onUnmounted(() => {
 
 <template>
   <div class="admin-shell">
+    <PlexGuideTour role="admin" />
     <aside class="admin-sidebar" aria-label="管理员导航">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true"><n-icon :component="SparklesOutline" /></span>
@@ -658,8 +732,6 @@ onUnmounted(() => {
       </section>
 
       <footer class="sidebar-actions">
-        <button type="button" aria-label="设置"><n-icon :component="SettingsOutline" /></button>
-        <button type="button" aria-label="帮助"><n-icon :component="HelpCircleOutline" /></button>
         <button type="button" aria-label="退出登录" @click="handleLogout"><n-icon :component="ExitOutline" /></button>
       </footer>
     </aside>
@@ -672,15 +744,51 @@ onUnmounted(() => {
         </div>
 
         <div class="topbar-tools">
-          <PlexLocalSearch
-            v-model="adminSearchQuery"
-            variant="admin"
-            :compact="true"
-            placeholder="搜索当前面板内容…"
-            class="search-input"
-          />
           <plex-theme-switcher />
-          <span class="nexus-globe" aria-hidden="true"><n-icon :component="SparklesOutline" /></span>
+          <n-popover
+            trigger="click"
+            placement="bottom-end"
+            :show="showAdminNotifications"
+            class="admin-notif-popover"
+            @update:show="(show) => { showAdminNotifications = show; if (show) void loadAdminNotifications() }"
+          >
+            <template #trigger>
+              <n-badge :value="adminUnreadCount || undefined" :max="9" type="error" :offset="[-2, 4]">
+                <button type="button" class="nexus-globe" aria-label="通知中心" data-tour="admin-notifications">
+                  <n-icon :component="SparklesOutline" />
+                </button>
+              </n-badge>
+            </template>
+            <div class="admin-notif-panel">
+              <header class="admin-notif-panel__head">
+                <strong>通知中心</strong>
+                <n-button
+                  v-if="adminNotifications.length"
+                  text
+                  size="tiny"
+                  type="primary"
+                  @click="markAdminNotificationsRead"
+                >
+                  全部已读
+                </n-button>
+              </header>
+              <div v-if="adminNotificationsLoading" class="admin-notif-panel__empty">加载中…</div>
+              <ul v-else-if="adminNotifications.length" class="admin-notif-panel__list">
+                <li
+                  v-for="item in adminNotifications"
+                  :key="item.id"
+                  class="admin-notif-item"
+                  :class="{ 'admin-notif-item--unread': !item.read }"
+                  @click="onAdminNotificationClick(item)"
+                >
+                  <div class="admin-notif-item__title">{{ item.title }}</div>
+                  <p class="admin-notif-item__body">{{ item.body }}</p>
+                  <time class="admin-notif-item__time">{{ item.createdAt.slice(0, 16).replace('T', ' ') }}</time>
+                </li>
+              </ul>
+              <n-empty v-else size="small" description="暂无待处理通知" class="admin-notif-panel__empty" />
+            </div>
+          </n-popover>
           <n-dropdown trigger="click" :options="userMenuOptions" @select="handleUserMenuSelect">
             <button type="button" class="profile-button" aria-label="打开用户菜单">
               <n-icon :component="PersonCircleOutline" />
@@ -695,8 +803,9 @@ onUnmounted(() => {
 
       <section
         class="metric-row"
-        :class="{ 'metric-row--observer': activeNav === 'observer' || activeNav === 'agents' || activeNav === 'knowledge' }"
+        :class="{ 'metric-row--observer': activeNav === 'observer' || activeNav === 'agents' }"
         aria-label="核心指标"
+        data-tour="admin-nexus-metrics"
       >
         <article v-for="item in visibleMetrics" :key="item.label" class="metric-card" :class="`tone-${item.tone}`">
           <span class="metric-icon"><n-icon :component="item.icon" /></span>
@@ -838,68 +947,16 @@ onUnmounted(() => {
         </article>
       </section>
 
-      <section v-else-if="activeNav === 'observer'" class="observer-grid" aria-label="系统观测面板" data-tour="admin-system-monitor">
-        <article class="panel anomaly-panel">
-          <header class="panel-head">
-            <h2>异常洞察</h2>
-            <button type="button">查看全部 ›</button>
-          </header>
-          <div class="anomaly-list">
-            <article v-for="item in anomalyItems" :key="item.title">
-              <span><n-icon :component="item.icon" /></span>
-              <div>
-                <strong>{{ item.title }}</strong>
-                <small>{{ item.desc }}</small>
-              </div>
-              <em>{{ item.level }}</em>
-              <i><b :style="{ width: `${item.progress}%` }" /></i>
-            </article>
-          </div>
-        </article>
+      <section v-else-if="activeNav === 'observer'" class="observer-grid" aria-label="系统观测面板">
+        <AdminTrialObservatoryPanel class="panel observatory-trials-panel observatory-trials-panel--expanded" />
 
-        <AdminTrialObservatoryPanel class="panel observatory-trials-panel" />
-
-        <article class="panel observatory-panel">
-          <header class="panel-head">
-            <h2>平台运行态势 <span class="info-dot">i</span></h2>
-            <n-select :value="'realtime'" :options="[{ label: '实时监测', value: 'realtime' }, { label: '近 1 小时', value: 'hour' }]" size="small" class="observe-select" />
-          </header>
-          <div class="observatory-services">
-            <div class="observatory-service">
-              <n-icon :component="PersonCircleOutline" />
-              <span>用户交互</span>
-              <small>正常</small>
-            </div>
-            <div class="observatory-service">
-              <n-icon :component="HardwareChipOutline" />
-              <span>智能体响应</span>
-              <small>正常</small>
-            </div>
-            <div class="observatory-service">
-              <n-icon :component="AppsOutline" />
-              <span>资源调度</span>
-              <small>正常</small>
-            </div>
-            <div class="observatory-service">
-              <n-icon :component="BookOutline" />
-              <span>知识服务</span>
-              <small>正常</small>
-            </div>
-            <div class="observatory-service">
-              <n-icon :component="AppsOutline" />
-              <span>任务处理</span>
-              <small>正常</small>
-            </div>
-          </div>
-        </article>
-
-        <div class="observer-grid__footer">
+        <div class="observer-grid__footer" data-tour="admin-system-monitor">
         <article class="panel wave-panel">
           <header class="panel-head">
             <h2>近7日平台波动 <span class="info-dot">i</span></h2>
-            <n-select :value="'activity'" :options="[{ label: '活跃度', value: 'activity' }, { label: '健康度', value: 'health' }]" size="small" class="observe-select" />
+            <n-select v-model:value="waveMetric" :options="waveMetricOptions" size="small" class="observe-select" />
           </header>
-          <svg class="wave-chart" viewBox="0 0 390 150" role="img" aria-label="近7日平台波动">
+          <svg class="wave-chart" viewBox="0 0 390 150" role="img" :aria-label="waveMetric === 'health' ? '近7日健康度' : '近7日活跃度'">
             <defs>
               <linearGradient id="waveFill" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stop-color="rgba(139, 92, 246, .62)" />
@@ -908,39 +965,24 @@ onUnmounted(() => {
             </defs>
             <path :d="`M0,150 L${wavePolyline} L390,150 Z`" fill="url(#waveFill)" />
             <polyline :points="wavePolyline" />
-            <circle v-for="(point, index) in wavePoints" :key="`${point}-${index}`" :cx="index * 26" :cy="130 - point" r="3" />
+            <circle v-for="(point, index) in waveChartCircles" :key="`${point.cx}-${index}`" :cx="point.cx" :cy="point.cy" r="3" />
           </svg>
-          <div class="chart-axis"><span>05-14</span><span>05-15</span><span>05-16</span><span>05-17</span><span>05-18</span><span>05-19</span><span>05-20</span></div>
+          <div class="chart-axis">
+            <span v-for="label in waveChartAxis" :key="label">{{ label }}</span>
+          </div>
         </article>
 
         <article class="panel module-panel">
           <header class="panel-head">
             <h2>模块运行状态 <span class="info-dot">i</span></h2>
           </header>
-          <div class="module-row">
+          <div class="module-row module-row--four">
             <article v-for="item in moduleCards" :key="item.label">
               <n-icon :component="item.icon" />
               <strong>{{ item.label }}</strong>
               <small>正常</small>
             </article>
           </div>
-        </article>
-
-        <article class="panel global-alert-panel">
-          <header class="panel-head">
-            <h2>全域告警 <span class="info-dot">i</span></h2>
-            <button type="button">查看全部 ›</button>
-          </header>
-          <div class="global-alert-row">
-            <article v-for="item in observerAlerts" :key="item.label" :class="`tone-${item.tone}`">
-              <div>
-                <small>{{ item.label }}</small>
-                <strong>{{ item.value }}</strong>
-              </div>
-              <span><n-icon :component="item.icon" /></span>
-            </article>
-          </div>
-          <p class="alert-delta">较昨日 ↓ 2</p>
         </article>
         </div>
       </section>
@@ -950,8 +992,6 @@ onUnmounted(() => {
         data-tour="admin-agent-flow"
         @orchestration-updated="loadAgentOrchestrationMetrics"
       />
-
-      <admin-knowledge-nexus-panel v-else-if="activeNav === 'knowledge'" data-tour="admin-knowledge-maintenance" />
 
       <section v-else-if="activeNav === 'governance'" class="dashboard-grid governance-grid" aria-label="权限与公告" data-tour="admin-permission-control">
         <article class="panel governance-announce-panel">
@@ -984,10 +1024,8 @@ onUnmounted(() => {
             <h2>近期公告</h2>
             <n-button quaternary size="small" class="gov-refresh-btn" @click="loadAnnouncements()">刷新</n-button>
           </header>
-          <div v-if="!filteredAnnouncements.length" class="governance-empty">
-            {{ adminSearchQuery.trim() ? '没有匹配的公告' : '暂无公告记录' }}
-          </div>
-          <article v-for="item in filteredAnnouncements" :key="item.id" class="gov-announce-item">
+          <div v-if="!recentAnnouncements.length" class="governance-empty">暂无公告记录</div>
+          <article v-for="item in recentAnnouncements" :key="item.id" class="gov-announce-item">
             <strong>{{ item.title }}</strong>
             <p>{{ item.body }}</p>
             <small>{{ item.target_role }} · {{ item.created_at?.slice(0, 16).replace('T', ' ') }}</small>
@@ -1096,7 +1134,7 @@ onUnmounted(() => {
           </template>
         </article>
 
-        <admin-class-request-panel />
+        <admin-class-request-panel @reviewed="loadAdminNotifications" />
       </section>
 
       <footer class="admin-footer">© {{ currentYear }} PLEX Universe. All rights reserved.</footer>
@@ -1329,7 +1367,7 @@ onUnmounted(() => {
 
 .admin-topbar {
   display: grid;
-  grid-template-columns: minmax(300px, 1fr) minmax(620px, auto);
+  grid-template-columns: minmax(300px, 1fr) minmax(280px, auto);
   gap: 1rem;
   align-items: start;
 }
@@ -1394,6 +1432,69 @@ onUnmounted(() => {
   background: radial-gradient(circle, rgba(139, 92, 246, 0.48), rgba(14, 12, 32, 0.86));
   color: #c4b5fd;
   font-size: 1.6rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.admin-notif-panel {
+  width: min(360px, 88vw);
+}
+
+.admin-notif-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.admin-notif-panel__head strong {
+  color: #1e1b4b;
+  font-size: 0.95rem;
+}
+
+.admin-notif-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.admin-notif-item {
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+}
+
+.admin-notif-item--unread {
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.admin-notif-item__title {
+  color: #1e293b;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.admin-notif-item__body {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.admin-notif-item__time {
+  display: block;
+  margin-top: 0.25rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.admin-notif-panel__empty {
+  padding: 0.5rem 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.82rem;
 }
 
 .profile-button {
@@ -1431,8 +1532,8 @@ onUnmounted(() => {
 
 .metric-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
   margin-top: 1rem;
 }
 
@@ -1452,22 +1553,27 @@ onUnmounted(() => {
 
 .metric-card {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
   align-items: center;
-  min-height: 128px;
-  padding: 1.2rem 1.45rem;
+  min-height: 96px;
+  padding: 0.85rem 1rem;
+  transition: none;
+}
+
+.metric-card:hover {
+  transform: none;
 }
 
 .metric-icon {
   display: grid;
-  width: 80px;
-  height: 80px;
+  width: 52px;
+  height: 52px;
   place-items: center;
   border-radius: 50%;
   border: 1px solid rgba(139, 92, 246, 0.7);
   background: radial-gradient(circle, rgba(139, 92, 246, 0.36), rgba(8, 11, 26, 0.8));
   color: #c4b5fd;
-  font-size: 2.4rem;
+  font-size: 1.6rem;
 }
 
 .tone-amber .metric-icon {
@@ -1483,9 +1589,9 @@ onUnmounted(() => {
 
 .metric-card strong {
   display: block;
-  margin: 0.45rem 0;
+  margin: 0.3rem 0;
   color: #ffffff;
-  font-size: 1.9rem;
+  font-size: 1.45rem;
   font-weight: 600;
 }
 
@@ -1888,8 +1994,8 @@ onUnmounted(() => {
 
 .observer-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.55fr) minmax(220px, 0.62fr);
-  grid-template-rows: minmax(420px, 1fr) auto;
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(640px, 1fr) auto;
   gap: 1rem;
   margin-top: 1.05rem;
   align-items: stretch;
@@ -1902,35 +2008,23 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-.anomaly-panel {
+.observatory-trials-panel {
   grid-column: 1;
   grid-row: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 640px;
 }
 
-.observatory-trials-panel {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.observatory-panel {
-  grid-column: 3;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+.observatory-trials-panel--expanded {
+  min-height: 640px;
 }
 
 .observer-grid__footer {
-  grid-column: 1 / -1;
+  grid-column: 1;
   grid-row: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.85fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: stretch;
 }
@@ -1948,12 +2042,12 @@ onUnmounted(() => {
 
 .observatory-trials-panel :deep(.admin-trials) {
   flex: 1;
-  min-height: 0;
+  min-height: 560px;
 }
 
 .observatory-trials-panel :deep(.admin-trials__body) {
   flex: 1;
-  min-height: 0;
+  min-height: 520px;
 }
 
 .info-dot {
@@ -2119,12 +2213,12 @@ onUnmounted(() => {
 
 .module-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
-.observer-grid__footer .module-row article {
-  min-height: 96px;
+.module-row--four article {
+  min-height: 110px;
 }
 
 .module-row article {
@@ -2230,45 +2324,24 @@ onUnmounted(() => {
   }
 
   .observer-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
   }
 
-  .anomaly-panel {
+  .observatory-trials-panel {
     grid-column: 1;
     grid-row: 1;
   }
 
-  .observatory-panel {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .observatory-trials-panel {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
   .observer-grid__footer {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .observer-grid__footer .wave-panel {
-    grid-column: 1 / -1;
-  }
-
-  .observatory-services {
+    grid-column: 1;
+    grid-row: 2;
     grid-template-columns: 1fr;
   }
 
-  .observatory-panel .observatory-service {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-  }
-
-  .anomaly-panel .anomaly-list {
-    max-height: 240px;
+  .module-row,
+  .module-row--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .admin-topbar {
@@ -2299,9 +2372,7 @@ onUnmounted(() => {
     grid-template-rows: auto;
   }
 
-  .anomaly-panel,
   .observatory-trials-panel,
-  .observatory-panel,
   .observer-grid__footer {
     grid-column: 1;
     grid-row: auto;
@@ -2311,11 +2382,8 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .observer-grid__footer .wave-panel {
-    grid-column: auto;
-  }
-
-  .observatory-services {
+  .module-row,
+  .module-row--four {
     grid-template-columns: 1fr;
   }
 
@@ -2325,11 +2393,9 @@ onUnmounted(() => {
   }
 
   .topbar-tools {
-    flex-direction: column;
-  }
-
-  .search-input {
-    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 }
 

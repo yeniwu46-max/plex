@@ -5,11 +5,13 @@ import {
   NCollapse,
   NCollapseItem,
   NEmpty,
+  NIcon,
   NInput,
   NProgress,
   NTag,
   useMessage,
 } from 'naive-ui'
+import { SparklesOutline } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
 import ClassFileExchangePanel from '../components/student/ClassFileExchangePanel.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
@@ -35,6 +37,17 @@ const reasons = ref<Record<number, string>>({})
 const auditReports = ref<Record<number, AuditReport>>({})
 const auditLoading = ref<Record<number, boolean>>({})
 const expandedId = ref<number | null>(null)
+const smartReviewLoading = ref(false)
+const manualReviewTags = ref<Record<number, string>>({})
+
+const riskReasonLabels: Record<string, string> = {
+  low_confidence: '置信度偏低',
+  scope_mismatch: '超出课程范围',
+  missing_citation: '缺少知识库引用',
+  code_quality: '代码质量存疑',
+  factual_risk: '事实准确性风险',
+  incomplete_content: '内容不完整',
+}
 
 const typeLabels: Record<string, string> = {
   learning_bundle: '完整资源包',
@@ -158,6 +171,72 @@ function dimensionEntries(report: AuditReport) {
   return Object.entries(report.dimensions) as Array<[keyof DimensionScores, number]>
 }
 
+function formatRiskReason(reason: string) {
+  return riskReasonLabels[reason] ?? reason.replace(/_/g, ' ')
+}
+
+function shouldAutoApprove(item: PersonalizedResource, report: AuditReport | undefined) {
+  if (!report) return false
+  if (report.verdict !== 'PASS' || !report.suggested_publish) return false
+  if (item.confidence < 0.72) return false
+  if (item.risk_reasons.length > 0) return false
+  const minDimension = Math.min(...Object.values(report.dimensions))
+  return minDimension >= 70
+}
+
+async function runSmartReview() {
+  if (!items.value.length || smartReviewLoading.value) return
+  smartReviewLoading.value = true
+  let approved = 0
+  let flagged = 0
+  const nextTags: Record<number, string> = { ...manualReviewTags.value }
+  try {
+    for (const item of items.value) {
+      if (!auditReports.value[item.id]) {
+        await loadAudit(item.id)
+      }
+      let report = auditReports.value[item.id]
+      if (!report) {
+        try {
+          const result = await rerunResourceAudit(item.id)
+          auditReports.value[item.id] = result.audit_report
+          report = result.audit_report
+        } catch {
+          nextTags[item.id] = 'AI 审核报告缺失'
+          flagged += 1
+          continue
+        }
+      }
+      if (shouldAutoApprove(item, report)) {
+        await reviewPersonalizedResource(
+          item.id,
+          'approved',
+          'AI 智能审核：六步审核通过，内容符合正常发布标准',
+        )
+        delete nextTags[item.id]
+        approved += 1
+      } else {
+        const verdictLabel = verdictLabels[report.verdict] ?? '需复核'
+        const hint =
+          report.verdict === 'PASS'
+            ? '建议通过但需人工确认'
+            : report.verdict === 'NEED_MODIFY'
+              ? '建议修改后再发布'
+              : '建议驳回'
+        nextTags[item.id] = `需人工复核 · ${verdictLabel} · ${hint}`
+        flagged += 1
+      }
+    }
+    manualReviewTags.value = nextTags
+    message.success(`智能审核完成：自动通过 ${approved} 项，${flagged} 项已打标待人工复核`)
+    await load()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '智能审核失败')
+  } finally {
+    smartReviewLoading.value = false
+  }
+}
+
 onMounted(() => void load())
 </script>
 
@@ -170,6 +249,19 @@ onMounted(() => void load())
     hide-toolbar
   >
     <main class="review-page">
+      <header v-if="items.length" class="review-page__toolbar">
+        <p>接入六步 AI 审核：符合标准的资源可一键通过，存疑项将打标供教师继续审核。</p>
+        <n-button
+          type="warning"
+          :loading="smartReviewLoading"
+          :disabled="!items.length"
+          @click="runSmartReview"
+        >
+          <template #icon><n-icon :component="SparklesOutline" /></template>
+          智能审核
+        </n-button>
+      </header>
+
       <section v-if="metrics" class="metric-grid" aria-label="资源审核指标">
         <article><span>待审核</span><strong>{{ metrics.pending_review_count }}</strong></article>
         <article><span>已批准</span><strong>{{ metrics.status_counts.approved }}</strong></article>
@@ -194,7 +286,7 @@ onMounted(() => void load())
           <span>风险原因</span>
           <div>
             <n-tag v-for="risk in metrics.risk_reason_distribution" :key="risk.reason" type="warning">
-              {{ risk.reason }} × {{ risk.count }}
+              {{ formatRiskReason(risk.reason) }} × {{ risk.count }}
             </n-tag>
           </div>
         </article>
@@ -219,7 +311,8 @@ onMounted(() => void load())
               </span>
             </button>
             <div class="review-card__tags">
-              <n-tag type="warning">{{ reviewStatusLabels[item.review_status] ?? item.review_status }}</n-tag>
+              <n-tag v-if="manualReviewTags[item.id]" type="error">{{ manualReviewTags[item.id] }}</n-tag>
+              <n-tag type="warning">{{ reviewStatusLabels[item.review_status] ?? '待审核' }}</n-tag>
               <n-tag>{{ typeLabels[item.resource_type] ?? item.resource_type }}</n-tag>
               <n-tag
                 v-if="auditReports[item.id]"
@@ -232,7 +325,7 @@ onMounted(() => void load())
           </header>
 
           <div class="risks">
-            <n-tag v-for="risk in item.risk_reasons" :key="risk" type="error">{{ risk }}</n-tag>
+            <n-tag v-for="risk in item.risk_reasons" :key="risk" type="error">{{ formatRiskReason(risk) }}</n-tag>
           </div>
           <p>{{ item.recommendation_reason }}</p>
 
@@ -280,7 +373,7 @@ onMounted(() => void load())
               </n-collapse>
 
               <p v-if="auditReports[item.id].metadata?.crewai_notes" class="crew-note">
-                {{ auditReports[item.id].metadata?.crewai_notes }}
+                <strong>AI 审核备注：</strong>{{ auditReports[item.id].metadata?.crewai_notes }}
               </p>
             </section>
             <p v-else-if="auditLoading[item.id]" class="audit-loading">正在加载六步审核报告…</p>
@@ -328,6 +421,25 @@ onMounted(() => void load())
   width: 100%;
   padding: 0 var(--plex-page-gutter-x) 2rem;
   overflow-y: auto;
+}
+
+.review-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(251, 146, 60, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(67, 20, 7, 0.35), rgba(15, 23, 42, 0.45));
+}
+
+.review-page__toolbar p {
+  margin: 0;
+  color: rgba(254, 215, 170, 0.78);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .task-group {

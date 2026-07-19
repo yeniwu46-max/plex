@@ -7,10 +7,10 @@ defineProps<{
 </script>
 
 <template>
-  <section class="cycle-panel" aria-label="多智能体学习闭环">
+  <section class="cycle-panel" aria-label="小E 学习闭环">
     <header class="cycle-panel__head">
       <div>
-        <p>协同学习闭环</p>
+        <p>小E 的学习闭环</p>
         <h3>{{ result.learningReport.headline }}</h3>
       </div>
       <span :class="result.execution.all_passed ? 'is-pass' : 'is-fix'">

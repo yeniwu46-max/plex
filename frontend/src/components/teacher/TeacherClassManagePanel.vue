@@ -202,6 +202,7 @@ onMounted(() => {
 
     <div v-if="loading" class="teacher-state-panel">加载中…</div>
     <template v-else>
+      <div class="class-manage__actions-row">
       <article class="class-manage__card">
         <h3>编辑班级（即时生效）</h3>
         <label class="class-manage__field">
@@ -257,6 +258,7 @@ onMounted(() => {
         </label>
         <n-button type="error" secondary :loading="submitting" @click="requestDeleteClass">提交删除申请</n-button>
       </article>
+      </div>
 
       <article class="class-manage__card">
         <h3>我的班级变更申请</h3>
@@ -284,6 +286,19 @@ onMounted(() => {
 .class-manage {
   display: grid;
   gap: 1rem;
+}
+
+.class-manage__actions-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .class-manage__actions-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .class-manage__intro {

@@ -7,6 +7,8 @@ import {
   type ClassChangeRequest,
 } from '../../api/classRequests'
 
+const emit = defineEmits<{ reviewed: [] }>()
+
 const message = useMessage()
 const loading = ref(false)
 const reviewingId = ref<number | null>(null)
@@ -32,6 +34,38 @@ function actionLabel(action: ClassChangeRequest['action']) {
   return '修改班级'
 }
 
+const PAYLOAD_FIELD_LABELS: Record<string, string> = {
+  name: '班级名称',
+  grade_level: '年级',
+  teacher_id: '负责教师',
+  description: '备注说明',
+}
+
+function formatPayloadSummary(payload: Record<string, unknown> | null | undefined) {
+  if (!payload || !Object.keys(payload).length) return []
+  const lines: string[] = []
+  const seen = new Set<string>()
+
+  for (const key of ['name', 'grade_level', 'teacher_id', 'description']) {
+    if (!(key in payload)) continue
+    seen.add(key)
+    const raw = payload[key]
+    const label = PAYLOAD_FIELD_LABELS[key] ?? key
+    if (raw == null || raw === '') {
+      lines.push(`${label}：未设置`)
+    } else {
+      lines.push(`${label}：${String(raw)}`)
+    }
+  }
+
+  for (const [key, raw] of Object.entries(payload)) {
+    if (seen.has(key) || raw == null || raw === '') continue
+    lines.push(`${PAYLOAD_FIELD_LABELS[key] ?? key}：${String(raw)}`)
+  }
+
+  return lines
+}
+
 async function review(row: ClassChangeRequest, approve: boolean) {
   reviewingId.value = row.id
   try {
@@ -39,6 +73,7 @@ async function review(row: ClassChangeRequest, approve: boolean) {
     message.success(approve ? '已通过申请' : '已驳回申请')
     reviewNote.value = ''
     await load()
+    emit('reviewed')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '审批失败')
   } finally {
@@ -52,7 +87,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <article class="gov-class-panel panel" aria-label="班级变更审批">
+  <article class="gov-class-panel panel" aria-label="班级变更审批" data-tour="admin-class-approval">
     <header class="panel-head">
       <h2>班级变更审批</h2>
       <n-button quaternary size="small" class="gov-refresh-btn" :loading="loading" @click="load()">刷新</n-button>
@@ -75,9 +110,9 @@ onMounted(() => {
           <span v-if="row.class_name"> · {{ row.class_name }}</span>
           <p>申请人：{{ row.requester_name || `#${row.requester_id}` }}</p>
           <p v-if="row.reason">理由：{{ row.reason }}</p>
-          <pre v-if="row.payload && Object.keys(row.payload).length" class="gov-request-payload">{{
-            JSON.stringify(row.payload, null, 2)
-          }}</pre>
+          <ul v-if="formatPayloadSummary(row.payload).length" class="gov-request-summary">
+            <li v-for="line in formatPayloadSummary(row.payload)" :key="line">{{ line }}</li>
+          </ul>
           <small>{{ row.created_at?.slice(0, 16).replace('T', ' ') }}</small>
         </div>
         <div class="gov-request-actions">
@@ -151,14 +186,20 @@ onMounted(() => {
   font-size: 0.75rem;
 }
 
-.gov-request-payload {
+.gov-request-summary {
   margin: 0.45rem 0 0;
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.75rem;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  color: rgba(221, 214, 254, 0.8);
-  font-size: 0.72rem;
-  white-space: pre-wrap;
+  background: rgba(0, 0, 0, 0.22);
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.gov-request-summary li {
+  color: rgba(221, 214, 254, 0.85);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .gov-request-actions {

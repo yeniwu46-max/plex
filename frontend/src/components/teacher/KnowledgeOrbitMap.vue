@@ -26,12 +26,16 @@ const displayNodes = computed(() => {
     const key = node.domainKey ?? node.label
     const dup = seen.get(key) ?? 0
     seen.set(key, dup + 1)
-    if (dup === 0) return node
-    const offset = dup * 7
+    const clampX = (v: number) => Math.min(84, Math.max(14, v))
+    const clampY = (v: number) => Math.min(76, Math.max(16, v))
+    if (dup === 0) {
+      return { ...node, x: clampX(node.x), y: clampY(node.y) }
+    }
+    const offset = dup * 6
     return {
       ...node,
-      x: Math.min(92, Math.max(8, node.x + offset)),
-      y: Math.min(88, Math.max(12, node.y + offset * 0.6)),
+      x: clampX(node.x + offset),
+      y: clampY(node.y + offset * 0.5),
     }
   })
 })
@@ -92,8 +96,8 @@ function nodeKey(node: OrbitNode, index: number) {
 .orbit-panel {
   position: relative;
   height: 100%;
-  min-height: 420px;
-  overflow: visible;
+  min-height: 360px;
+  overflow: hidden;
 }
 
 .orbit-panel--compact {
@@ -110,7 +114,7 @@ function nodeKey(node: OrbitNode, index: number) {
 .orbit-map {
   position: absolute;
   inset: 2.5rem 0.75rem 3.75rem;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .orbit-panel:not(:has(.orbit-panel__head)) .orbit-map {
@@ -124,7 +128,7 @@ function nodeKey(node: OrbitNode, index: number) {
   background-image:
     radial-gradient(1px 1px at 14% 34%, rgba(255, 255, 255, 0.5), transparent),
     radial-gradient(1px 1px at 74% 18%, rgba(251, 191, 36, 0.45), transparent),
-    radial-gradient(1px 1px at 82% 78%, rgba(46, 255, 241, 0.4), transparent);
+    radial-gradient(1px 1px at 82% 78%, rgba(251, 191, 36, 0.4), transparent);
   background-size: 160px 160px;
   content: '';
   pointer-events: none;
@@ -285,9 +289,9 @@ function nodeKey(node: OrbitNode, index: number) {
 }
 
 .orbit-node--teal .orbit-node__planet {
-  border-color: rgba(46, 255, 241, 0.75);
-  background: rgba(46, 255, 241, 0.12);
-  box-shadow: 0 0 26px rgba(46, 255, 241, 0.38), 0 0 0 12px rgba(46, 255, 241, 0.05);
+  border-color: rgba(251, 191, 36, 0.78);
+  background: rgba(251, 191, 36, 0.12);
+  box-shadow: 0 0 26px rgba(251, 191, 36, 0.38), 0 0 0 12px rgba(251, 191, 36, 0.05);
 }
 
 .orbit-node--red .orbit-node__planet {
@@ -328,7 +332,7 @@ function nodeKey(node: OrbitNode, index: number) {
 }
 
 .orbit-legend .good {
-  background: var(--teacher-teal, #2efff1);
+  background: var(--teacher-gold, #fbbf24);
 }
 
 .orbit-legend .mid {

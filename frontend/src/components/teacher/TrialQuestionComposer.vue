@@ -568,8 +568,8 @@ onMounted(async () => {
 
 .composer__badge--fill_blank,
 .composer__badge--short_answer {
-  border-color: rgba(52, 211, 153, 0.42);
-  color: #34d399;
+  border-color: rgba(251, 191, 36, 0.42);
+  color: #fcd34d;
 }
 
 .composer__ops {
@@ -648,9 +648,9 @@ onMounted(async () => {
 }
 
 .composer__mark--on {
-  border-color: #34d399;
-  background: rgba(52, 211, 153, 0.18);
-  color: #34d399;
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.18);
+  color: #fcd34d;
 }
 
 .composer__add-option {

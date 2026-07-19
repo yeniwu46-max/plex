@@ -10,16 +10,20 @@ from typing import Any
 import requests
 
 
+def _deepseek_tuple(api_key: str) -> tuple[str, str, str]:
+    base = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1').rstrip('/')
+    return (
+        api_key,
+        f'{base}/chat/completions',
+        os.getenv('DEEPSEEK_MODEL', 'deepseek-chat'),
+    )
+
+
 def llm_provider() -> tuple[str, str, str] | None:
     """返回 (api_key, endpoint, model)，优先 DeepSeek，其次 OpenRouter。"""
     deepseek = os.getenv('DEEPSEEK_API_KEY', '').strip()
     if deepseek:
-        base = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1').rstrip('/')
-        return (
-            deepseek,
-            f'{base}/chat/completions',
-            os.getenv('DEEPSEEK_MODEL', 'deepseek-chat'),
-        )
+        return _deepseek_tuple(deepseek)
     openrouter = os.getenv('OPENROUTER_API_KEY', '').strip()
     if openrouter:
         return (
@@ -38,8 +42,37 @@ def llm_provider() -> tuple[str, str, str] | None:
     return None
 
 
+def messenger_provider() -> tuple[str, str, str] | None:
+    """驿站助手 / 小E 对话专用 DeepSeek 密钥。"""
+    key = (
+        os.getenv('DEEPSEEK_MESSENGER_API_KEY', '').strip()
+        or os.getenv('DEEPSEEK_API_KEY', '').strip()
+    )
+    return _deepseek_tuple(key) if key else None
+
+
+def emergency_provider() -> tuple[str, str, str] | None:
+    """边界条件补给站 · 成长轨迹 AI 解析专用 DeepSeek 密钥。"""
+    key = (
+        os.getenv('DEEPSEEK_EMERGENCY_API_KEY', '').strip()
+        or os.getenv('DEEPSEEK_API_KEY', '').strip()
+    )
+    return _deepseek_tuple(key) if key else None
+
+
 def api_key_configured() -> bool:
     return llm_provider() is not None
+
+
+def strip_asterisks(text: str) -> str:
+    """移除 Markdown 星号，避免学生端出现 ** 加粗。"""
+    cleaned = (text or '').strip()
+    previous = None
+    while cleaned and previous != cleaned:
+        previous = cleaned
+        cleaned = re.sub(r'\*\*([^*]+)\*\*', r'\1', cleaned)
+        cleaned = re.sub(r'\*([^*\n]+)\*', r'\1', cleaned)
+    return cleaned.strip()
 
 
 def _extract_json(text: str) -> dict[str, Any] | None:
@@ -106,9 +139,10 @@ def chat_text(
     history: list[dict[str, str]] | None = None,
     timeout: float = 45.0,
     max_tokens: int = 900,
+    provider: tuple[str, str, str] | None = None,
 ) -> str | None:
     """调用 LLM 并返回纯文本回复。"""
-    provider = llm_provider()
+    provider = provider or llm_provider()
     if not provider:
         return None
     api_key, endpoint, model = provider
@@ -137,6 +171,6 @@ def chat_text(
         resp.raise_for_status()
         data = resp.json()
         content = data['choices'][0]['message']['content']
-        return str(content or '').strip() or None
+        return strip_asterisks(str(content or '')) or None
     except Exception:
         return None

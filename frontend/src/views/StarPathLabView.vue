@@ -410,7 +410,7 @@ function selectQuestionSlot(slot: number, qid: string) {
 }
 
 function launchPractice(question: PythonTrialQuestion) {
-  openInlinePractice(question)
+  void openPracticeQuestion(router, question)
 }
 
 function rerollQuestion() {
@@ -767,36 +767,7 @@ onActivated(() => {
             </div>
           </section>
 
-          <section class="domain-overview">
-            <h2><span />星域概览</h2>
-            <div
-              class="overview-list"
-              :style="{ '--overview-cols': Math.max(domains.length, 1) }"
-            >
-              <article
-                v-for="domain in domains"
-                :key="domain.key"
-                class="overview-card"
-                :class="{
-                  'overview-card--active': domain.active || activeDomainKey === domain.key,
-                  'overview-card--clickable': !domain.locked,
-                }"
-                role="button"
-                :tabindex="domain.locked ? -1 : 0"
-                @click="selectDomainCard(domain)"
-                @keydown.enter.prevent="selectDomainCard(domain)"
-              >
-                <div>
-                  <strong>{{ domain.title }}</strong>
-                  <p>{{ domain.progress }}%</p>
-                  <em>{{ domain.state }}</em>
-                </div>
-                <span class="planet" :class="{ 'planet--locked': domain.locked }">
-                  <n-icon v-if="domain.locked" :component="LockClosedOutline" />
-                </span>
-              </article>
-            </div>
-          </section>
+          <section class="domain-overview domain-overview--removed" aria-hidden="true" />
         </div>
 
         <aside class="detail-panel" aria-label="知识点详情">
@@ -942,15 +913,7 @@ onActivated(() => {
             :disabled="detailMode === 'node' && (!selectedNode || !isStarPathNodeUnlocked(selectedNode))"
             @click="detailMode === 'knowledge' ? continueKnowledgeTrial() : continueExplore()"
           >
-            {{ inlinePracticeOpen ? '继续内嵌试炼' : detailMode === 'knowledge' || isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
-          </button>
-          <button
-            v-if="inlinePracticeOpen && inlineQuestion"
-            type="button"
-            class="continue-btn continue-btn--ghost"
-            @click="launchFullscreenPractice"
-          >
-            全屏试炼
+            {{ detailMode === 'knowledge' || isStarPathNodeUnlocked(selectedNode) ? '开始编程试炼' : '节点未解锁' }}
           </button>
           <button
             v-if="(detailMode === 'knowledge' && !selectedKnowledge?.point.questionId) || (detailMode === 'node' && nodeQuestionIds.length > 1)"
@@ -962,39 +925,6 @@ onActivated(() => {
           </button>
           </div>
         </aside>
-      </section>
-
-      <section
-        v-if="inlinePracticeOpen"
-        class="inline-practice"
-        aria-label="星轨内嵌试炼"
-      >
-        <header class="inline-practice__head">
-          <div>
-            <span class="inline-practice__eyebrow">星轨 · 内嵌试炼</span>
-            <h3 v-if="inlineQuestion">{{ formatQuestionLabel(inlineQuestion) }}</h3>
-            <h3 v-else>加载题目中…</h3>
-          </div>
-          <div class="inline-practice__head-actions">
-            <n-button quaternary size="small" @click="launchFullscreenPractice">全屏试炼</n-button>
-            <n-button quaternary size="small" @click="closeInlinePractice">收起</n-button>
-          </div>
-        </header>
-        <PythonTrialWorkspace
-          v-if="inlinePracticeReady && inlineQuestion"
-          :key="`${inlineQuestion.id}-${questionTransitionKey}`"
-          embedded
-          back-label="收起"
-          :question="inlineQuestion"
-          :slot-ids="inlineSlotIds"
-          :active-slot="activeQuestionSlot"
-          @back="closeInlinePractice"
-          @passed="onInlinePassed"
-          @change-question="rerollQuestion"
-          @select-slot="selectInlineSlot"
-        />
-        <div v-else-if="!inlinePracticeReady" class="inline-practice__loading">正在加载练习题库…</div>
-        <div v-else class="inline-practice__loading">未找到匹配题目，请稍后重试或切换节点。</div>
       </section>
     </main>
   </DashboardShell>
@@ -1349,39 +1279,39 @@ onActivated(() => {
   position: relative;
   z-index: 3;
   display: flex;
-  align-items: center;
-  gap: 2rem;
-  padding: 0.6rem var(--plex-page-gutter-x) 1.05rem;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.25rem;
+  padding: 0.85rem var(--plex-page-gutter-x) 1.25rem;
   border-bottom: 1px solid rgba(126, 188, 220, 0.08);
+  min-height: 72px;
 }
 
 .domain-tab {
   position: relative;
-  flex: 0 0 auto;
-  min-height: 42px;
-  border: 0;
-  background: transparent;
+  flex: 1 1 auto;
+  min-width: 7.5rem;
+  min-height: 52px;
+  padding: 0.55rem 1rem;
+  border: 1px solid rgba(130, 212, 255, 0.12);
+  border-radius: 0.65rem;
+  background: rgba(6, 18, 31, 0.55);
   color: rgba(224, 237, 247, 0.7);
   cursor: pointer;
-  font-size: 0.96rem;
-  font-weight: 620;
+  font-size: 1.02rem;
+  font-weight: 650;
   white-space: nowrap;
 }
 
 .domain-tab--active {
   color: #eaffff;
+  border-color: rgba(35, 255, 222, 0.55);
+  background: rgba(16, 240, 192, 0.1);
+  box-shadow: inset 0 0 18px rgba(35, 255, 222, 0.06);
 }
 
 .domain-tab--active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.55rem;
-  height: 2px;
-  border-radius: 99px;
-  background: #23ffde;
-  box-shadow: 0 0 14px rgba(35, 255, 222, 0.6);
+  display: none;
 }
 
 .starpath-content {
@@ -1399,11 +1329,11 @@ onActivated(() => {
 
 .content-left {
   display: grid;
-  grid-template-rows: minmax(360px, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   gap: 0.85rem;
   min-width: 0;
   min-height: 0;
-  align-content: start;
+  align-content: stretch;
 }
 
 .path-board,
@@ -1968,10 +1898,8 @@ onActivated(() => {
   background: #7d8791;
 }
 
-.domain-overview {
-  flex-shrink: 0;
-  padding: 0.85rem 1.2rem 1rem;
-  overflow: visible;
+.domain-overview--removed {
+  display: none !important;
 }
 
 .domain-overview h2 {

@@ -41,6 +41,29 @@ export function xiaoETimeoutMessage(): string {
   return '小E 这次思考有点久，稍后再试一次吧～'
 }
 
+const BACKEND_LABELS: Record<string, string> = {
+  local_rules: '本地规则',
+  iflytek_spark: '云端生成',
+  deepseek: '智能讲解',
+  llm: '智能讲解',
+  spark: '智能讲解',
+  rag: '知识库参考',
+  rules: '学习建议',
+}
+
+export function xiaoEResourceBackendLabel(backend?: string | null): string {
+  const key = (backend || '').trim().toLowerCase()
+  if (!key) return '学习资源'
+  return BACKEND_LABELS[key] || '学习资源'
+}
+
+export function xiaoEStripAsterisks(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .trim()
+}
+
 export function xiaoESubmitCheckSummary(rawSummary: string): string {
   const trimmed = rawSummary.trim()
   if (!trimmed) return '小E 已收到你的提交，继续加油！'

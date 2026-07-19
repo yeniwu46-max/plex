@@ -66,7 +66,11 @@ def ai_generate_trial_questions():
         if payload.get('knowledge_key'):
             keys = [payload['knowledge_key'], *keys]
         count = int(payload.get('count') or 3)
-        questions = AiQuestionGenerator.generate(keys, count)
+        question_types = payload.get('question_types') or payload.get('question_type')
+        if isinstance(question_types, str):
+            question_types = [question_types]
+        difficulty = int(payload.get('difficulty') or 60)
+        questions = AiQuestionGenerator.generate(keys, count, question_types, difficulty)
         return success_response({'questions': questions})
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)

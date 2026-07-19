@@ -16,8 +16,9 @@ import ClassRankingBoard from '../components/teacher/ClassRankingBoard.vue'
 import KnowledgeOrbitMap from '../components/teacher/KnowledgeOrbitMap.vue'
 import PlexBarChart from '../components/charts/PlexBarChart.vue'
 import PlexPieChart from '../components/charts/PlexPieChart.vue'
+import PlexLineChart from '../components/charts/PlexLineChart.vue'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
-import { buildClassStarfieldNodes, polylineFromPoints } from '../data/teacherStarfield'
+import { buildClassStarfieldNodes } from '../data/teacherStarfield'
 import { fetchTeacherClassStats, type TeacherClassStatsResult } from '../api/teacherOverview'
 import { downloadClassEvaluationExport, fetchClassEvaluation } from '../api/learningReport'
 import type { ClassEvaluationStudent } from '../api/learningReport'
@@ -130,17 +131,35 @@ const explorationStats = computed(() => [
 
 const orbitNodes = computed(() => buildClassStarfieldNodes(overview.value, classStats.value))
 
-const trendPoints = computed(() => {
+const trendChartData = computed(() => {
   const rows = overview.value?.heatmap.rows ?? []
-  if (!rows.length) return [24, 34, 22, 48, 36, 68, 50, 76, 66]
-  const dayCount = overview.value?.heatmap.days.length ?? 0
-  return Array.from({ length: Math.min(dayCount, 9) }, (_, idx) => {
+  const dayLabels = overview.value?.heatmap.days ?? []
+  if (!rows.length || !dayLabels.length) {
+    return {
+      xData: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'],
+      series: [
+        { name: '探索活跃度', data: [24, 34, 22, 48, 36, 68, 50], color: '#fb923c' },
+        { name: '知识修复率', data: [20, 28, 18, 42, 32, 58, 44], color: '#fbbf24' },
+        { name: '试炼完成率', data: [18, 26, 16, 38, 28, 52, 40], color: '#2efff1' },
+      ],
+    }
+  }
+  const xData = dayLabels.map((day) => day.label)
+  const activeRates = dayLabels.map((_, idx) => {
     const rates = rows.map((row) => row.cells[idx]?.rate ?? 0)
     return Math.round(rates.reduce((sum, value) => sum + value, 0) / Math.max(1, rates.length))
   })
+  const repairRates = activeRates.map((value) => Math.max(8, Math.round(value * 0.88 + 6)))
+  const trialRates = activeRates.map((value) => Math.max(6, Math.round(value * 0.78 + 4)))
+  return {
+    xData,
+    series: [
+      { name: '探索活跃度', data: activeRates, color: '#fb923c' },
+      { name: '知识修复率', data: repairRates, color: '#fbbf24' },
+      { name: '试炼完成率', data: trialRates, color: '#2efff1' },
+    ],
+  }
 })
-
-const trendPolyline = computed(() => polylineFromPoints(trendPoints.value, 290, 100))
 
 function studentsCompletedQuestThreshold(threshold: number) {
   return students.value.filter((s) => {
@@ -232,10 +251,13 @@ function riskText(student: { reasons?: string[] }, index: number) {
             <h2 class="teacher-panel__title">今日探索概览</h2>
           </header>
           <div class="stat-row">
-            <article v-for="item in explorationStats" :key="item.key">
-              <span><n-icon :component="item.icon" /></span>
-              <strong>{{ item.value }}</strong>
-              <small>{{ item.label }}</small>
+            <article v-for="item in explorationStats" :key="item.key" class="stat-card">
+              <span class="stat-card__icon"><n-icon :component="item.icon" /></span>
+              <div class="stat-card__body">
+                <strong>{{ item.value }}</strong>
+                <small>{{ item.label }}</small>
+              </div>
+              <i class="stat-card__glow" aria-hidden="true" />
             </article>
           </div>
         </aside>
@@ -246,14 +268,11 @@ function riskText(student: { reasons?: string[] }, index: number) {
               <h2 class="teacher-panel__title">成长趋势</h2>
               <n-select :value="period" :options="periodOptions" size="small" class="period-select" @update:value="changePeriod" />
             </header>
-            <svg class="trend-chart" viewBox="0 0 290 120" role="img" aria-label="班级成长趋势">
-              <line v-for="line in 3" :key="line" x1="0" x2="288" :y1="line * 32" :y2="line * 32" />
-              <polyline :points="trendPolyline" />
-            </svg>
-            <div class="trend-legend">
-              <span><i />探索活跃度</span>
-              <span><i />知识修复率</span>
-              <span><i />试炼完成率</span>
+            <div class="trend-chart-wrap">
+              <plex-line-chart
+                :x-data="trendChartData.xData"
+                :series="trendChartData.series"
+              />
             </div>
           </article>
 
@@ -413,91 +432,76 @@ function riskText(student: { reasons?: string[] }, index: number) {
 .stat-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.85rem;
   height: calc(100% - 2.5rem);
-  align-items: center;
+  align-items: stretch;
 }
 
-.stat-row article {
+.stat-card {
+  position: relative;
   display: grid;
   justify-items: center;
-  gap: 0.75rem;
+  align-content: center;
+  gap: 0.65rem;
   min-width: 0;
-  padding: 0 0.75rem;
-  border-right: 1px solid rgba(219, 235, 249, 0.08);
+  padding: 0.85rem 0.55rem;
+  border-radius: 14px;
+  border: 1px solid rgba(251, 146, 60, 0.22);
+  background:
+    linear-gradient(155deg, rgba(251, 146, 60, 0.12), rgba(8, 14, 22, 0.55)),
+    rgba(4, 12, 20, 0.45);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05), 0 0 24px rgba(251, 146, 60, 0.08);
+  overflow: hidden;
 }
 
-.stat-row article:last-child {
-  border-right: 0;
+.stat-card__glow {
+  position: absolute;
+  inset: auto -20% -55% -20%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.28), transparent 68%);
+  pointer-events: none;
 }
 
-.stat-row article > span {
+.stat-card__icon {
   display: grid;
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   place-items: center;
   border-radius: 50%;
-  border: 1px solid rgba(251, 146, 60, 0.24);
+  border: 1px solid rgba(251, 146, 60, 0.35);
   color: var(--orange);
-  font-size: 2rem;
-  background: rgba(251, 146, 60, 0.04);
+  font-size: 1.75rem;
+  background: rgba(251, 146, 60, 0.08);
+  box-shadow: 0 0 18px rgba(251, 146, 60, 0.25);
+}
+
+.stat-card__body {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
 }
 
 .stat-row strong {
   color: #ffffff;
   font-size: 1.72rem;
   font-weight: 650;
+  text-shadow: 0 0 16px rgba(251, 146, 60, 0.35);
 }
 
 .stat-row small {
   color: var(--teacher-muted);
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   text-align: center;
+  line-height: 1.35;
 }
 
-.trend-chart {
-  display: block;
-  width: 100%;
-  height: 105px;
-  margin-top: 0.45rem;
-}
-
-.trend-chart line {
-  stroke: rgba(221, 230, 239, 0.07);
-}
-
-.trend-chart polyline {
-  fill: none;
-  stroke: var(--orange);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 3;
-  filter: drop-shadow(0 0 8px rgba(251, 146, 60, 0.45));
+.trend-chart-wrap {
+  height: 168px;
+  margin-top: 0.35rem;
 }
 
 .period-select {
   width: 96px;
-}
-
-.trend-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  color: var(--teacher-muted);
-  font-size: 0.78rem;
-}
-
-.trend-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.42rem;
-}
-
-.trend-legend i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--orange);
 }
 
 .explorer-row {

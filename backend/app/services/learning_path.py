@@ -10,7 +10,7 @@ from app.data.knowledge_node_registry import (
     kg_id_from_key,
     kg_id_from_star_path,
 )
-from app.models import PersonalizedLearningResource, StudentProfile, TrialQuestion, db
+from app.models import PersonalizedLearningResource, StudentProfile, TrialQuestion, User, db
 from app.services.knowledge_graph import KnowledgeGraphService
 from app.services.learning_adaptation import LearningAdaptationService
 from app.services.neo4j_client import get_graph_store, graph_backend_name
@@ -24,12 +24,22 @@ STATUS_TO_SCORE = {
     'unlearned': 0.0,
 }
 
+from app.constants.test_accounts import is_test_sandbox_user
 from app.constants.star_path_unlock import MASTERY_THRESHOLD
 
 
 class LearningPathService:
     @staticmethod
     def _mastery_map(user_id: int) -> dict[str, dict]:
+        user = db.session.get(User, user_id)
+        if is_test_sandbox_user(user):
+            topology = get_graph_store().get_topology()
+            mastered = STATUS_TO_SCORE['mastered']
+            return {
+                node['id']: {'status': 'mastered', 'mastery_score': mastered}
+                for node in topology.get('nodes', [])
+            }
+
         graph = KnowledgeGraphService.get_student_graph(user_id)
         result: dict[str, dict] = {}
         for node in graph.get('nodes', []):

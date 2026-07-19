@@ -62,6 +62,17 @@ def ensure_practice_question_schema() -> None:
         pass
 
 
+def ensure_emergency_mission_schema() -> None:
+    """补齐紧急任务 AI 解析字段。"""
+    inspector = inspect(db.engine)
+    if 'emergency_mission_sessions' not in inspector.get_table_names():
+        return
+    columns = {col['name'] for col in inspector.get_columns('emergency_mission_sessions')}
+    if 'ai_explanation' not in columns:
+        db.session.execute(text('ALTER TABLE emergency_mission_sessions ADD COLUMN ai_explanation JSON'))
+        db.session.commit()
+
+
 def ensure_resource_audit_schema() -> None:
     """补齐资源生成任务的 audit_report 列。"""
     inspector = inspect(db.engine)

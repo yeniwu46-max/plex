@@ -187,6 +187,74 @@ class EmergencyMissionService:
         }
 
     @staticmethod
+    def _format_answer_letter(index: int | None) -> str:
+        if index is None or index < 0:
+            return '未作答'
+        return chr(65 + int(index))
+
+    @staticmethod
+    def generate_ai_explanation(user_id: int, session_id: int) -> dict:
+        """按需生成补给站任务的 AI 解析（DeepSeek），并缓存到 session。"""
+        from agents.llm_client import chat_text, emergency_provider, strip_asterisks
+
+        session = db.session.get(EmergencyMissionSession, session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError('任务不存在')
+        if session.status != 'submitted':
+            raise ValueError('任务尚未提交')
+
+        if isinstance(session.ai_explanation, dict) and session.ai_explanation.get('summary'):
+            return session.ai_explanation
+
+        lines: list[str] = []
+        for question in session.questions:
+            selected = question.selected_index
+            correct = question.correct_index
+            lines.append(
+                f'第{question.sort_order}题：{question.stem}\n'
+                f'学生选择：{EmergencyMissionService._format_answer_letter(selected)} · '
+                f'{'正确' if question.is_correct else '错误'} · '
+                f'正确答案：{EmergencyMissionService._format_answer_letter(correct)}'
+            )
+
+        system_prompt = (
+            '你是 Python 入门课程的辅导老师，为学生讲解边界条件补给站的紧急任务。'
+            '用温和、专业的中文逐题解析，说明为什么正确选项成立、学生错选可能忽略了什么。'
+            '不要使用星号或 Markdown 加粗，不要提及 AI、模型或 API。'
+            '控制在 280 字以内，分段清晰。'
+        )
+        user_prompt = (
+            f'薄弱知识点：{session.focus_label or session.focus_knowledge_key}\n'
+            f'作答情况：{session.correct_count}/{len(session.questions)} 题正确\n\n'
+            + '\n\n'.join(lines)
+        )
+
+        summary = chat_text(
+            system=system_prompt,
+            user=user_prompt,
+            timeout=12,
+            max_tokens=520,
+            provider=emergency_provider(),
+        )
+        if not summary:
+            summary = (
+                '本次补给站任务已完成。建议回顾每道题涉及的边界条件：'
+                '注意循环范围、比较符号与特殊输入（如 0、空值、边界值）。'
+                '可在星轨学习中针对「'
+                f'{session.focus_label or '相关知识点'}'
+                '」再做一次巩固练习。'
+            )
+
+        payload = {
+            'summary': strip_asterisks(summary),
+            'focus_label': session.focus_label,
+            'generated_at': utc_now().isoformat(),
+        }
+        session.ai_explanation = payload
+        db.session.commit()
+        return payload
+
+    @staticmethod
     def list_archive_records(user_id: int, limit: int = 12):
         sessions = (
             EmergencyMissionSession.query.filter_by(user_id=user_id, status='submitted')
@@ -204,6 +272,7 @@ class EmergencyMissionService:
                 'correct_count': s.correct_count,
                 'total_count': len(s.questions),
                 'reward_points': s.reward_points if s.reward_granted else 0,
+                'has_ai_explanation': bool(isinstance(s.ai_explanation, dict) and s.ai_explanation.get('summary')),
                 'questions': [q.to_dict(reveal_answer=True) for q in s.questions],
             }
             for s in sessions

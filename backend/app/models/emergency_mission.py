@@ -16,6 +16,7 @@ class EmergencyMissionSession(db.Model):
     all_correct = db.Column(db.Boolean, default=False)
     reward_points = db.Column(db.Integer, default=0)
     reward_granted = db.Column(db.Boolean, default=False)
+    ai_explanation = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, default=db.func.now())
     submitted_at = db.Column(db.DateTime)
 
@@ -37,6 +38,7 @@ class EmergencyMissionSession(db.Model):
             'all_correct': self.all_correct,
             'reward_points': self.reward_points,
             'reward_granted': self.reward_granted,
+            'ai_explanation': self.ai_explanation,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
         }

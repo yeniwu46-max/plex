@@ -1,5 +1,7 @@
 import { getPythonTrialQuestion, type PythonTrialQuestion } from './pythonTrialQuestions'
 import { getAllStageTrackNodes } from './starPathKnowledgeTracks'
+import { getStarPathKnowledgePoint } from './starPathDomains'
+import { resolveQuestionById } from '../utils/starPathQuestionGenerator'
 
 export type StarPathNodeStatus = 'current' | 'done' | 'progress' | 'locked'
 export type StarPathGem = 'done' | 'active' | 'locked' | 'pending'
@@ -55,10 +57,23 @@ export function getPrimaryQuestionId(node: StarPathNode) {
 }
 
 export function getStarPathQuestionsForNode(nodeId: string): PythonTrialQuestion[] {
+  return resolveQuestionsForNode(nodeId)
+}
+
+export function resolveQuestionsForNode(nodeId: string): PythonTrialQuestion[] {
   const node = getStarPathNode(nodeId)
   if (!node) return []
+  const kp = getStarPathKnowledgePoint(nodeId)?.point
   return node.questionIds
-    .map((id) => getPythonTrialQuestion(id))
+    .map((id) => {
+      const staticQuestion = getPythonTrialQuestion(id)
+      if (staticQuestion) return staticQuestion
+      if (kp) {
+        const resolved = resolveQuestionById(id, kp)
+        if (resolved) return resolved
+      }
+      return null
+    })
     .filter((item): item is PythonTrialQuestion => item !== null)
 }
 

@@ -11,7 +11,9 @@ import {
   useMessage,
 } from 'naive-ui'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
+import ClassFileExchangePanel from '../components/student/ClassFileExchangePanel.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
+import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import {
   DIMENSION_LABELS,
   fetchResourceAudit,
@@ -26,6 +28,7 @@ import {
 } from '../api/personalizedResources'
 
 const message = useMessage()
+const { selectedClassId } = useTeacherOverviewInjected()
 const items = ref<PersonalizedResource[]>([])
 const metrics = ref<ResourceReviewMetrics | null>(null)
 const reasons = ref<Record<number, string>>({})
@@ -47,6 +50,25 @@ const verdictTagType: Record<string, 'success' | 'warning' | 'error'> = {
   PASS: 'success',
   NEED_MODIFY: 'warning',
   REJECT: 'error',
+}
+
+const reviewStatusLabels: Record<string, string> = {
+  pending_review: '待审核',
+  approved: '已批准',
+  rejected: '已驳回',
+  draft: '草稿',
+}
+
+const verdictLabels: Record<string, string> = {
+  PASS: '通过',
+  NEED_MODIFY: '需修改',
+  REJECT: '驳回',
+}
+
+const levelLabels: Record<string, string> = {
+  PASS: '通过',
+  WARNING: '警告',
+  FAIL: '未通过',
 }
 
 const levelTagType: Record<string, 'success' | 'warning' | 'error'> = {
@@ -164,7 +186,7 @@ onMounted(() => void load())
               :key="row.verdict"
               :type="verdictTagType[row.verdict] ?? 'default'"
             >
-              {{ row.verdict }} × {{ row.count }}
+              {{ verdictLabels[row.verdict] ?? row.verdict }} × {{ row.count }}
             </n-tag>
           </div>
         </article>
@@ -197,13 +219,13 @@ onMounted(() => void load())
               </span>
             </button>
             <div class="review-card__tags">
-              <n-tag type="warning">{{ item.review_status }}</n-tag>
+              <n-tag type="warning">{{ reviewStatusLabels[item.review_status] ?? item.review_status }}</n-tag>
               <n-tag>{{ typeLabels[item.resource_type] ?? item.resource_type }}</n-tag>
               <n-tag
                 v-if="auditReports[item.id]"
                 :type="verdictTagType[auditReports[item.id].verdict] ?? 'default'"
               >
-                建议 {{ auditReports[item.id].verdict }}
+                建议 {{ verdictLabels[auditReports[item.id].verdict] ?? auditReports[item.id].verdict }}
               </n-tag>
               <span>置信度 {{ Math.round(item.confidence * 100) }}%</span>
             </div>
@@ -249,7 +271,7 @@ onMounted(() => void load())
                   <p class="step-summary">{{ step.summary }}</p>
                   <ul v-if="step.checks.length" class="check-list">
                     <li v-for="check in step.checks" :key="check.id">
-                      <n-tag size="small" :type="levelTagType[check.level] ?? 'default'">{{ check.level }}</n-tag>
+                      <n-tag size="small" :type="levelTagType[check.level] ?? 'default'">{{ levelLabels[check.level] ?? check.level }}</n-tag>
                       <strong>{{ check.label }}</strong>
                       <span>{{ check.detail }}</span>
                     </li>
@@ -284,6 +306,18 @@ onMounted(() => void load())
             </footer>
           </section>
         </article>
+      </section>
+
+      <section class="review-page__files" aria-label="学生提交文件审核">
+        <header class="review-page__files-head">
+          <h2>学生提交文件</h2>
+          <p>班级学生上传的学习报告、代码与学习截图，独立于 AI 个性化资源审核。</p>
+        </header>
+        <class-file-exchange-panel
+          role="teacher"
+          submissions-only
+          :class-id="selectedClassId"
+        />
       </section>
     </main>
   </TeacherDashboardShell>
@@ -497,6 +531,22 @@ onMounted(() => void load())
   margin-top: 0.6rem;
   font-size: 0.9rem;
   color: rgba(235, 215, 194, 0.65);
+}
+
+.review-page__files {
+  margin-top: 1.25rem;
+}
+
+.review-page__files-head h2 {
+  margin: 0;
+  color: #fff7ec;
+  font-size: 1.1rem;
+}
+
+.review-page__files-head p {
+  margin: 0.35rem 0 0.75rem;
+  color: rgba(235, 215, 194, 0.62);
+  font-size: 0.88rem;
 }
 
 @media (max-width: 800px) {

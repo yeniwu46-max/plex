@@ -52,6 +52,37 @@ const STUDENT_DOMAIN_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>>
   geom: { tone: 'teal', x: 78, y: 52 },
   graph: { tone: 'red', x: 58, y: 76 },
   ds: { tone: 'amber', x: 24, y: 72 },
+  'data-vars': { tone: 'teal', x: 12, y: 26 },
+  operators: { tone: 'amber', x: 30, y: 10 },
+  'flow-control': { tone: 'gold', x: 52, y: 8 },
+  strings: { tone: 'teal', x: 74, y: 22 },
+  'lists-dicts': { tone: 'amber', x: 88, y: 48 },
+  functions: { tone: 'gold', x: 70, y: 74 },
+  'recursion-iter': { tone: 'red', x: 26, y: 76 },
+}
+
+const ORBIT_TONE_CYCLE: OrbitNodeTone[] = ['teal', 'amber', 'gold', 'teal', 'amber', 'red', 'gold']
+
+/** 将节点均匀分布在椭圆轨道上，避免默认 (50,50) 堆叠 */
+export function layoutOrbitPosition(index: number, total: number): Pick<OrbitNode, 'x' | 'y'> {
+  if (total <= 0) return { x: 50, y: 52 }
+  const angle = (2 * Math.PI * index) / total - Math.PI / 2
+  const ring = index % 2 === 0 ? 1 : 0.82
+  return {
+    x: Math.round((50 + 36 * ring * Math.cos(angle)) * 10) / 10,
+    y: Math.round((52 + 30 * ring * Math.sin(angle)) * 10) / 10,
+  }
+}
+
+export function resolveOrbitLayout(
+  domainKey: string,
+  index: number,
+  total: number,
+): Pick<OrbitNode, 'tone' | 'x' | 'y'> {
+  const preset = STUDENT_DOMAIN_LAYOUT[domainKey] ?? ORBIT_LAYOUT[domainKey]
+  if (preset) return preset
+  const pos = layoutOrbitPosition(index, total)
+  return { ...pos, tone: ORBIT_TONE_CYCLE[index % ORBIT_TONE_CYCLE.length] ?? 'amber' }
 }
 
 /** 与学生端六大学域标签一致的星域节点（有 class-stats 时优先） */
@@ -66,7 +97,7 @@ export function buildStudentDomainStarfieldNodes(
   )
   const tabs = STAR_PATH_TABS.filter((tab) => tab.key !== 'all')
   return tabs.map((tab, index) => {
-    const layout = STUDENT_DOMAIN_LAYOUT[tab.key] ?? { tone: 'amber' as const, x: 50, y: 50 }
+    const layout = resolveOrbitLayout(tab.key, index, tabs.length)
     const score = masteryMap.get(tab.label) ?? Math.max(42, Math.min(98, Math.round(avg + index * 2)))
     let delta: OrbitNode['delta'] = score >= 75 ? '上升' : score < 50 ? '下降' : '稳定'
     if (attention > 2 && layout.tone === 'red') delta = '下降'
@@ -90,6 +121,8 @@ export function buildClassStarfieldNodes(
   const avg = overview?.metrics?.avg_today_completion ?? 72
   const attention = overview?.metrics?.attention_count ?? 0
   return STARFIELD_DOMAINS.map((item, index) => {
+    const domainKey = item.domainKey ?? `domain-${index}`
+    const layout = resolveOrbitLayout(domainKey, index, STARFIELD_DOMAINS.length)
     const baseScore = [78, 85, 69, 90, 74, 63][index] ?? 70
     const score = Math.max(42, Math.min(98, Math.round((baseScore + avg + index * 2) / 2)))
     let delta: OrbitNode['delta'] = DELTA_CYCLE[index % 3]
@@ -98,7 +131,7 @@ export function buildClassStarfieldNodes(
     } else if (score >= 80) {
       delta = '上升'
     }
-    return { ...item, score, delta }
+    return { ...item, ...layout, score, delta }
   })
 }
 

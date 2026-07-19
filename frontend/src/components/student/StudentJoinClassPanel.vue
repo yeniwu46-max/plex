@@ -145,15 +145,17 @@ onMounted(() => {
       />
     </label>
 
-    <n-button
-      type="primary"
-      class="join-class__submit"
-      :loading="submitting"
-      :disabled="!!pendingRequest"
-      @click="submitApply"
-    >
-      提交入班申请
-    </n-button>
+    <div class="join-class__footer">
+      <n-button
+        type="primary"
+        class="join-class__submit"
+        :loading="submitting"
+        :disabled="!!pendingRequest"
+        @click="submitApply"
+      >
+        提交入班申请
+      </n-button>
+    </div>
 
     <section v-if="requests.length" class="join-class__history">
       <h4>申请记录</h4>
@@ -174,8 +176,10 @@ onMounted(() => {
 
 <style scoped>
 .join-class {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.85rem;
+  height: 100%;
 }
 
 .join-class header h3 {
@@ -234,8 +238,15 @@ onMounted(() => {
   color: rgba(214, 230, 244, 0.78);
 }
 
+.join-class__footer {
+  display: flex;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
 .join-class__submit {
-  width: 100%;
+  width: auto;
 }
 
 .join-class__history h4 {

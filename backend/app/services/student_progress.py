@@ -6,6 +6,7 @@ from app.constants.star_path_unlock import (
     DOMAIN_COMPLETE_PROGRESS,
     DOMAIN_UNLOCK_PROGRESS,
 )
+from app.constants.test_accounts import is_test_sandbox_user
 from app.models import Trial, TrialParticipation, TrialQuestionProgress, User, UserDailyQuest, db
 from app.models import PersonalizedLearningResource, StudentProfile
 
@@ -130,6 +131,15 @@ class StudentProgressService:
                 }
             )
 
+        if is_test_sandbox_user(user):
+            for item in domains:
+                item['progress'] = 100
+                item['locked'] = False
+                item['state'] = '已点亮'
+                item['active'] = False
+            if domains:
+                domains[0]['active'] = True
+
         if domains and not any(d['active'] for d in domains):
             for item in domains:
                 if not item['locked']:
@@ -180,8 +190,21 @@ class StudentProgressService:
             'next_best_action': path_plan.get('next_best_action'),
             'remediation_paths': path_plan.get('remediation_paths', []),
             'graph_backend': path_plan.get('graph_backend'),
-            'question_ac_status': MistakeService.list_accepted_question_refs(user_id),
+            'question_ac_status': StudentProgressService._question_ac_status(user_id, user),
         }
+
+    @staticmethod
+    def _question_ac_status(user_id: int, user: User | None) -> list[str]:
+        from app.constants.test_accounts import SLOTS_PER_KNOWLEDGE_POINT, STAR_PATH_KNOWLEDGE_POINT_IDS
+        from app.services.mistake import MistakeService
+
+        if is_test_sandbox_user(user):
+            return [
+                f'gen-{kp_id}-s{slot}'
+                for kp_id in STAR_PATH_KNOWLEDGE_POINT_IDS
+                for slot in range(SLOTS_PER_KNOWLEDGE_POINT)
+            ]
+        return MistakeService.list_accepted_question_refs(user_id)
 
     @staticmethod
     def get_archive_insights(user_id):

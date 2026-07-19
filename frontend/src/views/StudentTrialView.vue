@@ -15,9 +15,9 @@ import TrialExamPanel from '../components/trial/TrialExamPanel.vue'
 import {
   formatStarPathNodeLabel,
   getStarPathNode,
-  getStarPathQuestionsForNode,
   getUnlockedStarPathNodes,
   isStarPathNodeUnlocked,
+  resolveQuestionsForNode,
   resolveStarPathNodeId,
 } from '../data/starPathTrail'
 import { useAuthStore } from '../stores/auth'
@@ -65,7 +65,7 @@ const nodeSelectOptions = computed<SelectOption[]>(() =>
 )
 
 
-const activeQuestions = computed(() => getStarPathQuestionsForNode(selectedNodeId.value))
+const activeQuestions = computed(() => resolveQuestionsForNode(selectedNodeId.value))
 
 const pageRecommendation = computed(() =>
   buildTrialPageRecommendation(
@@ -166,7 +166,7 @@ function onSearchSubmit(query: string) {
   if (!q) return
 
   for (const node of getUnlockedStarPathNodes(acceptedQuestionIds.value)) {
-    const questions = getStarPathQuestionsForNode(node.id)
+    const questions = resolveQuestionsForNode(node.id)
     const hit = questions.find(
       (question) =>
         question.title.toLowerCase().includes(q) ||

@@ -109,9 +109,17 @@ class PracticeQuestionService:
         return line or fallback
 
     @staticmethod
+    def _strip_list_prefix(title: str) -> str:
+        cleaned = (title or '').strip()
+        for prefix in ('[沙盒]', '【沙盒】', '[沙盒] ', '【沙盒】 '):
+            if cleaned.startswith(prefix):
+                cleaned = cleaned[len(prefix):].strip()
+        return cleaned
+
+    @staticmethod
     def _display_title(code: str, stem: str, fallback: str) -> str:
         short = PracticeQuestionService._infer_semantic_title(stem, fallback)
-        return f'{code} · {short}'
+        return f'{code} · {PracticeQuestionService._strip_list_prefix(short)}'
 
     @staticmethod
     def _code_for_imported(question: TrialQuestion) -> str:

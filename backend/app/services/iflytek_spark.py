@@ -38,7 +38,22 @@ class IflytekSparkService:
         # adapter call ``chat_json`` with a mocked transport directly.
         if has_app_context() and current_app.config.get('TESTING') and not current_app.config.get('SPARK_ALLOW_IN_TESTS'):
             return False
-        return bool(os.getenv('IFLYTEK_SPARK_API_PASSWORD'))
+        return bool(IflytekSparkService._resolve_api_password())
+
+    @staticmethod
+    def _resolve_api_password() -> str:
+        """Resolve Bearer token from env (supports appId:apiKey combined credentials)."""
+        direct = os.getenv('IFLYTEK_SPARK_API_PASSWORD', '').strip()
+        if direct:
+            return direct
+        combined = os.getenv('IFLYTEK_SPARK_CREDENTIALS', '').strip()
+        if combined:
+            return combined
+        app_id = os.getenv('IFLYTEK_SPARK_APP_ID', '').strip()
+        api_key = os.getenv('IFLYTEK_SPARK_API_KEY', '').strip()
+        if app_id and api_key:
+            return f'{app_id}:{api_key}'
+        return ''
 
     @classmethod
     def status(cls) -> dict[str, Any]:
@@ -72,7 +87,7 @@ class IflytekSparkService:
 
     @classmethod
     def chat_json(cls, system_prompt: str, user_prompt: str, timeout: int = 30) -> dict[str, Any]:
-        password = os.getenv('IFLYTEK_SPARK_API_PASSWORD')
+        password = cls._resolve_api_password()
         if not password:
             cls._record(status='unavailable', error_code='not_configured')
             raise SparkServiceError('not_configured', 'iflytek_not_configured')
@@ -170,7 +185,7 @@ class IflytekSparkService:
     @classmethod
     def chat_text(cls, system_prompt: str, user_prompt: str, timeout: int = 30) -> str:
         """Return the provider's natural-language response without a JSON contract."""
-        password = os.getenv('IFLYTEK_SPARK_API_PASSWORD')
+        password = cls._resolve_api_password()
         if not password:
             cls._record(status='unavailable', error_code='not_configured')
             raise SparkServiceError('not_configured', 'iflytek_not_configured')

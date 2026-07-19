@@ -12,7 +12,7 @@ import {
   TrendingUpOutline,
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
-import { xiaoEThinkingMessage, xiaoETimeoutMessage } from '../utils/xiaoEPersona'
+import { xiaoEThinkingMessage, xiaoETimeoutMessage, xiaoEStripAsterisks } from '../utils/xiaoEPersona'
 import { openPracticeQuestionByRef } from '../utils/practiceQuestionNav'
 
 const router = useRouter()
@@ -41,7 +41,6 @@ function assistantErrorText(error: unknown, retry?: () => void): ChatMessage {
   return {
     role: 'assistant',
     text: error instanceof Error ? error.message : '小E 这次没能完成分析，稍后再试吧。',
-    retry,
   }
 }
 
@@ -66,7 +65,7 @@ async function runQuickAction(action: 'weak_points' | 'next_trial' | 'repair_pat
     const result = await messengerQuickAction(action)
     chatMessages.value.push({
       role: 'assistant',
-      text: result.reply,
+      text: xiaoEStripAsterisks(result.reply),
       questionPick: result.question_pick ?? undefined,
     })
   } catch (error) {
@@ -121,7 +120,7 @@ async function sendChatText(text: string, appendUserMessage = true) {
     const result = await postMessengerChat(text, history)
     chatMessages.value.push({
       role: 'assistant',
-      text: result.reply,
+      text: xiaoEStripAsterisks(result.reply),
     })
   } catch (error) {
     chatMessages.value.push(assistantErrorText(error, retry))

@@ -21,6 +21,8 @@ export interface TrialMistakeRecord {
   lastPassedAt: string | null
 }
 
+export type TrialAttemptVerdict = 'AC' | 'WA' | 'RE'
+
 export interface TrialAttemptRecord {
   questionId: string
   submittedAt: string
@@ -28,6 +30,9 @@ export interface TrialAttemptRecord {
   passed: boolean
   failedCaseLabels: string[]
   errorReason: string | null
+  passedCount?: number
+  totalCount?: number
+  verdict?: TrialAttemptVerdict
 }
 
 const ATTEMPT_PREFIX = 'plex:trial-attempts:'
@@ -86,6 +91,30 @@ export function getTrialAttemptHistory(
   return questionId ? rows.filter((item) => item.questionId === questionId) : rows
 }
 
+function summarizeVerdict(cases: TrialRunCaseSnapshot[]): TrialAttemptVerdict {
+  if (cases.every((item) => item.passed)) return 'AC'
+  const failed = cases.filter((item) => !item.passed)
+  if (failed.some((item) => item.error)) return 'RE'
+  return 'WA'
+}
+
+export function resolveAttemptVerdict(record: TrialAttemptRecord): TrialAttemptVerdict {
+  if (record.verdict) return record.verdict
+  if (record.passed) return 'AC'
+  if (record.errorReason && /error|exception|traceback|出错/i.test(record.errorReason)) return 'RE'
+  return 'WA'
+}
+
+export function resolveAttemptScore(record: TrialAttemptRecord): { passed: number; total: number } {
+  if (typeof record.passedCount === 'number' && typeof record.totalCount === 'number') {
+    return { passed: record.passedCount, total: record.totalCount }
+  }
+  if (record.passed) {
+    return { passed: 1, total: 1 }
+  }
+  return { passed: 0, total: Math.max(1, record.failedCaseLabels.length || 1) }
+}
+
 function summarizeErrorReason(cases: TrialRunCaseSnapshot[]) {
   const failed = cases.filter((item) => !item.passed)
   if (!failed.length) return null
@@ -103,6 +132,7 @@ export function recordTrialAttempt(
   if (!cases.length) return
   const allPassed = cases.every((item) => item.passed)
   const failed = cases.filter((item) => !item.passed)
+  const passedCount = cases.filter((item) => item.passed).length
   const attempt: TrialAttemptRecord = {
     questionId,
     submittedAt: new Date().toISOString(),
@@ -110,6 +140,9 @@ export function recordTrialAttempt(
     passed: allPassed,
     failedCaseLabels: failed.map((item) => item.label),
     errorReason: summarizeErrorReason(cases),
+    passedCount,
+    totalCount: cases.length,
+    verdict: summarizeVerdict(cases),
   }
   const records = readAttempts(userId)
   records.unshift(attempt)

@@ -1,9 +1,10 @@
-"""驿站对话：LLM（可选）+ 规则兜底"""
+"""驿站对话：DeepSeek LLM（优先）+ 规则兜底"""
 import os
 import re
 
 import requests
 
+from agents.llm_client import messenger_provider, strip_asterisks
 from app.services.course_safety import CourseSafetyService
 from app.services.evaluation import EvaluationService
 from app.services.iflytek_spark import IflytekSparkService
@@ -30,6 +31,7 @@ class MessengerChatService:
         '每次最多只揭示一个必要提示；如果学生明显卡住，再给一个很短的示例或判断方向。'
         '问题要具体，围绕学生当前代码、概念或上一轮对话，不要泛泛地问“你觉得呢”。'
         '语气像学习伙伴一样温和、聪明、具体，不要官腔，不要模板化，不要重复学生原话。'
+        '不要使用星号（*）或 Markdown 加粗。'
         '一般控制在 120-200 字；结尾用一个最值得学生立刻思考的问题收束。'
     )
 
@@ -42,7 +44,7 @@ class MessengerChatService:
             previous = text
             text = cls.PROVIDER_LABEL_RE.sub('', text).strip()
             text = cls.SELF_PREFIX_RE.sub('', text).strip()
-        return text
+        return strip_asterisks(text)
 
     @staticmethod
     def _normalize_history(history) -> list[dict]:
@@ -90,7 +92,7 @@ class MessengerChatService:
             f'最近对话（最多 18 条，越靠后越新）：\n{MessengerChatService._format_history(history_rows)}\n\n'
             f'学生近 7 天学情：学习指数 {summary.get("index", 0)}；正确率 {summary.get("correct_rate", 0)}%；'
             f'当前薄弱知识：{weak_labels}。\n'
-            f'内部课程参考（只用于理解问题，不要说明来源）：{rag_context[:1200] if rag_context else "无"}'
+            f'内部课程参考（只用于理解问题，不要说明来源）：{rag_context[:600] if rag_context else "无"}'
         )
         return report, context, bool(rag_context)
 
@@ -122,11 +124,12 @@ class MessengerChatService:
         if not IflytekSparkService.configured():
             return None
         report, context, rag_used = MessengerChatService._student_context(user_id, message, history)
+        history_rows = MessengerChatService._normalize_history(history)
         try:
             reply = IflytekSparkService.chat_text(
                 MessengerChatService.ASSISTANT_SYSTEM_PROMPT,
                 f'{context}\n\n学生问题：{message[:500]}',
-                timeout=30,
+                timeout=12,
             )
             return {
                 'reply': MessengerChatService._clean_reply(reply),
@@ -136,7 +139,6 @@ class MessengerChatService:
             }
         except Exception:
             return None
-        return None
 
     @staticmethod
     def _rule_reply(user_id: int, message: str, history=None) -> dict:
@@ -155,38 +157,17 @@ class MessengerChatService:
         return {'reply': MessengerChatService._clean_reply(reply), 'source': 'rules', 'recommendations': recommendations[:3]}
 
     @staticmethod
-    def _llm_provider() -> tuple[str, str, str] | None:
-        """Resolve an available OpenAI-compatible chat provider.
-
-        Returns ``(api_key, endpoint, model)`` for the first configured backend,
-        preferring OpenRouter when present and otherwise falling back to the
-        official OpenAI endpoint so a plain ``OPENAI_API_KEY`` also yields real
-        replies instead of the rule-based template.
-        """
-        openrouter = os.getenv('OPENROUTER_API_KEY', '').strip()
-        if openrouter:
-            return (
-                openrouter,
-                'https://openrouter.ai/api/v1/chat/completions',
-                os.getenv('OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
-            )
-        openai_key = os.getenv('OPENAI_API_KEY', '').strip()
-        if openai_key:
-            base = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')
-            return (
-                openai_key,
-                f'{base}/chat/completions',
-                os.getenv('OPENAI_MODEL', 'gpt-4o-mini'),
-            )
-        return None
-
-    @staticmethod
-    def _llm_reply(user_id: int, message: str, history=None) -> dict | None:
-        provider = MessengerChatService._llm_provider()
+    def _deepseek_reply(user_id: int, message: str, history=None) -> dict | None:
+        provider = messenger_provider()
         if not provider:
             return None
         api_key, endpoint, model = provider
         report, context, rag_used = MessengerChatService._student_context(user_id, message, history)
+        history_rows = MessengerChatService._normalize_history(history)
+        messages: list[dict] = [{'role': 'system', 'content': MessengerChatService.ASSISTANT_SYSTEM_PROMPT}]
+        for row in history_rows:
+            messages.append({'role': row['role'], 'content': row['content']})
+        messages.append({'role': 'user', 'content': message[:500]})
         try:
             resp = requests.post(
                 endpoint,
@@ -196,16 +177,11 @@ class MessengerChatService:
                 },
                 json={
                     'model': model,
-                    'messages': [
-                        {
-                            'role': 'system',
-                            'content': MessengerChatService.ASSISTANT_SYSTEM_PROMPT,
-                        },
-                        {'role': 'user', 'content': f'{context}\n\n学生问题：{message[:500]}'},
-                    ],
-                    'max_tokens': 360,
+                    'messages': messages,
+                    'max_tokens': 420,
+                    'temperature': 0.55,
                 },
-                timeout=25,
+                timeout=8,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -218,6 +194,14 @@ class MessengerChatService:
             }
         except Exception:
             return None
+
+    @staticmethod
+    def _llm_provider() -> tuple[str, str, str] | None:
+        return messenger_provider()
+
+    @staticmethod
+    def _llm_reply(user_id: int, message: str, history=None) -> dict | None:
+        return MessengerChatService._deepseek_reply(user_id, message, history)
 
     @staticmethod
     def _rag_rule_reply(user_id: int, message: str, history=None) -> dict:
@@ -236,14 +220,13 @@ class MessengerChatService:
         if not text:
             raise ValueError('消息不能为空')
         CourseSafetyService.ensure_safe(text, enforce_course_scope=True)
-        # Spark Lite 响应更快，优先于星辰 Agent（后者 workflow 可达 90s）
         spark = MessengerChatService._spark_reply(user_id, text, history)
         if spark:
             return spark
+        deepseek = MessengerChatService._deepseek_reply(user_id, text, history)
+        if deepseek:
+            return deepseek
         agent = MessengerChatService._xfyun_agent_reply(user_id, text, history)
         if agent:
             return agent
-        llm = MessengerChatService._llm_reply(user_id, text, history)
-        if llm:
-            return llm
         return MessengerChatService._rag_rule_reply(user_id, text, history)

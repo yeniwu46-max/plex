@@ -35,10 +35,28 @@ const className = computed(() => profile.value?.class?.name || '暂未加入班�
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const classRank = computed(() => (profile.value as any)?.class_rank ?? (auth.profile as any)?.class_rank ?? null)
 const userLevel = computed(() => profile.value?.level ?? auth.profile?.level ?? 1)
+const levelProfile = computed(() => profile.value?.level_profile ?? profile.value?.incentive?.level_profile)
 const xpCurrent = computed(() => profile.value?.total_points ?? auth.profile?.total_points ?? 0)
 const streakDays = computed(() => profile.value?.consecutive_days ?? 0)
-const xpTarget = 5000
-const xpRatio = computed(() => Math.min(1, xpCurrent.value / xpTarget))
+const atMaxLevel = computed(
+  () => Boolean(levelProfile.value?.at_max_level) || userLevel.value >= (levelProfile.value?.max_level ?? 10),
+)
+const xpFloor = computed(() => levelProfile.value?.current_threshold ?? 0)
+const xpTarget = computed(() => {
+  const lp = levelProfile.value
+  if (!lp) return Math.max(500, userLevel.value * 500)
+  if (lp.next_threshold != null) return lp.next_threshold
+  return lp.current_threshold + Math.max(500, userLevel.value * 200)
+})
+const xpDisplayCurrent = computed(() => (atMaxLevel.value ? Math.min(xpCurrent.value, xpTarget.value) : xpCurrent.value))
+const xpRatio = computed(() => {
+  if (levelProfile.value?.progress_percent != null) {
+    return Math.min(1, Math.max(0, levelProfile.value.progress_percent / 100))
+  }
+  const span = xpTarget.value - xpFloor.value
+  if (span <= 0) return 1
+  return Math.min(1, (xpDisplayCurrent.value - xpFloor.value) / span)
+})
 
 
 const resources = computed(() => [
@@ -177,7 +195,7 @@ onBeforeUnmount(() => {
               <span class="xp-track__bar">
                 <span :style="{ width: `${xpRatio * 100}%` }" />
               </span>
-              <em>{{ xpCurrent }} / {{ xpTarget }} XP</em>
+              <em>{{ xpDisplayCurrent }} / {{ xpTarget }} XP</em>
             </div>
             <p>连续探索 {{ streakDays }} 天 · 下一等级奖励 <span>星钥</span> x1</p>
           </div>

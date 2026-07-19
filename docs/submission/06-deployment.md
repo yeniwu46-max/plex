@@ -14,7 +14,9 @@ start.bat
 `student001`、`teacher001`、`admin` 三个账号检查，成功后返回 0 且不启动服务。
 
 手动运行时先进入 `backend` 执行迁移与种子数据，再运行后端；进入 `frontend`
-执行 `npm ci` 和 `npm run dev`。生产环境必须通过环境变量配置数据库和 JWT 密钥，
+执行 `npm ci` 和 `npm run dev`。当前本地默认后端为 `http://127.0.0.1:5100`，
+前端为 `http://localhost:5180`，以根目录 `start.bat` 和 `frontend/.env.development`
+为准。生产环境必须通过环境变量配置数据库和 JWT 密钥，
 不得提交 `.env`、真实讯飞密码或包含个人数据的数据库。
 
 MySQL 8 和在线 CI 工作流已经配置，但当前本机没有 Docker 且 GitHub CLI 未登录，

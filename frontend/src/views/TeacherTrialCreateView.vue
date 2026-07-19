@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   NButton,
   NCheckbox,
+  NCheckboxGroup,
   NDatePicker,
   NIcon,
   NInput,
@@ -68,6 +69,7 @@ const questions = ref<ComposerQuestion[]>([])
 
 const aiCount = ref(3)
 const aiDifficulty = ref(60)
+const aiQuestionTypes = ref<Array<'mcq' | 'multiple' | 'coding'>>(['mcq'])
 const generatingAi = ref(false)
 const submitting = ref(false)
 const loadingDraft = ref(false)
@@ -96,6 +98,12 @@ const scheduleDelayOptions: SelectOption[] = [
   { label: '30 分钟后', value: '30' },
   { label: '1 小时后', value: '60' },
   { label: '明天此时', value: '1440' },
+]
+
+const aiTypeOptions = [
+  { label: '单选题', value: 'mcq' as const },
+  { label: '多选题', value: 'multiple' as const },
+  { label: '代码题', value: 'coding' as const },
 ]
 
 const classLabel = computed(() => {
@@ -165,15 +173,42 @@ async function runAiGenerate() {
     message.warning('请先在左侧勾选知识点')
     return
   }
+  if (!aiQuestionTypes.value.length) {
+    message.warning('请至少选择一种 AI 出题题型')
+    return
+  }
   generatingAi.value = true
   try {
     const generated = await aiGenerateTrialQuestions(
       selectedKnowledgeKeys.value,
       Math.max(1, Math.min(20, aiCount.value)),
-      { difficulty: aiDifficulty.value },
+      { difficulty: aiDifficulty.value, question_types: aiQuestionTypes.value },
     )
     const mapped = generated.map((item) => {
-      const q = createComposerQuestion('single', item.knowledge_key || selectedKnowledgeKeys.value[0])
+      const key = item.knowledge_key || selectedKnowledgeKeys.value[0]
+      if (item.question_type === 'coding') {
+        const q = createComposerQuestion('coding', key)
+        q.stem = item.stem
+        q.starterCode = item.starter_code || q.starterCode
+        q.runMode = (item.run_mode as 'stdout' | 'expression') || q.runMode
+        q.hint = item.hint || ''
+        q.testCases = (item.test_cases?.length
+          ? item.test_cases.map((tc) => ({ ...tc }))
+          : q.testCases) as typeof q.testCases
+        q.difficulty = aiDifficulty.value
+        return q
+      }
+      if (item.question_type === 'multiple') {
+        const q = createComposerQuestion('multiple', key)
+        q.stem = item.stem
+        q.options = item.options?.length ? [...item.options] : ['', '', '', '']
+        q.correctIndexes = item.correct_indexes?.length
+          ? [...item.correct_indexes]
+          : [item.correct_index ?? 0]
+        q.difficulty = aiDifficulty.value
+        return q
+      }
+      const q = createComposerQuestion('single', key)
       q.stem = item.stem
       q.options = item.options?.length ? [...item.options] : ['', '', '', '']
       q.correctIndex = item.correct_index ?? 0
@@ -181,7 +216,7 @@ async function runAiGenerate() {
       return q
     })
     questions.value = [...questions.value, ...mapped]
-    message.success(`已生成 ${mapped.length} 道选择题，可继续编辑`)
+    message.success(`已生成 ${mapped.length} 道题目，可在中间栏继续编辑`)
   } catch (error) {
     message.error(error instanceof Error ? error.message : 'AI 出题失败')
   } finally {
@@ -394,6 +429,14 @@ onMounted(() => {
 
           <section class="trial-create__card trial-create__ai">
             <h3><n-icon :component="SparklesOutline" /> AI 批量出题</h3>
+            <div class="tc-field">
+              <span>题型（可多选）</span>
+              <n-checkbox-group v-model:value="aiQuestionTypes">
+                <n-checkbox v-for="opt in aiTypeOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </n-checkbox>
+              </n-checkbox-group>
+            </div>
             <div class="tc-ai-row">
               <label class="tc-field tc-field--narrow">
                 <span>题量</span>
@@ -413,7 +456,7 @@ onMounted(() => {
             >
               生成并加入试卷
             </n-button>
-            <p class="tc-ai-note">基于所选知识点生成选择题，可在中间栏继续改写为其它题型。</p>
+            <p class="tc-ai-note">基于所选知识点与题型批量生成，支持单选、多选与编程题；可在中间栏继续改写。</p>
           </section>
         </aside>
 
@@ -523,7 +566,7 @@ onMounted(() => {
 
 .trial-create__grid {
   display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: minmax(300px, 22%) minmax(0, 1fr) minmax(300px, 24%);
   gap: 1.1rem;
   align-items: start;
 }
@@ -566,6 +609,7 @@ onMounted(() => {
   border-radius: 16px;
   background: linear-gradient(145deg, rgba(5, 18, 30, 0.78), rgba(3, 12, 20, 0.66));
   min-height: 480px;
+  width: 100%;
 }
 
 .tc-field {
@@ -667,9 +711,9 @@ onMounted(() => {
 }
 
 .tc-chip--teal {
-  border-color: rgba(52, 211, 153, 0.38);
-  background: rgba(52, 211, 153, 0.1);
-  color: #5eead4;
+  border-color: rgba(251, 146, 60, 0.38);
+  background: rgba(251, 146, 60, 0.1);
+  color: #fdba74;
 }
 
 .tc-actions {

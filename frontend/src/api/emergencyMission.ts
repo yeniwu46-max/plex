@@ -40,7 +40,14 @@ export interface EmergencyMissionArchiveRecord {
   correct_count: number
   total_count: number
   reward_points: number
+  has_ai_explanation?: boolean
   questions: EmergencyQuestion[]
+}
+
+export interface EmergencyMissionExplanation {
+  summary: string
+  focus_label?: string | null
+  generated_at?: string | null
 }
 
 export async function startEmergencyMission() {
@@ -72,5 +79,14 @@ export async function submitEmergencyMission(
   if (data.code !== 0) {
     throw new Error(data.message || '提交紧急任务失败')
   }
+  return data.data
+}
+
+export async function fetchEmergencyMissionExplanation(sessionId: number) {
+  const { data } = await http.get<ApiEnvelope<EmergencyMissionExplanation>>(
+    `/v1/student/emergency-missions/${sessionId}/explanation`,
+    { timeout: 15_000 },
+  )
+  if (data.code !== 0) throw new Error(data.message || '加载 AI 解析失败')
   return data.data
 }

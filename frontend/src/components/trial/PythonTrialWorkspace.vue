@@ -18,7 +18,7 @@ import {
 import type { PythonTrialQuestion } from '../../data/pythonTrialQuestions'
 import { useAuthStore } from '../../stores/auth'
 import { useNotificationStore } from '../../stores/notifications'
-import { getTrialAttemptHistory, recordTrialRun } from '../../utils/trialMistakeLog'
+import { getTrialAttemptHistory, recordTrialRun, resolveAttemptScore, resolveAttemptVerdict } from '../../utils/trialMistakeLog'
 import { submitTrialCodeAnswer } from '../../api/studentAssignments'
 import { advanceDailyQuest } from '../../api/studentOverview'
 import { runCodeLearningCycle, requestTrialFeedback, type StudentDiagnoseResult } from '../../api/agentService'
@@ -457,14 +457,6 @@ function formatDuration(ms: number) {
           <template #icon><n-icon :component="ShuffleOutline" /></template>
           换一题
         </n-button>
-        <n-button quaternary :disabled="running" @click="onReset">
-          <template #icon><n-icon :component="RefreshOutline" /></template>
-          重置代码
-        </n-button>
-        <n-button type="primary" :loading="running || pyodideLoading" @click="onRun">
-          <template #icon><n-icon :component="PlayOutline" /></template>
-          运行测试
-        </n-button>
         <n-button
           v-if="embedded && props.trialQuestionId"
           type="success"
@@ -559,7 +551,7 @@ function formatDuration(ms: number) {
                 </span>
               </header>
 
-              <p v-if="!caseResults.length" class="py-results__empty">点击右上角「运行测试」后，这里会显示每个测试点的实际输出与判定。</p>
+              <p v-if="!caseResults.length" class="py-results__empty">点击代码区右上角「运行测试」后，这里会显示每个测试点的实际输出与判定。</p>
 
               <div v-else class="py-results__list">
                 <article
@@ -631,8 +623,11 @@ function formatDuration(ms: number) {
               >
                 <div class="py-history__row">
                   <n-tag :type="record.passed ? 'success' : 'error'" size="small">
-                    {{ record.passed ? '通过' : '未通过' }}
+                    {{ resolveAttemptVerdict(record) }}
                   </n-tag>
+                  <span class="py-history__score">
+                    {{ resolveAttemptScore(record).passed }}/{{ resolveAttemptScore(record).total }}
+                  </span>
                   <span class="py-history__time">
                     {{ new Date(record.submittedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
                   </span>
@@ -655,7 +650,17 @@ function formatDuration(ms: number) {
       <section class="py-workspace__panel py-workspace__panel--editor">
         <header class="py-editor__head">
           <h2>代码编辑区</h2>
-          <span>main.py</span>
+          <div class="py-editor__head-actions">
+            <span class="py-editor__filename">main.py</span>
+            <n-button quaternary size="small" :disabled="running" @click="onReset">
+              <template #icon><n-icon :component="RefreshOutline" /></template>
+              重置代码
+            </n-button>
+            <n-button type="primary" size="small" :loading="running || pyodideLoading" @click="onRun">
+              <template #icon><n-icon :component="PlayOutline" /></template>
+              运行测试
+            </n-button>
+          </div>
         </header>
         <div class="py-editor__wrap">
           <plex-code-editor
@@ -671,7 +676,7 @@ function formatDuration(ms: number) {
             <n-icon :component="allPassed ? CheckmarkCircleOutline : CloseCircleOutline" />
             <span>{{ passedCount }} / {{ caseResults.length }} 测试通过</span>
           </div>
-          <p v-else class="py-editor__hint">编写代码后点击「运行测试」，左侧面板会展示详细运行结果。</p>
+          <p v-else class="py-editor__hint">编写代码后点击右上角「运行测试」，左侧面板会展示详细运行结果。</p>
         </footer>
       </section>
     </div>
@@ -685,17 +690,18 @@ function formatDuration(ms: number) {
   display: flex;
   height: 100%;
   min-height: 0;
+  flex: 1;
   flex-direction: column;
-  padding: 0 var(--plex-page-gutter-x, 1.25rem) 1.25rem;
+  padding: 0 0.65rem 0.65rem;
 }
 
 .py-workspace__bar {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  padding: 0.65rem 0;
+  gap: 0.55rem 0.75rem;
+  margin-bottom: 0.55rem;
+  padding: 0.45rem 0;
   border-bottom: 1px solid rgba(130, 212, 255, 0.1);
 }
 
@@ -800,8 +806,8 @@ function formatDuration(ms: number) {
   display: grid;
   flex: 1;
   min-height: 0;
-  grid-template-columns: minmax(300px, 0.92fr) minmax(380px, 1.28fr);
-  gap: 1rem;
+  grid-template-columns: minmax(320px, 1.05fr) minmax(420px, 1.45fr);
+  gap: 0.65rem;
 }
 
 .py-workspace__panel {
@@ -1111,8 +1117,22 @@ function formatDuration(ms: number) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
   border-bottom: 1px solid rgba(130, 212, 255, 0.1);
+}
+
+.py-editor__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.py-editor__filename {
+  color: rgba(221, 230, 239, 0.45);
+  font-family: monospace;
+  font-size: 0.78rem;
 }
 
 .py-editor__head h2 {
@@ -1129,7 +1149,7 @@ function formatDuration(ms: number) {
 
 .py-editor__wrap {
   flex: 1;
-  min-height: 320px;
+  min-height: 420px;
   overflow: hidden;
 }
 
@@ -1241,6 +1261,13 @@ function formatDuration(ms: number) {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.py-history__score {
+  color: rgba(255, 247, 237, 0.88);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .py-history__time {

@@ -13,7 +13,7 @@ import {
   type PersonalizedResource,
   type ResourceTask,
 } from '../api/personalizedResources'
-import { xiaoEResourceProgressHint } from '../utils/xiaoEPersona'
+import { xiaoEResourceProgressHint, xiaoEResourceBackendLabel } from '../utils/xiaoEPersona'
 
 const message = useMessage()
 const knowledgeKey = ref('loop')
@@ -322,7 +322,7 @@ onMounted(() => {
                         {{ reviewStatusLabel(item.review_status) }}
                       </n-tag>
                       <n-tag :type="item.backend === 'iflytek_spark' ? 'success' : 'warning'">
-                        {{ item.backend }}
+                        {{ xiaoEResourceBackendLabel(item.backend) }}
                       </n-tag>
                     </span>
                     <strong>{{ item.title }}</strong>

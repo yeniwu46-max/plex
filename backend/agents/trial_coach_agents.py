@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from agents.llm_client import api_key_configured, chat_json, chat_text, llm_provider
+from agents.llm_client import api_key_configured, chat_json, chat_text, llm_provider, strip_asterisks
 
 INTENT_ERROR = 'error_diagnosis'
 INTENT_QUALITY = 'code_quality'
@@ -45,6 +45,7 @@ NO_ANSWER_RULE = (
     '绝对不能给出完整答案、不能直接给出可通过测试的代码、不能写出预期输出的完整解法。'
     '只能用提问、思路引导、检查清单和类比，帮助学生自己发现和修正。'
     '回复使用简洁中文，150字以内优先；必要时可稍长，但仍不得泄露答案。'
+    '不要使用星号（*）或 Markdown 加粗。'
 )
 
 
@@ -375,7 +376,7 @@ def execute(intent: str, payload: dict) -> dict:
         'agentName': meta['name'],
         'intent': intent,
         'contextSummary': context_summary,
-        'response': response_text[:1200],
+        'response': strip_asterisks(response_text[:1200]),
         'guidingQuestions': body.get('guidingQuestions') or body.get('reflectionQuestions') or [],
         'strengths': body.get('strengths') or [],
         'improvements': body.get('improvements') or body.get('suggestions') or body.get('checklist') or [],

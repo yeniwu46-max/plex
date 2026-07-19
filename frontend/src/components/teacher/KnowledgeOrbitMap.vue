@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { NIcon } from 'naive-ui'
 import { AlertCircleOutline, CubeOutline, ScanOutline, SparklesOutline } from '@vicons/ionicons5'
 import type { OrbitNode } from '../../data/teacherStarfield'
@@ -19,10 +20,30 @@ const emit = defineEmits<{
   select: [node: OrbitNode]
 }>()
 
+const displayNodes = computed(() => {
+  const seen = new Map<string, number>()
+  return props.nodes.map((node, index) => {
+    const key = node.domainKey ?? node.label
+    const dup = seen.get(key) ?? 0
+    seen.set(key, dup + 1)
+    if (dup === 0) return node
+    const offset = dup * 7
+    return {
+      ...node,
+      x: Math.min(92, Math.max(8, node.x + offset)),
+      y: Math.min(88, Math.max(12, node.y + offset * 0.6)),
+    }
+  })
+})
+
 function iconForTone(tone: OrbitNode['tone']) {
   if (tone === 'teal') return ScanOutline
   if (tone === 'red') return AlertCircleOutline
   return CubeOutline
+}
+
+function nodeKey(node: OrbitNode, index: number) {
+  return node.domainKey ? `${node.domainKey}-${index}` : `${node.label}-${index}`
 }
 </script>
 
@@ -37,20 +58,25 @@ function iconForTone(tone: OrbitNode['tone']) {
       </span>
       <span v-for="ring in 7" :key="ring" class="orbit-ring" :style="{ '--ring': ring }" />
       <button
-        v-for="node in nodes"
-        :key="node.label"
+        v-for="(node, index) in displayNodes"
+        :key="nodeKey(node, index)"
         type="button"
         class="orbit-node"
         :class="`orbit-node--${node.tone}`"
-        :style="{ left: `${node.x}%`, top: `${node.y}%` }"
+        :style="{ left: `${node.x}%`, top: `${node.y}%`, '--node-index': index }"
         @click="emit('select', node)"
       >
+        <span class="orbit-node__halo" aria-hidden="true" />
         <span class="orbit-node__planet">
           <n-icon :component="iconForTone(node.tone)" />
         </span>
-        <strong>{{ node.label }}</strong>
-        <em>{{ node.score }}%</em>
-        <small :class="{ 'is-down': node.delta === '下降', 'is-flat': node.delta === '稳定' }">{{ node.delta }}</small>
+        <span class="orbit-node__meta">
+          <strong>{{ node.label }}</strong>
+          <span class="orbit-node__score-row">
+            <em>{{ node.score }}%</em>
+            <small :class="{ 'is-down': node.delta === '下降', 'is-flat': node.delta === '稳定' }">{{ node.delta }}</small>
+          </span>
+        </span>
       </button>
       <div class="orbit-legend">
         <span><i class="good" />掌握良好</span>
@@ -140,13 +166,15 @@ function iconForTone(tone: OrbitNode['tone']) {
   position: absolute;
   z-index: 3;
   display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
   width: max-content;
-  max-width: 148px;
-  gap: 0.18rem;
+  max-width: min(168px, 38vw);
   padding: 0;
   border: 0;
   background: transparent;
-  transform: translate(-50%, -50%);
+  transform: translate(-26px, -50%);
   color: #fff7ed;
   cursor: pointer;
   text-align: left;
@@ -154,9 +182,9 @@ function iconForTone(tone: OrbitNode['tone']) {
 
 .orbit-node::before {
   position: absolute;
-  left: 31px;
-  top: 31px;
-  width: 145px;
+  left: 26px;
+  top: 26px;
+  width: 118px;
   height: 1px;
   transform-origin: left;
   background: linear-gradient(90deg, rgba(251, 146, 60, 0.55), transparent);
@@ -164,7 +192,36 @@ function iconForTone(tone: OrbitNode['tone']) {
   pointer-events: none;
 }
 
+.orbit-node__halo {
+  position: absolute;
+  left: 26px;
+  top: 26px;
+  width: 52px;
+  height: 52px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.22), transparent 68%);
+  animation: orbit-pulse 3.6s ease-in-out infinite;
+  animation-delay: calc(var(--node-index, 0) * 0.18s);
+  pointer-events: none;
+}
+
+.orbit-node__meta {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.orbit-node__score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+}
+
 .orbit-node__planet {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   display: grid;
   width: 52px;
   height: 52px;
@@ -174,26 +231,37 @@ function iconForTone(tone: OrbitNode['tone']) {
   background: rgba(251, 146, 60, 0.12);
   border: 1px solid rgba(251, 146, 60, 0.8);
   box-shadow: 0 0 28px rgba(251, 146, 60, 0.45), 0 0 0 12px rgba(251, 146, 60, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.orbit-node:hover .orbit-node__planet {
+  transform: scale(1.06);
+  box-shadow: 0 0 36px rgba(251, 146, 60, 0.62), 0 0 0 14px rgba(251, 146, 60, 0.08);
 }
 
 .orbit-node strong {
-  margin-top: 0.45rem;
-  color: rgba(255, 247, 237, 0.82);
-  font-size: 0.88rem;
-  font-weight: 620;
-  line-height: 1.35;
-  word-break: break-word;
+  color: rgba(255, 247, 237, 0.92);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .orbit-node em {
   color: #ffffff;
-  font-size: 1.14rem;
+  font-size: 1.02rem;
   font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .orbit-node small {
   color: #fb923c;
   font-weight: 800;
+  font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 .orbit-node small::before {
@@ -273,5 +341,10 @@ function iconForTone(tone: OrbitNode['tone']) {
 
 .orbit-legend .none {
   background: #94a3b8;
+}
+
+@keyframes orbit-pulse {
+  0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.12); }
 }
 </style>

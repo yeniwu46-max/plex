@@ -123,7 +123,7 @@ function buildGraphData(): GraphData {
       const heat = heatLevel(n)
       const isTeacherWeak = props.mode === 'teacher' && (n.status === 'weak' || (n.weak_score ?? 0) > 0)
       const heatColor = isTeacherWeak ? '#fb7185' : statusColor
-      const stroke = isActive ? '#22c55e' : isRemediation ? '#f97316' : heatColor
+      const stroke = isActive ? accent : isRemediation ? '#f97316' : heatColor
       const lineWidth = isActive ? 3 : onPath ? 2.2 : n.status === 'recommended' ? 2.5 : 1.5 + heat * 3
       const labelSuffix = isRemediation ? ' · 补救' : isActive ? ' · 下一步' : onPath ? ' · 路径' : ''
       return {
@@ -296,7 +296,7 @@ onBeforeUnmount(() => {
     <p v-if="graphLoading" class="plex-kg-loading">正在加载知识图谱…</p>
 
     <transition name="slide">
-      <aside v-if="selectedNode" class="plex-kg-detail">
+      <aside v-if="selectedNode" class="plex-kg-detail" :class="{ 'plex-kg-detail--teacher': mode === 'teacher' }">
         <button class="plex-kg-detail__close" type="button" @click="selectedNode = null">✕</button>
         <div
           class="plex-kg-detail__status"
@@ -312,19 +312,20 @@ onBeforeUnmount(() => {
         <dl
           v-if="selectedNode.weak_score !== undefined || selectedNode.fail_count !== undefined"
           class="plex-kg-detail__metrics"
+          :class="{ 'plex-kg-detail__metrics--teacher': mode === 'teacher' }"
         >
-          <div>
+          <div class="plex-kg-detail__metric">
             <dt>薄弱热度</dt>
             <dd>{{ selectedNode.weak_score ?? '—' }}</dd>
           </div>
-          <div>
+          <div class="plex-kg-detail__metric">
             <dt>正确率</dt>
             <dd>
               {{ selectedNode.accuracy ?? '—' }}
               <span v-if="selectedNode.accuracy !== null && selectedNode.accuracy !== undefined">%</span>
             </dd>
           </div>
-          <div>
+          <div class="plex-kg-detail__metric">
             <dt>{{ mode === 'teacher' ? '影响学生' : '失败次数' }}</dt>
             <dd>{{ mode === 'teacher' ? selectedNode.affected_student_count ?? 0 : selectedNode.fail_count ?? 0 }}</dd>
           </div>
@@ -391,6 +392,26 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(8px);
 }
 
+.plex-kg-detail--teacher {
+  width: 248px;
+  padding: 1.05rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  background:
+    linear-gradient(155deg, rgba(67, 20, 7, 0.55), rgba(5, 14, 26, 0.92)),
+    rgba(8, 14, 22, 0.88);
+  box-shadow: 0 0 28px rgba(249, 115, 22, 0.18), inset 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.plex-kg-detail--teacher h3 {
+  color: #fed7aa;
+  text-shadow: 0 0 12px rgba(249, 115, 22, 0.25);
+}
+
+.plex-kg-detail--teacher .plex-kg-detail__domain {
+  color: rgba(253, 186, 116, 0.75);
+}
+
 .plex-kg-detail__close {
   position: absolute;
   top: 8px;
@@ -438,23 +459,45 @@ onBeforeUnmount(() => {
   margin: 0.7rem 0;
 }
 
-.plex-kg-detail__metrics div {
+.plex-kg-detail__metrics--teacher {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.plex-kg-detail__metric {
   padding: 0.45rem;
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.55);
   border: 1px solid rgba(148, 163, 184, 0.14);
 }
 
+.plex-kg-detail__metrics--teacher .plex-kg-detail__metric {
+  background: rgba(67, 20, 7, 0.35);
+  border-color: rgba(249, 115, 22, 0.22);
+}
+
 .plex-kg-detail__metrics dt {
   margin: 0 0 0.2rem;
   color: rgba(203, 213, 225, 0.62);
   font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.plex-kg-detail__metrics--teacher dt {
+  color: rgba(253, 186, 116, 0.78);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
 }
 
 .plex-kg-detail__metrics dd {
   margin: 0;
   color: #f8fafc;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.plex-kg-detail__metrics--teacher dd {
+  color: #fff7ed;
+  font-size: 1.05rem;
 }
 
 .plex-kg-detail__edges p {

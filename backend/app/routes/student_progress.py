@@ -103,6 +103,19 @@ def submit_emergency_mission(session_id):
         return error_response(str(exc), 50001, None, 500)
 
 
+@student_progress_bp.route('/emergency-missions/<int:session_id>/explanation', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_emergency_mission_explanation(session_id):
+    try:
+        user_id = int(get_jwt_identity())
+        return success_response(EmergencyMissionService.generate_ai_explanation(user_id, session_id))
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @student_progress_bp.route('/dashboard-extras', methods=['GET'])
 @jwt_required()
 @role_required('student')

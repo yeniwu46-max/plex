@@ -201,3 +201,18 @@ html[data-theme='light'] .teacher-main {
   color: var(--plex-text) !important;
 }
 
+/* 教师端 Naive UI 主按钮统一为橙色主题 */
+.teacher-shell .n-button.n-button--primary-type {
+  --n-color: #ea580c;
+  --n-color-hover: #f97316;
+  --n-color-pressed: #c2410c;
+  --n-color-focus: #ea580c;
+  --n-ripple-color: rgba(249, 115, 22, 0.35);
+}
+
+.teacher-shell .n-button.n-button--primary-type.n-button--ghost {
+  --n-color: transparent;
+  --n-text-color: #fb923c;
+  --n-border: 1px solid rgba(251, 146, 60, 0.45);
+}
+

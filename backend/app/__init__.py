@@ -178,6 +178,7 @@ def create_app(config_name='development'):
         db.create_all()
         from app.utils.db_migrate import (
             ensure_class_enrollment_schema,
+            ensure_emergency_mission_schema,
             ensure_practice_question_schema,
             ensure_resource_audit_schema,
             ensure_trial_comments_schema,
@@ -186,6 +187,7 @@ def create_app(config_name='development'):
 
         ensure_trial_progress_columns()
         ensure_class_enrollment_schema()
+        ensure_emergency_mission_schema()
         ensure_resource_audit_schema()
         ensure_trial_comments_schema()
         if not app.config.get('TESTING'):
@@ -193,6 +195,14 @@ def create_app(config_name='development'):
         init_seed_data()
         sync_teacher_role_permissions()
         ensure_dev_login_users()
+        if not app.config.get('TESTING'):
+            from scripts.bootstrap_test_student import ensure_test_sandbox_accounts
+
+            try:
+                ensure_test_sandbox_accounts()
+            except Exception:
+                db.session.rollback()
+                app.logger.exception('Test sandbox bootstrap skipped.')
         from app.services.daily_quest import DailyQuestService
 
         DailyQuestService.ensure_default_quests()

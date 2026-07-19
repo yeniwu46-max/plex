@@ -6,7 +6,6 @@ import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vu
 import ExplorerMemberManage from '../components/teacher/ExplorerMemberManage.vue'
 import TeacherClassManagePanel from '../components/teacher/TeacherClassManagePanel.vue'
 import TeacherEnrollmentReviewPanel from '../components/teacher/TeacherEnrollmentReviewPanel.vue'
-import ClassFileExchangePanel from '../components/student/ClassFileExchangePanel.vue'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 
 const { selectedClassId, loadOverview } = useTeacherOverviewInjected()
@@ -70,8 +69,6 @@ function onChanged() {
           @changed="onChanged"
         />
       </div>
-
-      <class-file-exchange-panel role="teacher" :class-id="selectedClassId" />
     </section>
   </TeacherDashboardShell>
 </template>

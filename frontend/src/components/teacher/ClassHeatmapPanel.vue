@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { NIcon, NInput } from 'naive-ui'
+import { SearchOutline } from '@vicons/ionicons5'
 import type { TeacherOverview } from '../../api/teacherOverview'
 
 const props = defineProps<{
@@ -7,9 +9,16 @@ const props = defineProps<{
 }>()
 
 const hoveredUserId = ref<number | null>(null)
+const searchQuery = ref('')
 
 const rows = computed(() => props.heatmap?.rows ?? [])
 const days = computed(() => props.heatmap?.days ?? [])
+
+const filteredRows = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return rows.value
+  return rows.value.filter((row) => row.student_name.toLowerCase().includes(q))
+})
 
 const summary = computed(() => {
   if (!rows.value.length) {
@@ -38,22 +47,36 @@ function cellTone(rate: number) {
 
 <template>
   <section class="class-heatmap teacher-panel" aria-label="班级学习热力图">
-    <header class="teacher-panel__head">
-      <h2 class="teacher-panel__title">班级学习热力图</h2>
-      <p class="class-heatmap__summary">
-        积极 <strong>{{ summary.active }}</strong> 人 · 中等 <strong>{{ summary.medium }}</strong> 人 · 低迷
-        <strong>{{ summary.low }}</strong> 人
-      </p>
+    <header class="teacher-panel__head class-heatmap__head">
+      <div>
+        <h2 class="teacher-panel__title">班级学习热力图</h2>
+        <p class="class-heatmap__summary">
+          积极 <strong>{{ summary.active }}</strong> 人 · 中等 <strong>{{ summary.medium }}</strong> 人 · 低迷
+          <strong>{{ summary.low }}</strong> 人
+        </p>
+      </div>
+      <n-input
+        v-model:value="searchQuery"
+        size="small"
+        clearable
+        placeholder="搜索学生姓名…"
+        class="class-heatmap__search"
+      >
+        <template #prefix>
+          <n-icon :component="SearchOutline" />
+        </template>
+      </n-input>
     </header>
 
     <div v-if="!rows.length" class="class-heatmap__empty">暂无学生委托完成数据</div>
+    <div v-else-if="!filteredRows.length" class="class-heatmap__empty">未找到匹配「{{ searchQuery }}」的学生</div>
 
     <div v-else class="class-heatmap__scroll">
       <div class="class-heatmap__grid" :style="{ '--day-count': days.length }">
         <div class="class-heatmap__corner" />
         <div v-for="day in days" :key="day.date" class="class-heatmap__day">{{ day.label }}</div>
 
-        <template v-for="row in rows" :key="row.user_id">
+        <template v-for="row in filteredRows" :key="row.user_id">
           <div
             class="class-heatmap__name"
             :class="{ 'is-hovered': hoveredUserId === row.user_id }"
@@ -90,6 +113,23 @@ function cellTone(rate: number) {
 .class-heatmap {
   padding: 1.35rem 1.45rem 1.2rem;
   min-height: 0;
+}
+
+.class-heatmap__head {
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.class-heatmap__search {
+  width: min(220px, 100%);
+  flex-shrink: 0;
+}
+
+.class-heatmap__search :deep(.n-input) {
+  --n-color: rgba(4, 15, 25, 0.72);
+  --n-border: 1px solid rgba(251, 146, 60, 0.22);
+  --n-border-hover: 1px solid rgba(251, 146, 60, 0.45);
+  --n-text-color: #fff7ed;
 }
 
 .class-heatmap__summary {

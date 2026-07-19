@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { NButton, NIcon, NInput, NSpin } from 'naive-ui'
 import { ChatbubbleEllipsesOutline, CloseOutline, SendOutline } from '@vicons/ionicons5'
 import { trialCoach, type TrialCoachIntent, type TrialCoachPayload, type TrialCoachResult } from '../../api/agentService'
+import { xiaoEStripAsterisks } from '../../utils/xiaoEPersona'
 
 export type TrialCoachContext = {
   exerciseId: string
@@ -251,7 +252,7 @@ async function sendQuestion(question: string, intent: TrialCoachIntent = activeI
 
   try {
     const result: TrialCoachResult = await trialCoach(buildPayload(intent, text))
-    pushMessage('assistant', result.response, result.agentName)
+    pushMessage('assistant', xiaoEStripAsterisks(result.response), result.agentName)
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'AI 辅导请求失败'
     pushMessage('assistant', msg.includes('404') ? '辅导服务未就绪，请确认后端已重启。' : msg)

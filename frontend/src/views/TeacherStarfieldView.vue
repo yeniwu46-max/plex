@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NIcon, NSelect, NSpin, type SelectOption } from 'naive-ui'
+import { NButton, NIcon, NModal, NSelect, NSpin, type SelectOption } from 'naive-ui'
 import { CompassOutline, InformationCircleOutline, SparklesOutline } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
 import KnowledgeOrbitMap from '../components/teacher/KnowledgeOrbitMap.vue'
@@ -16,10 +16,7 @@ import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import { STAR_PATH_TABS } from '../data/starPathDomains'
 import {
   buildClassStarfieldNodes,
-  buildRiskCopy,
-  buildRiskTrend,
   buildStarfieldKpis,
-  polylineFromPoints,
   type OrbitNode,
 } from '../data/teacherStarfield'
 import { fetchClassKnowledgeGraph, type KnowledgeGraphSummary } from '../api/knowledgeGraph'
@@ -43,6 +40,7 @@ const kgLoading = ref(false)
 const diagnosis = ref<ClassDiagnosisResult | null>(null)
 const diagnosisLoading = ref(false)
 const diagnosisError = ref('')
+const diagnosisModalOpen = ref(false)
 
 async function runClassDiagnosis() {
   if (!selectedClassId.value || diagnosisLoading.value) return
@@ -142,9 +140,6 @@ const orbitNodes = computed(() => {
   return allNodes.value.filter((node) => node.domainKey === domainFilter.value)
 })
 const kpis = computed(() => buildStarfieldKpis(overview.value))
-const riskPoints = computed(() => buildRiskTrend(overview.value))
-const riskPolyline = computed(() => polylineFromPoints(riskPoints.value, 280, 90))
-const riskCopy = computed(() => buildRiskCopy(overview.value, riskPoints.value))
 const topWeakNodes = computed(() => kgSummary.value?.top_weak_nodes.slice(0, 3) ?? [])
 const heatRankNodes = computed(() => kgSummary.value?.top_weak_nodes ?? [])
 
@@ -205,16 +200,26 @@ function onNodeSelect(node: OrbitNode) {
         >
           <header class="teacher-panel__head starfield-page__diagnosis-head">
             <h2 class="teacher-panel__title">班级一键学情诊断</h2>
-            <n-button
-              size="tiny"
-              type="warning"
-              :loading="diagnosisLoading"
-              :disabled="!selectedClassId"
-              @click="runClassDiagnosis"
-            >
-              <template #icon><n-icon :component="SparklesOutline" /></template>
-              重新诊断
-            </n-button>
+            <div class="starfield-page__diagnosis-actions">
+              <n-button
+                v-if="diagnosis"
+                size="tiny"
+                secondary
+                @click="diagnosisModalOpen = true"
+              >
+                查看全部
+              </n-button>
+              <n-button
+                size="tiny"
+                type="warning"
+                :loading="diagnosisLoading"
+                :disabled="!selectedClassId"
+                @click="runClassDiagnosis"
+              >
+                <template #icon><n-icon :component="SparklesOutline" /></template>
+                重新诊断
+              </n-button>
+            </div>
           </header>
 
           <div v-if="diagnosisLoading && !diagnosis" class="starfield-page__diagnosis-loading">
@@ -226,14 +231,13 @@ function onNodeSelect(node: OrbitNode) {
             <div class="starfield-page__diagnosis-meta">
               <span>{{ diagnosis.studentCount }} 名学生</span>
               <span v-if="diagnosis.weakNodes.length">{{ diagnosis.weakNodes.length }} 个薄弱知识点</span>
-              <span class="starfield-page__diagnosis-backend">{{ diagnosis.backend || 'agent' }}</span>
             </div>
 
             <div v-if="diagnosis.attentionStudents.length" class="starfield-page__attention">
               <h3>重点关注</h3>
               <div class="starfield-page__attention-chips">
                 <button
-                  v-for="stu in diagnosis.attentionStudents"
+                  v-for="stu in diagnosis.attentionStudents.slice(0, 6)"
                   :key="stu.id"
                   type="button"
                   class="starfield-page__attention-chip"
@@ -257,16 +261,26 @@ function onNodeSelect(node: OrbitNode) {
           <p v-else class="starfield-page__diagnosis-empty">点击「重新诊断」生成班级学情诊断。</p>
         </section>
 
-        <section class="starfield-page__risk teacher-panel teacher-quad-layout__side-bottom">
-          <header class="teacher-panel__head">
-            <h2 class="teacher-panel__title">风险波动</h2>
-          </header>
-          <p class="starfield-page__risk-copy">{{ riskCopy }}</p>
-          <svg class="starfield-page__risk-chart" viewBox="0 0 280 90" role="img" aria-label="风险波动趋势">
-            <line v-for="line in 3" :key="line" x1="0" x2="278" :y1="line * 28" :y2="line * 28" />
-            <polyline :points="riskPolyline" />
-          </svg>
-        </section>
+        <n-modal
+          v-model:show="diagnosisModalOpen"
+          preset="card"
+          title="班级学情诊断报告"
+          class="starfield-page__diagnosis-modal"
+          :style="{ width: 'min(720px, 92vw)' }"
+        >
+          <template v-if="diagnosis">
+            <div class="starfield-page__diagnosis-meta starfield-page__diagnosis-meta--modal">
+              <span>{{ diagnosis.className || '当前班级' }}</span>
+              <span>{{ diagnosis.studentCount }} 名学生</span>
+              <span v-if="diagnosis.generatedAt">生成于 {{ diagnosis.generatedAt }}</span>
+            </div>
+            <plex-teacher-suggestion-panel
+              :result="diagnosis.suggestion"
+              :loading="false"
+              :error="''"
+            />
+          </template>
+        </n-modal>
 
         <section class="starfield-page__kg teacher-panel teacher-quad-layout__full-row">
           <header class="teacher-panel__head">
@@ -323,7 +337,7 @@ function onNodeSelect(node: OrbitNode) {
 
 <style scoped>
 .starfield-page {
-  grid-template-rows: minmax(480px, 1fr) minmax(280px, auto) auto auto;
+  grid-template-rows: minmax(480px, 1fr) auto auto;
 }
 
 .starfield-page__state {
@@ -331,12 +345,30 @@ function onNodeSelect(node: OrbitNode) {
 }
 
 .starfield-page__diagnosis {
+  grid-row: 1 / span 2;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
   padding: 1.25rem;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.starfield-page__diagnosis-panel {
+  flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
+  mask-image: linear-gradient(180deg, #000 72%, transparent 100%);
+}
+
+.starfield-page__diagnosis-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.starfield-page__diagnosis-meta--modal {
+  margin-bottom: 0.75rem;
 }
 
 .starfield-page__diagnosis-head {
@@ -382,7 +414,7 @@ function onNodeSelect(node: OrbitNode) {
 }
 
 .starfield-page__diagnosis-backend {
-  color: #fdba74;
+  display: none;
 }
 
 .starfield-page__attention h3 {
@@ -435,32 +467,8 @@ function onNodeSelect(node: OrbitNode) {
   margin-bottom: 0.25rem;
 }
 
-.starfield-page__risk {
-  display: flex;
-  min-height: 280px;
-  flex-direction: column;
-  padding: 1.25rem;
-  overflow: visible;
-}
-
-.starfield-page__risk.teacher-panel {
-  overflow: visible;
-}
-
-.starfield-page__risk .teacher-panel__head {
-  flex-shrink: 0;
-  overflow: visible;
-  margin-bottom: 0.35rem;
-}
-
-.starfield-page__risk .teacher-panel__title {
-  white-space: nowrap;
-  overflow: visible;
-  line-height: 1.35;
-}
-
 .starfield-page__kg {
-  grid-row: 3;
+  grid-row: 2;
   padding: 1rem 1.25rem 1.25rem;
   overflow: visible;
 }
@@ -543,39 +551,11 @@ function onNodeSelect(node: OrbitNode) {
   font-size: 1rem;
 }
 
-.starfield-page__risk-copy {
-  margin: 0 0 0.75rem;
-  color: var(--teacher-muted);
-  font-size: 0.88rem;
-  line-height: 1.6;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.starfield-page__risk-chart {
-  display: block;
-  width: 100%;
-  height: 96px;
-  flex-shrink: 0;
-  margin-top: auto;
-}
-
-.starfield-page__risk-chart line {
-  stroke: rgba(221, 230, 239, 0.07);
-}
-
-.starfield-page__risk-chart polyline {
-  fill: none;
-  stroke: #ff554d;
-  stroke-width: 2.5;
-  filter: drop-shadow(0 0 8px rgba(255, 85, 77, 0.35));
-}
-
 .starfield-page__kpis {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--teacher-quad-gap, 1.1rem);
-  grid-row: 4;
+  grid-row: 3;
 }
 
 @media (max-width: 1100px) {
@@ -587,13 +567,14 @@ function onNodeSelect(node: OrbitNode) {
     grid-row: auto;
   }
 
+  .starfield-page__diagnosis {
+    grid-row: auto;
+    min-height: 420px;
+  }
+
   .starfield-page__kg-summary,
   .starfield-page__kg-rank {
     grid-template-columns: 1fr;
-  }
-
-  .starfield-page__risk {
-    min-height: 240px;
   }
 
   .starfield-page__kpis {

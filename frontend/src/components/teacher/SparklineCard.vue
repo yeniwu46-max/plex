@@ -40,7 +40,7 @@ const polyline = computed(() => polylineFromPoints(props.points, 200, 56))
 }
 
 .spark-card__top em {
-  color: #34d399;
+  color: #fb923c;
   font-style: normal;
   font-weight: 700;
 }

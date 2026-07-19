@@ -10,6 +10,7 @@ export interface LevelProfile {
   points_to_next_level: number
   progress_percent: number
   max_level: number
+  at_max_level?: boolean
 }
 
 export interface IncentiveSummary {

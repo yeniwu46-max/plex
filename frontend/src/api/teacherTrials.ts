@@ -129,7 +129,9 @@ export interface CreateTrialPayload {
 }
 
 export interface AiGenerateOptions {
-  /** 期望题型（后端暂以选择题为主，附加参数向后兼容） */
+  /** 期望题型：mcq 单选 / multiple 多选 / coding 编程 */
+  question_types?: Array<'mcq' | 'multiple' | 'coding'>
+  /** @deprecated 单题型兼容字段 */
   question_type?: TrialQuestionKind
   /** 难度 0-100 */
   difficulty?: number

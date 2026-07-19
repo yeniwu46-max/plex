@@ -14,22 +14,47 @@ from app.models import (
     db,
 )
 
-from .base import BaseService
+from app.services.base import BaseService
 from app.utils.time import utc_now
 
-# 累计 XP 阈值：Lv1..Lv5
-LEVEL_THRESHOLDS = [0, 500, 1500, 3000, 5000, 10_000]
-MAX_LEVEL = 5
+from app.constants.test_accounts import MAX_LEVEL, MAX_LEVEL_TOTAL_POINTS, TEST_SANDBOX_USERNAMES
+
+# 累计 XP 阈值：Lv1..Lv10（与 MAX_LEVEL_TOTAL_POINTS 对齐）
+LEVEL_THRESHOLDS = [
+    0,
+    500,
+    1_200,
+    2_400,
+    4_000,
+    6_000,
+    8_500,
+    11_500,
+    15_000,
+    19_000,
+    MAX_LEVEL_TOTAL_POINTS,
+]
 LEVEL_TITLES = {
     1: '见习 Explorer',
     2: '星轨行者',
     3: '深空探索者',
     4: '星域领航员',
-    5: '传奇 Explorer',
+    5: '星图测绘员',
+    6: '深空领航员',
+    7: '星域指挥官',
+    8: '银河探索者',
+    9: '宇宙先锋',
+    10: '传奇 Explorer',
 }
 
 
 class IncentiveService(BaseService):
+    @staticmethod
+    def is_xp_capped(user) -> bool:
+        """测试账号满级后不再累积 XP。"""
+        if not user or user.username not in TEST_SANDBOX_USERNAMES:
+            return False
+        return (user.level or 1) >= MAX_LEVEL and (user.total_points or 0) >= MAX_LEVEL_TOTAL_POINTS
+
     @staticmethod
     def current_week_key(moment=None):
         moment = moment or utc_now()
@@ -49,16 +74,20 @@ class IncentiveService(BaseService):
     @staticmethod
     def level_profile(user):
         points = user.total_points or 0
-        level = user.level or 1
+        level = min(user.level or 1, MAX_LEVEL)
         current_floor = LEVEL_THRESHOLDS[level - 1]
-        next_ceiling = LEVEL_THRESHOLDS[level] if level < MAX_LEVEL else None
-        if next_ceiling:
+        max_ceiling = LEVEL_THRESHOLDS[MAX_LEVEL]
+        at_max_level = level >= MAX_LEVEL
+        next_ceiling = LEVEL_THRESHOLDS[level] if level < MAX_LEVEL else max_ceiling
+        if at_max_level:
+            span = max(max_ceiling - current_floor, 1)
+            capped_points = min(points, max_ceiling)
+            progress = round(((capped_points - current_floor) / span) * 100)
+            points_to_next = 0
+        else:
             span = next_ceiling - current_floor
             progress = round(((points - current_floor) / span) * 100) if span else 100
             points_to_next = max(0, next_ceiling - points)
-        else:
-            progress = 100
-            points_to_next = 0
         return {
             'level': level,
             'title': LEVEL_TITLES.get(level, f'Lv{level}'),
@@ -68,6 +97,7 @@ class IncentiveService(BaseService):
             'points_to_next_level': points_to_next,
             'progress_percent': min(100, max(0, progress)),
             'max_level': MAX_LEVEL,
+            'at_max_level': at_max_level,
         }
 
     @staticmethod
@@ -244,6 +274,14 @@ class IncentiveService(BaseService):
         user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
+
+        if IncentiveService.is_xp_capped(user):
+            user.level = MAX_LEVEL
+            user.total_points = MAX_LEVEL_TOTAL_POINTS
+            feedback = IncentiveService.process_user_incentive(user_id, refresh_ranking=refresh_ranking)
+            feedback['points_gained'] = 0
+            feedback['xp_capped'] = True
+            return feedback
 
         previous_level = user.level or 1
         previous_points = user.total_points or 0

@@ -168,6 +168,7 @@ watch(
     <PythonTrialWorkspace
       v-if="practiceReady && question"
       :key="`${question.id}-${questionTransitionKey}`"
+      class="practice-workspace"
       :question="question"
       :slot-ids="slotIds"
       :active-slot="activeSlot"
@@ -184,6 +185,18 @@ watch(
 </template>
 
 <style scoped>
+:deep(.main-body) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.practice-workspace {
+  flex: 1;
+  min-height: 0;
+}
+
 .practice-missing {
   display: flex;
   min-height: 280px;

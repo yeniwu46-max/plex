@@ -1,8 +1,8 @@
 import { http, type ApiEnvelope } from './http'
 import type { LearningRecommendation } from './learningReport'
 
-/** 驿站对话 5 秒超时，超时后提示用户重试 */
-const MESSENGER_CHAT_TIMEOUT_MS = 5_000
+/** 驿站对话 8 秒超时，超时后显示重试 */
+const MESSENGER_CHAT_TIMEOUT_MS = 8_000
 
 export interface MessengerChatResult {
   reply: string

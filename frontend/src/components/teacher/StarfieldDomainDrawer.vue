@@ -96,7 +96,7 @@ function goExplorer(studentId: number) {
         <p v-else class="domain-drawer__empty">该星域暂无高风险学生，班级整体稳定。</p>
       </section>
 
-      <n-button v-if="attentionStudents[0]" type="primary" block class="domain-drawer__cta" @click="goExplorer(attentionStudents[0].id)">
+      <n-button v-if="attentionStudents[0]" type="primary" block class="domain-drawer__cta teacher-primary-btn" @click="goExplorer(attentionStudents[0].id)">
         在星域观测中查看该生
       </n-button>
     </n-drawer-content>

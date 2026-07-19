@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NButton, useMessage } from 'naive-ui'
 import PlexFileUploader from '../shared/upload/PlexFileUploader.vue'
 import { fetchClassFiles, resolveUploadFileUrl, type ClassSharedFile } from '../../api/classFiles'
@@ -10,13 +10,20 @@ const props = withDefaults(
   defineProps<{
     role: 'student' | 'teacher'
     classId?: number | null
+    /** 资源审核页仅展示学生提交，隐藏教师上传区 */
+    submissionsOnly?: boolean
   }>(),
-  { classId: null },
+  { classId: null, submissionsOnly: false },
 )
 
 const message = useMessage()
 const loading = ref(false)
 const files = ref<ClassSharedFile[]>([])
+
+const visibleFiles = computed(() => {
+  if (props.role !== 'teacher' || !props.submissionsOnly) return files.value
+  return files.value.filter((file) => file.owner_role === 'student' || file.scene === 'learning-report' || file.scene === 'code-file')
+})
 
 const sceneLabels: Record<string, string> = {
   'course-material': '课程资料',
@@ -50,15 +57,21 @@ defineExpose({ reload: loadFiles })
 </script>
 
 <template>
-  <section class="file-exchange" :aria-label="role === 'student' ? '班级资料' : '学生提交'">
+  <section
+    class="file-exchange"
+    :class="{ 'file-exchange--teacher': role === 'teacher' }"
+    :aria-label="role === 'student' ? '班级资料' : submissionsOnly ? '学生提交审核' : '学生提交'"
+  >
     <header class="file-exchange__header">
       <div>
-        <h3>{{ role === 'student' ? '教师共享资料' : '学生提交文件' }}</h3>
+        <h3>{{ role === 'student' ? '教师共享资料' : submissionsOnly ? '学生提交文件审核' : '学生提交文件' }}</h3>
         <p>
           {{
             role === 'student'
               ? '查看教师上传的课程资料与作业附件'
-              : '查看班级学生提交的学习报告与代码文件'
+              : submissionsOnly
+                ? '审核班级学生提交的学习报告、代码与学习截图'
+                : '查看班级学生提交的学习报告与代码文件'
           }}
         </p>
       </div>
@@ -66,11 +79,11 @@ defineExpose({ reload: loadFiles })
     </header>
 
     <div v-if="loading && !files.length" class="file-exchange__empty">正在加载文件…</div>
-    <div v-else-if="!files.length" class="file-exchange__empty">
+    <div v-else-if="!visibleFiles.length" class="file-exchange__empty">
       {{ role === 'student' ? (classId ? '教师尚未共享文件' : '加入班级后可接收教师资料') : '暂无学生提交' }}
     </div>
     <ul v-else class="file-exchange__list">
-      <li v-for="file in files" :key="`${file.owner_id}-${file.url}`" class="file-exchange__item">
+      <li v-for="file in visibleFiles" :key="`${file.owner_id}-${file.url}`" class="file-exchange__item">
         <div>
           <strong>{{ file.fileName }}</strong>
           <span>
@@ -83,7 +96,7 @@ defineExpose({ reload: loadFiles })
       </li>
     </ul>
 
-    <div class="file-exchange__upload">
+    <div v-if="!submissionsOnly" class="file-exchange__upload">
       <h4>{{ role === 'student' ? '提交给教师' : '共享给学生' }}</h4>
       <div v-if="role === 'student'" class="file-exchange__upload-grid">
         <plex-file-uploader role="student" v-bind="STUDENT_PRESETS.learningReport" @upload-success="loadFiles" />
@@ -103,6 +116,17 @@ defineExpose({ reload: loadFiles })
   border: 1px solid rgba(52, 230, 197, 0.14);
   border-radius: 16px;
   background: rgba(3, 16, 28, 0.78);
+}
+
+.file-exchange--teacher {
+  border-color: rgba(249, 115, 22, 0.22);
+  background:
+    linear-gradient(145deg, rgba(67, 20, 7, 0.35), rgba(3, 16, 28, 0.78)),
+    rgba(3, 16, 28, 0.78);
+}
+
+.file-exchange--teacher .file-exchange__header h3 {
+  color: #fed7aa;
 }
 
 .file-exchange__header {

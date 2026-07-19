@@ -114,6 +114,19 @@ export const CURATED_SHORT_TITLES: Record<string, string> = {
   'algo-binary-first': '首个不小于定位',
 }
 
+const LIST_TITLE_PREFIXES = ['[沙盒]', '【沙盒】', '[沙盒] ', '【沙盒】 ']
+
+/** 列表展示时去除冗余前缀（如沙盒标记） */
+export function stripListTitlePrefix(title: string): string {
+  let line = (title || '').trim()
+  for (const prefix of LIST_TITLE_PREFIXES) {
+    if (line.startsWith(prefix)) {
+      line = line.slice(prefix.length).trim()
+    }
+  }
+  return line
+}
+
 const VERBOSE_PREFIXES = [
   '编写程序，',
   '编写程序',
@@ -269,7 +282,7 @@ export function resolveQuestionShortTitle(question: PythonTrialQuestion): string
     return CURATED_SHORT_TITLES[question.id]!
   }
 
-  const parsed = splitCodeAndTitle(question.title)
+  const parsed = splitCodeAndTitle(stripListTitlePrefix(question.title))
   const fromTitle = parsed.title
   const stem = question.description || fromTitle || question.topic
 

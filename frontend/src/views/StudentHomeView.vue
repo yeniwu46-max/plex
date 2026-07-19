@@ -33,12 +33,29 @@ const displayName = computed(() => profile.value?.real_name || profile.value?.us
 const level = computed(() => profile.value?.level ?? auth.profile?.level ?? 1)
 const totalPoints = computed(() => profile.value?.total_points ?? auth.profile?.total_points ?? 0)
 const levelProfile = computed(() => profile.value?.level_profile ?? profile.value?.incentive?.level_profile)
-const xpTarget = computed(
-  () => levelProfile.value?.next_threshold ?? Math.max(500, level.value * 500),
+const atMaxLevel = computed(
+  () => Boolean(levelProfile.value?.at_max_level) || level.value >= (levelProfile.value?.max_level ?? 10),
 )
-const xpRatio = computed(
-  () => levelProfile.value?.progress_percent ?? Math.min(100, Math.round((totalPoints.value / xpTarget.value) * 100)),
-)
+const xpFloor = computed(() => levelProfile.value?.current_threshold ?? 0)
+const xpTarget = computed(() => {
+  const lp = levelProfile.value
+  if (!lp) return Math.max(500, level.value * 500)
+  if (lp.next_threshold != null) return lp.next_threshold
+  return lp.current_threshold + Math.max(500, level.value * 200)
+})
+const xpDisplayCurrent = computed(() => {
+  const points = totalPoints.value
+  if (atMaxLevel.value) return Math.min(points, xpTarget.value)
+  return points
+})
+const xpRatio = computed(() => {
+  if (levelProfile.value?.progress_percent != null) {
+    return Math.min(100, Math.max(0, levelProfile.value.progress_percent))
+  }
+  const span = xpTarget.value - xpFloor.value
+  if (span <= 0) return 100
+  return Math.min(100, Math.round(((xpDisplayCurrent.value - xpFloor.value) / span) * 100))
+})
 const rankTitle = computed(() => profile.value?.title || profile.value?.level_profile?.title || `Lv.${level.value}`)
 const weekPoints = computed(() => profile.value?.incentive?.week_points ?? 0)
 const nextAchievement = computed(() => profile.value?.incentive?.next_achievements?.[0])
@@ -179,7 +196,7 @@ watch(
               <span class="meter-hud__scan" aria-hidden="true" />
             </div>
             <p>{{ rankTitle }}</p>
-            <small>{{ totalPoints }} / {{ xpTarget }} XP · 本周 +{{ weekPoints }}</small>
+            <small>{{ xpDisplayCurrent }} / {{ xpTarget }} XP · 本周 +{{ weekPoints }}</small>
           </div>
         </section>
 

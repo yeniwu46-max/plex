@@ -287,7 +287,7 @@ export interface TrialCoachResult {
 }
 
 const AGENT_TIMEOUT_MS = 15_000
-const MESSENGER_TIMEOUT_MS = 5_000
+const MESSENGER_TIMEOUT_MS = 8_000
 const TRIAL_COACH_TIMEOUT_MS = 45_000
 
 async function postAgent<T>(path: string, body: Record<string, unknown> = {}, timeout = AGENT_TIMEOUT_MS) {
@@ -332,7 +332,7 @@ export interface MessengerQuickActionResult {
   } | null
 }
 
-/** 驿站快捷按钮 · 上下文化小E 回复（真实 LLM，5s 超时） */
+/** 驿站快捷按钮 · 上下文化小E 回复（DeepSeek，8s 超时） */
 export function messengerQuickAction(action: MessengerQuickAction) {
   return postAgent<MessengerQuickActionResult>('/v1/agents/messenger-quick-action', { action }, MESSENGER_TIMEOUT_MS)
 }

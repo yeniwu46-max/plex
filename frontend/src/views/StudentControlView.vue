@@ -36,8 +36,8 @@ const classLabel = computed(() => {
 const hasClass = computed(() => Boolean(profile.value?.class?.id))
 
 const avatarSrc = computed(() => {
-  const url = avatarPreview.value || profile.value?.avatar_url || null
-  return resolveAvatarUrl(url)
+  const url = avatarPreview.value || profile.value?.avatar_url || auth.profile?.avatar_url || null
+  return url ? resolveAvatarUrl(url) : undefined
 })
 
 function syncFormFromProfile() {
@@ -144,7 +144,7 @@ onMounted(() => {
           >
             <div class="avatar-upload" :class="{ 'avatar-upload--disabled': uploadingAvatar }" role="button" tabindex="0" aria-label="上传头像">
               <span class="avatar-upload__ring" aria-hidden="true" />
-              <n-avatar round :size="72" :src="avatarSrc || undefined" class="avatar-upload__img">
+              <n-avatar round :size="72" :src="avatarSrc" class="avatar-upload__img">
                 {{ displayName.slice(0, 1) }}
               </n-avatar>
               <span class="avatar-upload__hint">{{ uploadingAvatar ? '上传中…' : '更换头像' }}</span>
@@ -206,12 +206,14 @@ onMounted(() => {
               <dd>{{ profile?.class_rank ? `第 ${profile.class_rank} 名` : '暂无' }}</dd>
             </div>
           </dl>
-          <n-button type="primary" class="save-btn" :loading="savingProfile || loading" @click="saveProfile">
-            保存资料
-          </n-button>
+          <div class="panel__footer">
+            <n-button type="primary" class="save-btn" :loading="savingProfile || loading" @click="saveProfile">
+              保存资料
+            </n-button>
+          </div>
         </article>
 
-        <student-join-class-panel class="panel" :has-class="hasClass" @joined="loadProfile" />
+        <student-join-class-panel class="panel panel--join" :has-class="hasClass" @joined="loadProfile" />
       </div>
 
       <p class="student-control__hint">
@@ -415,13 +417,28 @@ onMounted(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
   width: 100%;
+  align-items: stretch;
 }
 
 .panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
   padding: 1.25rem 1.35rem 1.4rem;
   border: 1px solid rgba(110, 228, 255, 0.12);
   border-radius: 16px;
   background: rgba(3, 16, 28, 0.78);
+}
+
+.panel__footer {
+  display: flex;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.panel--join :deep(.join-class) {
+  height: 100%;
 }
 
 .panel header h3 {
@@ -478,7 +495,7 @@ onMounted(() => {
 }
 
 .save-btn {
-  margin-top: 0.25rem;
+  margin-top: 0;
 }
 
 .student-control__hint {

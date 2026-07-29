@@ -98,7 +98,9 @@ class Neo4jGraphStore:
         """
         with self._driver.session() as session:
             rows = session.run(query, id=node_id)
-            return [row['id'] for row in rows]
+            result = [row['id'] for row in rows]
+        # Neo4j 未播种前置边时回退内存拓扑，避免路径锁定失效
+        return result or self._fallback.get_prerequisites(node_id)
 
     def get_all_prerequisite_map(self) -> dict[str, list[str]]:
         if not self.is_available():
@@ -111,6 +113,8 @@ class Neo4jGraphStore:
         with self._driver.session() as session:
             for row in session.run(query):
                 result[row['target']] = list(row['sources'])
+        if not result:
+            return self._fallback.get_all_prerequisite_map()
         return dict(result)
 
 
@@ -123,6 +127,16 @@ def _enabled() -> bool:
 
 def get_graph_store() -> Neo4jGraphStore | InMemoryGraphStore:
     global _store
+    # 单元测试强制内存图，避免本机 Neo4j 未播种前置边导致路径锁定断言漂移
+    try:
+        from flask import current_app, has_app_context
+
+        if has_app_context() and current_app.config.get('TESTING'):
+            if not isinstance(_store, InMemoryGraphStore):
+                _store = InMemoryGraphStore()
+            return _store
+    except Exception:
+        pass
     if _store is not None:
         return _store
     if _enabled():

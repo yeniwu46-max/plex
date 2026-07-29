@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { NButton, NTag, NCollapse, NCollapseItem } from 'naive-ui'
-import { fetchTeacherTrialDetail, type TeacherTrialDetailResult } from '../../api/teacherTrials'
+import { NButton, NIcon, NTag, NCollapse, NCollapseItem, useMessage } from 'naive-ui'
+import { SparklesOutline } from '@vicons/ionicons5'
+import {
+  analyzeTeacherTrial,
+  fetchTeacherTrialDetail,
+  type TeacherTrialDetailResult,
+  type TrialAiAnalyzeResult,
+} from '../../api/teacherTrials'
+import { formatHttpError } from '../../api/http'
 import { formatDateTimeText, formatDurationSec } from '../../utils/trialAnswerFormat'
 
 const props = defineProps<{
@@ -12,10 +19,22 @@ const emit = defineEmits<{
   close: []
 }>()
 
+type DetailTab = 'stats' | 'preview' | 'answers'
+
+const message = useMessage()
 const loading = ref(false)
+const analyzing = ref(false)
 const errorMessage = ref('')
 const detail = ref<TeacherTrialDetailResult | null>(null)
 const expandedStudentId = ref<number | null>(null)
+const aiAnalysis = ref<TrialAiAnalyzeResult | null>(null)
+const activeTab = ref<DetailTab>('stats')
+
+const tabs: Array<{ key: DetailTab; label: string }> = [
+  { key: 'stats', label: '题目统计' },
+  { key: 'preview', label: '题目预览' },
+  { key: 'answers', label: '学生作答明细' },
+]
 
 const statusLabels: Record<string, string> = {
   joined: '进行中',
@@ -30,10 +49,13 @@ function toggleStudent(userId: number) {
 async function loadDetail() {
   if (!props.trialId) {
     detail.value = null
+    aiAnalysis.value = null
     return
   }
   loading.value = true
   errorMessage.value = ''
+  aiAnalysis.value = null
+  activeTab.value = 'stats'
   try {
     detail.value = await fetchTeacherTrialDetail(props.trialId)
     if (detail.value.students.length && expandedStudentId.value === null) {
@@ -41,9 +63,27 @@ async function loadDetail() {
     }
   } catch (error) {
     detail.value = null
-    errorMessage.value = error instanceof Error ? error.message : '加载失败'
+    errorMessage.value = formatHttpError(error, '加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function runAiAnalyze() {
+  if (!props.trialId || analyzing.value) return
+  analyzing.value = true
+  try {
+    aiAnalysis.value = await analyzeTeacherTrial(props.trialId)
+    const backend = aiAnalysis.value.backend || ''
+    if (backend.startsWith('local_fallback')) {
+      message.warning('星火暂不可用，已使用本地规则生成分析')
+    } else {
+      message.success('小E 已完成试炼分析')
+    }
+  } catch (error) {
+    message.error(formatHttpError(error, '小E 分析失败，请稍后重试'))
+  } finally {
+    analyzing.value = false
   }
 }
 
@@ -67,7 +107,19 @@ watch(
           · {{ detail.summary.question_count }} 题 · 数据已同步数据库
         </p>
       </div>
-      <n-button quaternary size="small" @click="emit('close')">关闭</n-button>
+      <div class="trial-detail__head-actions">
+        <n-button
+          type="warning"
+          size="small"
+          :loading="analyzing"
+          :disabled="loading || !detail"
+          @click="runAiAnalyze"
+        >
+          <template #icon><n-icon :component="SparklesOutline" /></template>
+          小E帮分析
+        </n-button>
+        <n-button quaternary size="small" @click="emit('close')">关闭</n-button>
+      </div>
     </header>
 
     <div v-if="loading" class="trial-detail__state">加载中…</div>
@@ -91,9 +143,56 @@ watch(
         </article>
       </section>
 
-      <section class="trial-detail__section">
-        <h3>题目统计</h3>
-        <div v-if="detail.summary.question_stats.length" class="trial-detail__table-wrap">
+      <section v-if="aiAnalysis" class="trial-detail__ai" aria-label="小E 分析结果">
+        <header>
+          <h3>小E 帮分析</h3>
+          <span>{{ aiAnalysis.backend.startsWith('iflytek') ? '星火' : '本地回退' }}</span>
+        </header>
+        <p>{{ aiAnalysis.overview }}</p>
+        <div v-if="aiAnalysis.weak_points.length" class="trial-detail__ai-block">
+          <strong>薄弱点</strong>
+          <ul>
+            <li v-for="(item, idx) in aiAnalysis.weak_points" :key="`w-${idx}`">{{ item }}</li>
+          </ul>
+        </div>
+        <div v-if="aiAnalysis.strong_points.length" class="trial-detail__ai-block">
+          <strong>优势</strong>
+          <ul>
+            <li v-for="(item, idx) in aiAnalysis.strong_points" :key="`s-${idx}`">{{ item }}</li>
+          </ul>
+        </div>
+        <div v-if="aiAnalysis.suggestions.length" class="trial-detail__ai-block">
+          <strong>教学建议</strong>
+          <ul>
+            <li v-for="(item, idx) in aiAnalysis.suggestions" :key="`g-${idx}`">{{ item }}</li>
+          </ul>
+        </div>
+        <div v-if="aiAnalysis.question_notes?.length" class="trial-detail__ai-block">
+          <strong>逐题点评</strong>
+          <ul>
+            <li v-for="(item, idx) in aiAnalysis.question_notes" :key="`q-${idx}`">
+              <template v-if="item.sort_order != null">第 {{ Number(item.sort_order) + 1 }} 题 · </template>
+              {{ item.note }}
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <nav class="trial-detail__tabs" aria-label="试炼详情导航">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          class="trial-detail__tab"
+          :class="{ 'trial-detail__tab--active': activeTab === tab.key }"
+          @click="activeTab = tab.key"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+
+      <section v-if="activeTab === 'stats'" class="trial-detail__section">
+        <div v-if="detail.summary.question_stats.length" class="trial-detail__table-wrap trial-detail__table-wrap--flush">
           <table class="trial-detail__table">
             <thead>
               <tr>
@@ -116,39 +215,40 @@ watch(
         <p v-else class="trial-detail__empty">暂无题目数据</p>
       </section>
 
-      <section v-if="detail.questions && detail.questions.length" class="trial-detail__section">
-        <h3>题目预览</h3>
-        <n-collapse>
-          <n-collapse-item
-            v-for="(q, idx) in detail.questions"
-            :key="q.id"
-            :name="String(q.id)"
-          >
-            <template #header>
-              <span class="trial-detail__q-header">
-                第 {{ idx + 1 }} 题
-                <span class="trial-detail__q-kp">{{ q.knowledge_key ?? '' }}</span>
-              </span>
-            </template>
-            <div class="trial-detail__q-body">
-              <p class="trial-detail__q-stem">{{ q.stem }}</p>
-              <ul class="trial-detail__q-options">
-                <li
-                  v-for="(opt, oi) in q.options"
-                  :key="oi"
-                  :class="{ 'trial-detail__q-opt--correct': oi === q.correct_index }"
-                >
-                  <span class="trial-detail__q-opt-label">{{ String.fromCharCode(65 + oi) }}</span>
-                  {{ opt }}
-                </li>
-              </ul>
-            </div>
-          </n-collapse-item>
-        </n-collapse>
+      <section v-else-if="activeTab === 'preview'" class="trial-detail__section">
+        <template v-if="detail.questions && detail.questions.length">
+          <n-collapse>
+            <n-collapse-item
+              v-for="(q, idx) in detail.questions"
+              :key="q.id"
+              :name="String(q.id)"
+            >
+              <template #header>
+                <span class="trial-detail__q-header">
+                  第 {{ idx + 1 }} 题
+                  <span class="trial-detail__q-kp">{{ q.knowledge_key ?? '' }}</span>
+                </span>
+              </template>
+              <div class="trial-detail__q-body">
+                <p class="trial-detail__q-stem">{{ q.stem }}</p>
+                <ul class="trial-detail__q-options">
+                  <li
+                    v-for="(opt, oi) in q.options"
+                    :key="oi"
+                    :class="{ 'trial-detail__q-opt--correct': oi === q.correct_index }"
+                  >
+                    <span class="trial-detail__q-opt-label">{{ String.fromCharCode(65 + oi) }}</span>
+                    {{ opt }}
+                  </li>
+                </ul>
+              </div>
+            </n-collapse-item>
+          </n-collapse>
+        </template>
+        <p v-else class="trial-detail__empty">暂无题目预览</p>
       </section>
 
-      <section class="trial-detail__section">
-        <h3>学生作答明细</h3>
+      <section v-else class="trial-detail__section">
         <ul v-if="detail.students.length" class="trial-detail__students">
           <li v-for="student in detail.students" :key="student.user_id">
             <button type="button" class="trial-detail__student-head" @click="toggleStudent(student.user_id)">
@@ -256,6 +356,65 @@ watch(
   gap: 0.75rem;
 }
 
+.trial-detail__head-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.trial-detail__ai {
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(251, 146, 60, 0.28);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(67, 20, 7, 0.35), rgba(15, 23, 42, 0.55));
+}
+
+.trial-detail__ai > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.trial-detail__ai h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #fed7aa;
+}
+
+.trial-detail__ai > header span {
+  color: rgba(254, 215, 170, 0.55);
+  font-size: 0.75rem;
+}
+
+.trial-detail__ai > p {
+  margin: 0 0 0.55rem;
+  color: rgba(255, 247, 237, 0.88);
+  line-height: 1.55;
+  font-size: 0.88rem;
+}
+
+.trial-detail__ai-block {
+  margin-top: 0.55rem;
+}
+
+.trial-detail__ai-block strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #fdba74;
+  font-size: 0.8rem;
+}
+
+.trial-detail__ai-block ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: rgba(235, 215, 194, 0.78);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .trial-detail__head h2 {
   margin: 0;
   font-size: 1.05rem;
@@ -302,6 +461,32 @@ watch(
 
 .trial-detail__stats strong {
   font-size: 1.1rem;
+}
+
+.trial-detail__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.2rem;
+  border: 1px solid rgba(16, 240, 192, 0.12);
+  border-radius: 12px;
+  background: rgba(8, 18, 32, 0.65);
+}
+
+.trial-detail__tab {
+  border: none;
+  border-radius: 9px;
+  padding: 0.45rem 0.85rem;
+  background: transparent;
+  color: rgba(190, 208, 224, 0.72);
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+
+.trial-detail__tab--active {
+  color: #0b1422;
+  background: linear-gradient(135deg, #34e6c5, #10f0c0);
+  font-weight: 700;
 }
 
 .trial-detail__section h3 {
@@ -352,6 +537,10 @@ watch(
 .trial-detail__table-wrap {
   overflow: auto;
   padding: 0 0.75rem 0.75rem;
+}
+
+.trial-detail__table-wrap--flush {
+  padding: 0;
 }
 
 .trial-detail__table {

@@ -39,7 +39,43 @@ def get_admin_settings():
 @role_required('admin')
 def get_admin_dashboard():
     try:
-        return success_response(AdminDashboardService.get_dashboard())
+        period = request.args.get('period', 'month')
+        if period not in ('today', 'week', 'month'):
+            period = 'month'
+        return success_response(AdminDashboardService.get_dashboard(period))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/trials/teachers', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def list_trial_teachers():
+    try:
+        return success_response({'items': AdminDashboardService.list_teachers_with_trials()})
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/trials/teachers/<int:teacher_id>/classes', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def list_teacher_trial_classes(teacher_id: int):
+    try:
+        return success_response({'items': AdminDashboardService.list_teacher_classes(teacher_id)})
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@admin_settings_bp.route('/trials/classes/<int:class_id>/stats', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def list_class_trial_stats(class_id: int):
+    try:
+        payload = AdminDashboardService.list_class_trial_stats(class_id)
+        if not payload:
+            return error_response('班级不存在', 40401, None, 404)
+        return success_response(payload)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 

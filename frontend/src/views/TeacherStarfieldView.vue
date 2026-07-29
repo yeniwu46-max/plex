@@ -22,6 +22,30 @@ import {
 import { fetchClassKnowledgeGraph, type KnowledgeGraphSummary } from '../api/knowledgeGraph'
 import { KG_NODES, KG_EDGES, type KgEdge, type KgNode } from '../data/knowledgeGraphData'
 
+const DIAGNOSIS_CACHE_PREFIX = 'plex_class_diagnosis_v1_'
+
+function diagnosisCacheKey(classId: number) {
+  return `${DIAGNOSIS_CACHE_PREFIX}${classId}`
+}
+
+function readDiagnosisCache(classId: number): ClassDiagnosisResult | null {
+  try {
+    const raw = sessionStorage.getItem(diagnosisCacheKey(classId))
+    if (!raw) return null
+    return JSON.parse(raw) as ClassDiagnosisResult
+  } catch {
+    return null
+  }
+}
+
+function writeDiagnosisCache(classId: number, payload: ClassDiagnosisResult) {
+  try {
+    sessionStorage.setItem(diagnosisCacheKey(classId), JSON.stringify(payload))
+  } catch {
+    /* ignore quota */
+  }
+}
+
 const router = useRouter()
 const route = useRoute()
 const domainFilter = ref<string | null>(null)
@@ -42,12 +66,21 @@ const diagnosisLoading = ref(false)
 const diagnosisError = ref('')
 const diagnosisModalOpen = ref(false)
 
-async function runClassDiagnosis() {
+async function runClassDiagnosis(force = false) {
   if (!selectedClassId.value || diagnosisLoading.value) return
+  if (!force) {
+    const cached = readDiagnosisCache(selectedClassId.value)
+    if (cached) {
+      diagnosis.value = cached
+      diagnosisError.value = ''
+      return
+    }
+  }
   diagnosisLoading.value = true
   diagnosisError.value = ''
   try {
     diagnosis.value = await fetchClassDiagnosis(selectedClassId.value)
+    writeDiagnosisCache(selectedClassId.value, diagnosis.value)
   } catch (error) {
     diagnosis.value = null
     diagnosisError.value = formatHttpError(error, '班级诊断失败')
@@ -110,7 +143,7 @@ async function loadClassStats() {
 onMounted(() => {
   void loadClassStats()
   void loadClassKnowledgeGraph()
-  void runClassDiagnosis()
+  void runClassDiagnosis(false)
   void focusStudentFromQuery()
 })
 
@@ -119,11 +152,12 @@ watch(focusedStudentId, () => {
 })
 
 watch(selectedClassId, () => {
-  diagnosis.value = null
   diagnosisError.value = ''
+  const cached = selectedClassId.value ? readDiagnosisCache(selectedClassId.value) : null
+  diagnosis.value = cached
   void loadClassStats()
   void loadClassKnowledgeGraph()
-  void runClassDiagnosis()
+  void runClassDiagnosis(false)
 })
 
 const regionOptions: SelectOption[] = [
@@ -214,7 +248,7 @@ function onNodeSelect(node: OrbitNode) {
                 type="warning"
                 :loading="diagnosisLoading"
                 :disabled="!selectedClassId"
-                @click="runClassDiagnosis"
+                @click="runClassDiagnosis(true)"
               >
                 <template #icon><n-icon :component="SparklesOutline" /></template>
                 重新诊断
@@ -301,7 +335,13 @@ function onNodeSelect(node: OrbitNode) {
               <strong>{{ topWeakNodes[0]?.label }} 相关错题讲评与补救练习</strong>
             </div>
           </div>
-          <plex-knowledge-graph :nodes="kgNodes" :edges="kgEdges" mode="teacher" height="420px" />
+          <plex-knowledge-graph
+            :nodes="kgNodes"
+            :edges="kgEdges"
+            mode="teacher"
+            height="420px"
+            :class-id="selectedClassId"
+          />
           <div v-if="heatRankNodes.length" class="starfield-page__kg-rank" aria-label="班级薄弱知识点排行">
             <article v-for="node in heatRankNodes" :key="node.id" class="starfield-page__kg-rank-item">
               <div>

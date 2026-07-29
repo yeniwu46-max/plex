@@ -1,4 +1,5 @@
 """边界条件补给站 · 紧急任务"""
+import logging
 import random
 from collections import defaultdict
 from datetime import date, datetime
@@ -7,6 +8,8 @@ from app.models import EmergencyMissionQuestion, EmergencyMissionSession, User, 
 from app.services.question_generator import KNOWLEDGE_LABELS, QuestionGenerator
 from app.services.student_progress import StudentProgressService
 from app.utils.time import utc_now
+
+logger = logging.getLogger(__name__)
 
 EMERGENCY_REWARD_XP = 55
 EMERGENCY_QUESTION_COUNT = 3
@@ -39,8 +42,162 @@ class EmergencyMissionService:
         return key, label
 
     @staticmethod
+    def _profile_snapshot(user_id: int) -> dict:
+        """轻量画像摘要，供星火出题提示词使用。"""
+        try:
+            from app.services.student_profile import StudentProfileService
+
+            row = StudentProfileService.get_or_create(user_id, persist=False)
+            dimensions = row.to_dict().get('dimensions') or {}
+            snapshot = {}
+            for key, payload in dimensions.items():
+                if not isinstance(payload, dict):
+                    continue
+                value = payload.get('value')
+                if value:
+                    snapshot[key] = str(value)[:80]
+            return snapshot
+        except Exception:
+            return {}
+
+    @staticmethod
+    def _recent_practice_summary(user_id: int, limit: int = 8) -> list[str]:
+        """最近练习/错题摘要，帮助星火避开已掌握题并针对薄弱点出题。"""
+        from app.services.mistake import MistakeService
+
+        lines: list[str] = []
+        weak = MistakeService.list_weak_knowledge(user_id, limit=5)
+        for item in weak:
+            lines.append(
+                f"薄弱点 {item.get('knowledge_label') or item.get('knowledge_key')} "
+                f"(失败 {item.get('fail_count', 0)} 次)"
+            )
+
+        try:
+            from app.models import StudentMistake
+
+            rows = (
+                StudentMistake.query.filter_by(user_id=user_id)
+                .order_by(StudentMistake.last_failed_at.desc())
+                .limit(limit)
+                .all()
+            )
+            for row in rows:
+                title = (row.question_title or row.question_ref or '')[:60]
+                status = '已掌握' if MistakeService.is_accepted(row) else '未过关'
+                label = QuestionGenerator.label_for_key(row.knowledge_key)
+                if title:
+                    lines.append(f'{status} · {label} · {title}')
+        except Exception:
+            pass
+
+        completed = StudentProgressService._completed_trials(user_id)[:5]
+        for part in completed:
+            trial = part.trial
+            title = getattr(trial, 'title', None) or getattr(trial, 'knowledge_key', 'trial')
+            lines.append(f"试炼均分 {part.score or 0} · {title}")
+
+        return lines[:limit]
+
+    @staticmethod
+    def _normalize_spark_questions(payload: dict, focus_key: str) -> list[dict] | None:
+        raw_questions = payload.get('questions') if isinstance(payload, dict) else None
+        if not isinstance(raw_questions, list):
+            return None
+
+        normalized: list[dict] = []
+        for item in raw_questions:
+            if not isinstance(item, dict):
+                continue
+            stem = str(item.get('stem') or item.get('question') or '').strip()
+            options = item.get('options')
+            if not stem or not isinstance(options, list):
+                continue
+            cleaned_options = [str(opt).strip() for opt in options if str(opt).strip()]
+            if len(cleaned_options) < 4:
+                continue
+            cleaned_options = cleaned_options[:4]
+            correct_index = item.get('correct_index', item.get('answer_index', 0))
+            try:
+                correct_index = int(correct_index)
+            except (TypeError, ValueError):
+                correct_index = 0
+            if correct_index < 0 or correct_index >= len(cleaned_options):
+                letter = str(item.get('answer') or item.get('correct') or '').strip().upper()
+                if letter in {'A', 'B', 'C', 'D'}:
+                    correct_index = ord(letter) - 65
+                else:
+                    correct_index = 0
+            knowledge_key = QuestionGenerator._normalize_key(
+                item.get('knowledge_key') or focus_key
+            )
+            normalized.append(
+                {
+                    'stem': stem[:240],
+                    'options': cleaned_options,
+                    'correct_index': correct_index,
+                    'knowledge_key': knowledge_key,
+                }
+            )
+            if len(normalized) >= EMERGENCY_QUESTION_COUNT:
+                break
+
+        if len(normalized) < EMERGENCY_QUESTION_COUNT:
+            return None
+        return normalized[:EMERGENCY_QUESTION_COUNT]
+
+    @staticmethod
+    def _build_spark_question_set(user_id: int, focus_key: str, focus_label: str) -> list[dict] | None:
+        """调用补给站专用星火凭证智能出题；失败返回 None 由调用方本地回退。"""
+        from flask import current_app, has_app_context
+
+        from app.services.iflytek_spark import IflytekSparkService, SparkServiceError
+
+        if has_app_context() and current_app.config.get('TESTING') and not current_app.config.get('SPARK_ALLOW_IN_TESTS'):
+            return None
+        if not IflytekSparkService._resolve_api_password('supply_station'):
+            return None
+
+        profile = EmergencyMissionService._profile_snapshot(user_id)
+        recent = EmergencyMissionService._recent_practice_summary(user_id)
+        system_prompt = (
+            '你是 Python 编程教学出题助手，为「边界条件补给站」紧急任务生成选择题。'
+            '必须输出 JSON 对象，格式：'
+            '{"questions":[{"stem":"...","options":["A选项","B选项","C选项","D选项"],'
+            '"correct_index":0,"knowledge_key":"intro"}]}。'
+            f'正好 {EMERGENCY_QUESTION_COUNT} 道题；每题 4 个选项；correct_index 为 0-3。'
+            '题目应围绕边界条件、易错点与薄弱知识点，难度适中，题干简洁中文，不要 Markdown。'
+            'options 里不要再带 A/B/C/D 前缀。'
+        )
+        user_prompt = (
+            f'聚焦知识点：{focus_label}（key={focus_key}）\n'
+            f'学习者画像：{profile or "暂无"}\n'
+            f'最近练习与薄弱记录：\n' + ('\n'.join(f'- {line}' for line in recent) or '- 暂无记录') + '\n'
+            '请生成 3 道不重复的选择题，其中至少 2 道紧扣聚焦知识点，1 道可综合相关边界条件。'
+        )
+        try:
+            result = IflytekSparkService.chat_json(
+                system_prompt,
+                user_prompt,
+                timeout=18,
+                purpose='supply_station',
+            )
+            questions = EmergencyMissionService._normalize_spark_questions(result, focus_key)
+            if questions:
+                logger.info('emergency_mission spark questions ready focus=%s count=%s', focus_key, len(questions))
+                return questions
+            logger.warning('emergency_mission spark payload invalid, fallback local bank')
+            return None
+        except SparkServiceError as exc:
+            logger.warning('emergency_mission spark failed code=%s, fallback local bank', exc.code)
+            return None
+        except Exception:
+            logger.exception('emergency_mission spark unexpected error, fallback local bank')
+            return None
+
+    @staticmethod
     def _build_question_set(focus_key: str) -> list[dict]:
-        """3 道题：2 道聚焦薄弱点，1 道综合/随机。"""
+        """本地题库回退：3 道题，2 道聚焦薄弱点，1 道综合/随机。"""
         focus_bank = list(QuestionGenerator.bank_for_key(focus_key))
         algo_bank = list(QuestionGenerator.bank_for_key('algo'))
         random.shuffle(focus_bank)
@@ -65,6 +222,13 @@ class EmergencyMissionService:
                 picked.append({**item, 'knowledge_key': focus_key})
 
         return picked[:EMERGENCY_QUESTION_COUNT]
+
+    @staticmethod
+    def _resolve_question_set(user_id: int, focus_key: str, focus_label: str) -> list[dict]:
+        spark_questions = EmergencyMissionService._build_spark_question_set(user_id, focus_key, focus_label)
+        if spark_questions:
+            return spark_questions
+        return EmergencyMissionService._build_question_set(focus_key)
 
     @staticmethod
     def today_status(user_id: int) -> dict:
@@ -119,7 +283,9 @@ class EmergencyMissionService:
         db.session.add(session)
         db.session.flush()
 
-        for index, item in enumerate(EmergencyMissionService._build_question_set(focus_key)):
+        for index, item in enumerate(
+            EmergencyMissionService._resolve_question_set(user_id, focus_key, focus_label)
+        ):
             db.session.add(
                 EmergencyMissionQuestion(
                     session_id=session.id,

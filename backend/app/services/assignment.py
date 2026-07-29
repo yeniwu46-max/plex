@@ -1,5 +1,6 @@
 """学生端：教师发布试炼题目的拉取与作答"""
 from datetime import datetime
+import json
 
 from app.models import Class, Trial, TrialParticipation, TrialQuestion, TrialQuestionProgress, User, db
 from app.services.daily_quest import DailyQuestService
@@ -637,6 +638,109 @@ class AssignmentService:
             'draft_questions': trial.draft_questions() if trial.status == 'draft' else [],
             'students': student_rows,
             'summary': answer_summary,
+        }
+
+    @staticmethod
+    def analyze_trial_with_spark(current_user_id: int, trial_id: int, role_name: str) -> dict:
+        """调用讯飞星火分析试炼题目正确率与教学建议（优先试炼专用密钥）。"""
+        detail = AssignmentService.get_trial_detail_for_teacher(current_user_id, trial_id, role_name)
+        summary = detail.get('summary') or {}
+        question_stats = summary.get('question_stats') or []
+        trial = detail.get('trial') or {}
+
+        local_highlights = []
+        for row in question_stats:
+            rate = float(row.get('correct_rate') or 0)
+            label = row.get('knowledge_label') or row.get('knowledge_key') or f"第{(row.get('sort_order') or 0) + 1}题"
+            if rate < 50:
+                local_highlights.append(f'「{label}」正确率仅 {rate:.0f}%，建议课堂重点讲评')
+            elif rate >= 85:
+                local_highlights.append(f'「{label}」正确率 {rate:.0f}%，掌握较好')
+
+        payload = {
+            'trial_title': trial.get('title'),
+            'completion_rate': summary.get('completion_rate'),
+            'avg_score': summary.get('avg_score'),
+            'question_count': summary.get('question_count'),
+            'participant_count': trial.get('participant_count'),
+            'question_stats': [
+                {
+                    'sort_order': row.get('sort_order'),
+                    'knowledge_label': row.get('knowledge_label'),
+                    'answered_count': row.get('answered_count'),
+                    'correct_count': row.get('correct_count'),
+                    'correct_rate': row.get('correct_rate'),
+                    'avg_time_spent_sec': row.get('avg_time_spent_sec'),
+                }
+                for row in question_stats
+            ],
+        }
+
+        system = (
+            '你是高校 Python 课程助教「小E」。根据试炼作答统计，用简洁中文给出教学分析。'
+            '必须输出 JSON：'
+            '{"overview":"总体结论1-2句","weak_points":["薄弱点"],'
+            '"strong_points":["优势"],"suggestions":["可执行教学建议"],'
+            '"question_notes":[{"sort_order":0,"note":"该题点评"}]}'
+        )
+        user = (
+            '请分析以下试炼数据，关注各题正确率、用时与班级整体掌握情况：\n'
+            + json.dumps(payload, ensure_ascii=False)
+        )
+
+        spark_result = None
+        backend = 'local_fallback'
+        try:
+            from app.services.iflytek_spark import IflytekSparkService
+
+            # 前端默认 axios 超时约 20–45s；星火超时需留足本地回退时间
+            spark_result = IflytekSparkService.chat_json(
+                system, user, timeout=12, purpose='trial_analysis'
+            )
+            backend = 'iflytek_spark'
+        except Exception as exc:  # noqa: BLE001 — 回退本地规则分析
+            spark_result = None
+            err_code = getattr(exc, 'code', None) or type(exc).__name__
+            backend = f'local_fallback:{err_code}'
+
+        if isinstance(spark_result, dict) and spark_result:
+            overview = str(spark_result.get('overview') or '').strip()
+            weak = spark_result.get('weak_points') if isinstance(spark_result.get('weak_points'), list) else []
+            strong = spark_result.get('strong_points') if isinstance(spark_result.get('strong_points'), list) else []
+            suggestions = spark_result.get('suggestions') if isinstance(spark_result.get('suggestions'), list) else []
+            question_notes = (
+                spark_result.get('question_notes')
+                if isinstance(spark_result.get('question_notes'), list)
+                else []
+            )
+        else:
+            overview = (
+                f'试炼「{trial.get("title") or "未命名"}」完成率 '
+                f'{summary.get("completion_rate", 0)}%，平均分 {summary.get("avg_score", 0)}。'
+            )
+            weak = [h for h in local_highlights if '仅' in h][:5]
+            strong = [h for h in local_highlights if '掌握较好' in h][:5]
+            suggestions = [
+                '优先讲评正确率低于 50% 的题目，结合错选分布补充示例。',
+                '对高正确率题目可布置拓展练习，巩固后进入下一知识点。',
+            ]
+            question_notes = [
+                {
+                    'sort_order': row.get('sort_order'),
+                    'note': f'正确率 {row.get("correct_rate", 0)}%，作答 {row.get("answered_count", 0)} 人',
+                }
+                for row in question_stats[:12]
+            ]
+
+        return {
+            'trial_id': trial_id,
+            'backend': backend,
+            'overview': overview,
+            'weak_points': [str(x) for x in weak][:8],
+            'strong_points': [str(x) for x in strong][:8],
+            'suggestions': [str(x) for x in suggestions][:8],
+            'question_notes': question_notes[:20],
+            'stats_snapshot': payload,
         }
 
     @staticmethod

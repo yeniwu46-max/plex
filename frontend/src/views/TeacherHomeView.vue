@@ -13,13 +13,19 @@ import {
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
 import ClassHeatmapPanel from '../components/teacher/ClassHeatmapPanel.vue'
 import ClassRankingBoard from '../components/teacher/ClassRankingBoard.vue'
+import AttentionStudentsModal, {
+  type AttentionStudentListItem,
+} from '../components/teacher/AttentionStudentsModal.vue'
+import ExplorerProfileModal, {
+  type ExplorerProfilePayload,
+} from '../components/teacher/ExplorerProfileModal.vue'
 import KnowledgeOrbitMap from '../components/teacher/KnowledgeOrbitMap.vue'
 import PlexBarChart from '../components/charts/PlexBarChart.vue'
 import PlexPieChart from '../components/charts/PlexPieChart.vue'
 import PlexLineChart from '../components/charts/PlexLineChart.vue'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import { buildClassStarfieldNodes } from '../data/teacherStarfield'
-import { fetchTeacherClassStats, type TeacherClassStatsResult } from '../api/teacherOverview'
+import { fetchTeacherClassStats, type TeacherClassStatsResult, type TeacherRankingItem } from '../api/teacherOverview'
 import { downloadClassEvaluationExport, fetchClassEvaluation } from '../api/learningReport'
 import type { ClassEvaluationStudent } from '../api/learningReport'
 
@@ -43,6 +49,47 @@ const {
 
 function goExplorer(studentId: number) {
   void router.push({ path: '/teacher/starfield', query: { studentId: String(studentId) } })
+}
+
+const profileVisible = ref(false)
+const profileStudent = ref<ExplorerProfilePayload | null>(null)
+const attentionModalVisible = ref(false)
+
+function openStudentProfile(payload: {
+  userId: number
+  studentName?: string
+  username?: string
+  level?: number
+  points?: number
+  status?: string
+}) {
+  const fromOverview = students.value.find((item) => item.id === payload.userId)
+  const className = overview.value?.selected_class?.name ?? null
+  profileStudent.value = {
+    id: payload.userId,
+    username: payload.username || fromOverview?.username || null,
+    real_name: payload.studentName || fromOverview?.real_name || payload.username || null,
+    class_name: className,
+    level: payload.level ?? fromOverview?.level ?? null,
+    total_points: payload.points ?? fromOverview?.total_points ?? null,
+    status: payload.status || fromOverview?.status || 'active',
+  }
+  profileVisible.value = true
+}
+
+function onHeatmapSelect(payload: { userId: number; studentName: string }) {
+  openStudentProfile({ userId: payload.userId, studentName: payload.studentName })
+}
+
+function onRankingSelect(item: TeacherRankingItem) {
+  openStudentProfile({
+    userId: item.user_id,
+    studentName: item.student_name,
+    username: item.username,
+    level: item.level,
+    points: item.points,
+    status: item.status,
+  })
 }
 
 const classStats = ref<TeacherClassStatsResult | null>(null)
@@ -217,6 +264,37 @@ function riskText(student: { reasons?: string[] }, index: number) {
   return '低风险'
 }
 
+const attentionListItems = computed<AttentionStudentListItem[]>(() => {
+  const className = overview.value?.selected_class?.name ?? null
+  return mergedAttentionStudents.value.map((student, index) => ({
+    id: student.id,
+    username: student.username,
+    real_name: student.real_name,
+    class_name: className,
+    reasons:
+      student.reasons?.length
+        ? student.reasons
+        : ('weak_domain' in student && student.weak_domain ? [`薄弱：${student.weak_domain}`] : undefined),
+    risk: riskText(student, index),
+    learning_index: 'learning_index' in student ? Number(student.learning_index ?? 0) || null : null,
+    level_label: 'level_label' in student ? (student.level_label as string | null) : null,
+    weak_domain: 'weak_domain' in student ? (student.weak_domain as string | null) : null,
+  }))
+})
+
+function openAttentionModal() {
+  attentionModalVisible.value = true
+}
+
+function onAttentionSelect(student: AttentionStudentListItem) {
+  attentionModalVisible.value = false
+  openStudentProfile({
+    userId: student.id,
+    studentName: student.real_name || undefined,
+    username: student.username || undefined,
+  })
+}
+
 </script>
 
 <template>
@@ -251,7 +329,16 @@ function riskText(student: { reasons?: string[] }, index: number) {
             <h2 class="teacher-panel__title">今日探索概览</h2>
           </header>
           <div class="stat-row">
-            <article v-for="item in explorationStats" :key="item.key" class="stat-card">
+            <article
+              v-for="item in explorationStats"
+              :key="item.key"
+              class="stat-card"
+              :class="{ 'stat-card--clickable': item.key === 'risk' }"
+              :role="item.key === 'risk' ? 'button' : undefined"
+              :tabindex="item.key === 'risk' ? 0 : undefined"
+              @click="item.key === 'risk' && openAttentionModal()"
+              @keydown.enter.prevent="item.key === 'risk' && openAttentionModal()"
+            >
               <span class="stat-card__icon"><n-icon :component="item.icon" /></span>
               <div class="stat-card__body">
                 <strong>{{ item.value }}</strong>
@@ -279,6 +366,7 @@ function riskText(student: { reasons?: string[] }, index: number) {
           <article class="overview-card focus-card teacher-panel">
             <header class="teacher-panel__head">
               <h2 class="teacher-panel__title">需要关注的 Explorer</h2>
+              <n-button size="tiny" secondary type="warning" @click="openAttentionModal">一键查看</n-button>
             </header>
             <div class="explorer-row">
               <button
@@ -294,7 +382,14 @@ function riskText(student: { reasons?: string[] }, index: number) {
                 <strong>{{ student.real_name || student.username }}</strong>
                 <small>{{ student.risk }}</small>
               </button>
-              <span v-if="mergedAttentionStudents.length > 5" class="more-chip">+{{ mergedAttentionStudents.length - 5 }}</span>
+              <button
+                v-if="mergedAttentionStudents.length > 5"
+                type="button"
+                class="more-chip"
+                @click="openAttentionModal"
+              >
+                +{{ mergedAttentionStudents.length - 5 }}
+              </button>
             </div>
           </article>
 
@@ -322,8 +417,16 @@ function riskText(student: { reasons?: string[] }, index: number) {
         </div>
 
         <div class="navigator-home__row4 teacher-quad-layout__full-row teacher-quad-layout__cols-2">
-          <class-heatmap-panel class="overview-card heatmap-card" :heatmap="heatmap" />
-          <class-ranking-board class="overview-card ranking-card" :ranking="ranking" />
+          <class-heatmap-panel
+            class="overview-card heatmap-card"
+            :heatmap="heatmap"
+            @select-student="onHeatmapSelect"
+          />
+          <class-ranking-board
+            class="overview-card ranking-card"
+            :ranking="ranking"
+            @select-student="onRankingSelect"
+          />
         </div>
 
         <div class="navigator-home__charts teacher-quad-layout__full-row teacher-quad-layout__cols-2">
@@ -360,6 +463,14 @@ function riskText(student: { reasons?: string[] }, index: number) {
 
       </template>
     </section>
+
+    <explorer-profile-modal v-model:show="profileVisible" :student="profileStudent" />
+    <attention-students-modal
+      v-model:show="attentionModalVisible"
+      :students="attentionListItems"
+      :class-name="overview?.selected_class?.name"
+      @select="onAttentionSelect"
+    />
   </TeacherDashboardShell>
 </template>
 
@@ -452,6 +563,17 @@ function riskText(student: { reasons?: string[] }, index: number) {
     rgba(4, 12, 20, 0.45);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.05), 0 0 24px rgba(251, 146, 60, 0.08);
   overflow: hidden;
+}
+
+.stat-card--clickable {
+  cursor: pointer;
+}
+
+.stat-card--clickable:hover,
+.stat-card--clickable:focus-visible {
+  border-color: rgba(251, 146, 60, 0.55);
+  outline: none;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 0 28px rgba(251, 146, 60, 0.22);
 }
 
 .stat-card__glow {
@@ -572,6 +694,9 @@ function riskText(student: { reasons?: string[] }, index: number) {
   border: 1px solid rgba(221, 230, 239, 0.24);
   border-radius: 50%;
   color: var(--teacher-text);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
 }
 
 .mission-body {

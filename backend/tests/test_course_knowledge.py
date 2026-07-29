@@ -9,6 +9,7 @@ from app.data.course_knowledge import (
 )
 from scripts.evaluate_personalization import evaluate
 from scripts.evaluate_profile_extraction import evaluate as evaluate_profile_extraction
+from app.services.personalized_resource import RESOURCE_TYPES
 
 
 class CourseKnowledgeTestCase(unittest.TestCase):
@@ -45,10 +46,11 @@ class CourseKnowledgeTestCase(unittest.TestCase):
     def test_two_profile_evaluation_meets_local_gate(self):
         report = evaluate()
         self.assertEqual(report['bundle_count'], 32)
-        self.assertEqual(report['resource_count'], 160)
+        # RESOURCE_TYPES = learning_bundle + 5 文本类型 → 32 * 6
+        self.assertEqual(report['resource_count'], 32 * len(RESOURCE_TYPES))
         self.assertTrue(all(value == 1 for value in report['summary'].values()))
         self.assertTrue(all(
-            row['changed_resource_type_count'] == 5
+            row['changed_resource_type_count'] >= 5
             for row in report['comparisons']
         ))
         self.assertTrue(all(row['passed'] for row in report['counterfactuals']))

@@ -49,14 +49,24 @@ def _spark_stream_provider() -> tuple[str, str, str] | None:
 
 
 def stream_provider_chain(purpose: str = 'messenger') -> list[tuple[str, str, str]]:
-    """按优先级返回 (api_key, endpoint, model) 流式供应商列表。"""
+    """按优先级返回 (api_key, endpoint, model) 流式供应商列表。
+
+    驿站小E：优先讯飞星火（通常更稳更快），再回落 DeepSeek。
+    其他用途：保持 DeepSeek / 通用 LLM 优先。
+    """
     providers: list[tuple[str, str, str]] = []
-    primary = messenger_provider() if purpose == 'messenger' else llm_provider()
-    if primary:
-        providers.append(primary)
     spark = _spark_stream_provider()
-    if spark:
-        providers.append(spark)
+    primary = messenger_provider() if purpose == 'messenger' else llm_provider()
+    if purpose == 'messenger':
+        if spark:
+            providers.append(spark)
+        if primary:
+            providers.append(primary)
+    else:
+        if primary:
+            providers.append(primary)
+        if spark:
+            providers.append(spark)
     return providers
 
 

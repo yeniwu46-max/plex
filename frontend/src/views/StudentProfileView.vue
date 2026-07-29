@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { NButton, NInput, NModal, NProgress, NRadio, NRadioGroup, NTag, useMessage } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
-import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
+import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PlexRadarChart from '../components/charts/PlexRadarChart.vue'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import {
@@ -25,6 +25,7 @@ const diagnosticVisible = ref(false)
 const calibrationVisible = ref(false)
 const selectedCalibration = ref<ProfileDimensionKey>('explanation_preference')
 const saving = ref(false)
+const loading = ref(true)
 
 const coreIdentity = computed(() => ({
   stage: report.value?.summary.level_label || 'Python 起航者',
@@ -194,12 +195,23 @@ const chatStarters = [
 ]
 
 async function load() {
-  const [current, diagnostic, learning, active] = await Promise.all([
-    fetchDynamicProfile(), fetchProfileDiagnostic(), fetchStudentLearningReport('7d'), fetchLearningAdaptations(),
-  ])
-  profile.value = current; questions.value = diagnostic.questions; diagnosticStatus.value = diagnostic.diagnostic.status
-  report.value = learning; adaptations.value = active
-  try { aiReport.value = (await generateStudentPhaseReport('7d')).report } catch { aiReport.value = null }
+  loading.value = true
+  try {
+    const [current, diagnostic, learning, active] = await Promise.all([
+      fetchDynamicProfile(), fetchProfileDiagnostic(), fetchStudentLearningReport('7d'), fetchLearningAdaptations(),
+    ])
+    profile.value = current
+    questions.value = diagnostic.questions
+    diagnosticStatus.value = diagnostic.diagnostic.status
+    report.value = learning
+    adaptations.value = active
+    // 阶段报告可异步补齐，不阻塞首屏画像
+    void generateStudentPhaseReport('7d')
+      .then((result) => { aiReport.value = result.report })
+      .catch(() => { aiReport.value = null })
+  } finally {
+    loading.value = false
+  }
 }
 async function finishDiagnostic(skip = false) {
   saving.value = true
@@ -221,8 +233,12 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 
 <template>
   <DashboardShell active-nav="me" page-title="学习画像" page-subtitle="小E 会根据你的练习持续更新学习报告" search-placeholder="" hide-search>
-    <template #toolbar><StudentSectionTabs area="me" /></template>
     <main class="profile-page">
+      <PlexSyncState
+        v-if="loading && !profile"
+        label="正在整理学习画像…"
+        hint="小E 正在汇总诊断、对话与练习证据"
+      />
       <section class="profile-header">
         <div><p class="eyebrow">学习画像 · 第 {{ profile?.version ?? 1 }} 版</p><h2>今天，先让学习路径更懂你</h2><p>基于诊断、对话和练习行为生成。每一条结论都可以通过“校准画像”调整。</p></div>
         <div class="header-actions"><n-progress type="circle" :percentage="profile?.completion_rate ?? 0" color="#34e6c5" /><n-button type="primary" @click="diagnosticVisible = true">{{ diagnosticStatus === 'pending' ? '开始入门诊断' : '重新进行诊断' }}</n-button></div>

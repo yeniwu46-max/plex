@@ -168,6 +168,25 @@ def get_teacher_trial_detail(trial_id):
         return error_response(str(exc), 50001, None, 500)
 
 
+@trials_bp.route('/teacher/trials/<int:trial_id>/ai-analyze', methods=['POST'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def analyze_teacher_trial(trial_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        return success_response(
+            AssignmentService.analyze_trial_with_spark(
+                current_user_id, trial_id, _role_name(current_user_id)
+            )
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @trials_bp.route('/admin/trials', methods=['GET'])
 @jwt_required()
 @role_required('admin')

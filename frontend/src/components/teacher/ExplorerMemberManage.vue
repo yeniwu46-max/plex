@@ -32,6 +32,10 @@ import {
   type Student,
   type StudentStatus,
 } from '../../api/studentManagement'
+import {
+  fetchStudentTrialHistory,
+  type StudentTrialHistoryResult,
+} from '../../api/teacherTrials'
 
 type FormMode = 'create' | 'edit'
 
@@ -52,6 +56,10 @@ const saving = ref(false)
 const deleting = ref(false)
 const modalVisible = ref(false)
 const confirmVisible = ref(false)
+const profileVisible = ref(false)
+const profileStudent = ref<Student | null>(null)
+const profileHistory = ref<StudentTrialHistoryResult | null>(null)
+const profileLoading = ref(false)
 const formMode = ref<FormMode>('create')
 const pendingDelete = ref<Student | null>(null)
 
@@ -119,6 +127,10 @@ const modalTitle = computed(() => (formMode.value === 'create' ? '新增 Explore
 
 function statusLabel(status: StudentStatus) {
   return { active: '在读', frozen: '冻结', deleted: '已删除' }[status]
+}
+
+function participationLabel(status: string) {
+  return ({ joined: '进行中', completed: '已完成', abandoned: '已放弃' } as Record<string, string>)[status] ?? status
 }
 
 function statusTagType(status: StudentStatus) {
@@ -206,6 +218,20 @@ function openEditModal(student: Student) {
   })
   formMode.value = 'edit'
   modalVisible.value = true
+}
+
+async function openProfileCard(student: Student) {
+  profileStudent.value = student
+  profileHistory.value = null
+  profileVisible.value = true
+  profileLoading.value = true
+  try {
+    profileHistory.value = await fetchStudentTrialHistory(student.id)
+  } catch {
+    profileHistory.value = null
+  } finally {
+    profileLoading.value = false
+  }
 }
 
 function validateForm() {
@@ -370,8 +396,17 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="student in students" :key="student.id">
-                <td><strong>{{ student.real_name || '-' }}</strong></td>
+              <tr
+                v-for="student in students"
+                :key="student.id"
+                class="member-manage__row"
+                @click="openProfileCard(student)"
+              >
+                <td>
+                  <button type="button" class="member-manage__name-btn" @click.stop="openProfileCard(student)">
+                    <strong>{{ student.real_name || '-' }}</strong>
+                  </button>
+                </td>
                 <td>{{ student.username }}</td>
                 <td>{{ student.email }}</td>
                 <td>{{ student.phone || '-' }}</td>
@@ -384,7 +419,7 @@ onMounted(async () => {
                   </n-tag>
                 </td>
                 <td>{{ formatDate(student.created_at) }}</td>
-                <td>
+                <td @click.stop>
                   <div class="member-manage__actions">
                     <n-button size="small" quaternary :disabled="student.status === 'deleted'" @click="openEditModal(student)">
                       <template #icon>
@@ -433,6 +468,79 @@ onMounted(async () => {
         />
       </footer>
     </section>
+
+    <n-modal
+      v-model:show="profileVisible"
+      preset="card"
+      :title="profileStudent?.real_name || profileStudent?.username || 'Explorer 资料'"
+      class="explorer-profile-card"
+      :bordered="false"
+      style="width: min(420px, calc(100vw - 32px))"
+    >
+      <div v-if="profileStudent" class="profile-card">
+        <div class="profile-card__identity">
+          <div class="profile-card__avatar" aria-hidden="true">
+            {{ (profileStudent.real_name || profileStudent.username || '?').slice(0, 1) }}
+          </div>
+          <div>
+            <strong>{{ profileStudent.real_name || '-' }}</strong>
+            <p>@{{ profileStudent.username }}</p>
+          </div>
+        </div>
+        <dl class="profile-card__meta">
+          <div><dt>班级</dt><dd>{{ profileStudent.class_name || '未分班' }}</dd></div>
+          <div><dt>等级</dt><dd>Lv.{{ profileStudent.level }}</dd></div>
+          <div><dt>积分</dt><dd>{{ profileStudent.total_points }}</dd></div>
+          <div>
+            <dt>状态</dt>
+            <dd>
+              <n-tag round size="small" :type="statusTagType(profileStudent.status)">
+                {{ statusLabel(profileStudent.status) }}
+              </n-tag>
+            </dd>
+          </div>
+          <div><dt>邮箱</dt><dd>{{ profileStudent.email || '-' }}</dd></div>
+          <div><dt>电话</dt><dd>{{ profileStudent.phone || '-' }}</dd></div>
+          <div><dt>加入</dt><dd>{{ formatDate(profileStudent.created_at) }}</dd></div>
+        </dl>
+
+        <section class="profile-card__practice">
+          <h3>最近练习</h3>
+          <n-spin :show="profileLoading">
+            <template v-if="profileHistory">
+              <p class="profile-card__practice-summary">
+                共 {{ profileHistory.summary.total }} 次试炼 ·
+                完成 {{ profileHistory.summary.completed }} ·
+                平均分 {{ profileHistory.summary.avg_score }}
+              </p>
+              <ul v-if="profileHistory.participations.length" class="profile-card__practice-list">
+                <li
+                  v-for="row in profileHistory.participations.slice(0, 5)"
+                  :key="row.id"
+                >
+                  <strong>{{ row.trial?.title || `试炼 #${row.trial_id}` }}</strong>
+                  <span>{{ participationLabel(row.status) }} · 得分 {{ row.score }}</span>
+                </li>
+              </ul>
+              <p v-else class="profile-card__empty">暂无试炼练习记录</p>
+            </template>
+            <p v-else-if="!profileLoading" class="profile-card__empty">练习数据暂不可用</p>
+          </n-spin>
+        </section>
+
+        <footer class="profile-card__actions">
+          <n-button
+            secondary
+            size="small"
+            :disabled="profileStudent.status === 'deleted'"
+            @click="openEditModal(profileStudent); profileVisible = false"
+          >
+            编辑资料
+          </n-button>
+          <n-button size="small" @click="profileVisible = false">关闭</n-button>
+        </footer>
+      </div>
+    </n-modal>
 
     <n-modal v-model:show="modalVisible" preset="card" :title="modalTitle" class="explorer-member-modal" :bordered="false">
       <div class="member-manage__form">
@@ -589,6 +697,146 @@ onMounted(async () => {
   color: var(--teacher-text);
 }
 
+.member-manage__row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.member-manage__row:hover {
+  background: rgba(251, 146, 60, 0.06);
+}
+
+.member-manage__name-btn {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.member-manage__name-btn:hover strong {
+  color: #fb923c;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.profile-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.profile-card__avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  background: rgba(251, 146, 60, 0.12);
+  color: #fed7aa;
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.profile-card__identity strong {
+  display: block;
+  color: #fff7ed;
+  font-size: 1.05rem;
+}
+
+.profile-card__identity p {
+  margin: 0.2rem 0 0;
+  color: rgba(235, 215, 194, 0.58);
+  font-size: 0.82rem;
+}
+
+.profile-card__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 0.75rem;
+  margin: 0;
+}
+
+.profile-card__meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(8, 14, 22, 0.55);
+  border: 1px solid rgba(251, 146, 60, 0.1);
+}
+
+.profile-card__meta dt {
+  color: rgba(235, 215, 194, 0.5);
+  font-size: 0.72rem;
+}
+
+.profile-card__meta dd {
+  margin: 0;
+  color: rgba(255, 247, 237, 0.9);
+  font-size: 0.86rem;
+  word-break: break-all;
+}
+
+.profile-card__practice h3 {
+  margin: 0 0 0.45rem;
+  color: #fed7aa;
+  font-size: 0.9rem;
+}
+
+.profile-card__practice-summary {
+  margin: 0 0 0.55rem;
+  color: rgba(235, 215, 194, 0.68);
+  font-size: 0.82rem;
+}
+
+.profile-card__practice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.profile-card__practice-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(251, 146, 60, 0.12);
+  background: rgba(25, 15, 7, 0.45);
+}
+
+.profile-card__practice-list strong {
+  color: #fff7ed;
+  font-size: 0.86rem;
+}
+
+.profile-card__practice-list span {
+  color: rgba(235, 215, 194, 0.58);
+  font-size: 0.78rem;
+}
+
+.profile-card__empty {
+  margin: 0;
+  color: rgba(235, 215, 194, 0.5);
+  font-size: 0.84rem;
+}
+
+.profile-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 .member-manage__actions {
   display: flex;
   align-items: center;
@@ -685,6 +933,15 @@ onMounted(async () => {
 }
 
 .explorer-member-modal .n-card-header__main {
+  color: #fff7ed !important;
+}
+
+.explorer-profile-card.n-card {
+  background: rgba(8, 14, 22, 0.98) !important;
+  border: 1px solid rgba(251, 146, 60, 0.22) !important;
+}
+
+.explorer-profile-card .n-card-header__main {
   color: #fff7ed !important;
 }
 </style>

@@ -1,4 +1,4 @@
-import { http, type ApiEnvelope } from './http'
+import { formatHttpError, http, type ApiEnvelope } from './http'
 
 export interface TeacherTrial {
   id: number
@@ -321,6 +321,31 @@ export async function fetchTeacherTrialDetail(trialId: number) {
   const { data } = await http.get<ApiEnvelope<TeacherTrialDetailResult>>(`/v1/teacher/trials/${trialId}`)
   if (data.code !== 0) throw new Error(data.message || '试炼详情加载失败')
   return data.data
+}
+
+export interface TrialAiAnalyzeResult {
+  trial_id: number
+  backend: string
+  overview: string
+  weak_points: string[]
+  strong_points: string[]
+  suggestions: string[]
+  question_notes: Array<{ sort_order?: number; note?: string }>
+  stats_snapshot?: Record<string, unknown>
+}
+
+export async function analyzeTeacherTrial(trialId: number) {
+  try {
+    const { data } = await http.post<ApiEnvelope<TrialAiAnalyzeResult>>(
+      `/v1/teacher/trials/${trialId}/ai-analyze`,
+      {},
+      { timeout: 45000 },
+    )
+    if (data.code !== 0) throw new Error(data.message || '小E 分析失败')
+    return data.data
+  } catch (error) {
+    throw new Error(formatHttpError(error, '小E 分析失败，请稍后重试'))
+  }
 }
 
 export interface ClassTrialAnswerBoardTrial {

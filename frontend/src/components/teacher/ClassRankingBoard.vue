@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
 import type { TeacherRankingItem } from '../../api/teacherOverview'
 
-const props = defineProps<{
+defineProps<{
   ranking: TeacherRankingItem[]
 }>()
 
-const router = useRouter()
+const emit = defineEmits<{
+  selectStudent: [payload: TeacherRankingItem]
+}>()
 
 const medal = ['🥇', '🥈', '🥉']
 
-function goExplorer(userId: number) {
-  void router.push({ path: '/teacher/starfield', query: { studentId: String(userId) } })
+function onSelect(item: TeacherRankingItem) {
+  emit('selectStudent', item)
 }
 </script>
 
@@ -24,7 +25,7 @@ function goExplorer(userId: number) {
 
     <ul v-if="ranking.length" class="class-ranking__list">
       <li v-for="item in ranking" :key="item.user_id">
-        <button type="button" class="class-ranking__row" @click="goExplorer(item.user_id)">
+        <button type="button" class="class-ranking__row" @click="onSelect(item)">
           <span class="class-ranking__rank">
             <template v-if="item.rank <= 3">{{ medal[item.rank - 1] }}</template>
             <template v-else>{{ item.rank }}</template>
@@ -79,6 +80,11 @@ function goExplorer(userId: number) {
 
 .class-ranking__row:hover {
   background: rgba(251, 146, 60, 0.08);
+}
+
+.class-ranking__row:hover .class-ranking__name {
+  color: var(--teacher-orange);
+  text-decoration: underline;
 }
 
 .class-ranking__rank {

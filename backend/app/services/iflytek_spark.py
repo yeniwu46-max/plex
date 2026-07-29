@@ -42,8 +42,26 @@ class IflytekSparkService:
         return bool(IflytekSparkService._resolve_api_password())
 
     @staticmethod
-    def _resolve_api_password() -> str:
-        """Resolve Bearer token from env (supports appId:apiKey combined credentials)."""
+    def _resolve_api_password(purpose: str | None = None) -> str:
+        """Resolve Bearer token from env (supports appId:apiKey combined credentials).
+
+        purpose='trial_analysis' 时优先使用试炼分析专用密钥，避免覆盖驿站小E凭证。
+        purpose='supply_station' 时优先使用补给站专用密钥，与小E/试炼凭证隔离。
+        """
+        if purpose == 'trial_analysis':
+            trial_cred = (
+                os.getenv('IFLYTEK_SPARK_TRIAL_CREDENTIALS', '').strip()
+                or os.getenv('IFLYTEK_SPARK_TRIAL_API_PASSWORD', '').strip()
+            )
+            if trial_cred:
+                return trial_cred
+        if purpose == 'supply_station':
+            supply_cred = (
+                os.getenv('IFLYTEK_SPARK_SUPPLY_CREDENTIALS', '').strip()
+                or os.getenv('IFLYTEK_SPARK_SUPPLY_API_PASSWORD', '').strip()
+            )
+            if supply_cred:
+                return supply_cred
         direct = os.getenv('IFLYTEK_SPARK_API_PASSWORD', '').strip()
         if direct:
             return direct
@@ -87,8 +105,15 @@ class IflytekSparkService:
         return parsed
 
     @classmethod
-    def chat_json(cls, system_prompt: str, user_prompt: str, timeout: int = 30) -> dict[str, Any]:
-        password = cls._resolve_api_password()
+    def chat_json(
+        cls,
+        system_prompt: str,
+        user_prompt: str,
+        timeout: int = 30,
+        *,
+        purpose: str | None = None,
+    ) -> dict[str, Any]:
+        password = cls._resolve_api_password(purpose)
         if not password:
             cls._record(status='unavailable', error_code='not_configured')
             raise SparkServiceError('not_configured', 'iflytek_not_configured')

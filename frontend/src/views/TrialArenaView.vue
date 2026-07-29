@@ -12,6 +12,7 @@ import PlexFileUploader from '../components/shared/upload/PlexFileUploader.vue'
 import { TEACHER_PRESETS } from '../config/upload/uploadPresets'
 import TeacherTemplatesPanel from '../components/teacher/TeacherTemplatesPanel.vue'
 import TeacherTrialDetailPanel from '../components/teacher/TeacherTrialDetailPanel.vue'
+import ClassFileExchangePanel from '../components/student/ClassFileExchangePanel.vue'
 import {
   deleteTeacherTrial,
   fetchTeacherTrials,
@@ -50,7 +51,7 @@ const auth = useAuthStore()
 const teacherNotifications = useTeacherNotificationStore()
 const { selectedClassId, hasSelectedClass } = useTeacherOverviewInjected()
 
-const activeTab = ref<'manage' | 'templates'>('manage')
+const activeTab = ref<'manage' | 'templates' | 'files'>('manage')
 const notifyStudentsOnPublish = ref(true)
 const loading = ref(false)
 const actingTrialId = ref<number | null>(null)
@@ -109,14 +110,20 @@ function mapTrial(item: TeacherTrial): TrialCard {
   const typeLabel = typeLabels[item.trial_type] ?? item.trial_type
   const keys = item.knowledge_keys?.length ? item.knowledge_keys : item.knowledge_key ? [item.knowledge_key] : []
   const knowLabel = keys.map((k) => labelForKnowledgeKey(k)).join('、')
+  const title = item.title
+  // 标题已含类型/知识点时不再重复展示 tags
+  const tags = [typeLabel, knowLabel].filter((tag) => {
+    if (!tag) return false
+    return !title.includes(tag)
+  })
   return {
     id: item.id,
-    title: item.title,
+    title,
     status,
     statusText,
     tone: toneMap[item.trial_type] ?? 'orange',
     scene: sceneMap[item.knowledge_key ?? ''] ?? 'canyon',
-    tags: [typeLabel, knowLabel].filter(Boolean),
+    tags,
     students: `${item.completed_count ?? 0}/${item.participant_count ?? 0}`,
     timeText: `约 ${item.duration_minutes} 分钟 · 奖励 ${item.reward_points} XP`,
     progress: item.progress ?? item.completion_rate ?? 0,
@@ -223,6 +230,7 @@ watch(selectedClassId, () => {
           <header class="tabbar">
             <button type="button" :class="{ active: activeTab === 'manage' }" @click="activeTab = 'manage'">试炼管理</button>
             <button type="button" :class="{ active: activeTab === 'templates' }" @click="activeTab = 'templates'">我的模板</button>
+            <button type="button" :class="{ active: activeTab === 'files' }" @click="activeTab = 'files'">文件管理</button>
             <n-button
               v-if="activeTab === 'manage'"
               class="tabbar__create-btn"
@@ -238,6 +246,43 @@ watch(selectedClassId, () => {
             :trial-type-options="trialTypeOptionsPlain"
             @published="loadTrials()"
           />
+
+          <div v-if="activeTab === 'files'" class="panel-section files-panel">
+            <section class="trial-upload-section trial-upload-section--tab" aria-label="资料上传">
+              <div class="trial-upload-grid">
+                <article class="teacher-upload-card">
+                  <plex-file-uploader
+                    role="teacher"
+                    v-bind="TEACHER_PRESETS.courseMaterial"
+                  />
+                </article>
+                <article class="teacher-upload-card">
+                  <plex-file-uploader
+                    role="teacher"
+                    v-bind="TEACHER_PRESETS.questionBank"
+                  />
+                </article>
+                <article class="teacher-upload-card">
+                  <plex-file-uploader
+                    role="teacher"
+                    v-bind="TEACHER_PRESETS.assignmentAttachment"
+                  />
+                </article>
+              </div>
+            </section>
+
+            <section class="files-panel__submissions" aria-label="学生提交文件审核">
+              <header class="files-panel__head">
+                <h2>学生提交文件</h2>
+                <p>班级学生上传的学习报告、代码与学习截图，独立于 AI 个性化资源审核。</p>
+              </header>
+              <class-file-exchange-panel
+                role="teacher"
+                submissions-only
+                :class-id="selectedClassId"
+              />
+            </section>
+          </div>
 
           <div v-if="activeTab === 'manage'" class="panel-section">
             <div class="section-head">
@@ -260,7 +305,16 @@ watch(selectedClassId, () => {
             </div>
 
             <div v-else class="trial-grid">
-              <article v-for="trial in trials" :key="trial.id" class="trial-card" :class="[`trial-card--${trial.tone}`, `trial-card--${trial.scene}`]">
+              <article
+                v-for="trial in trials"
+                :key="trial.id"
+                class="trial-card"
+                :class="[`trial-card--${trial.tone}`, `trial-card--${trial.scene}`]"
+                role="button"
+                tabindex="0"
+                @click="detailTrialId = trial.id"
+                @keydown.enter.prevent="detailTrialId = trial.id"
+              >
                 <div class="trial-art" aria-hidden="true">
                   <span class="trial-art__sun" />
                   <span class="trial-art__scape" />
@@ -271,7 +325,7 @@ watch(selectedClassId, () => {
                 </div>
                 <div class="trial-card__body">
                   <h3>{{ trial.title }}</h3>
-                  <div class="tag-row">
+                  <div v-if="trial.tags.length" class="tag-row">
                     <span v-for="tag in trial.tags" :key="tag">{{ tag }}</span>
                   </div>
                   <p><n-icon :component="TimeOutline" /> {{ trial.timeText }}</p>
@@ -280,13 +334,13 @@ watch(selectedClassId, () => {
                   </div>
                   <strong v-if="trial.status === 'running'">{{ trial.progress }}%</strong>
                   <span v-if="trial.status === 'ended'" class="complete-mark">✓</span>
-                  <div class="trial-card__actions">
+                  <div class="trial-card__actions" @click.stop>
                     <n-button
                       v-if="trial.canPublish"
                       size="tiny"
                       secondary
                       :loading="actingTrialId === trial.id"
-                      @click.stop="onPublishTrial(trial.id)"
+                      @click="onPublishTrial(trial.id)"
                     >
                       发布
                     </n-button>
@@ -295,7 +349,7 @@ watch(selectedClassId, () => {
                       size="tiny"
                       secondary
                       :loading="actingTrialId === trial.id"
-                      @click.stop="onEditDraft(trial.id)"
+                      @click="onEditDraft(trial.id)"
                     >
                       编辑试卷
                     </n-button>
@@ -305,7 +359,7 @@ watch(selectedClassId, () => {
                       quaternary
                       type="error"
                       :loading="actingTrialId === trial.id"
-                      @click.stop="onDeleteDraft(trial.id)"
+                      @click="onDeleteDraft(trial.id)"
                     >
                       删除
                     </n-button>
@@ -314,12 +368,12 @@ watch(selectedClassId, () => {
                       size="tiny"
                       quaternary
                       :loading="actingTrialId === trial.id"
-                      @click.stop="onEndTrial(trial.id)"
+                      @click="onEndTrial(trial.id)"
                     >
                       结束
                     </n-button>
-                    <n-button size="tiny" secondary @click.stop="detailTrialId = trial.id">
-                      查看数据
+                    <n-button size="tiny" secondary @click="detailTrialId = trial.id">
+                      查看作答
                     </n-button>
                   </div>
                 </div>
@@ -335,30 +389,6 @@ watch(selectedClassId, () => {
 
         </section>
 
-    </section>
-
-    <!-- 教师资料上传 -->
-    <section class="trial-upload-section" aria-label="资料上传">
-      <div class="trial-upload-grid">
-        <article class="teacher-upload-card">
-          <plex-file-uploader
-            role="teacher"
-            v-bind="TEACHER_PRESETS.courseMaterial"
-          />
-        </article>
-        <article class="teacher-upload-card">
-          <plex-file-uploader
-            role="teacher"
-            v-bind="TEACHER_PRESETS.questionBank"
-          />
-        </article>
-        <article class="teacher-upload-card">
-          <plex-file-uploader
-            role="teacher"
-            v-bind="TEACHER_PRESETS.assignmentAttachment"
-          />
-        </article>
-      </div>
     </section>
     </div>
   </TeacherDashboardShell>
@@ -975,6 +1005,32 @@ watch(selectedClassId, () => {
   margin-top: 0.25rem;
   padding: 1.25rem 0 0;
   border-top: 1px solid rgba(251, 146, 60, 0.12);
+}
+
+.trial-upload-section--tab {
+  margin-top: 0;
+  padding-top: 1rem;
+  border-top: none;
+}
+
+.files-panel {
+  padding: 0 1.25rem 1.5rem;
+}
+
+.files-panel__head h2 {
+  margin: 1.25rem 0 0;
+  color: #fff7ec;
+  font-size: 1.1rem;
+}
+
+.files-panel__head p {
+  margin: 0.35rem 0 0.75rem;
+  color: rgba(235, 215, 194, 0.62);
+  font-size: 0.88rem;
+}
+
+.files-panel__submissions {
+  margin-top: 0.5rem;
 }
 
 .trial-upload-grid {

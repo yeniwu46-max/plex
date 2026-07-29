@@ -138,7 +138,7 @@ class MessengerChatService:
             reply = IflytekSparkService.chat_text(
                 MessengerChatService.ASSISTANT_SYSTEM_PROMPT,
                 f'{context}\n\n学生问题：{message[:500]}',
-                timeout=3,
+                timeout=8,
             )
             return {
                 'reply': MessengerChatService._clean_reply(reply),
@@ -272,18 +272,19 @@ class MessengerChatService:
         def within_budget() -> bool:
             return time.monotonic() - started < MessengerChatService.CHAT_TOTAL_BUDGET_SECONDS
 
-        # 文字优先：非流式路径不再同步生图，避免拖慢整包返回
-        deepseek = MessengerChatService._deepseek_reply(user_id, text, history)
-        if deepseek:
-            return deepseek
+        # 优先星火 / 星辰 Agent，避免 DeepSeek 超时拖垮体感
+        if within_budget():
+            spark = MessengerChatService._spark_reply(user_id, text, history)
+            if spark:
+                return spark
         if within_budget():
             agent = MessengerChatService._xfyun_agent_reply(user_id, text, history)
             if agent:
                 return agent
         if within_budget():
-            spark = MessengerChatService._spark_reply(user_id, text, history)
-            if spark:
-                return spark
+            deepseek = MessengerChatService._deepseek_reply(user_id, text, history)
+            if deepseek:
+                return deepseek
         return MessengerChatService._rag_rule_reply(user_id, text, history)
 
     @staticmethod
@@ -309,7 +310,11 @@ class MessengerChatService:
             'stage': 'context',
             'label': '整理你的学习情况',
         }
-        report, context, rag_used = MessengerChatService._student_context(user_id, text, history)
+        # 轻量上下文：失败不阻塞首字输出
+        try:
+            report, context, rag_used = MessengerChatService._student_context(user_id, text, history)
+        except Exception:
+            report, context, rag_used = {}, MessengerChatService.ASSISTANT_SYSTEM_PROMPT, False
         thinking.append({
             'id': 'context',
             'label': '整理学情',
@@ -334,7 +339,7 @@ class MessengerChatService:
             emitted = False
             collected: list[str] = []
             try:
-                for delta in iter_openai_stream(provider, messages, max_tokens=480, timeout=(3, 5)):
+                for delta in iter_openai_stream(provider, messages, max_tokens=480, timeout=(2, 12)):
                     emitted = True
                     collected.append(delta)
                     yield {'type': 'delta', 'text': delta}

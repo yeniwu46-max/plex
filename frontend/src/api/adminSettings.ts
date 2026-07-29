@@ -66,7 +66,32 @@ export interface AdminDashboardResult {
     knowledge_mastery_rate: number
     activity_rate: number
   }
+  period?: string
   weak_knowledge_top?: WeakKnowledgeTopItem[]
+  storage?: {
+    total_tb: number
+    used_tb: number
+    free_tb: number
+    used_ratio: number
+    unit: string
+    breakdown: Array<{ label: string; value_tb: number; count: number }>
+    detail: {
+      approved_resources: number
+      pending_review: number
+      resource_tasks: number
+      completed_tasks: number
+      failed_tasks: number
+      participations: number
+      progress_answers: number
+    }
+  }
+  alerts?: Array<{
+    title: string
+    desc: string
+    level: string
+    tone: string
+    time: string
+  }>
   resource_operations?: {
     task_count: number
     completed_count: number
@@ -91,8 +116,80 @@ export interface AdminDashboardResult {
   }
 }
 
-export async function fetchAdminDashboard() {
-  const { data } = await http.get<ApiEnvelope<AdminDashboardResult>>('/v1/admin/dashboard')
+export async function fetchAdminDashboard(period: 'today' | 'week' | 'month' = 'month') {
+  const { data } = await http.get<ApiEnvelope<AdminDashboardResult>>('/v1/admin/dashboard', {
+    params: { period },
+  })
   if (data.code !== 0) throw new Error(data.message || '大盘数据加载失败')
+  return data.data
+}
+
+export interface AdminTrialTeacherItem {
+  id: number
+  name: string
+  username: string
+  class_count: number
+  running_trials: number
+  total_trials: number
+}
+
+export interface AdminTrialClassItem {
+  id: number
+  name: string
+  student_count: number
+  trial_count: number
+  running_trials: number
+  completion_rate: number
+  avg_score: number
+}
+
+export interface AdminClassTrialStats {
+  class_id: number
+  class_name: string
+  trials: Array<{
+    id: number
+    title: string
+    status: string
+    participant_count: number
+    completion_rate: number
+    avg_score: number
+    question_stats: Array<{
+      question_id: number
+      label: string
+      correct_rate: number
+      correct: number
+      total: number
+    }>
+    student_progress: Array<{
+      user_id: number
+      name: string
+      answered: number
+      score: number
+      status: string
+    }>
+  }>
+}
+
+export async function fetchAdminTrialTeachers() {
+  const { data } = await http.get<ApiEnvelope<{ items: AdminTrialTeacherItem[] }>>(
+    '/v1/admin/trials/teachers',
+  )
+  if (data.code !== 0) throw new Error(data.message || '加载教师列表失败')
+  return data.data.items
+}
+
+export async function fetchAdminTeacherClasses(teacherId: number) {
+  const { data } = await http.get<ApiEnvelope<{ items: AdminTrialClassItem[] }>>(
+    `/v1/admin/trials/teachers/${teacherId}/classes`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '加载班级列表失败')
+  return data.data.items
+}
+
+export async function fetchAdminClassTrialStats(classId: number) {
+  const { data } = await http.get<ApiEnvelope<AdminClassTrialStats>>(
+    `/v1/admin/trials/classes/${classId}/stats`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '加载试炼统计失败')
   return data.data
 }

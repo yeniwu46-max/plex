@@ -23,7 +23,7 @@ import {
 } from '../data/starPathTrail'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
-import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
+import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PlexLearningPathPanel from '../components/agent/PlexLearningPathPanel.vue'
 import { useAuthStore } from '../stores/auth'
 import { fetchServerMistakeRecords } from '../utils/trialMistakeLog'
@@ -296,6 +296,7 @@ function syncKnowledgeFromNode(node: StarPathNode) {
     selectedKnowledgeId.value = node.id
   }
   activeQuestionSlot.value = 0
+  questionTransitionKey.value += 1
 }
 
 function onNodeClick(node: StarPathNode) {
@@ -436,6 +437,8 @@ function isTabActive(tabKey: string) {
 
 function selectTab(tabKey: string) {
   activeTabKey.value = tabKey
+  activeQuestionSlot.value = 0
+  questionTransitionKey.value += 1
   if (tabKey === STAR_PATH_TAB_ALL) {
     const first = STAR_PATH_DOMAINS[0]?.knowledgePoints[0]
     selectedKnowledgeId.value = first?.id ?? null
@@ -528,6 +531,8 @@ function jumpToKnowledge(kp: StarPathKnowledgePoint) {
   activeDomainKey.value = kp.domainKey
   selectedKnowledgeId.value = kp.id
   selectedNodeId.value = kp.id
+  activeQuestionSlot.value = 0
+  questionTransitionKey.value += 1
   void router.replace({ path: '/student/star-path', query: { domain: kp.domainKey, kp: kp.id } })
 }
 
@@ -577,8 +582,9 @@ async function refreshAcceptedQuestions(serverIds?: string[]) {
   acceptedQuestionIds.value = mergeAcceptedQuestionIds(serverIds, localRecords)
 }
 
-async function loadPath() {
-  loading.value = true
+async function loadPath(options?: { soft?: boolean }) {
+  const soft = Boolean(options?.soft && domains.value.length)
+  if (!soft) loading.value = true
   errorMessage.value = ''
   try {
     const data = await fetchLearningPath()
@@ -595,7 +601,7 @@ async function loadPath() {
     applyRouteQuery()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '星轨数据加载失败'
-    domains.value = []
+    if (!soft) domains.value = []
   } finally {
     loading.value = false
   }
@@ -613,6 +619,7 @@ onMounted(() => {
 
 onActivated(() => {
   void refreshAcceptedQuestions()
+  if (domains.value.length) void loadPath({ soft: true })
 })
 </script>
 
@@ -625,8 +632,6 @@ onActivated(() => {
     @search-submit="runQuestionSearch"
   >
     <main class="starpath-main">
-      <StudentSectionTabs area="learning" />
-
       <section class="starpath-tabs" aria-label="星域分类">
         <button
           v-for="tab in STAR_PATH_TABS"
@@ -661,7 +666,11 @@ onActivated(() => {
         </ul>
       </section>
 
-      <div v-if="loading" class="starpath-state">正在同步星轨路径…</div>
+      <PlexSyncState
+        v-if="loading && !domains.length"
+        label="正在同步学习路径…"
+        hint="连接知识图谱与你的练习进度"
+      />
       <div v-else-if="errorMessage" class="starpath-state starpath-state--error">
         <span>{{ errorMessage }}</span>
         <n-button secondary size="small" @click="loadPath()">重试</n-button>
@@ -695,6 +704,7 @@ onActivated(() => {
             <div class="path-canvas" aria-label="星轨节点图">
               <StarPathTrackCanvas
                 v-if="showDomainTrack"
+                :key="activeDomainKey"
                 :nodes="filteredStarPathNodes"
                 :selected-id="selectedNodeId"
                 :highlight-gem-slot="activeQuestionSlot"

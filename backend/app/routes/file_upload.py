@@ -91,6 +91,49 @@ def list_class_files():
         return error_response(str(exc), 50001, None, 500)
 
 
+@upload_bp.route('/class-files/score', methods=['GET'])
+@jwt_required()
+def get_class_file_score():
+    """读取班级提交文件评分。"""
+    try:
+        user_id = int(get_jwt_identity())
+        filepath = (request.args.get('filepath') or '').strip()
+        if not filepath:
+            return error_response('缺少 filepath', 40001, None, 400)
+        return success_response(ClassFileService.get_score(user_id, filepath))
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@upload_bp.route('/class-files/score', methods=['PUT', 'POST'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def set_class_file_score():
+    """教师给班级提交文件打分（0–100）。"""
+    try:
+        user_id = int(get_jwt_identity())
+        body = request.get_json(silent=True) or {}
+        filepath = (body.get('filepath') or request.args.get('filepath') or '').strip()
+        if not filepath:
+            return error_response('缺少 filepath', 40001, None, 400)
+        score = body.get('score')
+        comment = body.get('comment')
+        return success_response(
+            ClassFileService.set_score(user_id, filepath, score, comment),
+            '评分已保存',
+        )
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 # ─── 后续处理 stub 路由 ────────────────────────────────────────
 
 @upload_bp.post('/graph/import')

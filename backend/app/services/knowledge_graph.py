@@ -280,6 +280,54 @@ class KnowledgeGraphService:
         }
 
     @staticmethod
+    def get_node_affected_students(class_id: int, node_id: str) -> dict:
+        from app.models import Class
+
+        class_obj = db.session.get(Class, class_id)
+        class_name = class_obj.name if class_obj else None
+        students = User.query.filter_by(class_id=class_id).all()
+        items = []
+        for student in students:
+            stats = KnowledgeGraphService._node_stats(student.id)
+            bucket = stats.get(node_id)
+            if not bucket:
+                continue
+            answered = bucket.get('answered') or 0
+            correct = bucket.get('correct') or 0
+            is_weak = (
+                (bucket.get('fail_count') or 0) >= 2
+                or (answered >= 1 and correct / answered < 0.4)
+            )
+            if not is_weak:
+                continue
+            error_types = [
+                {'error_type': key, 'count': count}
+                for key, count in (bucket.get('error_types') or Counter()).most_common(3)
+            ]
+            if not error_types and (bucket.get('wrong') or 0) > 0:
+                error_types = [{'error_type': 'wrong_answer', 'count': bucket.get('wrong') or 1}]
+            items.append(
+                {
+                    'id': student.id,
+                    'username': student.username,
+                    'real_name': student.real_name or student.username,
+                    'class_id': class_id,
+                    'class_name': class_name,
+                    'fail_count': bucket.get('fail_count') or 0,
+                    'wrong_count': bucket.get('wrong') or 0,
+                    'error_types': error_types,
+                }
+            )
+        items.sort(key=lambda row: (-(row.get('fail_count') or 0), row.get('username') or ''))
+        return {
+            'class_id': class_id,
+            'class_name': class_name,
+            'node_id': node_id,
+            'items': items,
+            'total': len(items),
+        }
+
+    @staticmethod
     def get_admin_graph() -> dict:
         base_nodes, base_edges = _topology()
         nodes = [{**base, 'status': 'unlearned'} for base in base_nodes]

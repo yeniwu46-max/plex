@@ -34,5 +34,24 @@ const groups = {
 </template>
 
 <style scoped>
-.section-tabs{display:flex;gap:.5rem;padding:.75rem var(--plex-page-gutter-x);border-bottom:1px solid rgba(37,245,238,.1);background:rgba(2,12,21,.72)}.section-tabs__item{padding:.55rem .9rem;border-radius:999px;color:rgba(215,230,242,.68);text-decoration:none}.section-tabs__item:hover,.section-tabs__item--active{color:#52fff1;background:rgba(37,245,238,.1)}
+.section-tabs {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem var(--plex-page-gutter-x);
+  background: transparent;
+}
+.section-tabs__item {
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  color: rgba(215, 230, 242, 0.68);
+  text-decoration: none;
+}
+.section-tabs__item:hover,
+.section-tabs__item--active {
+  color: #52fff1;
+  background: rgba(37, 245, 238, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(82, 255, 241, 0.35);
+}
 </style>

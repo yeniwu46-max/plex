@@ -164,21 +164,31 @@ onMounted(() => {
 .shell {
   display: flex;
   height: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-  max-height: 100dvh;
+  min-height: 100%;
+  max-height: 100%;
   overflow: hidden;
   background: #050a0e;
   color: #e2e8f0;
   font-family: 'Outfit', 'Noto Sans SC', system-ui, sans-serif;
 }
 
+.shell :deep(.teacher-sidebar) {
+  position: sticky;
+  top: 0;
+  align-self: stretch;
+  height: 100%;
+  max-height: 100%;
+  flex-shrink: 0;
+}
+
 .teacher-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
   background:
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(251, 146, 60, 0.08), transparent),
     radial-gradient(ellipse 60% 40% at 90% 60%, rgba(251, 191, 36, 0.05), transparent),
@@ -228,7 +238,10 @@ onMounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .topbar-actions {
@@ -262,11 +275,16 @@ onMounted(() => {
 @media (max-width: 760px) {
   .shell {
     flex-direction: column;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .shell :deep(.teacher-sidebar) {
+    position: relative;
     height: auto;
-    min-height: 100vh;
-    min-height: 100dvh;
     max-height: none;
-    overflow: visible;
+    flex-shrink: 0;
   }
 
   .toolbar-slot {

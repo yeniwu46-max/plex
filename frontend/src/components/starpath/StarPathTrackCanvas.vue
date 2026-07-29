@@ -5,6 +5,7 @@ import { CodeSlashOutline, LockClosedOutline, ServerOutline } from '@vicons/ioni
 import {
   isStarPathNodeUnlocked,
   starPathNodeTrackClass,
+  type StarPathGem,
   type StarPathNode,
 } from '../../data/starPathTrail'
 import { useMapViewport } from '../../composables/useMapViewport'
@@ -20,6 +21,8 @@ const props = defineProps<{
 
 const layoutKey = computed(() => props.domainKey ?? 'data-vars')
 const viewportRef = ref<HTMLElement | null>(null)
+/** 切换节点时递增，强制选中框/脉冲动效重新播放 */
+const selectionAnimKey = ref(0)
 
 const { transformStyle, isDragging, onWheel, onPointerDown, onPointerMove, onPointerUp, fitView } =
   useMapViewport(viewportRef)
@@ -27,6 +30,13 @@ const { transformStyle, isDragging, onWheel, onPointerDown, onPointerMove, onPoi
 onMounted(() => {
   fitView()
 })
+
+watch(
+  () => [props.selectedId, props.highlightGemSlot ?? 0] as const,
+  () => {
+    selectionAnimKey.value += 1
+  },
+)
 
 watch(
   () => [props.nodes.length, layoutKey.value],
@@ -75,11 +85,20 @@ function nodeIcon(node: StarPathNode) {
   return CodeSlashOutline
 }
 
+function isVisualCurrent(node: StarPathNode) {
+  return props.selectedId === node.id
+}
+
 function nodePositionClasses(node: StarPathNode) {
+  const selected = isVisualCurrent(node)
+  const trackClass = selected ? 'current' : starPathNodeTrackClass(node)
   return [
-    `track-node--${starPathNodeTrackClass(node)}`,
+    `track-node--${trackClass}`,
     node.anchor ? `track-node--anchor-${node.anchor}` : '',
-    { 'track-node--selected': props.selectedId === node.id },
+    {
+      'track-node--selected': selected,
+      'track-node--focus-here': selected,
+    },
   ]
 }
 
@@ -110,6 +129,19 @@ function onGemClick(event: MouseEvent, node: StarPathNode, slot: number) {
 
 function gemSlots(node: StarPathNode) {
   return node.gems?.length ? node.gems.length : node.questionIds.length || 5
+}
+
+function displayGem(node: StarPathNode, slotIndex: number): StarPathGem {
+  const base = node.gems?.[slotIndex] ?? 'pending'
+  if (base === 'locked') return 'locked'
+  if (isVisualCurrent(node) && slotIndex === (props.highlightGemSlot ?? 0)) {
+    return base === 'done' ? 'done' : 'active'
+  }
+  return base
+}
+
+function isGemSelected(node: StarPathNode, slotIndex: number) {
+  return isVisualCurrent(node) && slotIndex === (props.highlightGemSlot ?? 0)
 }
 </script>
 
@@ -178,18 +210,20 @@ function gemSlots(node: StarPathNode) {
 
         <div
           v-for="node in nodes"
-          :key="node.id"
+          :key="`${node.id}-${isVisualCurrent(node) ? selectionAnimKey : 'idle'}`"
           class="track-node"
           :class="nodePositionClasses(node)"
           :style="nodeStyle(node)"
           role="button"
           :tabindex="isStarPathNodeUnlocked(node) ? 0 : -1"
-          :aria-label="`${displayId(node)} ${node.title}${node.status === 'locked' ? '，未解锁' : ''}`"
+          :aria-current="isVisualCurrent(node) ? 'step' : undefined"
+          :aria-label="`${displayId(node)} ${node.title}${node.status === 'locked' ? '，未解锁' : ''}${isVisualCurrent(node) ? '，当前所在' : ''}`"
           @click.stop="onNodeClick(node)"
           @keydown.enter.prevent="onNodeClick(node)"
           @keydown.space.prevent="onNodeClick(node)"
         >
-          <span v-if="node.status === 'current'" class="track-node__badge">当前所在</span>
+          <span v-if="isVisualCurrent(node)" class="track-node__badge">当前所在</span>
+          <span class="track-node__select-frame" aria-hidden="true" />
           <span class="track-node__orb">
             <n-icon :component="nodeIcon(node)" />
           </span>
@@ -200,14 +234,14 @@ function gemSlots(node: StarPathNode) {
           <div class="track-node__gems" role="group" :aria-label="`${node.title} 试炼进度`">
             <button
               v-for="slot in gemSlots(node)"
-              :key="`${node.id}-gem-${slot - 1}`"
+              :key="`${node.id}-gem-${slot - 1}-${isGemSelected(node, slot - 1) ? selectionAnimKey : 'g'}`"
               type="button"
               class="track-gem"
               :class="[
-                `track-gem--${node.gems?.[slot - 1] ?? 'pending'}`,
-                { 'track-gem--selected': props.selectedId === node.id && slot - 1 === (props.highlightGemSlot ?? 0) },
+                `track-gem--${displayGem(node, slot - 1)}`,
+                { 'track-gem--selected': isGemSelected(node, slot - 1) },
               ]"
-              :disabled="node.gems?.[slot - 1] === 'locked'"
+              :disabled="displayGem(node, slot - 1) === 'locked'"
               :title="`试炼 s${slot - 1}`"
               :aria-label="`切换到第 ${slot} 题 s${slot - 1}`"
               @click="onGemClick($event, node, slot - 1)"
@@ -338,6 +372,36 @@ function gemSlots(node: StarPathNode) {
   color: #ffffff;
   transform: translate(-50%, -50%);
   cursor: pointer;
+  transition:
+    filter 0.28s ease,
+    transform 0.28s ease;
+}
+
+.track-node__select-frame {
+  display: none;
+}
+
+.track-node--selected .track-node__select-frame,
+.track-node--focus-here .track-node__select-frame {
+  display: block;
+  position: absolute;
+  z-index: 0;
+  inset: -0.55rem -0.7rem -0.35rem;
+  border: 1.5px dashed rgba(255, 255, 255, 0.72);
+  border-radius: 0.65rem;
+  pointer-events: none;
+  animation: track-select-frame-in 0.38s ease-out;
+}
+
+@keyframes track-select-frame-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .track-node__orb {
@@ -503,6 +567,19 @@ function gemSlots(node: StarPathNode) {
   color: #22ffde;
   font-size: 0.78rem;
   font-weight: 720;
+  animation: track-badge-in 0.34s ease-out;
+  z-index: 5;
+}
+
+@keyframes track-badge-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .track-node--done {

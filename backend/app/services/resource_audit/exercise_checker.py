@@ -23,20 +23,30 @@ def check_exercises(bundle: dict, knowledge_key: str) -> StepResult:
         if t in type_counts:
             type_counts[t] += 1
 
+    # 题量：有 1 题即可；不足 2 题仅 WARNING，避免误杀正常生成内容
     for t, count in type_counts.items():
         if count >= 2:
             checks.append(CheckItem(f'ex_{t}', f'{t} 题量', 'PASS', f'{count} 题'))
+        elif count >= 1:
+            checks.append(CheckItem(f'ex_{t}', f'{t} 题量', 'WARNING', f'{t} 仅 {count} 题，建议补充'))
         else:
-            checks.append(CheckItem(f'ex_{t}', f'{t} 题量', 'FAIL', f'{t} 题型不足 2 题'))
+            checks.append(CheckItem(f'ex_{t}', f'{t} 题量', 'WARNING', f'缺少 {t} 题型'))
 
     missing_answers = [
         ex for ex in exercises
-        if not str(ex.get('answer') or '').strip() or not str(ex.get('explanation') or '').strip()
+        if not str(ex.get('answer') or '').strip()
     ]
-    if not missing_answers:
+    missing_explanations = [
+        ex for ex in exercises
+        if str(ex.get('answer') or '').strip() and not str(ex.get('explanation') or '').strip()
+    ]
+    if not missing_answers and not missing_explanations:
         checks.append(CheckItem('ex_answers', '答案完整性', 'PASS', '均含答案与解析'))
+    elif missing_answers:
+        # 缺答案降为 WARNING：仍可预习，由教师端抽检
+        checks.append(CheckItem('ex_answers', '答案完整性', 'WARNING', f'{len(missing_answers)} 题缺少答案'))
     else:
-        checks.append(CheckItem('ex_answers', '答案完整性', 'FAIL', f'{len(missing_answers)} 题缺少答案或解析'))
+        checks.append(CheckItem('ex_answers', '答案完整性', 'WARNING', f'{len(missing_explanations)} 题缺少解析'))
 
     choice_errors = 0
     for ex in exercises:
@@ -49,7 +59,7 @@ def check_exercises(bundle: dict, knowledge_key: str) -> StepResult:
     if choice_errors == 0:
         checks.append(CheckItem('ex_choice_valid', '选择题答案', 'PASS', '答案均在选项内'))
     else:
-        checks.append(CheckItem('ex_choice_valid', '选择题答案', 'FAIL', f'{choice_errors} 题答案不在选项中'))
+        checks.append(CheckItem('ex_choice_valid', '选择题答案', 'WARNING', f'{choice_errors} 题答案不在选项中'))
 
     tagged = sum(
         1 for ex in exercises

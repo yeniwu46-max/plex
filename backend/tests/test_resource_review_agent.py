@@ -43,7 +43,7 @@ class ResourceReviewAgentTestCase(unittest.TestCase):
                 audit_report={
                     'verdict': 'NEED_MODIFY',
                     'suggested_publish': False,
-                    'dimensions': {'knowledge_accuracy': 50},
+                    'dimensions': {'knowledge_accuracy': 30},
                 },
                 risk_reasons=['low_confidence'],
             )

@@ -79,9 +79,19 @@ export function formatHttpError(error: unknown, fallback = '请求失败'): stri
     if (status === 404) {
       return '服务接口未找到，请重启后端服务后再试'
     }
+    if (status === 401 || status === 403) {
+      return apiMessage || '鉴权失败，请重新登录后再试'
+    }
     if (status === 502 || status === 503) {
       return '后端服务未启动或暂时不可用'
     }
+    if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
+      return '请求超时，请稍后重试（星火分析较慢时可稍等）'
+    }
+    if (error.message && !/^Request failed with status code/i.test(error.message)) {
+      return error.message
+    }
+    if (status) return `请求失败（HTTP ${status}）`
     if (error.message) return error.message
   }
   if (error instanceof Error) return error.message

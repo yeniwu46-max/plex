@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NInput, NCheckbox, NIcon, NModal, NButton, useMessage } from 'naive-ui'
 import { PersonOutline, LockClosedOutline, EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationStore } from '../stores/notifications'
+import {
+  filterAccountSuggestions,
+  loadAccountHistory,
+  loadRememberFlag,
+  rememberAccount,
+  saveRememberFlag,
+} from '../utils/loginAccountHistory'
 
 const router = useRouter()
 const route = useRoute()
@@ -18,14 +25,70 @@ const remember = ref(false)
 const showPassword = ref(false)
 const loading = ref(false)
 const showForgotModal = ref(false)
+const accountHistory = ref<string[]>([])
+const showAccountSuggest = ref(false)
+const usernameFieldRef = ref<HTMLElement | null>(null)
 
 const ADMIN_RESET_EMAIL = '2720329167@qq.com'
 const adminMailto = `mailto:${ADMIN_RESET_EMAIL}?subject=${encodeURIComponent('密码重置申请')}`
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
+const accountSuggestions = computed(() => {
+  if (!remember.value) return []
+  return filterAccountSuggestions(username.value, accountHistory.value)
+})
+
+const visibleAccountSuggestions = computed(() =>
+  showAccountSuggest.value && remember.value ? accountSuggestions.value : [],
+)
+
 function togglePassword() {
   showPassword.value = !showPassword.value
 }
+
+function openAccountSuggest() {
+  if (!remember.value) return
+  accountHistory.value = loadAccountHistory()
+  showAccountSuggest.value = true
+}
+
+function onRememberChange(checked: boolean) {
+  remember.value = checked
+  if (checked) openAccountSuggest()
+  else showAccountSuggest.value = false
+}
+
+function closeAccountSuggestSoon() {
+  window.setTimeout(() => {
+    showAccountSuggest.value = false
+  }, 120)
+}
+
+function pickAccount(account: string) {
+  username.value = account
+  showAccountSuggest.value = false
+}
+
+function onDocumentPointerDown(event: MouseEvent) {
+  const root = usernameFieldRef.value
+  if (!root) return
+  if (event.target instanceof Node && !root.contains(event.target)) {
+    showAccountSuggest.value = false
+  }
+}
+
+onMounted(() => {
+  remember.value = loadRememberFlag()
+  accountHistory.value = loadAccountHistory()
+  if (remember.value && !username.value && accountHistory.value[0]) {
+    username.value = accountHistory.value[0]
+  }
+  document.addEventListener('pointerdown', onDocumentPointerDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
+})
 
 async function onSubmit(e: Event) {
   e.preventDefault()
@@ -35,7 +98,13 @@ async function onSubmit(e: Event) {
   }
   loading.value = true
   try {
-    const session = await auth.login(username.value.trim(), password.value)
+    const account = username.value.trim()
+    const session = await auth.login(account, password.value)
+    saveRememberFlag(remember.value)
+    if (remember.value) {
+      rememberAccount(account)
+      accountHistory.value = loadAccountHistory()
+    }
     message.success('登录成功')
     if (session.role === 'student' && session.id) {
       notifications.hydrate(session.id)
@@ -136,18 +205,35 @@ function goRegister() {
         </div>
 
         <form class="form" @submit="onSubmit">
-          <n-input
-            v-model:value="username"
-            size="large"
-            round
-            placeholder="邮箱 / 用户名"
-            :input-props="{ autocomplete: 'username' }"
-            class="form__field"
-          >
-            <template #prefix>
-              <n-icon :component="PersonOutline" class="form__icon" />
-            </template>
-          </n-input>
+          <div ref="usernameFieldRef" class="form__account">
+            <n-input
+              v-model:value="username"
+              size="large"
+              round
+              placeholder="邮箱 / 用户名"
+              :input-props="{ autocomplete: 'username', role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': visibleAccountSuggestions.length > 0 }"
+              class="form__field"
+              @focus="openAccountSuggest"
+              @update:value="openAccountSuggest"
+              @blur="closeAccountSuggestSoon"
+            >
+              <template #prefix>
+                <n-icon :component="PersonOutline" class="form__icon" />
+              </template>
+            </n-input>
+            <ul
+              v-if="visibleAccountSuggestions.length"
+              class="form__suggest"
+              role="listbox"
+              aria-label="历史账号建议"
+            >
+              <li v-for="account in visibleAccountSuggestions" :key="account">
+                <button type="button" class="form__suggest-item" role="option" @mousedown.prevent="pickAccount(account)">
+                  {{ account }}
+                </button>
+              </li>
+            </ul>
+          </div>
 
           <n-input
             v-model:value="password"
@@ -231,7 +317,7 @@ function goRegister() {
         </div>
 
         <div class="card__meta">
-          <n-checkbox v-model:checked="remember" class="remember">记住我</n-checkbox>
+          <n-checkbox v-model:checked="remember" class="remember" @update:checked="onRememberChange">记住我</n-checkbox>
           <button type="button" class="forgot" @click="showForgotModal = true">忘记密码？</button>
         </div>
       </div>
@@ -491,6 +577,47 @@ function goRegister() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.form__account {
+  position: relative;
+}
+
+.form__suggest {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(0, 245, 212, 0.22);
+  background: rgba(8, 16, 32, 0.96);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.form__suggest-item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.95);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.form__suggest-item:hover,
+.form__suggest-item:focus-visible {
+  background: rgba(0, 245, 212, 0.12);
+  color: #00f5d4;
+  outline: none;
 }
 
 .form__field :deep(.n-input) {

@@ -8,6 +8,10 @@ const props = defineProps<{
   heatmap: TeacherOverview['heatmap']
 }>()
 
+const emit = defineEmits<{
+  selectStudent: [payload: { userId: number; studentName: string }]
+}>()
+
 const hoveredUserId = ref<number | null>(null)
 const searchQuery = ref('')
 
@@ -43,6 +47,9 @@ function cellTone(rate: number) {
   return 'empty'
 }
 
+function onSelectStudent(userId: number, studentName: string) {
+  emit('selectStudent', { userId, studentName })
+}
 </script>
 
 <template>
@@ -77,15 +84,17 @@ function cellTone(rate: number) {
         <div v-for="day in days" :key="day.date" class="class-heatmap__day">{{ day.label }}</div>
 
         <template v-for="row in filteredRows" :key="row.user_id">
-          <div
+          <button
+            type="button"
             class="class-heatmap__name"
             :class="{ 'is-hovered': hoveredUserId === row.user_id }"
             @mouseenter="hoveredUserId = row.user_id"
             @mouseleave="hoveredUserId = null"
+            @click="onSelectStudent(row.user_id, row.student_name)"
           >
             <span>{{ row.student_name }}</span>
             <em>{{ row.avg_rate }}%</em>
-          </div>
+          </button>
           <button
             v-for="(cell, idx) in row.cells"
             :key="`${row.user_id}-${cell.date}`"
@@ -178,8 +187,13 @@ function cellTone(rate: number) {
   flex-direction: column;
   justify-content: center;
   gap: 0.1rem;
-  padding-right: 0.5rem;
+  padding: 0 0.5rem 0 0;
   min-width: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .class-heatmap__name span {
@@ -196,9 +210,12 @@ function cellTone(rate: number) {
   font-style: normal;
 }
 
+.class-heatmap__name:hover span,
 .class-heatmap__name.is-hovered span,
+.class-heatmap__name:hover em,
 .class-heatmap__name.is-hovered em {
   color: var(--teacher-orange);
+  text-decoration: underline;
 }
 
 .class-heatmap__cell {

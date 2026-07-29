@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onActivated, onMounted, ref } from 'vue'
 import { NButton, NCollapse, NCollapseItem, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
-import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
+import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
 import AgentStepsTimeline from '../components/personalized/AgentStepsTimeline.vue'
 import {
@@ -30,6 +30,9 @@ const loadError = ref('')
 const pollingTimedOut = ref(false)
 const selected = ref<PersonalizedResource | null>(null)
 const detailPanelRef = ref<HTMLElement | null>(null)
+const resourceListRef = ref<HTMLElement | null>(null)
+/** 任务完成后默认收起流水线，避免把「已生成资源」顶出首屏 */
+const showPipelineDetails = ref(false)
 
 const knowledgeOptions = [
   { label: '程序结构', value: 'intro' }, { label: '注释', value: 'comment' },
@@ -86,27 +89,56 @@ const typeOptions = computed(() => [
 
 const visibleTasks = computed(() => taskHistory.value.slice(0, 6))
 
-const groupedResources = computed(() => {
+/** 同知识点同类型去重：已批准优先，其次更大 id */
+function dedupeVisible(items: PersonalizedResource[]) {
   const picked = new Map<string, PersonalizedResource>()
-  for (const item of resources.value) {
-    if (resourceFilter.value !== 'all' && item.resource_type !== resourceFilter.value) continue
+  for (const item of items) {
+    if (item.review_status === 'rejected') continue
     const key = `${item.knowledge_key}:${item.resource_type}`
     const previous = picked.get(key)
-    if (!previous || item.id > previous.id) picked.set(key, item)
+    if (!previous) {
+      picked.set(key, item)
+      continue
+    }
+    const prevApproved = previous.review_status === 'approved'
+    const nextApproved = item.review_status === 'approved'
+    if (nextApproved && !prevApproved) {
+      picked.set(key, item)
+    } else if (nextApproved === prevApproved && item.id > previous.id) {
+      picked.set(key, item)
+    }
   }
+  return [...picked.values()]
+}
+
+function groupByKnowledge(items: PersonalizedResource[]) {
   const groups = new Map<string, PersonalizedResource[]>()
-  for (const item of picked.values()) {
+  for (const item of items) {
     const groupKey = item.knowledge_label || item.knowledge_key || '未标注知识点'
     const list = groups.get(groupKey) ?? []
     list.push(item)
     groups.set(groupKey, list)
   }
-  return Array.from(groups, ([label, items]) => ({
+  return Array.from(groups, ([label, groupItems]) => ({
     label,
-    items: items.sort(
+    items: groupItems.sort(
       (a, b) => (typeOrder[a.resource_type] ?? 99) - (typeOrder[b.resource_type] ?? 99),
     ),
   }))
+}
+
+/** 概览卡片不受类型下拉影响，避免筛到「思维导图」时误以为只有导图 */
+const overviewItems = computed(() => dedupeVisible(resources.value))
+
+const overviewGroupCount = computed(() => groupByKnowledge(overviewItems.value).length)
+
+const overviewResourceCount = computed(() => overviewItems.value.length)
+
+const groupedResources = computed(() => {
+  const filtered = overviewItems.value.filter(
+    (item) => resourceFilter.value === 'all' || item.resource_type === resourceFilter.value,
+  )
+  return groupByKnowledge(filtered)
 })
 
 const latestTaskStatus = computed(() => {
@@ -126,6 +158,8 @@ const flatResources = computed(() =>
   groupedResources.value.flatMap((group) => group.items),
 )
 
+const hasAnyVisibleResources = computed(() => overviewResourceCount.value > 0)
+
 const pendingCount = computed(
   () => resources.value.filter((item) => item.review_status === 'pending_review').length,
 )
@@ -134,15 +168,30 @@ const anomalyCount = computed(
   () => resources.value.filter((item) => Boolean(item.is_anomaly)).length,
 )
 
+const pipelineExpanded = computed(() => {
+  if (!task.value) return false
+  if (task.value.status !== 'completed') return true
+  return showPipelineDetails.value
+})
+
 function bundleForTask(taskId: string) {
   return resources.value.find(
     (item) => item.generation_task_id === taskId && item.resource_type === 'learning_bundle',
   )
 }
 
-function pickDefaultSelection() {
-  const first = flatResources.value[0]
-  if (first && !selected.value) selected.value = first
+function preferLearningBundle(items: PersonalizedResource[]) {
+  return (
+    items.find((item) => item.resource_type === 'learning_bundle' && item.review_status !== 'rejected')
+    ?? items.find((item) => item.review_status !== 'rejected')
+    ?? null
+  )
+}
+
+function pickDefaultSelection(force = false) {
+  if (selected.value && !force) return
+  const preferred = preferLearningBundle(overviewItems.value) ?? flatResources.value[0]
+  if (preferred) selected.value = preferred
 }
 
 function selectResource(item: PersonalizedResource) {
@@ -152,9 +201,21 @@ function selectResource(item: PersonalizedResource) {
   })
 }
 
-async function load() {
-  loading.value = true
-  loadError.value = ''
+function resetTypeFilter() {
+  resourceFilter.value = 'all'
+}
+
+async function revealResourceList() {
+  await nextTick()
+  resourceListRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+async function load(options?: { silent?: boolean }) {
+  const silent = Boolean(options?.silent && resources.value.length)
+  if (!silent) {
+    loading.value = true
+    loadError.value = ''
+  }
   try {
     const [resourceResult, taskResult] = await Promise.all([
       fetchPersonalizedResources(),
@@ -162,9 +223,16 @@ async function load() {
     ])
     resources.value = resourceResult.items
     taskHistory.value = taskResult.items
+    // 若当前选中项已被驳回，切到可见项
+    if (selected.value) {
+      const fresh = resources.value.find((item) => item.id === selected.value?.id)
+      selected.value = fresh && fresh.review_status !== 'rejected' ? fresh : null
+    }
     pickDefaultSelection()
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : '资源加载失败'
+    if (!silent) {
+      loadError.value = error instanceof Error ? error.message : '资源加载失败'
+    }
   } finally {
     loading.value = false
   }
@@ -175,6 +243,7 @@ async function poll(id: string) {
   // 资源包 JSON 较大，云端生成可能 20–40s，多等一会
   for (let index = 0; index < 120; index += 1) {
     task.value = await fetchResourceTask(id)
+    if (task.value.status !== 'completed') showPipelineDetails.value = true
     if (['completed', 'failed'].includes(task.value.status)) return
     await new Promise((resolve) => window.setTimeout(resolve, 1000))
   }
@@ -183,6 +252,8 @@ async function poll(id: string) {
 
 async function generate() {
   generating.value = true
+  showPipelineDetails.value = true
+  resetTypeFilter()
   try {
     const coreTypes: PersonalizedResource['resource_type'][] = [
       'learning_bundle',
@@ -208,13 +279,17 @@ async function generate() {
       const merged = new Map<number, PersonalizedResource>()
       for (const item of resources.value) merged.set(item.id, item)
       for (const item of task.value.resources) merged.set(item.id, item)
-      resources.value = [...merged.values()]
+      resources.value = [...merged.values()].filter((item) => item.review_status !== 'rejected')
     }
+    resetTypeFilter()
+    showPipelineDetails.value = false
     const preferred =
-      task.value.resources?.find((item) => item.resource_type === 'learning_bundle')
-      ?? task.value.resources?.[0]
+      preferLearningBundle(task.value.resources ?? [])
+      ?? preferLearningBundle(overviewItems.value)
       ?? flatResources.value[0]
     if (preferred) selectResource(preferred)
+    else pickDefaultSelection(true)
+    await revealResourceList()
     if (!resources.value.length) {
       message.warning('任务已完成，但暂未返回可展示资源，请稍后刷新或查看任务历史')
     } else if (pollingTimedOut.value) {
@@ -223,10 +298,13 @@ async function generate() {
       message.warning('云端暂时不可用，已用本地课程模板生成；修好网络后可再点生成')
     } else {
       const pending = resources.value.filter((item) => item.review_status === 'pending_review').length
+      const approved = resources.value.filter((item) => item.review_status === 'approved').length
       message.success(
-        pending
-          ? `学习资源包已生成（${pending} 项待审，可先预览学习）`
-          : '学习资源包已生成，可在下方列表点开查看',
+        approved
+          ? `学习资源已就绪（${approved} 项可直接学习${pending ? `，另有 ${pending} 项待审可预览` : ''}）`
+          : pending
+            ? `学习资源包已生成（${pending} 项待审，可先预览学习）`
+            : '学习资源包已生成，可在下方列表点开查看',
       )
     }
   } catch (error) {
@@ -238,9 +316,14 @@ async function generate() {
 
 async function retry(item: ResourceTask) {
   try {
+    showPipelineDetails.value = true
     task.value = await retryResourceTask(item.task_id)
     await poll(task.value.task_id)
     await load()
+    resetTypeFilter()
+    showPipelineDetails.value = false
+    pickDefaultSelection(true)
+    await revealResourceList()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '重试失败')
   }
@@ -253,7 +336,17 @@ function reviewStatusLabel(status: PersonalizedResource['review_status']) {
 }
 
 onMounted(() => {
+  resetTypeFilter()
   void load()
+})
+
+onActivated(() => {
+  // KeepAlive 可能残留「思维导图」等筛选项，切回页面时恢复全部类型
+  resetTypeFilter()
+  // 教师/智能体审核后切回本页时刷新，确保已批准与待审资源立刻可见
+  void load({ silent: true }).then(() => {
+    pickDefaultSelection()
+  })
 })
 </script>
 
@@ -261,11 +354,10 @@ onMounted(() => {
   <DashboardShell
     active-nav="track"
     page-title="个性化资源中心"
-    page-subtitle="左侧选资源、右侧看内容；待审核资源也可先预览"
+    page-subtitle="左侧选资源、右侧看内容；已审核通过与待审资源均可学习"
     search-placeholder=""
     hide-search
   >
-    <template #toolbar><StudentSectionTabs area="learning" /></template>
     <main class="resource-page">
       <section class="generator">
         <div class="generator__copy">
@@ -288,12 +380,12 @@ onMounted(() => {
 
       <section class="resource-summary" aria-label="资源概览">
         <article>
-          <span>资源包</span>
-          <strong>{{ groupedResources.length }}</strong>
+          <span>知识点</span>
+          <strong>{{ overviewGroupCount }}</strong>
         </article>
         <article>
-          <span>去重后资源</span>
-          <strong>{{ groupedResources.reduce((sum, group) => sum + group.items.length, 0) }}</strong>
+          <span>可学习资源</span>
+          <strong>{{ overviewResourceCount }}</strong>
         </article>
         <article>
           <span>最新任务</span>
@@ -314,72 +406,94 @@ onMounted(() => {
 
       <section v-if="task" class="task-panel">
         <header>
-          <strong>小E 正在准备资源</strong>
-          <span v-if="task.fallback_reason">云端模型暂时不可用，小E 先用本地课程模板生成（内容较通用，可稍后重试）</span>
-          <span v-else-if="task.backend === 'deepseek' || task.backend === 'iflytek_spark'">本次为云端实时生成</span>
+          <strong>{{ task.status === 'completed' ? '资源已准备完成' : '小E 正在准备资源' }}</strong>
+          <div class="task-panel__header-actions">
+            <span v-if="task.fallback_reason">云端模型暂时不可用，小E 先用本地课程模板生成（内容较通用，可稍后重试）</span>
+            <span v-else-if="task.backend === 'deepseek' || task.backend === 'iflytek_spark'">本次为云端实时生成</span>
+            <n-button
+              v-if="task.status === 'completed'"
+              size="tiny"
+              quaternary
+              @click="showPipelineDetails = !showPipelineDetails"
+            >
+              {{ showPipelineDetails ? '收起流水线' : '查看流水线' }}
+            </n-button>
+          </div>
         </header>
         <n-progress :percentage="task.progress" color="#25f5ee" />
         <p class="task-panel__hint">{{ taskProgressHint }}</p>
-        <AgentStepsTimeline :steps="task.steps ?? []" />
+        <AgentStepsTimeline v-if="pipelineExpanded" :steps="task.steps ?? []" />
         <p v-if="task.status === 'failed' && task.error" class="task-panel__error">{{ task.error }}</p>
       </section>
 
       <p v-if="pollingTimedOut" class="processing-note">任务仍在后台处理中，页面未将其标记为成功。</p>
-      <div v-if="loading" class="resource-state">正在整理你的资源包...</div>
+      <PlexSyncState
+        v-if="loading && !resources.length"
+        label="正在整理你的资源包…"
+        hint="同步已生成与已审核通过的学习材料"
+      />
       <div v-else-if="loadError" class="resource-state resource-state--error">
         <span>{{ loadError }}</span>
-        <n-button secondary size="small" @click="load">重试</n-button>
+        <n-button secondary size="small" @click="load()">重试</n-button>
       </div>
 
       <template v-else>
-        <section class="resource-tools">
-          <h2>已生成资源</h2>
+        <section ref="resourceListRef" class="resource-tools">
+          <div>
+            <h2>已生成资源</h2>
+            <p class="resource-tools__hint">已批准与待审资源均可点开学习；默认显示全部类型。</p>
+          </div>
           <n-select v-model:value="resourceFilter" :options="typeOptions" class="type-select" />
         </section>
 
         <div v-if="groupedResources.length" class="resource-layout">
           <div class="resource-layout__list">
-            <n-collapse class="resource-groups-collapse" :default-expanded-names="groupedResources.map((g) => g.label)">
-              <n-collapse-item
-                v-for="group in groupedResources"
-                :key="group.label"
-                :title="group.label"
-                :name="group.label"
-              >
-                <template #header-extra>
-                  <span class="resource-group__count">{{ group.items.length }} 类资源</span>
-                </template>
-                <div class="resource-grid">
-                  <button
-                    v-for="item in group.items"
-                    :key="item.id"
-                    type="button"
-                    class="resource-card"
-                    :class="{ 'resource-card--active': selected?.id === item.id }"
-                    @click="selectResource(item)"
-                  >
-                    <span class="resource-card__tags">
-                      <n-tag type="info">{{ typeLabels[item.resource_type] }}</n-tag>
-                      <n-tag
-                        v-if="item.review_status === 'pending_review' || item.is_anomaly"
-                        type="warning"
-                        size="small"
-                      >
-                        {{ item.is_anomaly ? '内容警示' : reviewStatusLabel(item.review_status) }}
-                      </n-tag>
-                      <n-tag :type="item.backend === 'iflytek_spark' ? 'success' : 'warning'">
-                        {{ xiaoEResourceBackendLabel(item.backend) }}
-                      </n-tag>
-                    </span>
-                    <strong>{{ item.title }}</strong>
-                    <p>{{ item.recommendation_reason }}</p>
-                    <span class="resource-card__meta">
-                      <em>约 {{ item.estimated_minutes }} 分钟</em>
-                    </span>
-                  </button>
-                </div>
-              </n-collapse-item>
-            </n-collapse>
+            <section
+              v-for="group in groupedResources"
+              :key="group.label"
+              class="resource-group"
+            >
+              <header class="resource-group__header">
+                <h3>{{ group.label }}</h3>
+                <span class="resource-group__count">{{ group.items.length }} 类资源</span>
+              </header>
+              <div class="resource-grid">
+                <button
+                  v-for="item in group.items"
+                  :key="item.id"
+                  type="button"
+                  class="resource-card"
+                  :class="{ 'resource-card--active': selected?.id === item.id }"
+                  @click="selectResource(item)"
+                >
+                  <span class="resource-card__tags">
+                    <n-tag type="info">{{ typeLabels[item.resource_type] }}</n-tag>
+                    <n-tag
+                      v-if="item.review_status === 'approved'"
+                      type="success"
+                      size="small"
+                    >
+                      已发布
+                    </n-tag>
+                    <n-tag
+                      v-else-if="item.review_status === 'pending_review' || item.is_anomaly"
+                      type="warning"
+                      size="small"
+                    >
+                      {{ item.is_anomaly ? '内容警示' : reviewStatusLabel(item.review_status) }}
+                    </n-tag>
+                    <n-tag :type="item.backend === 'iflytek_spark' ? 'success' : 'warning'">
+                      {{ xiaoEResourceBackendLabel(item.backend) }}
+                    </n-tag>
+                  </span>
+                  <strong>{{ item.title }}</strong>
+                  <p>{{ item.recommendation_reason }}</p>
+                  <span class="resource-card__meta">
+                    <em>约 {{ item.estimated_minutes }} 分钟</em>
+                  </span>
+                </button>
+              </div>
+            </section>
           </div>
 
           <section
@@ -440,6 +554,10 @@ onMounted(() => {
             </div>
           </section>
         </div>
+        <section v-else-if="hasAnyVisibleResources" class="resource-state">
+          当前类型下没有资源。
+          <n-button type="primary" size="small" @click="resetTypeFilter">查看全部类型</n-button>
+        </section>
         <section v-else class="resource-state">
           暂无匹配资源。可在上方选择知识点后点击「生成」，生成完成后会出现在这里。
           <br />
@@ -454,7 +572,7 @@ onMounted(() => {
                 <span>{{ item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '进行中' }}</span>
               </div>
               <div class="task-history__actions">
-                <n-button size="small" secondary @click="task = item">查看进度</n-button>
+                <n-button size="small" secondary @click="task = item; showPipelineDetails = item.status !== 'completed'">查看进度</n-button>
                 <n-button v-if="item.status === 'failed' && item.recoverable" size="small" @click="retry(item)">重试</n-button>
               </div>
             </article>
@@ -626,6 +744,15 @@ onMounted(() => {
   margin-bottom: 0.7rem;
 }
 
+.task-panel__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  text-align: right;
+}
+
 .task-panel__hint {
   margin: 0.75rem 0 0;
   color: #8fb7c4;
@@ -664,24 +791,32 @@ onMounted(() => {
   justify-content: space-between;
   gap: 1rem;
   margin: 1rem 0 0.75rem;
+  scroll-margin-top: 1rem;
 }
 
-.resource-groups-collapse {
-  display: grid;
-  gap: 0.65rem;
+.resource-tools__hint {
+  margin: 0.35rem 0 0;
+  color: #7da5b6;
+  font-size: 0.82rem;
 }
 
-.resource-groups-collapse :deep(.n-collapse-item) {
-  border: 1px solid rgba(37, 245, 238, 0.15);
-  border-radius: 0.75rem;
-  background: rgba(3, 16, 28, 0.84);
-  overflow: hidden;
+.resource-group {
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 1rem 1rem;
 }
 
-.resource-groups-collapse :deep(.n-collapse-item__header) {
-  padding: 0.85rem 1rem;
+.resource-group__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.resource-group__header h3 {
+  margin: 0;
   color: #f2fbff;
-  font-weight: 650;
+  font-size: 0.98rem;
 }
 
 .resource-group__count {
@@ -690,13 +825,9 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.resource-groups-collapse :deep(.n-collapse-item__content-inner) {
-  padding: 0 1rem 1rem;
-}
-
 .resource-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
 }
 
@@ -807,7 +938,7 @@ onMounted(() => {
 
 @media (max-width: 1050px) {
   .resource-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .resource-layout {

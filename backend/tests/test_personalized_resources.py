@@ -160,6 +160,86 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
         self.assertEqual(listing.status_code, 200)
         self.assertEqual(listing.get_json()['data']['total'], 6)
 
+    def test_student_list_includes_pending_and_anomaly(self):
+        """学生端必须能看到待审与异常资源（驳回除外）。"""
+        with self.app.app_context():
+            student = User.query.filter_by(username='student001').first()
+            task = ResourceGenerationTask(
+                task_id='rg_student_visible',
+                user_id=student.id,
+                knowledge_key='loop',
+                requested_types=['lesson_document', 'mind_map'],
+                status='completed',
+                progress=100,
+            )
+            db.session.add(task)
+            db.session.flush()
+            rows = [
+                PersonalizedLearningResource(
+                    user_id=student.id,
+                    generation_task_id=task.task_id,
+                    knowledge_key='loop',
+                    knowledge_label='循环结构',
+                    resource_type='lesson_document',
+                    title='已批准讲解',
+                    content={'format': 'markdown', 'markdown': 'ok'},
+                    profile_snapshot={},
+                    recommendation_reason='测试',
+                    citations=[],
+                    confidence=0.9,
+                    review_status='approved',
+                    backend='local_rules',
+                ),
+                PersonalizedLearningResource(
+                    user_id=student.id,
+                    generation_task_id=task.task_id,
+                    knowledge_key='loop',
+                    knowledge_label='循环结构',
+                    resource_type='mind_map',
+                    title='待审思维导图',
+                    content={'format': 'tree', 'root': 'loop', 'children': []},
+                    profile_snapshot={},
+                    recommendation_reason='测试',
+                    citations=[],
+                    confidence=0.6,
+                    review_status='pending_review',
+                    is_anomaly=True,
+                    student_warning='请以教材为准',
+                    backend='local_rules',
+                ),
+                PersonalizedLearningResource(
+                    user_id=student.id,
+                    generation_task_id=task.task_id,
+                    knowledge_key='loop',
+                    knowledge_label='循环结构',
+                    resource_type='exercise_set',
+                    title='已驳回题库',
+                    content={'format': 'questions', 'questions': []},
+                    profile_snapshot={},
+                    recommendation_reason='测试',
+                    citations=[],
+                    confidence=0.4,
+                    review_status='rejected',
+                    backend='local_rules',
+                ),
+            ]
+            db.session.add_all(rows)
+            db.session.commit()
+
+        listing = self.client.get(
+            '/api/v1/student/personalized-resources',
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(listing.status_code, 200)
+        payload = listing.get_json()['data']
+        titles = {item['title'] for item in payload['items']}
+        self.assertIn('已批准讲解', titles)
+        self.assertIn('待审思维导图', titles)
+        self.assertNotIn('已驳回题库', titles)
+        pending = next(item for item in payload['items'] if item['title'] == '待审思维导图')
+        self.assertTrue(pending['is_anomaly'])
+        self.assertEqual(pending['review_status'], 'pending_review')
+
     def test_scope_validation_and_teacher_review(self):
         invalid = self.client.post(
             '/api/v1/student/resource-generation/tasks',

@@ -27,7 +27,8 @@ import {
   fetchAdminAnnouncements,
   updateAdminAnnouncement,
 } from '../api/adminAnnouncements'
-import AdminClassRequestPanel from '../components/admin/AdminClassRequestPanel.vue'
+import AdminGovernanceComboPanel from '../components/admin/AdminGovernanceComboPanel.vue'
+import AdminRunningTrialsDrilldown from '../components/admin/AdminRunningTrialsDrilldown.vue'
 import PlexThemeSwitcher from '../components/shared/PlexThemeSwitcher.vue'
 import PlexGuideTour from '../components/common/PlexGuideTour.vue'
 import { fetchClassRequests, type ClassChangeRequest } from '../api/classRequests'
@@ -39,10 +40,9 @@ const AdminTrialObservatoryPanel = defineAsyncComponent(
   () => import('../components/admin/AdminTrialObservatoryPanel.vue'),
 )
 import type { SystemAnnouncement } from '../api/teacherAnnouncements'
-import { fetchAdminSettings, saveAdminSettings, fetchAdminDashboard, type AdminSettingsPayload, type AdminDashboardResult } from '../api/adminSettings'
+import { fetchAdminDashboard, type AdminDashboardResult } from '../api/adminSettings'
 import { fetchAgentOrchestration, type AgentOrchestrationResult } from '../api/agentOrchestration'
-import { NInputNumber, NSwitch } from 'naive-ui'
-import { useThemeStore, type ColorMode } from '../stores/theme'
+import { useThemeStore } from '../stores/theme'
 
 type NavKey = 'nexus' | 'agents' | 'observer' | 'governance'
 type Tone = 'purple' | 'amber' | 'green' | 'red'
@@ -110,7 +110,10 @@ onMounted(() => {
 onUnmounted(() => {
   delete (window as Window & { __plexAdminNavSetter?: (key: NavKey) => void }).__plexAdminNavSetter
 })
-const period = ref('today')
+const period = ref<'today' | 'week' | 'month'>('month')
+const trendRange = ref<'7' | '30' | '90'>('7')
+const showStorageDetail = ref(false)
+const showRunningTrialsDrill = ref(false)
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
@@ -147,103 +150,10 @@ const savingAnnouncement = ref(false)
 const deletingAnnouncementId = ref<number | null>(null)
 
 const adminThemeStore = useThemeStore()
-const themeMode = computed(() => adminThemeStore.mode)
-function setThemeMode(key: string) { adminThemeStore.setMode(key as ColorMode) }
+void adminThemeStore
 
-const settingsLoading = ref(false)
-const settingsSaving = ref(false)
-const settingsError = ref('')
-const settingsOpenTime = ref('00:00')
-const settingsDailyLimit = ref('10')
-const settingsDifficulty = ref(50)
-const settingsAiStrategies = ref<{ key: string; label: string; enabled: boolean }[]>([])
-const settingsNotices = ref<{ key: string; label: string; enabled: boolean }[]>([])
 const dashboardData = ref<AdminDashboardResult | null>(null)
 const dashboardLoading = ref(false)
-
-const AI_STRATEGY_LABELS: Record<string, string> = {
-  auto_question_gen: '自动生成题目',
-  personalized_recommend: '个性化推荐',
-  recommend: '个性化推荐',
-  weakness_detection: '薄弱点检测',
-  agent_grading: '智能体批改',
-  difficulty: '自适应难度',
-  risk: '学习风险预警',
-}
-const NOTICE_LABELS: Record<string, string> = {
-  trial_published: '试炼发布通知',
-  quest_reminder: '委托提醒',
-  rank_change: '排名变化提醒',
-  done: '任务完成提醒',
-  ai: 'AI 反馈通知',
-  system: '系统公告',
-}
-const HIDDEN_SETTING_KEYS = new Set(['rhythm', 'abyss', 'punish'])
-
-async function loadSettings() {
-  settingsLoading.value = true
-  settingsError.value = ''
-  try {
-    const result = await fetchAdminSettings()
-    const s = result.settings
-    settingsOpenTime.value = s.rules?.open_time ?? '00:00'
-    settingsDailyLimit.value = s.rules?.daily_limit ?? '10'
-    settingsDifficulty.value = s.rules?.difficulty ?? 50
-    settingsAiStrategies.value = (s.ai_strategies ?? [])
-      .filter((item) => !HIDDEN_SETTING_KEYS.has(item.key))
-      .map((item) => ({
-        key: item.key,
-        label: AI_STRATEGY_LABELS[item.key] ?? item.key,
-        enabled: item.enabled,
-      }))
-      .filter((item) => AI_STRATEGY_LABELS[item.key])
-    if (!settingsAiStrategies.value.length) {
-      settingsAiStrategies.value = Object.keys(AI_STRATEGY_LABELS)
-        .filter((k) => !HIDDEN_SETTING_KEYS.has(k))
-        .map((k) => ({ key: k, label: AI_STRATEGY_LABELS[k], enabled: false }))
-    }
-    settingsNotices.value = (s.notices ?? [])
-      .filter((item) => !HIDDEN_SETTING_KEYS.has(item.key))
-      .map((item) => ({
-        key: item.key,
-        label: NOTICE_LABELS[item.key] ?? item.key,
-        enabled: item.enabled,
-      }))
-      .filter((item) => NOTICE_LABELS[item.key])
-    if (!settingsNotices.value.length) {
-      settingsNotices.value = Object.keys(NOTICE_LABELS)
-        .filter((k) => !HIDDEN_SETTING_KEYS.has(k))
-        .map((k) => ({ key: k, label: NOTICE_LABELS[k], enabled: true }))
-    }
-  } catch (err) {
-    settingsError.value = err instanceof Error ? err.message : '加载设置失败'
-  } finally {
-    settingsLoading.value = false
-  }
-}
-
-async function saveSettings() {
-  settingsSaving.value = true
-  try {
-    const payload: Partial<AdminSettingsPayload> = {
-      rules: {
-        open_time: settingsOpenTime.value,
-        daily_limit: settingsDailyLimit.value,
-        difficulty: settingsDifficulty.value,
-        punish: 'none',
-      },
-      ai_strategies: settingsAiStrategies.value.map(({ key, enabled }) => ({ key, enabled })),
-      notices: settingsNotices.value.map(({ key, enabled }) => ({ key, enabled })),
-      data_scope: 'all',
-    }
-    await saveAdminSettings(payload)
-    message.success('系统设置已保存')
-  } catch (err) {
-    message.error(err instanceof Error ? err.message : '保存失败')
-  } finally {
-    settingsSaving.value = false
-  }
-}
 
 const announcementTargetOptions: SelectOption[] = [
   { label: '全体教师', value: 'teacher' },
@@ -274,13 +184,17 @@ const metricCards: MetricCard[] = [
 async function loadDashboard() {
   dashboardLoading.value = true
   try {
-    dashboardData.value = await fetchAdminDashboard()
+    dashboardData.value = await fetchAdminDashboard(period.value)
   } catch {
     dashboardData.value = null
   } finally {
     dashboardLoading.value = false
   }
 }
+
+watch(period, () => {
+  void loadDashboard()
+})
 
 const liveMetricCards = computed<MetricCard[]>(() => {
   const m = dashboardData.value?.metrics
@@ -418,14 +332,75 @@ const feedItems: FeedItem[] = [
   { title: '异常行为预警', desc: '检测到异常刷题行为', time: '—', tone: 'red', icon: AlertCircleOutline },
 ]
 
-const alertItems: AlertItem[] = [
-  { title: '数据库负载偏高', desc: '主数据库负载已超过 85%', time: '—', level: '高', tone: 'red' },
-  { title: '试炼资源同步延迟', desc: '部分试炼资源同步延迟', time: '—', level: '中', tone: 'amber' },
-  { title: '存储空间预警', desc: '试炼资源存储使用率超过 80%', time: '—', level: '低', tone: 'purple' },
+const alertItems = computed<AlertItem[]>(() => {
+  const rows = dashboardData.value?.alerts
+  if (!rows?.length) {
+    return [
+      { title: '系统运行平稳', desc: '暂无需要立即处理的告警', time: '实时', level: '低', tone: 'purple' },
+    ]
+  }
+  return rows.map((item) => ({
+    title: item.title,
+    desc: item.desc,
+    time: item.time,
+    level: (item.level === '高' || item.level === '中' || item.level === '低' ? item.level : '低') as AlertItem['level'],
+    tone: (item.tone === 'red' || item.tone === 'amber' || item.tone === 'purple' || item.tone === 'green'
+      ? item.tone
+      : 'purple') as Tone,
+  }))
+})
+
+const liveTrendPoints = computed(() => {
+  const submissions = dashboardData.value?.charts?.activity_trend?.submissions ?? []
+  if (!submissions.length) return [8, 14, 11, 18, 16, 22, 19]
+  const max = Math.max(...submissions, 1)
+  return submissions.map((n) => Math.max(4, Math.round((n / max) * 42)))
+})
+
+const liveTrendAxis = computed(() => {
+  const labels = dashboardData.value?.charts?.activity_trend?.x_data
+  if (labels?.length) return labels
+  return ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+})
+
+const trendPolyline = computed(() =>
+  liveTrendPoints.value
+    .map((point, index) => {
+      const step = liveTrendPoints.value.length > 1 ? 378 / (liveTrendPoints.value.length - 1) : 0
+      return `${index * step},${128 - point * 2.2}`
+    })
+    .join(' '),
+)
+
+const storageInfo = computed(() => {
+  const storage = dashboardData.value?.storage
+  if (!storage) {
+    return {
+      total_tb: 0,
+      used_tb: 0,
+      free_tb: 0,
+      used_ratio: 0,
+      breakdown: [] as Array<{ label: string; value_tb: number; count: number }>,
+      detail: null as AdminDashboardResult['storage'] extends infer S
+        ? S extends { detail: infer D }
+          ? D
+          : null
+        : null,
+    }
+  }
+  return storage
+})
+
+const moduleCards = [
+  { label: '学生端', icon: BookOutline, pulse: 'pulse-a' },
+  { label: '教师端', icon: PersonCircleOutline, pulse: 'pulse-b' },
+  { label: '管理端', icon: AppsOutline, pulse: 'pulse-c' },
+  { label: 'Agent 链路', icon: PlanetOutline, pulse: 'pulse-d' },
 ]
 
-const trendPoints = [12, 31, 22, 36, 28, 42, 35, 39]
-const trendPolyline = computed(() => trendPoints.map((point, index) => `${index * 54},${128 - point * 2.2}`).join(' '))
+function openRunningTrials() {
+  showRunningTrialsDrill.value = true
+}
 
 const waveMetric = ref<'activity' | 'health'>('activity')
 const waveMetricOptions: SelectOption[] = [
@@ -488,13 +463,6 @@ const visibleMetrics = computed(() => {
   return liveMetricCards.value
 })
 
-const moduleCards = [
-  { label: '学生端', icon: BookOutline },
-  { label: '教师端', icon: PersonCircleOutline },
-  { label: '管理端', icon: AppsOutline },
-  { label: 'Agent 链路', icon: PlanetOutline },
-]
-
 interface AdminNotificationItem {
   id: string
   title: string
@@ -551,7 +519,6 @@ function setActiveNav(key: NavKey) {
   activeNav.value = key
   if (key === 'governance') {
     void loadAnnouncements()
-    void loadSettings()
     void loadAdminNotifications()
   }
   if (key === 'nexus' || key === 'observer') {
@@ -807,7 +774,13 @@ onUnmounted(() => {
         aria-label="核心指标"
         data-tour="admin-nexus-metrics"
       >
-        <article v-for="item in visibleMetrics" :key="item.label" class="metric-card" :class="`tone-${item.tone}`">
+        <article
+          v-for="item in visibleMetrics"
+          :key="item.label"
+          class="metric-card"
+          :class="[`tone-${item.tone}`, { 'metric-card--clickable': item.label === '运行试炼' && activeNav === 'nexus' }]"
+          @click="item.label === '运行试炼' && activeNav === 'nexus' ? openRunningTrials() : undefined"
+        >
           <span class="metric-icon"><n-icon :component="item.icon" /></span>
           <div>
             <small>{{ item.label }}</small>
@@ -891,7 +864,11 @@ onUnmounted(() => {
         <article class="panel trend-panel">
           <header class="panel-head">
             <h2>用户活跃趋势</h2>
-            <div class="segmented"><button class="active">7日</button><button>30日</button><button>90日</button></div>
+            <div class="segmented">
+              <button type="button" :class="{ active: trendRange === '7' }" @click="trendRange = '7'; period = 'week'">7日</button>
+              <button type="button" :class="{ active: trendRange === '30' }" @click="trendRange = '30'; period = 'month'">30日</button>
+              <button type="button" :class="{ active: trendRange === '90' }" @click="trendRange = '90'; period = 'month'">90日</button>
+            </div>
           </header>
           <svg class="trend-chart" viewBox="0 0 390 150" role="img" aria-label="用户活跃趋势">
             <defs>
@@ -902,28 +879,38 @@ onUnmounted(() => {
             </defs>
             <path :d="`M0,150 L${trendPolyline} L378,150 Z`" fill="url(#trendFill)" opacity=".6" />
             <polyline :points="trendPolyline" />
-            <circle v-for="point in trendPoints" :key="point" :cx="trendPoints.indexOf(point) * 54" :cy="128 - point * 2.2" r="4" />
+            <circle
+              v-for="(point, index) in liveTrendPoints"
+              :key="`${index}-${point}`"
+              :cx="liveTrendPoints.length > 1 ? index * (378 / (liveTrendPoints.length - 1)) : 0"
+              :cy="128 - point * 2.2"
+              r="4"
+            />
           </svg>
-          <div class="chart-axis"><span>05-14</span><span>05-15</span><span>05-16</span><span>05-17</span><span>05-18</span><span>05-19</span><span>05-20</span></div>
+          <div class="chart-axis">
+            <span v-for="label in liveTrendAxis" :key="label">{{ label }}</span>
+          </div>
         </article>
 
         <article class="panel storage-panel">
           <header class="panel-head">
             <h2>资源与存储</h2>
-            <button type="button">查看详情 ›</button>
+            <button type="button" @click="showStorageDetail = true">查看详情 ›</button>
           </header>
           <div class="storage-layout">
-            <div class="storage-ring"><span><n-icon :component="SparklesOutline" /></span></div>
+            <div class="storage-ring" :style="{ '--used': `${storageInfo.used_ratio || 0}%` }">
+              <span><n-icon :component="SparklesOutline" /></span>
+            </div>
             <dl>
-              <div><dt>总存储空间</dt><dd>100 TB</dd></div>
-              <div><dt>已使用</dt><dd>72 TB</dd></div>
-              <div><dt>可用空间</dt><dd>28 TB</dd></div>
+              <div><dt>总存储空间</dt><dd>{{ storageInfo.total_tb }} TB</dd></div>
+              <div><dt>已使用</dt><dd>{{ storageInfo.used_tb }} TB</dd></div>
+              <div><dt>可用空间</dt><dd>{{ storageInfo.free_tb }} TB</dd></div>
             </dl>
             <ul>
-              <li><span>知识资源</span><strong>48.2 TB</strong></li>
-              <li><span>试炼资源</span><strong>14.6 TB</strong></li>
-              <li><span>用户数据</span><strong>7.8 TB</strong></li>
-              <li><span>系统日志</span><strong>1.4 TB</strong></li>
+              <li v-for="row in storageInfo.breakdown" :key="row.label">
+                <span>{{ row.label }}</span>
+                <strong>{{ row.value_tb }} TB</strong>
+              </li>
             </ul>
           </div>
         </article>
@@ -977,10 +964,11 @@ onUnmounted(() => {
             <h2>模块运行状态 <span class="info-dot">i</span></h2>
           </header>
           <div class="module-row module-row--four">
-            <article v-for="item in moduleCards" :key="item.label">
+            <article v-for="item in moduleCards" :key="item.label" class="module-status-card" :class="item.pulse">
+              <span class="module-status-card__pulse" aria-hidden="true" />
               <n-icon :component="item.icon" />
               <strong>{{ item.label }}</strong>
-              <small>正常</small>
+              <small><i class="module-status-card__dot" />正常</small>
             </article>
           </div>
         </article>
@@ -1068,74 +1056,34 @@ onUnmounted(() => {
           </template>
         </n-modal>
 
-        <article class="panel governance-settings-panel" data-tour="admin-feature-flags">
-          <header class="panel-head">
-            <h2>系统设置</h2>
-            <n-button quaternary size="small" class="gov-refresh-btn" :loading="settingsLoading" @click="loadSettings()">刷新</n-button>
-          </header>
-          <div v-if="settingsLoading" class="governance-empty">加载中…</div>
-          <div v-else-if="settingsError" class="governance-empty gov-err">{{ settingsError }}</div>
-          <template v-else>
-            <section class="gov-settings-section">
-              <h3>外观模式</h3>
-              <div class="gov-field gov-field--inline">
-                <span>界面主题（本地偏好）</span>
-                <div class="gov-theme-options">
-                  <button
-                    v-for="opt in [{ key: 'dark', label: '深色' }, { key: 'light', label: '浅色' }, { key: 'auto', label: '跟随系统' }]"
-                    :key="opt.key"
-                    type="button"
-                    class="gov-theme-btn"
-                    :class="{ 'gov-theme-btn--active': themeMode === opt.key }"
-                    @click="setThemeMode(opt.key)"
-                  >{{ opt.label }}</button>
-                </div>
-              </div>
-            </section>
-            <section class="gov-settings-section">
-              <h3>试炼规则</h3>
-              <label class="gov-field">
-                <span>每日试炼上限</span>
-                <n-input v-model:value="settingsDailyLimit" style="width: 100px" />
-              </label>
-              <label class="gov-field">
-                <span>开放时段（起始）</span>
-                <n-input v-model:value="settingsOpenTime" placeholder="00:00" style="width: 120px" />
-              </label>
-              <label class="gov-field">
-                <span>难度系数（0-100）</span>
-                <n-input-number v-model:value="settingsDifficulty" :min="0" :max="100" style="width: 120px" />
-              </label>
-            </section>
-            <section class="gov-settings-section">
-              <h3>AI 策略开关</h3>
-              <label
-                v-for="item in settingsAiStrategies"
-                :key="item.key"
-                class="gov-field gov-field--switch"
-              >
-                <span>{{ item.label }}</span>
-                <n-switch v-model:value="item.enabled" />
-              </label>
-            </section>
-            <section class="gov-settings-section">
-              <h3>通知配置</h3>
-              <label
-                v-for="item in settingsNotices"
-                :key="item.key"
-                class="gov-field gov-field--switch"
-              >
-                <span>{{ item.label }}</span>
-                <n-switch v-model:value="item.enabled" />
-              </label>
-            </section>
-            <n-button type="primary" class="gov-primary-btn" :loading="settingsSaving" @click="saveSettings()">保存设置</n-button>
-            <n-button secondary style="margin-top:0.65rem;width:100%" @click="restartAdminTour">重新查看功能导览</n-button>
-          </template>
-        </article>
-
-        <admin-class-request-panel @reviewed="loadAdminNotifications" />
+        <AdminGovernanceComboPanel class="governance-combo-span" @reviewed="loadAdminNotifications" />
       </section>
+
+      <n-modal
+        v-model:show="showStorageDetail"
+        preset="card"
+        title="资源与存储详情"
+        style="width: min(560px, 92vw)"
+      >
+        <dl class="storage-detail-list">
+          <div><dt>总容量</dt><dd>{{ storageInfo.total_tb }} TB</dd></div>
+          <div><dt>已使用</dt><dd>{{ storageInfo.used_tb }} TB（{{ storageInfo.used_ratio }}%）</dd></div>
+          <div><dt>可用</dt><dd>{{ storageInfo.free_tb }} TB</dd></div>
+        </dl>
+        <ul class="storage-detail-breakdown">
+          <li v-for="row in storageInfo.breakdown" :key="row.label">
+            <span>{{ row.label }}</span>
+            <em>{{ row.value_tb }} TB · {{ row.count }} 项</em>
+          </li>
+        </ul>
+        <div v-if="storageInfo.detail" class="storage-detail-meta">
+          <p>已批准资源 {{ storageInfo.detail.approved_resources }} · 待审 {{ storageInfo.detail.pending_review }}</p>
+          <p>生成任务 {{ storageInfo.detail.resource_tasks }}（完成 {{ storageInfo.detail.completed_tasks }} / 失败 {{ storageInfo.detail.failed_tasks }}）</p>
+          <p>试炼参与 {{ storageInfo.detail.participations }} · 作答记录 {{ storageInfo.detail.progress_answers }}</p>
+        </div>
+      </n-modal>
+
+      <AdminRunningTrialsDrilldown v-model:show="showRunningTrialsDrill" />
 
       <footer class="admin-footer">© {{ currentYear }} PLEX Universe. All rights reserved.</footer>
     </main>
@@ -2572,5 +2520,83 @@ onUnmounted(() => {
   border-color: #818cf8;
   background: rgba(129, 140, 248, 0.15);
   color: #a5b4fc;
+}
+
+.metric-card--clickable {
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.metric-card--clickable:hover {
+  transform: translateY(-2px);
+  border-color: rgba(196, 181, 253, 0.55);
+}
+
+.module-status-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.module-status-card__pulse {
+  position: absolute;
+  inset: auto auto -18% -18%;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(74, 222, 128, 0.35), transparent 70%);
+  animation: module-pulse 2.4s ease-in-out infinite;
+}
+
+.module-status-card.pulse-b .module-status-card__pulse { animation-delay: 0.35s; }
+.module-status-card.pulse-c .module-status-card__pulse { animation-delay: 0.7s; }
+.module-status-card.pulse-d .module-status-card__pulse { animation-delay: 1.05s; }
+
+.module-status-card__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 0.35rem;
+  border-radius: 999px;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
+  animation: module-dot 1.8s ease-out infinite;
+}
+
+.governance-combo-span {
+  grid-column: 1 / -1;
+}
+
+.storage-detail-list,
+.storage-detail-breakdown {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.storage-detail-list > div,
+.storage-detail-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: rgba(226, 214, 255, 0.86);
+}
+
+.storage-detail-meta p {
+  margin: 0.35rem 0;
+  color: rgba(196, 181, 253, 0.75);
+  font-size: 0.84rem;
+}
+
+@keyframes module-pulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.45; }
+  50% { transform: scale(1.25); opacity: 0.9; }
+}
+
+@keyframes module-dot {
+  0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
 }
 </style>

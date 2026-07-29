@@ -15,11 +15,11 @@ from typing import Any
 SYSTEM_PROMPT = """你是高校 Python 程序设计课程的「资源审核智能体」。
 你的职责是审核 AI 生成的个性化学习资源是否适合自动发布给学生。
 
-判定标准：
-1. 知识是否明显错误、过时或与课程知识点无关
-2. 是否含不当内容（暴力、歧视、色情、作弊诱导、泄露隐私等）
-3. 练习/代码是否明显不可用或误导学生
-4. 表述是否混乱到会误导初学者
+判定标准（从宽，优先让正常教学内容自动通过）：
+1. 仅当知识明显错误、过时或与课程知识点完全无关时才拦截
+2. 仅当含不当内容（暴力、歧视、色情、作弊诱导、泄露隐私等）时驳回
+3. 练习/代码轻微瑕疵（题量偏少、个别缺解析、示例语法不完整）可自动通过，并在 summary 中提示
+4. 表述略乱但初学者仍可学 → auto_approve
 
 输出必须是 JSON 对象，字段：
 - decision: "auto_approve" | "needs_review" | "reject"
@@ -31,9 +31,10 @@ SYSTEM_PROMPT = """你是高校 Python 程序设计课程的「资源审核智�
 - review_reason: 自动批准或驳回时写入审核记录的中文说明
 
 决策指引：
-- 内容正常、可学习 → auto_approve，is_anomaly=false
-- 有疑点但可先给学生预习 → needs_review，is_anomaly=true，必须给 student_warning
-- 明显有害/严重错误 → reject，is_anomaly=true，必须给 student_warning
+- 内容大体正常、可学习 → auto_approve，is_anomaly=false（默认优先此项）
+- 有明显疑点且可能误导 → needs_review，is_anomaly=true，必须给 student_warning
+- 明显有害/严重事实错误 → reject，is_anomaly=true，必须给 student_warning
+- six_step_verdict 为 NEED_MODIFY 且无硬风险时，仍可 auto_approve
 """
 
 
@@ -149,7 +150,7 @@ def _rules_fallback(
     soft_ok = (
         verdict in ('PASS', 'NEED_MODIFY')
         and not has_hard
-        and min_dim >= 60
+        and min_dim >= 45
     )
     if soft_ok:
         return {

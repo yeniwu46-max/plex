@@ -7,6 +7,27 @@ export type TeacherOverviewContext = ReturnType<typeof useTeacherOverview>
 export const TEACHER_OVERVIEW_KEY: InjectionKey<TeacherOverviewContext> = Symbol('teacher-overview')
 export const TEACHER_SHELL_SEARCH_KEY: InjectionKey<Ref<string>> = Symbol('teacher-shell-search')
 
+const CLASS_STORAGE_KEY = 'plex_teacher_selected_class_id'
+
+function readStoredClassId(): number | null {
+  try {
+    const raw = localStorage.getItem(CLASS_STORAGE_KEY)
+    const value = raw ? Number(raw) : NaN
+    return Number.isFinite(value) && value > 0 ? value : null
+  } catch {
+    return null
+  }
+}
+
+function persistClassId(classId: number | null) {
+  try {
+    if (classId) localStorage.setItem(CLASS_STORAGE_KEY, String(classId))
+    else localStorage.removeItem(CLASS_STORAGE_KEY)
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 export function useTeacherOverviewInjected(): TeacherOverviewContext {
   const ctx = inject(TEACHER_OVERVIEW_KEY)
   if (!ctx) {
@@ -19,7 +40,7 @@ export function useTeacherOverview() {
   const overview = ref<TeacherOverview | null>(null)
   const loading = ref(true)
   const errorMessage = ref('')
-  const selectedClassId = ref<number | null>(null)
+  const selectedClassId = ref<number | null>(readStoredClassId())
   const period = ref<'week' | 'month'>('week')
 
   const classOptions = computed<SelectOption[]>(() =>
@@ -41,13 +62,14 @@ export function useTeacherOverview() {
     { label: '本月', value: 'month' },
   ]
 
-  async function loadOverview(classId = selectedClassId.value) {
+  async function loadOverview(classId = selectedClassId.value ?? readStoredClassId()) {
     loading.value = true
     errorMessage.value = ''
     try {
       const data = await fetchTeacherOverview({ classId, period: period.value })
       overview.value = data
       selectedClassId.value = data.selected_class?.id ?? null
+      persistClassId(selectedClassId.value)
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '教师端数据加载失败'
     } finally {
@@ -58,6 +80,7 @@ export function useTeacherOverview() {
   function changeClass(value: string | number | null) {
     const nextValue = value === null ? null : Number(value)
     selectedClassId.value = nextValue
+    persistClassId(nextValue)
     void loadOverview(nextValue)
   }
 

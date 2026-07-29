@@ -1,4 +1,4 @@
-import { http, type ApiEnvelope } from './http'
+import { formatHttpError, http, type ApiEnvelope } from './http'
 import type { KgEdge, KgNode } from '../data/knowledgeGraphData'
 
 export interface KnowledgeGraphWeakNode {
@@ -51,6 +51,38 @@ export async function fetchClassKnowledgeGraph(classId: number) {
   )
   if (data.code !== 0) throw new Error(data.message || '班级知识图谱加载失败')
   return data.data
+}
+
+export interface KnowledgeGraphAffectedStudent {
+  id: number
+  username: string
+  real_name: string
+  class_id: number
+  class_name: string | null
+  fail_count: number
+  wrong_count: number
+  error_types: Array<{ error_type: string; count: number }>
+}
+
+export interface KnowledgeGraphAffectedStudentsResult {
+  class_id: number
+  class_name: string | null
+  node_id: string
+  items: KnowledgeGraphAffectedStudent[]
+  total: number
+}
+
+export async function fetchNodeAffectedStudents(classId: number, nodeId: string) {
+  try {
+    const { data } = await http.get<ApiEnvelope<KnowledgeGraphAffectedStudentsResult>>(
+      `/v1/knowledge-graph/class/${classId}/affected-students`,
+      { params: { node_id: nodeId } },
+    )
+    if (data.code !== 0) throw new Error(data.message || '影响学生列表加载失败')
+    return data.data
+  } catch (error) {
+    throw new Error(formatHttpError(error, '影响学生列表加载失败'))
+  }
 }
 
 export async function fetchAdminKnowledgeGraph() {

@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NAvatar, NButton, NInput, NUpload, useMessage, type UploadFileInfo } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
-import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import { useAuthStore } from '../stores/auth'
 import type { StudentOverview } from '../api/studentOverview'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
@@ -128,7 +127,6 @@ onMounted(() => {
     search-placeholder="搜索设置项…"
     hide-search
   >
-    <template #toolbar><StudentSectionTabs area="me" /></template>
     <section class="student-control" aria-label="学生账号设置">
       <div class="student-control__hero">
         <span class="student-control__hero-scan" aria-hidden="true" />

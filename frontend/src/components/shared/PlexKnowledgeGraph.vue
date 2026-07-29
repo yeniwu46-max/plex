@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { GraphData } from '@antv/g6'
+import { NModal, NSpin } from 'naive-ui'
 import type { KgEdge, KgEdgeType, KgNode, KgNodeStatus } from '../../data/knowledgeGraphData'
 import { KG_NODE_STATUS_COLOR, KG_NODE_STATUS_LABEL } from '../../data/knowledgeGraphData'
+import { formatHttpError } from '../../api/http'
+import {
+  fetchNodeAffectedStudents,
+  type KnowledgeGraphAffectedStudent,
+} from '../../api/knowledgeGraph'
 import { useThemeStore } from '../../stores/theme'
 import { getG6Tokens, buildG6TooltipHtml } from '../../theme/g6Theme'
 
@@ -17,6 +23,7 @@ const props = withDefaults(
     pathNodeIds?: string[]
     remediationNodeIds?: string[]
     activePathNodeId?: string | null
+    classId?: number | null
   }>(),
   {
     mode: 'student',
@@ -24,6 +31,7 @@ const props = withDefaults(
     pathNodeIds: () => [],
     remediationNodeIds: () => [],
     activePathNodeId: null,
+    classId: null,
   },
 )
 
@@ -40,6 +48,11 @@ let destroyed = false
 const graphLoading = ref(true)
 
 const selectedNode = ref<KgNode | null>(null)
+const affectedVisible = ref(false)
+const affectedLoading = ref(false)
+const affectedError = ref('')
+const affectedStudents = ref<KnowledgeGraphAffectedStudent[]>([])
+const affectedClassName = ref<string | null>(null)
 
 const EDGE_COLOR: Record<KgEdgeType, string> = {
   prerequisite: '#38bdf8',
@@ -77,6 +90,28 @@ function errorTypeLabel(type: string) {
     wrong_answer: '答案错误',
   }
   return labels[type] ?? type
+}
+
+function formatErrorTypes(items: KnowledgeGraphAffectedStudent['error_types']) {
+  if (!items?.length) return '薄弱掌握'
+  return items.map((item) => errorTypeLabel(item.error_type)).join('、')
+}
+
+async function openAffectedStudents() {
+  if (props.mode !== 'teacher' || !selectedNode.value || !props.classId) return
+  affectedVisible.value = true
+  affectedLoading.value = true
+  affectedError.value = ''
+  affectedStudents.value = []
+  try {
+    const result = await fetchNodeAffectedStudents(props.classId, selectedNode.value.id)
+    affectedStudents.value = result.items
+    affectedClassName.value = result.class_name
+  } catch (error) {
+    affectedError.value = formatHttpError(error, '影响学生加载失败')
+  } finally {
+    affectedLoading.value = false
+  }
 }
 
 function buildMetricTooltip(node: KgNode) {
@@ -325,9 +360,19 @@ onBeforeUnmount(() => {
               <span v-if="selectedNode.accuracy !== null && selectedNode.accuracy !== undefined">%</span>
             </dd>
           </div>
-          <div class="plex-kg-detail__metric">
-            <dt>{{ mode === 'teacher' ? '影响学生' : '失败次数' }}</dt>
-            <dd>{{ mode === 'teacher' ? selectedNode.affected_student_count ?? 0 : selectedNode.fail_count ?? 0 }}</dd>
+          <button
+            v-if="mode === 'teacher'"
+            type="button"
+            class="plex-kg-detail__metric plex-kg-detail__metric--action"
+            :disabled="!classId || !(selectedNode.affected_student_count ?? 0)"
+            @click="openAffectedStudents"
+          >
+            <dt>影响学生</dt>
+            <dd>{{ selectedNode.affected_student_count ?? 0 }}</dd>
+          </button>
+          <div v-else class="plex-kg-detail__metric">
+            <dt>失败次数</dt>
+            <dd>{{ selectedNode.fail_count ?? 0 }}</dd>
           </div>
         </dl>
         <div class="plex-kg-detail__edges">
@@ -341,6 +386,41 @@ onBeforeUnmount(() => {
         </div>
       </aside>
     </transition>
+
+    <n-modal
+      v-model:show="affectedVisible"
+      preset="card"
+      :title="`${selectedNode?.label || '知识点'} · 影响学生`"
+      class="plex-kg-affected-modal"
+      :bordered="false"
+      :z-index="5400"
+      style="width: min(640px, calc(100vw - 32px))"
+    >
+      <n-spin :show="affectedLoading">
+        <p v-if="affectedError" class="plex-kg-affected__error">{{ affectedError }}</p>
+        <p v-else-if="!affectedStudents.length" class="plex-kg-affected__empty">暂无受影响学生</p>
+        <div v-else class="plex-kg-affected__table-wrap">
+          <table class="plex-kg-affected__table">
+            <thead>
+              <tr>
+                <th>班级</th>
+                <th>学号</th>
+                <th>姓名</th>
+                <th>答错类型</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in affectedStudents" :key="row.id">
+                <td>{{ row.class_name || affectedClassName || '—' }}</td>
+                <td>{{ row.username }}</td>
+                <td>{{ row.real_name }}</td>
+                <td>{{ formatErrorTypes(row.error_types) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </n-spin>
+    </n-modal>
 
     <div class="plex-kg-legend">
       <span v-for="(color, key) in KG_NODE_STATUS_COLOR" :key="key" class="plex-kg-legend__item">
@@ -475,6 +555,63 @@ onBeforeUnmount(() => {
   border-color: rgba(249, 115, 22, 0.22);
 }
 
+.plex-kg-detail__metric--action {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.plex-kg-detail__metric--action:hover:not(:disabled) {
+  border-color: rgba(249, 115, 22, 0.55);
+  background: rgba(249, 115, 22, 0.16);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2);
+}
+
+.plex-kg-detail__metric--action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.plex-kg-affected__table-wrap {
+  overflow: auto;
+  max-height: min(60vh, 420px);
+}
+
+.plex-kg-affected__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.plex-kg-affected__table th,
+.plex-kg-affected__table td {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  color: #fff7ed;
+}
+
+.plex-kg-affected__table th {
+  color: rgba(253, 186, 116, 0.82);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.plex-kg-affected__empty,
+.plex-kg-affected__error {
+  margin: 0;
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 0.88rem;
+}
+
+.plex-kg-affected__error {
+  color: #fca5a5;
+}
+
 .plex-kg-detail__metrics dt {
   margin: 0 0 0.2rem;
   color: rgba(203, 213, 225, 0.62);
@@ -563,5 +700,16 @@ onBeforeUnmount(() => {
 .slide-leave-to {
   opacity: 0;
   transform: translateX(12px);
+}
+</style>
+
+<style>
+.plex-kg-affected-modal.n-card {
+  background: rgba(8, 14, 22, 0.98) !important;
+  border: 1px solid rgba(251, 146, 60, 0.22) !important;
+}
+
+.plex-kg-affected-modal .n-card-header__main {
+  color: #fff7ed !important;
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NIcon, NInput } from 'naive-ui'
 import { postMessengerChat, streamMessengerChat } from '../api/messenger'
@@ -54,6 +54,7 @@ const prompt = ref('')
 const chatLoading = ref(false)
 const chatMessages = ref<ChatMessage[]>([])
 const chatThreadEl = ref<HTMLElement | null>(null)
+let scrollRaf = 0
 
 function recentChatHistory() {
   return chatMessages.value.slice(-18).map((msg) => ({
@@ -63,7 +64,9 @@ function recentChatHistory() {
 }
 
 function scrollThreadToBottom() {
-  void nextTick(() => {
+  if (scrollRaf) return
+  scrollRaf = window.requestAnimationFrame(() => {
+    scrollRaf = 0
     const el = chatThreadEl.value
     if (el) el.scrollTop = el.scrollHeight
   })

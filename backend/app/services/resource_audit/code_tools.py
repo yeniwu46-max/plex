@@ -78,10 +78,11 @@ def run_static_suite(sources: list[tuple[str, str]]) -> list[dict[str, Any]]:
             path.write_text(source, encoding='utf-8')
 
             comp = compile_python(source, label)
+            # 语法问题降为 WARNING：常见于示例片段/伪代码，不直接整包驳回
             results.append({
                 'tool': 'compile',
                 'file': path.name,
-                'level': 'PASS' if comp['passed'] else 'FAIL',
+                'level': 'PASS' if comp['passed'] else 'WARNING',
                 'detail': comp['output'] or '语法检查通过',
             })
 

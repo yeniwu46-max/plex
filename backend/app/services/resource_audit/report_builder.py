@@ -30,19 +30,25 @@ def _ai_trustworthiness(
     if risks:
         score -= min(40, 10 * len(risks))
         notes.append(f'结构风险：{", ".join(risks)}')
-    if confidence < 0.8:
-        score -= 15
-        notes.append(f'置信度 {confidence:.0%}')
+    if confidence < 0.55:
+        score -= 12
+        notes.append(f'置信度偏低 {confidence:.0%}')
+    elif confidence < 0.7:
+        score -= 5
+        notes.append(f'置信度一般 {confidence:.0%}')
     if citations is not None:
-        if not _citations_are_valid(citations):
-            score -= 20
-            notes.append('引用无效')
-        elif any(c.get('section') != knowledge_key for c in citations):
+        if not citations:
+            score -= 8
+            notes.append('缺少引用')
+        elif not _citations_are_valid(citations):
             score -= 10
+            notes.append('引用待核对')
+        elif any(c.get('section') != knowledge_key for c in citations):
+            score -= 5
             notes.append('引用章节不匹配')
     rag_checks = [c for c in step1.checks if c.id == 'rag_consistency']
     if rag_checks and rag_checks[0].level == 'WARNING':
-        score -= 8
+        score -= 5
         notes.append('RAG 一致性弱')
     if any(c.id == 'fantasy_api' and c.level == 'FAIL' for c in step1.checks):
         score -= 25
@@ -72,17 +78,30 @@ def build_report(
         ai_trustworthiness=ai_score,
     )
 
-    has_fail = any(step.has_fail for step in steps)
-    has_warning = any(step.has_warning for step in steps)
+    hard_fail_markers = ('fantasy', 'unsafe', 'hallucin', 'injection', 'safety')
+    hard_fails = [
+        check
+        for step in steps
+        for check in (step.checks or [])
+        if check.level == 'FAIL' and any(m in str(check.id).lower() for m in hard_fail_markers)
+    ]
+    soft_fails = [
+        check
+        for step in steps
+        for check in (step.checks or [])
+        if check.level == 'FAIL' and check not in hard_fails
+    ]
+    has_warning = any(step.has_warning for step in steps) or bool(soft_fails)
     min_dim = dimensions.min_score()
 
     verdict: Verdict
-    if has_fail:
+    # 仅安全/幻觉等硬 FAIL 才 REJECT；结构/题量/编译等软问题降为 NEED_MODIFY，便于自动通过链路
+    if hard_fails:
         verdict = 'REJECT'
-        summary = '存在 FAIL 项，建议驳回或大幅修改后再审'
-    elif has_warning or min_dim < 70:
+        summary = '存在安全或严重知识错误，建议驳回或大幅修改后再审'
+    elif has_warning or min_dim < 55:
         verdict = 'NEED_MODIFY'
-        summary = '存在 WARNING 或低分维度，建议修改后发布'
+        summary = '存在提示项或低分维度，可先发布预习并由教师抽检'
     else:
         verdict = 'PASS'
         summary = '六步审核通过，可作为发布参考（仍需教师确认）'

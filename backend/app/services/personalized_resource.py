@@ -1186,6 +1186,7 @@ class PersonalizedResourceService:
 
     @staticmethod
     def list_student(user_id: int, args) -> dict:
+        """学生可见：已批准 + 待审可预览；驳回不可见。优先返回已批准。"""
         query = PersonalizedLearningResource.query.filter(
             PersonalizedLearningResource.user_id == user_id,
             PersonalizedLearningResource.review_status.in_(('approved', 'pending_review')),
@@ -1194,7 +1195,19 @@ class PersonalizedResourceService:
             query = query.filter_by(knowledge_key=args['knowledge_key'])
         if args.get('resource_type'):
             query = query.filter_by(resource_type=args['resource_type'])
-        rows = query.order_by(PersonalizedLearningResource.created_at.desc()).all()
+        # 已批准优先，再按创建时间倒序，避免新待审条目盖住已发布内容
+        rows = query.order_by(
+            PersonalizedLearningResource.review_status.asc(),  # approved < pending_review 字母序
+            PersonalizedLearningResource.created_at.desc(),
+        ).all()
+        # SQLite/MySQL 上 'approved' < 'pending_review'，再显式稳定排序
+        rows = sorted(
+            rows,
+            key=lambda row: (
+                0 if row.review_status == 'approved' else 1,
+                -(row.id or 0),
+            ),
+        )
         return {'items': [row.to_dict() for row in rows], 'total': len(rows)}
 
     @staticmethod

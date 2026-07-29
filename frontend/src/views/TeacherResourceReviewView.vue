@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   NButton,
   NCollapse,
@@ -7,15 +7,14 @@ import {
   NEmpty,
   NIcon,
   NInput,
+  NModal,
   NProgress,
   NTag,
   useMessage,
 } from 'naive-ui'
 import { SparklesOutline } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
-import ClassFileExchangePanel from '../components/student/ClassFileExchangePanel.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
-import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import {
   DIMENSION_LABELS,
   fetchResourceAudit,
@@ -30,14 +29,16 @@ import {
   type ResourceReviewMetrics,
 } from '../api/personalizedResources'
 
+defineOptions({ name: 'TeacherResourceReviewView' })
+
 const message = useMessage()
-const { selectedClassId } = useTeacherOverviewInjected()
 const items = ref<PersonalizedResource[]>([])
 const metrics = ref<ResourceReviewMetrics | null>(null)
 const reasons = ref<Record<number, string>>({})
 const auditReports = ref<Record<number, AuditReport>>({})
 const auditLoading = ref<Record<number, boolean>>({})
-const expandedId = ref<number | null>(null)
+const detailItem = ref<PersonalizedResource | null>(null)
+const detailShow = ref(false)
 const smartReviewLoading = ref(false)
 const listFilter = ref<'anomaly' | 'all_pending'>('anomaly')
 
@@ -51,9 +52,11 @@ const riskReasonLabels: Record<string, string> = {
   ai_anomaly: 'AI 判定异常',
   ai_reject: 'AI 建议驳回',
   safety_blocked: '内容安全拦截',
-  schema_invalid: '结构校验失败',
+  schema_invalid: '结构校验提示',
   invalid_citation: '引用无效',
   out_of_scope: '超出课程范围',
+  insufficient_exercises: '练习偏少',
+  missing_answers: '答案不完整',
 }
 
 const typeLabels: Record<string, string> = {
@@ -74,7 +77,7 @@ const verdictTagType: Record<string, 'success' | 'warning' | 'error'> = {
 }
 
 const reviewStatusLabels: Record<string, string> = {
-  pending_review: '待审核',
+  pending_review: '生成待审核',
   approved: '已批准',
   rejected: '已驳回',
   draft: '草稿',
@@ -98,25 +101,16 @@ const levelTagType: Record<string, 'success' | 'warning' | 'error'> = {
   FAIL: 'error',
 }
 
-const groupedItems = computed(() => {
-  const groups = new Map<string, PersonalizedResource[]>()
-  for (const item of items.value) {
-    const key = item.generation_task_id
-    const bucket = groups.get(key) ?? []
-    bucket.push(item)
-    groups.set(key, bucket)
-  }
-  return [...groups.entries()].map(([taskId, groupItems]) => ({
-    taskId,
-    items: [...groupItems].sort((a, b) => a.id - b.id),
-    isAnomaly: groupItems.some((item) => item.is_anomaly),
-  }))
+const pendingCards = computed(() => {
+  const filtered =
+    listFilter.value === 'anomaly' ? items.value.filter((item) => item.is_anomaly) : items.value
+  return [...filtered].sort((a, b) => {
+    if (a.is_anomaly !== b.is_anomaly) return a.is_anomaly ? -1 : 1
+    return b.id - a.id
+  })
 })
 
-const anomalyGroups = computed(() => groupedItems.value.filter((group) => group.isAnomaly))
-const visibleGroups = computed(() =>
-  listFilter.value === 'anomaly' ? anomalyGroups.value : groupedItems.value,
-)
+const anomalyCount = computed(() => items.value.filter((item) => item.is_anomaly).length)
 
 function bundleForTask(taskId: string) {
   return items.value.find(
@@ -131,12 +125,7 @@ async function load() {
   ])
   items.value = resources.items
   metrics.value = reviewMetrics
-  if (resources.items.length && expandedId.value === null) {
-    const preferred =
-      resources.items.find((item) => item.is_anomaly) ?? resources.items[0]
-    expandedId.value = preferred.id
-  }
-  if (listFilter.value === 'anomaly' && !anomalyGroups.value.length && groupedItems.value.length) {
+  if (listFilter.value === 'anomaly' && !anomalyCount.value && resources.items.length) {
     listFilter.value = 'all_pending'
   }
   await Promise.all(resources.items.map((item) => loadAudit(item.id)))
@@ -175,15 +164,27 @@ async function review(item: PersonalizedResource, status: 'approved' | 'rejected
   try {
     await reviewPersonalizedResource(item.id, status, reasons.value[item.id] || '')
     message.success(status === 'approved' ? '资源已批准' : '资源已驳回')
-    expandedId.value = null
+    detailShow.value = false
+    detailItem.value = null
     await load()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '审核失败')
   }
 }
 
-function toggleDetail(item: PersonalizedResource) {
-  expandedId.value = expandedId.value === item.id ? null : item.id
+function openDetail(item: PersonalizedResource, event?: Event) {
+  event?.preventDefault()
+  event?.stopPropagation()
+  detailItem.value = item
+  detailShow.value = true
+  if (!auditReports.value[item.id] && !auditLoading.value[item.id]) {
+    void loadAudit(item.id)
+  }
+}
+
+function closeDetail() {
+  detailShow.value = false
+  detailItem.value = null
 }
 
 function dimensionEntries(report: AuditReport) {
@@ -192,6 +193,10 @@ function dimensionEntries(report: AuditReport) {
 
 function formatRiskReason(reason: string) {
   return riskReasonLabels[reason] ?? reason.replace(/_/g, ' ')
+}
+
+function topRisks(item: PersonalizedResource, limit = 3) {
+  return (item.risk_reasons || []).slice(0, limit)
 }
 
 async function runSmartReview() {
@@ -203,7 +208,7 @@ async function runSmartReview() {
       `智能审核完成：自动通过 ${result.approved_count} 项，${result.flagged_count} 项异常待人工复核`,
     )
     listFilter.value = result.flagged_count > 0 ? 'anomaly' : 'all_pending'
-    expandedId.value = null
+    closeDetail()
     await load()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '智能审核失败')
@@ -212,6 +217,10 @@ async function runSmartReview() {
   }
 }
 
+watch(detailShow, (open) => {
+  if (!open) detailItem.value = null
+})
+
 onMounted(() => void load())
 </script>
 
@@ -219,7 +228,7 @@ onMounted(() => void load())
   <TeacherDashboardShell
     active-nav="resources"
     page-title="资源审核"
-    page-subtitle="点击资源查看完整内容 · 六步审核建议仅供参考"
+    page-subtitle="每个待审资源一张卡片 · 点击查看 AI 分析结果"
     hide-search
     hide-toolbar
   >
@@ -243,15 +252,15 @@ onMounted(() => void load())
         <article><span>待审核</span><strong>{{ metrics.pending_review_count }}</strong></article>
         <article>
           <span>异常待审</span>
-          <strong>{{ metrics.anomaly_pending_count ?? anomalyGroups.length }}</strong>
+          <strong>{{ metrics.anomaly_pending_count ?? anomalyCount }}</strong>
         </article>
         <article><span>已批准</span><strong>{{ metrics.status_counts.approved }}</strong></article>
         <article><span>已驳回</span><strong>{{ metrics.status_counts.rejected }}</strong></article>
-        <article>
+        <article class="metric-grid__wide">
           <span>平均审核时长</span>
           <strong>{{ metrics.average_review_minutes ?? '—' }} 分钟</strong>
         </article>
-        <article v-if="metrics.verdict_distribution?.length" class="risk-summary">
+        <article v-if="metrics.verdict_distribution?.length" class="metric-grid__wide risk-summary">
           <span>AI 建议结论</span>
           <div>
             <n-tag
@@ -260,14 +269,6 @@ onMounted(() => void load())
               :type="verdictTagType[row.verdict] ?? 'default'"
             >
               {{ verdictLabels[row.verdict] ?? row.verdict }} × {{ row.count }}
-            </n-tag>
-          </div>
-        </article>
-        <article v-if="metrics.risk_reason_distribution?.length" class="risk-summary">
-          <span>风险原因</span>
-          <div>
-            <n-tag v-for="risk in metrics.risk_reason_distribution" :key="risk.reason" type="warning">
-              {{ formatRiskReason(risk.reason) }} × {{ risk.count }}
             </n-tag>
           </div>
         </article>
@@ -280,7 +281,7 @@ onMounted(() => void load())
           secondary
           @click="listFilter = 'anomaly'"
         >
-          异常内容（{{ anomalyGroups.length }}）
+          异常内容（{{ anomalyCount }}）
         </n-button>
         <n-button
           size="small"
@@ -288,7 +289,7 @@ onMounted(() => void load())
           secondary
           @click="listFilter = 'all_pending'"
         >
-          全部待审（{{ groupedItems.length }}）
+          全部待审（{{ items.length }}）
         </n-button>
       </div>
 
@@ -297,147 +298,174 @@ onMounted(() => void load())
         description="当前没有待审核资源（正常内容已由 AI 自动批准）"
       />
       <n-empty
-        v-else-if="!visibleGroups.length"
+        v-else-if="!pendingCards.length"
         :description="listFilter === 'anomaly' ? '暂无异常内容，可切换查看全部待审' : '当前没有待审核资源'"
       />
 
-      <section
-        v-for="group in visibleGroups"
-        :key="group.taskId"
-        class="task-group"
-        :class="{ 'task-group--anomaly': group.isAnomaly }"
-      >
-        <header class="task-group__header">
-          <div>
-            <h2>
-              {{ group.items[0]?.knowledge_label }} · 生成任务
-              <n-tag v-if="group.isAnomaly" type="error" size="small">异常待审</n-tag>
-            </h2>
-            <p>任务 ID：{{ group.taskId }} · {{ group.items.length }} 项待审</p>
-          </div>
-        </header>
-
+      <section v-else class="resource-card-grid" aria-label="生成待审核资源">
         <article
-          v-for="item in group.items"
+          v-for="item in pendingCards"
           :key="item.id"
-          class="review-card"
-          :class="{ 'review-card--anomaly': item.is_anomaly }"
+          class="resource-card"
+          :class="{ 'resource-card--anomaly': item.is_anomaly }"
+          role="button"
+          tabindex="0"
+          @click="openDetail(item, $event)"
+          @keydown.enter.prevent="openDetail(item)"
         >
-          <header>
-            <button type="button" class="review-card__title-btn" @click="toggleDetail(item)">
+          <header class="resource-card__head">
+            <div>
+              <p class="resource-card__eyebrow">{{ item.knowledge_label || '知识点' }}</p>
               <h3>{{ item.title }}</h3>
-              <span class="review-card__hint">
-                {{ expandedId === item.id ? '点击收起' : '点击查看详细内容' }}
-              </span>
-            </button>
-            <div class="review-card__tags">
-              <n-tag v-if="item.is_anomaly" type="error">异常内容</n-tag>
-              <n-tag type="warning">{{ reviewStatusLabels[item.review_status] ?? '待审核' }}</n-tag>
-              <n-tag>{{ typeLabels[item.resource_type] ?? item.resource_type }}</n-tag>
-              <n-tag
-                v-if="auditReports[item.id]"
-                :type="verdictTagType[auditReports[item.id].verdict] ?? 'default'"
-              >
-                建议 {{ verdictLabels[auditReports[item.id].verdict] ?? auditReports[item.id].verdict }}
-              </n-tag>
-              <span>置信度 {{ Math.round(item.confidence * 100) }}%</span>
             </div>
+            <n-tag v-if="item.is_anomaly" type="error" size="small">异常待审</n-tag>
+            <n-tag v-else type="warning" size="small">
+              {{ reviewStatusLabels[item.review_status] ?? '生成待审核' }}
+            </n-tag>
           </header>
 
-          <div class="risks">
-            <n-tag v-for="risk in item.risk_reasons" :key="risk" type="error">{{ formatRiskReason(risk) }}</n-tag>
+          <div class="resource-card__meta">
+            <n-tag size="small">{{ typeLabels[item.resource_type] ?? item.resource_type }}</n-tag>
+            <n-tag
+              v-if="auditReports[item.id]"
+              size="small"
+              :type="verdictTagType[auditReports[item.id].verdict] ?? 'default'"
+            >
+              AI {{ verdictLabels[auditReports[item.id].verdict] ?? auditReports[item.id].verdict }}
+            </n-tag>
+            <span>置信度 {{ Math.round(item.confidence * 100) }}%</span>
           </div>
-          <p v-if="item.ai_review?.teacher_summary" class="ai-summary">
-            <strong>AI 审核：</strong>{{ String(item.ai_review.teacher_summary) }}
+
+          <p v-if="item.ai_review?.teacher_summary" class="resource-card__summary">
+            {{ String(item.ai_review.teacher_summary) }}
           </p>
-          <p v-if="item.student_warning" class="student-warning-preview">
-            <strong>学生端警示：</strong>{{ item.student_warning }}
+          <p v-else class="resource-card__summary resource-card__summary--muted">
+            {{ item.recommendation_reason || '点击查看 AI 六步审核与资源内容' }}
           </p>
-          <p>{{ item.recommendation_reason }}</p>
 
-          <section v-if="expandedId === item.id" class="resource-detail">
-            <section v-if="auditReports[item.id]" class="audit-panel">
-              <div class="audit-summary">
-                <p>{{ auditReports[item.id].summary }}</p>
-                <n-button
-                  size="small"
-                  secondary
-                  :loading="auditLoading[item.id]"
-                  @click="rerunAudit(item)"
-                >
-                  重新审核
-                </n-button>
-              </div>
+          <div v-if="topRisks(item).length" class="resource-card__risks">
+            <n-tag v-for="risk in topRisks(item)" :key="risk" size="small" type="warning">
+              {{ formatRiskReason(risk) }}
+            </n-tag>
+            <span v-if="(item.risk_reasons?.length || 0) > 3" class="resource-card__more">
+              +{{ (item.risk_reasons?.length || 0) - 3 }}
+            </span>
+          </div>
 
-              <div class="dimension-grid">
-                <div
-                  v-for="[key, score] in dimensionEntries(auditReports[item.id])"
-                  :key="key"
-                  class="dimension-row"
-                >
-                  <span>{{ DIMENSION_LABELS[key] }}</span>
-                  <n-progress type="line" :percentage="score" :height="8" :show-indicator="true" />
-                </div>
-              </div>
-
-              <n-collapse>
-                <n-collapse-item
-                  v-for="step in auditReports[item.id].steps"
-                  :key="step.step"
-                  :title="`第${step.step}步 · ${step.name}（${step.score} 分）`"
-                  :name="String(step.step)"
-                >
-                  <p class="step-summary">{{ step.summary }}</p>
-                  <ul v-if="step.checks.length" class="check-list">
-                    <li v-for="check in step.checks" :key="check.id">
-                      <n-tag size="small" :type="levelTagType[check.level] ?? 'default'">{{ levelLabels[check.level] ?? check.level }}</n-tag>
-                      <strong>{{ check.label }}</strong>
-                      <span>{{ check.detail }}</span>
-                    </li>
-                  </ul>
-                </n-collapse-item>
-              </n-collapse>
-
-              <p v-if="auditReports[item.id].metadata?.crewai_notes" class="crew-note">
-                <strong>AI 审核备注：</strong>{{ auditReports[item.id].metadata?.crewai_notes }}
-              </p>
-            </section>
-            <p v-else-if="auditLoading[item.id]" class="audit-loading">正在加载六步审核报告…</p>
-
-            <h4 class="detail-heading">资源内容</h4>
-            <PersonalizedResourceContentViewer
-              :item="item"
-              :bundle-item="bundleForTask(item.generation_task_id)"
-              theme="teacher"
-            />
-
-            <h4 class="detail-heading">知识库引用</h4>
-            <ul class="citation-list">
-              <li v-for="citation in item.citations" :key="citation.document_id">
-                {{ citation.title }} · {{ citation.section }}：{{ citation.snippet }}
-              </li>
-            </ul>
-
-            <n-input v-model:value="reasons[item.id]" placeholder="审核说明（批准时必填）" />
-            <footer>
-              <n-button type="error" secondary @click="review(item, 'rejected')">驳回</n-button>
-              <n-button type="primary" @click="review(item, 'approved')">批准发布</n-button>
-            </footer>
-          </section>
+          <footer class="resource-card__foot">
+            <span>任务 {{ (item.generation_task_id || '').slice(0, 8) || '—' }}…</span>
+            <button
+              type="button"
+              class="resource-card__action"
+              @click="openDetail(item, $event)"
+            >
+              查看 AI 分析 →
+            </button>
+          </footer>
         </article>
       </section>
 
-      <section class="review-page__files" aria-label="学生提交文件审核">
-        <header class="review-page__files-head">
-          <h2>学生提交文件</h2>
-          <p>班级学生上传的学习报告、代码与学习截图，独立于 AI 个性化资源审核。</p>
-        </header>
-        <class-file-exchange-panel
-          role="teacher"
-          submissions-only
-          :class-id="selectedClassId"
-        />
-      </section>
+      <n-modal
+        v-model:show="detailShow"
+        preset="card"
+        :title="detailItem?.title || '资源详情'"
+        class="resource-detail-modal"
+        :bordered="false"
+        :z-index="5200"
+        style="width: min(920px, calc(100vw - 32px))"
+        @after-leave="closeDetail"
+      >
+        <template v-if="detailItem">
+          <div class="detail-tags">
+            <n-tag v-if="detailItem.is_anomaly" type="error">异常内容</n-tag>
+            <n-tag type="warning">{{ reviewStatusLabels[detailItem.review_status] ?? '待审核' }}</n-tag>
+            <n-tag>{{ typeLabels[detailItem.resource_type] ?? detailItem.resource_type }}</n-tag>
+            <n-tag
+              v-if="auditReports[detailItem.id]"
+              :type="verdictTagType[auditReports[detailItem.id].verdict] ?? 'default'"
+            >
+              建议 {{ verdictLabels[auditReports[detailItem.id].verdict] ?? auditReports[detailItem.id].verdict }}
+            </n-tag>
+          </div>
+
+          <p v-if="detailItem.ai_review?.teacher_summary" class="ai-summary">
+            <strong>AI 审核：</strong>{{ String(detailItem.ai_review.teacher_summary) }}
+          </p>
+          <p v-if="detailItem.student_warning" class="student-warning-preview">
+            <strong>学生端警示：</strong>{{ detailItem.student_warning }}
+          </p>
+
+          <section v-if="auditReports[detailItem.id]" class="audit-panel">
+            <div class="audit-summary">
+              <p>{{ auditReports[detailItem.id].summary }}</p>
+              <n-button
+                size="small"
+                secondary
+                :loading="auditLoading[detailItem.id]"
+                @click="rerunAudit(detailItem)"
+              >
+                重新审核
+              </n-button>
+            </div>
+
+            <div class="dimension-grid">
+              <div
+                v-for="[key, score] in dimensionEntries(auditReports[detailItem.id])"
+                :key="key"
+                class="dimension-row"
+              >
+                <span>{{ DIMENSION_LABELS[key] }}</span>
+                <n-progress type="line" :percentage="score" :height="8" :show-indicator="true" />
+              </div>
+            </div>
+
+            <n-collapse>
+              <n-collapse-item
+                v-for="step in auditReports[detailItem.id].steps"
+                :key="step.step"
+                :title="`第${step.step}步 · ${step.name}（${step.score} 分）`"
+                :name="String(step.step)"
+              >
+                <p class="step-summary">{{ step.summary }}</p>
+                <ul v-if="step.checks.length" class="check-list">
+                  <li v-for="check in step.checks" :key="check.id">
+                    <n-tag size="small" :type="levelTagType[check.level] ?? 'default'">
+                      {{ levelLabels[check.level] ?? check.level }}
+                    </n-tag>
+                    <strong>{{ check.label }}</strong>
+                    <span>{{ check.detail }}</span>
+                  </li>
+                </ul>
+              </n-collapse-item>
+            </n-collapse>
+
+            <p v-if="auditReports[detailItem.id].metadata?.crewai_notes" class="crew-note">
+              <strong>AI 审核备注：</strong>{{ auditReports[detailItem.id].metadata?.crewai_notes }}
+            </p>
+          </section>
+          <p v-else-if="auditLoading[detailItem.id]" class="audit-loading">正在加载六步审核报告…</p>
+
+          <h4 class="detail-heading">资源内容</h4>
+          <PersonalizedResourceContentViewer
+            :item="detailItem"
+            :bundle-item="bundleForTask(detailItem.generation_task_id)"
+            theme="teacher"
+          />
+
+          <h4 class="detail-heading">知识库引用</h4>
+          <ul class="citation-list">
+            <li v-for="citation in detailItem.citations" :key="citation.document_id">
+              {{ citation.title }} · {{ citation.section }}：{{ citation.snippet }}
+            </li>
+          </ul>
+
+          <n-input v-model:value="reasons[detailItem.id]" placeholder="审核说明（批准时必填）" />
+          <footer class="detail-actions">
+            <n-button type="error" secondary @click="review(detailItem, 'rejected')">驳回</n-button>
+            <n-button type="primary" @click="review(detailItem, 'approved')">批准发布</n-button>
+          </footer>
+        </template>
+      </n-modal>
     </main>
   </TeacherDashboardShell>
 </template>
@@ -446,7 +474,6 @@ onMounted(() => void load())
 .review-page {
   width: 100%;
   padding: 0 var(--plex-page-gutter-x) 2rem;
-  overflow-y: auto;
 }
 
 .review-page__toolbar {
@@ -475,17 +502,172 @@ onMounted(() => void load())
   margin-bottom: 1rem;
 }
 
-.task-group {
-  margin-bottom: 1.2rem;
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
 }
 
-.task-group--anomaly .task-group__header h2 {
-  color: #fecaca;
+.metric-grid article {
+  padding: 1rem;
+  border: 1px solid rgba(255, 173, 76, 0.2);
+  border-radius: 14px;
+  background: rgba(25, 15, 7, 0.72);
 }
 
-.review-card--anomaly {
-  border-color: rgba(248, 113, 113, 0.45);
-  background: rgba(69, 10, 10, 0.55);
+.metric-grid__wide {
+  grid-column: span 2;
+}
+
+.metric-grid span {
+  display: block;
+  color: rgba(235, 215, 194, 0.68);
+}
+
+.metric-grid strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #fff7ec;
+  font-size: 1.35rem;
+}
+
+.risk-summary div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.resource-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+.resource-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1.05rem 1.1rem;
+  border: 1px solid rgba(255, 173, 76, 0.22);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(251, 146, 60, 0.12), transparent 42%),
+    rgba(25, 15, 7, 0.78);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.resource-card:hover,
+.resource-card:focus-visible {
+  border-color: rgba(251, 146, 60, 0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  outline: none;
+}
+
+.resource-card--anomaly {
+  border-color: rgba(248, 113, 113, 0.42);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(248, 113, 113, 0.14), transparent 42%),
+    rgba(69, 10, 10, 0.55);
+}
+
+.resource-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.resource-card__eyebrow {
+  margin: 0 0 0.25rem;
+  color: rgba(251, 146, 60, 0.78);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.resource-card__head h3 {
+  margin: 0;
+  color: #fff7ec;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.resource-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: rgba(235, 215, 194, 0.65);
+  font-size: 0.82rem;
+}
+
+.resource-card__summary {
+  margin: 0;
+  color: rgba(254, 215, 170, 0.88);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.resource-card__summary--muted {
+  color: rgba(235, 215, 194, 0.58);
+}
+
+.resource-card__risks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.resource-card__more {
+  color: rgba(235, 215, 194, 0.55);
+  font-size: 0.78rem;
+}
+
+.resource-card__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.35rem;
+  color: rgba(235, 215, 194, 0.5);
+  font-size: 0.78rem;
+}
+
+.resource-card__action {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #fb923c;
+  font: inherit;
+  font-weight: 650;
+  font-size: 0.78rem;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.resource-card__action:hover {
+  color: #fdba74;
+  text-decoration: underline;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
 }
 
 .ai-summary,
@@ -503,93 +685,6 @@ onMounted(() => void load())
   color: rgba(252, 165, 165, 0.92);
 }
 
-.task-group__header {
-  margin-bottom: 0.65rem;
-}
-
-.task-group__header h2 {
-  margin: 0;
-  color: #fff7ec;
-  font-size: 1.1rem;
-}
-
-.task-group__header p {
-  margin: 0.25rem 0 0;
-  color: rgba(235, 215, 194, 0.6);
-  font-size: 0.88rem;
-}
-
-.review-card {
-  margin-bottom: 0.75rem;
-  padding: 1.2rem;
-  border: 1px solid rgba(255, 173, 76, 0.2);
-  border-radius: 16px;
-  background: rgba(25, 15, 7, 0.72);
-}
-
-.review-card header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.8rem;
-}
-
-.review-card__title-btn {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  padding: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-
-.review-card__title-btn h3 {
-  margin: 0;
-  color: #fff7ec;
-}
-
-.review-card__hint {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.82rem;
-  color: rgba(255, 173, 76, 0.75);
-}
-
-.review-card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
-  color: rgba(235, 215, 194, 0.65);
-  font-size: 0.85rem;
-}
-
-.review-card p,
-.review-card li {
-  color: rgba(235, 215, 194, 0.7);
-}
-
-.review-card footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.6rem;
-  margin-top: 0.8rem;
-}
-
-.risks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0.5rem 0;
-}
-
-.resource-detail {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 173, 76, 0.15);
-}
-
 .detail-heading {
   margin: 1rem 0 0.5rem;
   color: #fff7ec;
@@ -599,47 +694,18 @@ onMounted(() => void load())
 .citation-list {
   margin: 0 0 1rem;
   padding-left: 1.2rem;
+  color: rgba(235, 215, 194, 0.7);
 }
 
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.8rem;
-  margin-bottom: 1rem;
-}
-
-.metric-grid article {
-  padding: 1rem;
-  border: 1px solid rgba(255, 173, 76, 0.2);
-  border-radius: 14px;
-  background: rgba(25, 15, 7, 0.72);
-}
-
-.metric-grid span {
-  display: block;
-  color: rgba(235, 215, 194, 0.68);
-}
-
-.metric-grid strong {
-  display: block;
-  margin-top: 0.35rem;
-  color: #fff7ec;
-  font-size: 1.35rem;
-}
-
-.metric-grid .risk-summary {
-  grid-column: 1 / -1;
-}
-
-.risk-summary div {
+.detail-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.55rem;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
 }
 
 .audit-panel {
-  margin-bottom: 1rem;
+  margin: 1rem 0;
   padding: 1rem;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.15);
@@ -652,6 +718,7 @@ onMounted(() => void load())
   justify-content: space-between;
   gap: 0.8rem;
   margin-bottom: 0.8rem;
+  color: rgba(235, 215, 194, 0.78);
 }
 
 .dimension-grid {
@@ -674,6 +741,7 @@ onMounted(() => void load())
 
 .step-summary {
   margin-bottom: 0.5rem;
+  color: rgba(235, 215, 194, 0.7);
 }
 
 .check-list {
@@ -689,6 +757,7 @@ onMounted(() => void load())
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
+  color: rgba(235, 215, 194, 0.7);
 }
 
 .check-list strong {
@@ -702,33 +771,28 @@ onMounted(() => void load())
   color: rgba(235, 215, 194, 0.65);
 }
 
-.review-page__files {
-  margin-top: 1.25rem;
-}
-
-.review-page__files-head h2 {
-  margin: 0;
-  color: #fff7ec;
-  font-size: 1.1rem;
-}
-
-.review-page__files-head p {
-  margin: 0.35rem 0 0.75rem;
-  color: rgba(235, 215, 194, 0.62);
-  font-size: 0.88rem;
-}
-
 @media (max-width: 800px) {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .metric-grid__wide {
+    grid-column: 1 / -1;
+  }
+
   .dimension-row {
     grid-template-columns: 1fr;
   }
+}
+</style>
 
-  .review-card header {
-    flex-direction: column;
-  }
+<style>
+.resource-detail-modal.n-card {
+  background: rgba(8, 14, 22, 0.98) !important;
+  border: 1px solid rgba(251, 146, 60, 0.22) !important;
+}
+
+.resource-detail-modal .n-card-header__main {
+  color: #fff7ed !important;
 }
 </style>

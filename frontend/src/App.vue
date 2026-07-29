@@ -61,3 +61,10 @@ watch(
     </n-message-provider>
   </n-config-provider>
 </template>
+
+<style scoped>
+.app-root {
+  height: 100%;
+  min-height: 100%;
+}
+</style>

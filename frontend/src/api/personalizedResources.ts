@@ -8,6 +8,7 @@ export type PersonalizedResourceType =
   | 'extended_reading'
   | 'coding_lab'
   | 'audio_explanation'
+  | 'video_lesson'
 
 export interface PersonalizedResource {
   id: number
@@ -30,6 +31,9 @@ export interface PersonalizedResource {
   generator_agent: string
   generation_task_id: string
   backend: string
+  is_anomaly?: boolean
+  student_warning?: string | null
+  ai_review?: Record<string, unknown>
 }
 
 export interface ResourceTask {
@@ -74,6 +78,7 @@ export async function createResourceTask(
     target?: string
     learning_stage?: string
     learning_style?: string[]
+    force_regenerate?: boolean
   },
 ) {
   const { data } = await http.post<ApiEnvelope<ResourceTask>>('/v1/student/resource-generation/tasks', {
@@ -83,6 +88,7 @@ export async function createResourceTask(
     target: options?.target,
     learning_stage: options?.learning_stage,
     learning_style: options?.learning_style,
+    force_regenerate: options?.force_regenerate ?? true,
   })
   if (data.code !== 0) throw new Error(data.message || '创建生成任务失败')
   return data.data
@@ -118,10 +124,20 @@ export async function fetchPersonalizedResources() {
   return data.data
 }
 
-export async function fetchReviewResources(reviewStatus = 'pending_review') {
+export async function fetchReviewResources(
+  reviewStatus = 'pending_review',
+  options?: { anomalyOnly?: boolean },
+) {
   const { data } = await http.get<ApiEnvelope<{ items: PersonalizedResource[]; total: number }>>(
     '/v1/teacher/personalized-resources/review',
-    { params: { review_status: reviewStatus } },
+    {
+      params: {
+        review_status: reviewStatus,
+        ...(options?.anomalyOnly === undefined
+          ? {}
+          : { anomaly_only: options.anomalyOnly ? 'true' : 'false' }),
+      },
+    },
   )
   if (data.code !== 0) throw new Error(data.message || '待审核资源加载失败')
   return data.data
@@ -131,6 +147,7 @@ export interface ResourceReviewMetrics {
   total_resources: number
   status_counts: Record<'pending_review' | 'approved' | 'rejected', number>
   pending_review_count: number
+  anomaly_pending_count?: number
   average_review_minutes: number | null
   risk_reason_distribution: Array<{ reason: string; count: number }>
   verdict_distribution?: Array<{ verdict: AuditVerdict; count: number }>
@@ -226,5 +243,20 @@ export async function reviewPersonalizedResource(
     { review_status: reviewStatus, reason },
   )
   if (data.code !== 0) throw new Error(data.message || '审核失败')
+  return data.data
+}
+
+export interface SmartReviewResult {
+  approved_count: number
+  flagged_count: number
+  total: number
+  items: Array<{ id: number; decision: string; is_anomaly?: boolean }>
+}
+
+export async function runTeacherSmartReview() {
+  const { data } = await http.post<ApiEnvelope<SmartReviewResult>>(
+    '/v1/teacher/personalized-resources/smart-review',
+  )
+  if (data.code !== 0) throw new Error(data.message || '智能审核失败')
   return data.data
 }

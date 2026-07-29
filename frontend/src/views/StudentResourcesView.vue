@@ -4,6 +4,7 @@ import { NButton, NCollapse, NCollapseItem, NProgress, NSelect, NTag, useMessage
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
+import AgentStepsTimeline from '../components/personalized/AgentStepsTimeline.vue'
 import {
   createResourceTask,
   fetchPersonalizedResources,
@@ -49,6 +50,7 @@ const typeLabels: Record<string, string> = {
   extended_reading: '拓展阅读',
   coding_lab: '代码实操',
   audio_explanation: '语音讲解',
+  video_lesson: '教学短视频',
 }
 
 const typeOrder: Record<string, number> = {
@@ -59,6 +61,7 @@ const typeOrder: Record<string, number> = {
   extended_reading: 4,
   coding_lab: 5,
   audio_explanation: 6,
+  video_lesson: 7,
 }
 
 const stageOptions = [
@@ -127,6 +130,10 @@ const pendingCount = computed(
   () => resources.value.filter((item) => item.review_status === 'pending_review').length,
 )
 
+const anomalyCount = computed(
+  () => resources.value.filter((item) => Boolean(item.is_anomaly)).length,
+)
+
 function bundleForTask(taskId: string) {
   return resources.value.find(
     (item) => item.generation_task_id === taskId && item.resource_type === 'learning_bundle',
@@ -165,7 +172,8 @@ async function load() {
 
 async function poll(id: string) {
   pollingTimedOut.value = false
-  for (let index = 0; index < 90; index += 1) {
+  // 资源包 JSON 较大，云端生成可能 20–40s，多等一会
+  for (let index = 0; index < 120; index += 1) {
     task.value = await fetchResourceTask(id)
     if (['completed', 'failed'].includes(task.value.status)) return
     await new Promise((resolve) => window.setTimeout(resolve, 1000))
@@ -176,22 +184,51 @@ async function poll(id: string) {
 async function generate() {
   generating.value = true
   try {
-    task.value = await createResourceTask(knowledgeKey.value, undefined, undefined, {
+    const coreTypes: PersonalizedResource['resource_type'][] = [
+      'learning_bundle',
+      'lesson_document',
+      'mind_map',
+      'exercise_set',
+      'extended_reading',
+      'coding_lab',
+      'audio_explanation',
+      'video_lesson',
+    ]
+    task.value = await createResourceTask(knowledgeKey.value, coreTypes, undefined, {
       target: '大学',
       learning_stage: learningStage.value,
       learning_style: learningStyles.value,
+      force_regenerate: true,
     })
     if (task.value.status !== 'completed') await poll(task.value.task_id)
     if (task.value.status === 'failed') throw new Error(task.value.error || '生成任务失败')
     await load()
+    // 任务内嵌资源优先合并，避免列表接口滞后导致「看不到」
     if (task.value.resources?.length) {
-      const preferred =
-        task.value.resources.find((item) => item.resource_type === 'learning_bundle')
-        ?? task.value.resources[0]
-      if (preferred) selectResource(preferred)
+      const merged = new Map<number, PersonalizedResource>()
+      for (const item of resources.value) merged.set(item.id, item)
+      for (const item of task.value.resources) merged.set(item.id, item)
+      resources.value = [...merged.values()]
     }
-    if (pollingTimedOut.value) message.info('任务仍在处理中，可稍后从任务历史继续查看')
-    else message.success('学习资源包已生成')
+    const preferred =
+      task.value.resources?.find((item) => item.resource_type === 'learning_bundle')
+      ?? task.value.resources?.[0]
+      ?? flatResources.value[0]
+    if (preferred) selectResource(preferred)
+    if (!resources.value.length) {
+      message.warning('任务已完成，但暂未返回可展示资源，请稍后刷新或查看任务历史')
+    } else if (pollingTimedOut.value) {
+      message.info('任务仍在处理中，可稍后从任务历史继续查看')
+    } else if (task.value.fallback_reason) {
+      message.warning('云端暂时不可用，已用本地课程模板生成；修好网络后可再点生成')
+    } else {
+      const pending = resources.value.filter((item) => item.review_status === 'pending_review').length
+      message.success(
+        pending
+          ? `学习资源包已生成（${pending} 项待审，可先预览学习）`
+          : '学习资源包已生成，可在下方列表点开查看',
+      )
+    }
   } catch (error) {
     message.error(error instanceof Error ? error.message : '生成失败')
   } finally {
@@ -263,22 +300,27 @@ onMounted(() => {
           <strong>{{ latestTaskStatus }}</strong>
         </article>
         <article>
-          <span>待教师审核</span>
-          <strong>{{ pendingCount }}</strong>
+          <span>异常待关注</span>
+          <strong>{{ anomalyCount }}</strong>
         </article>
       </section>
 
-      <p v-if="pendingCount" class="pending-note">
-        有 {{ pendingCount }} 项资源待教师审核，审核通过前也可在本页预览学习内容。
+      <p v-if="anomalyCount" class="pending-note">
+        有 {{ anomalyCount }} 项异常内容待教师关注；其余资源已可直接学习。
+      </p>
+      <p v-else-if="pendingCount" class="pending-note pending-note--soft">
+        有 {{ pendingCount }} 项内容仍在复核中，可先预习。
       </p>
 
       <section v-if="task" class="task-panel">
         <header>
           <strong>小E 正在准备资源</strong>
-          <span v-if="task.fallback_reason">网络较慢，小E 已切换备用方案</span>
+          <span v-if="task.fallback_reason">云端模型暂时不可用，小E 先用本地课程模板生成（内容较通用，可稍后重试）</span>
+          <span v-else-if="task.backend === 'deepseek' || task.backend === 'iflytek_spark'">本次为云端实时生成</span>
         </header>
         <n-progress :percentage="task.progress" color="#25f5ee" />
         <p class="task-panel__hint">{{ taskProgressHint }}</p>
+        <AgentStepsTimeline :steps="task.steps ?? []" />
         <p v-if="task.status === 'failed' && task.error" class="task-panel__error">{{ task.error }}</p>
       </section>
 
@@ -319,11 +361,11 @@ onMounted(() => {
                     <span class="resource-card__tags">
                       <n-tag type="info">{{ typeLabels[item.resource_type] }}</n-tag>
                       <n-tag
-                        v-if="item.review_status === 'pending_review'"
+                        v-if="item.review_status === 'pending_review' || item.is_anomaly"
                         type="warning"
                         size="small"
                       >
-                        {{ reviewStatusLabel(item.review_status) }}
+                        {{ item.is_anomaly ? '内容警示' : reviewStatusLabel(item.review_status) }}
                       </n-tag>
                       <n-tag :type="item.backend === 'iflytek_spark' ? 'success' : 'warning'">
                         {{ xiaoEResourceBackendLabel(item.backend) }}
@@ -355,12 +397,29 @@ onMounted(() => {
                 <n-button quaternary @click="selected = null">关闭</n-button>
               </header>
               <n-tag
-                v-if="selected.review_status === 'pending_review'"
+                v-if="selected.review_status === 'pending_review' || selected.is_anomaly"
                 type="warning"
                 class="pending-tag"
               >
-                待教师审核 · 可先学习，正式发布以教师批准为准
+                {{
+                  selected.is_anomaly
+                    ? '内容异常警示 · 可先预览，请以教师讲解与教材为准'
+                    : '待教师审核 · 可先学习，正式发布以教师批准为准'
+                }}
               </n-tag>
+              <aside
+                v-if="selected.student_warning || selected.is_anomaly"
+                class="resource-warning"
+                role="note"
+              >
+                <strong>学习提示</strong>
+                <p>
+                  {{
+                    selected.student_warning
+                      || '本资源由 AI 生成且尚未通过教师最终确认，内容可能存在不准确之处，请以课堂讲解与教材为准。'
+                  }}
+                </p>
+              </aside>
               <PersonalizedResourceContentViewer
                 :item="selected"
                 :bundle-item="bundleForTask(selected.generation_task_id)"
@@ -381,7 +440,11 @@ onMounted(() => {
             </div>
           </section>
         </div>
-        <section v-else class="resource-state">暂无匹配资源。可以切换类型筛选，或生成新的资源包。</section>
+        <section v-else class="resource-state">
+          暂无匹配资源。可在上方选择知识点后点击「生成」，生成完成后会出现在这里。
+          <br />
+          若刚生成成功却仍为空，请点「最近生成记录」里的「查看进度」，或刷新页面。
+        </section>
 
         <n-collapse v-if="visibleTasks.length" class="task-history">
           <n-collapse-item title="最近生成记录" name="history">
@@ -509,6 +572,28 @@ onMounted(() => {
 
 .pending-tag {
   margin-bottom: 0.75rem;
+}
+
+.resource-warning {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(120, 53, 15, 0.28);
+}
+
+.resource-warning strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #fde68a;
+  font-size: 0.9rem;
+}
+
+.resource-warning p {
+  margin: 0;
+  color: rgba(254, 243, 199, 0.92);
+  font-size: 0.86rem;
+  line-height: 1.55;
 }
 
 .resource-summary article {

@@ -23,6 +23,7 @@ import {
   fetchReviewResources,
   rerunResourceAudit,
   reviewPersonalizedResource,
+  runTeacherSmartReview,
   type AuditReport,
   type DimensionScores,
   type PersonalizedResource,
@@ -38,7 +39,7 @@ const auditReports = ref<Record<number, AuditReport>>({})
 const auditLoading = ref<Record<number, boolean>>({})
 const expandedId = ref<number | null>(null)
 const smartReviewLoading = ref(false)
-const manualReviewTags = ref<Record<number, string>>({})
+const listFilter = ref<'anomaly' | 'all_pending'>('anomaly')
 
 const riskReasonLabels: Record<string, string> = {
   low_confidence: '置信度偏低',
@@ -47,6 +48,12 @@ const riskReasonLabels: Record<string, string> = {
   code_quality: '代码质量存疑',
   factual_risk: '事实准确性风险',
   incomplete_content: '内容不完整',
+  ai_anomaly: 'AI 判定异常',
+  ai_reject: 'AI 建议驳回',
+  safety_blocked: '内容安全拦截',
+  schema_invalid: '结构校验失败',
+  invalid_citation: '引用无效',
+  out_of_scope: '超出课程范围',
 }
 
 const typeLabels: Record<string, string> = {
@@ -57,6 +64,7 @@ const typeLabels: Record<string, string> = {
   extended_reading: '拓展阅读',
   coding_lab: '代码实操',
   audio_explanation: '语音讲解',
+  video_lesson: '教学短视频',
 }
 
 const verdictTagType: Record<string, 'success' | 'warning' | 'error'> = {
@@ -101,8 +109,14 @@ const groupedItems = computed(() => {
   return [...groups.entries()].map(([taskId, groupItems]) => ({
     taskId,
     items: [...groupItems].sort((a, b) => a.id - b.id),
+    isAnomaly: groupItems.some((item) => item.is_anomaly),
   }))
 })
+
+const anomalyGroups = computed(() => groupedItems.value.filter((group) => group.isAnomaly))
+const visibleGroups = computed(() =>
+  listFilter.value === 'anomaly' ? anomalyGroups.value : groupedItems.value,
+)
 
 function bundleForTask(taskId: string) {
   return items.value.find(
@@ -118,7 +132,12 @@ async function load() {
   items.value = resources.items
   metrics.value = reviewMetrics
   if (resources.items.length && expandedId.value === null) {
-    expandedId.value = resources.items[0].id
+    const preferred =
+      resources.items.find((item) => item.is_anomaly) ?? resources.items[0]
+    expandedId.value = preferred.id
+  }
+  if (listFilter.value === 'anomaly' && !anomalyGroups.value.length && groupedItems.value.length) {
+    listFilter.value = 'all_pending'
   }
   await Promise.all(resources.items.map((item) => loadAudit(item.id)))
 }
@@ -175,60 +194,16 @@ function formatRiskReason(reason: string) {
   return riskReasonLabels[reason] ?? reason.replace(/_/g, ' ')
 }
 
-function shouldAutoApprove(item: PersonalizedResource, report: AuditReport | undefined) {
-  if (!report) return false
-  if (report.verdict !== 'PASS' || !report.suggested_publish) return false
-  if (item.confidence < 0.72) return false
-  if (item.risk_reasons.length > 0) return false
-  const minDimension = Math.min(...Object.values(report.dimensions))
-  return minDimension >= 70
-}
-
 async function runSmartReview() {
   if (!items.value.length || smartReviewLoading.value) return
   smartReviewLoading.value = true
-  let approved = 0
-  let flagged = 0
-  const nextTags: Record<number, string> = { ...manualReviewTags.value }
   try {
-    for (const item of items.value) {
-      if (!auditReports.value[item.id]) {
-        await loadAudit(item.id)
-      }
-      let report = auditReports.value[item.id]
-      if (!report) {
-        try {
-          const result = await rerunResourceAudit(item.id)
-          auditReports.value[item.id] = result.audit_report
-          report = result.audit_report
-        } catch {
-          nextTags[item.id] = 'AI 审核报告缺失'
-          flagged += 1
-          continue
-        }
-      }
-      if (shouldAutoApprove(item, report)) {
-        await reviewPersonalizedResource(
-          item.id,
-          'approved',
-          'AI 智能审核：六步审核通过，内容符合正常发布标准',
-        )
-        delete nextTags[item.id]
-        approved += 1
-      } else {
-        const verdictLabel = verdictLabels[report.verdict] ?? '需复核'
-        const hint =
-          report.verdict === 'PASS'
-            ? '建议通过但需人工确认'
-            : report.verdict === 'NEED_MODIFY'
-              ? '建议修改后再发布'
-              : '建议驳回'
-        nextTags[item.id] = `需人工复核 · ${verdictLabel} · ${hint}`
-        flagged += 1
-      }
-    }
-    manualReviewTags.value = nextTags
-    message.success(`智能审核完成：自动通过 ${approved} 项，${flagged} 项已打标待人工复核`)
+    const result = await runTeacherSmartReview()
+    message.success(
+      `智能审核完成：自动通过 ${result.approved_count} 项，${result.flagged_count} 项异常待人工复核`,
+    )
+    listFilter.value = result.flagged_count > 0 ? 'anomaly' : 'all_pending'
+    expandedId.value = null
     await load()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '智能审核失败')
@@ -250,7 +225,9 @@ onMounted(() => void load())
   >
     <main class="review-page">
       <header v-if="items.length" class="review-page__toolbar">
-        <p>接入六步 AI 审核：符合标准的资源可一键通过，存疑项将打标供教师继续审核。</p>
+        <p>
+          OpenAI 审核智能体可自动批准正常内容；异常资源单独列出，需教师人工复核。
+        </p>
         <n-button
           type="warning"
           :loading="smartReviewLoading"
@@ -264,6 +241,10 @@ onMounted(() => void load())
 
       <section v-if="metrics" class="metric-grid" aria-label="资源审核指标">
         <article><span>待审核</span><strong>{{ metrics.pending_review_count }}</strong></article>
+        <article>
+          <span>异常待审</span>
+          <strong>{{ metrics.anomaly_pending_count ?? anomalyGroups.length }}</strong>
+        </article>
         <article><span>已批准</span><strong>{{ metrics.status_counts.approved }}</strong></article>
         <article><span>已驳回</span><strong>{{ metrics.status_counts.rejected }}</strong></article>
         <article>
@@ -292,17 +273,56 @@ onMounted(() => void load())
         </article>
       </section>
 
-      <n-empty v-if="!items.length" description="当前没有待审核资源" />
+      <div v-if="items.length" class="review-page__filters">
+        <n-button
+          size="small"
+          :type="listFilter === 'anomaly' ? 'error' : 'default'"
+          secondary
+          @click="listFilter = 'anomaly'"
+        >
+          异常内容（{{ anomalyGroups.length }}）
+        </n-button>
+        <n-button
+          size="small"
+          :type="listFilter === 'all_pending' ? 'warning' : 'default'"
+          secondary
+          @click="listFilter = 'all_pending'"
+        >
+          全部待审（{{ groupedItems.length }}）
+        </n-button>
+      </div>
 
-      <section v-for="group in groupedItems" :key="group.taskId" class="task-group">
+      <n-empty
+        v-if="!items.length"
+        description="当前没有待审核资源（正常内容已由 AI 自动批准）"
+      />
+      <n-empty
+        v-else-if="!visibleGroups.length"
+        :description="listFilter === 'anomaly' ? '暂无异常内容，可切换查看全部待审' : '当前没有待审核资源'"
+      />
+
+      <section
+        v-for="group in visibleGroups"
+        :key="group.taskId"
+        class="task-group"
+        :class="{ 'task-group--anomaly': group.isAnomaly }"
+      >
         <header class="task-group__header">
           <div>
-            <h2>{{ group.items[0]?.knowledge_label }} · 生成任务</h2>
+            <h2>
+              {{ group.items[0]?.knowledge_label }} · 生成任务
+              <n-tag v-if="group.isAnomaly" type="error" size="small">异常待审</n-tag>
+            </h2>
             <p>任务 ID：{{ group.taskId }} · {{ group.items.length }} 项待审</p>
           </div>
         </header>
 
-        <article v-for="item in group.items" :key="item.id" class="review-card">
+        <article
+          v-for="item in group.items"
+          :key="item.id"
+          class="review-card"
+          :class="{ 'review-card--anomaly': item.is_anomaly }"
+        >
           <header>
             <button type="button" class="review-card__title-btn" @click="toggleDetail(item)">
               <h3>{{ item.title }}</h3>
@@ -311,7 +331,7 @@ onMounted(() => void load())
               </span>
             </button>
             <div class="review-card__tags">
-              <n-tag v-if="manualReviewTags[item.id]" type="error">{{ manualReviewTags[item.id] }}</n-tag>
+              <n-tag v-if="item.is_anomaly" type="error">异常内容</n-tag>
               <n-tag type="warning">{{ reviewStatusLabels[item.review_status] ?? '待审核' }}</n-tag>
               <n-tag>{{ typeLabels[item.resource_type] ?? item.resource_type }}</n-tag>
               <n-tag
@@ -327,6 +347,12 @@ onMounted(() => void load())
           <div class="risks">
             <n-tag v-for="risk in item.risk_reasons" :key="risk" type="error">{{ formatRiskReason(risk) }}</n-tag>
           </div>
+          <p v-if="item.ai_review?.teacher_summary" class="ai-summary">
+            <strong>AI 审核：</strong>{{ String(item.ai_review.teacher_summary) }}
+          </p>
+          <p v-if="item.student_warning" class="student-warning-preview">
+            <strong>学生端警示：</strong>{{ item.student_warning }}
+          </p>
           <p>{{ item.recommendation_reason }}</p>
 
           <section v-if="expandedId === item.id" class="resource-detail">
@@ -442,8 +468,39 @@ onMounted(() => void load())
   line-height: 1.5;
 }
 
+.review-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
 .task-group {
   margin-bottom: 1.2rem;
+}
+
+.task-group--anomaly .task-group__header h2 {
+  color: #fecaca;
+}
+
+.review-card--anomaly {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(69, 10, 10, 0.55);
+}
+
+.ai-summary,
+.student-warning-preview {
+  margin: 0.35rem 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.ai-summary {
+  color: rgba(254, 215, 170, 0.88);
+}
+
+.student-warning-preview {
+  color: rgba(252, 165, 165, 0.92);
 }
 
 .task-group__header {

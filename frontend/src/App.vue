@@ -16,12 +16,26 @@ const themeOverrides = computed(() =>
 
 // 根据路由路径写入角色标记
 watch(
-  () => route.fullPath,
-  (fullPath, previous) => {
-    if (previous && previous !== fullPath) {
+  () => route.path,
+  (path, previous) => {
+    const prevArea = previous?.startsWith('/student')
+      ? 'student'
+      : previous?.startsWith('/teacher')
+        ? 'teacher'
+        : previous?.startsWith('/admin')
+          ? 'admin'
+          : 'other'
+    const nextArea = path.startsWith('/student')
+      ? 'student'
+      : path.startsWith('/teacher')
+        ? 'teacher'
+        : path.startsWith('/admin')
+          ? 'admin'
+          : 'other'
+    // 仅跨角色区域时销毁引导，避免同端页面跳转抖动
+    if (previous && prevArea !== nextArea) {
       destroyActiveTour()
     }
-    const path = route.path
     let persona = 'default'
     if (path.startsWith('/student')) persona = 'student'
     else if (path.startsWith('/teacher')) persona = 'teacher'

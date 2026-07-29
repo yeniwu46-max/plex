@@ -287,7 +287,7 @@ export interface TrialCoachResult {
 }
 
 const AGENT_TIMEOUT_MS = 15_000
-const MESSENGER_TIMEOUT_MS = 8_000
+const MESSENGER_TIMEOUT_MS = 25_000
 const TRIAL_COACH_TIMEOUT_MS = 45_000
 
 async function postAgent<T>(path: string, body: Record<string, unknown> = {}, timeout = AGENT_TIMEOUT_MS) {

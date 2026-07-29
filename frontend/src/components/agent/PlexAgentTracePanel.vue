@@ -3,10 +3,15 @@ import { computed } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
 import type { AgentTraceStep } from '../../api/agentService'
 
-const props = defineProps<{
-  trace?: AgentTraceStep[]
-  loading?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    trace?: AgentTraceStep[]
+    loading?: boolean
+    /** freeform：按 trace 原样展示（驿站思考过程）；pipeline：试炼固定五步 */
+    mode?: 'pipeline' | 'freeform'
+  }>(),
+  { mode: 'pipeline' },
+)
 
 const PIPELINE = [
   { id: 'learning_diagnosis', name: '学习诊断', icon: '🔍' },
@@ -16,8 +21,39 @@ const PIPELINE = [
   { id: 'feedback', name: '反馈生成', icon: '💬' },
 ]
 
-const steps = computed(() =>
-  PIPELINE.map((stage) => {
+const FREEFORM_ICONS: Record<string, string> = {
+  context: '📊',
+  llm: '💬',
+  extracting: '🧠',
+  merging: '🔗',
+  fallback: '⚡',
+}
+
+const steps = computed(() => {
+  if (props.mode === 'freeform') {
+    const rows = props.trace ?? []
+    if (!rows.length && props.loading) {
+      return [
+        {
+          id: 'running',
+          name: '整理中',
+          icon: '💭',
+          status: 'running' as const,
+          latencyMs: undefined as number | undefined,
+          summary: '小E 正在整理思路…',
+        },
+      ]
+    }
+    return rows.map((hit) => ({
+      id: hit.agentId,
+      name: hit.name,
+      icon: FREEFORM_ICONS[hit.agentId] || '•',
+      status: hit.status ?? (props.loading ? 'running' : 'success'),
+      latencyMs: hit.latencyMs,
+      summary: hit.summary,
+    }))
+  }
+  return PIPELINE.map((stage) => {
     const hit = props.trace?.find((t) => t.agentId === stage.id)
     return {
       ...stage,
@@ -25,16 +61,18 @@ const steps = computed(() =>
       latencyMs: hit?.latencyMs,
       summary: hit?.summary ?? (props.loading ? '小E 正在整理建议…' : ''),
     }
-  }),
-)
+  })
+})
 
 const totalLatency = computed(() =>
   (props.trace ?? []).reduce((sum, t) => sum + (t.latencyMs || 0), 0),
 )
+
+const visible = computed(() => props.loading || (props.trace?.length ?? 0) > 0)
 </script>
 
 <template>
-  <section class="plex-trace" aria-label="小E 思考过程">
+  <section v-if="visible" class="plex-trace" aria-label="小E 思考过程">
     <n-collapse arrow-placement="right">
       <n-collapse-item title="小E 是怎么想的" name="trace">
         <header class="plex-trace__head">
@@ -45,26 +83,26 @@ const totalLatency = computed(() =>
         </header>
 
         <ol class="plex-trace__list">
-      <li
-        v-for="(step, idx) in steps"
-        :key="step.id"
-        class="plex-trace__item"
-        :class="`is-${step.status}`"
-      >
-        <span class="plex-trace__node">
-          <span class="plex-trace__icon">{{ step.icon }}</span>
-          <span v-if="idx < steps.length - 1" class="plex-trace__line" />
-        </span>
-        <div class="plex-trace__body">
-          <p class="plex-trace__name">
-            {{ step.name }}
-            <span v-if="step.latencyMs != null" class="plex-trace__ms">{{ Math.round(step.latencyMs) }}ms</span>
-            <span v-if="step.status === 'running'" class="plex-trace__dot" aria-label="处理中" />
-          </p>
-          <p v-if="step.summary" class="plex-trace__summary">{{ step.summary }}</p>
-        </div>
-      </li>
-    </ol>
+          <li
+            v-for="(step, idx) in steps"
+            :key="step.id"
+            class="plex-trace__item"
+            :class="`is-${step.status}`"
+          >
+            <span class="plex-trace__node">
+              <span class="plex-trace__icon">{{ step.icon }}</span>
+              <span v-if="idx < steps.length - 1" class="plex-trace__line" />
+            </span>
+            <div class="plex-trace__body">
+              <p class="plex-trace__name">
+                {{ step.name }}
+                <span v-if="step.latencyMs != null" class="plex-trace__ms">{{ Math.round(step.latencyMs) }}ms</span>
+                <span v-if="step.status === 'running'" class="plex-trace__dot" aria-label="处理中" />
+              </p>
+              <p v-if="step.summary" class="plex-trace__summary">{{ step.summary }}</p>
+            </div>
+          </li>
+        </ol>
       </n-collapse-item>
     </n-collapse>
   </section>

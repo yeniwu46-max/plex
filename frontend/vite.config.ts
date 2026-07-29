@@ -14,6 +14,18 @@ export default defineConfig(({ mode }) => {
       // G6 is a route-level dynamic dependency. A dedicated gzip budget below
       // provides a more meaningful gate than Vite's raw-size-only warning.
       chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return
+            if (id.includes('naive-ui') || id.includes('@vicons')) return 'ui'
+            if (id.includes('echarts') || id.includes('zrender')) return 'charts'
+            if (id.includes('monaco-editor')) return 'monaco'
+            if (id.includes('@antv/g6')) return 'g6'
+            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vue-vendor'
+          },
+        },
+      },
     },
     server: {
       port: devPort,

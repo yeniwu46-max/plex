@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-07-19T15:45:02+00:00",
+  "run_at": "2026-07-29T01:22:38+00:00",
   "passed": true,
   "checks": {
     "python": {
@@ -33,7 +33,7 @@
   },
   "external_conditions": {
     "docker": "available",
-    "github_cli": "blocked_not_authenticated",
-    "iflytek_spark": "credential_configured"
+    "github_cli": "authenticated",
+    "iflytek_spark": "blocked_credential_missing"
   }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { NIcon } from 'naive-ui'
@@ -107,11 +107,12 @@ const statCards = computed(() => [
   { key: 'rank', label: '班级排名', value: classRankLabel.value, icon: TrophyOutline, tone: 'purple' },
 ])
 
-async function loadOverview() {
-  loading.value = true
+async function loadOverview(opts?: { soft?: boolean }) {
+  const soft = Boolean(opts?.soft && overview.value)
+  if (!soft) loading.value = true
   errorMessage.value = ''
   try {
-    overview.value = await workspace.loadOverview(true)
+    overview.value = await workspace.loadOverview(false)
     auth.syncProfile({
       id: overview.value.profile.id,
       username: overview.value.profile.username,
@@ -124,7 +125,7 @@ async function loadOverview() {
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '学生端数据加载失败'
   } finally {
-    loading.value = false
+    if (!soft) loading.value = false
   }
 }
 
@@ -146,6 +147,12 @@ function onAssignmentsUpdated(payload: { daily: StudentOverview['daily'] }) {
 
 onMounted(() => {
   void loadOverview()
+  if (route.hash) void scrollToHashAnchor(route.hash)
+})
+
+onActivated(() => {
+  // KeepAlive 回跳：尊重 30s TTL，且不闪 loading
+  if (overview.value) void loadOverview({ soft: true })
   if (route.hash) void scrollToHashAnchor(route.hash)
 })
 

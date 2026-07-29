@@ -8,6 +8,20 @@ import re
 from typing import Any
 
 import requests
+from agents.http_client import direct_post
+
+
+def _blocked_in_tests() -> bool:
+    """测试环境默认禁用真实 LLM 外呼（与 Spark 的 SPARK_ALLOW_IN_TESTS 约定一致）。"""
+    try:
+        from flask import current_app, has_app_context
+    except ImportError:
+        return False
+    return bool(
+        has_app_context()
+        and current_app.config.get('TESTING')
+        and not current_app.config.get('LLM_ALLOW_IN_TESTS')
+    )
 
 
 def _deepseek_tuple(api_key: str) -> tuple[str, str, str]:
@@ -19,8 +33,59 @@ def _deepseek_tuple(api_key: str) -> tuple[str, str, str]:
     )
 
 
+def openai_provider() -> tuple[str, str, str] | None:
+    """默认 OpenAI 通道（审核等通用），不回落到 DeepSeek。"""
+    return openai_agent_provider('default')
+
+
+def openai_agent_provider(agent: str) -> tuple[str, str, str] | None:
+    """按智能体角色返回独立 OpenAI 密钥。
+
+    环境变量约定（未配置时回退 OPENAI_API_KEY）：
+    - profile_interpreter → OPENAI_PROFILE_INTERPRETER_API_KEY
+    - knowledge_retriever → OPENAI_KNOWLEDGE_RETRIEVER_API_KEY
+    - instructional_designer → OPENAI_INSTRUCTIONAL_DESIGNER_API_KEY
+    - path_planner → OPENAI_PATH_PLANNER_API_KEY
+    - quality_reviewer / default → OPENAI_API_KEY
+    """
+    if _blocked_in_tests():
+        return None
+    role = (agent or 'default').strip().lower()
+    env_by_role = {
+        'profile_interpreter': 'OPENAI_PROFILE_INTERPRETER_API_KEY',
+        'knowledge_retriever': 'OPENAI_KNOWLEDGE_RETRIEVER_API_KEY',
+        'instructional_designer': 'OPENAI_INSTRUCTIONAL_DESIGNER_API_KEY',
+        'path_planner': 'OPENAI_PATH_PLANNER_API_KEY',
+        'quality_reviewer': 'OPENAI_API_KEY',
+        'default': 'OPENAI_API_KEY',
+    }
+    env_name = env_by_role.get(role, 'OPENAI_API_KEY')
+    api_key = os.getenv(env_name, '').strip() or os.getenv('OPENAI_API_KEY', '').strip()
+    if not api_key:
+        return None
+    base = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')
+    model_env = {
+        'profile_interpreter': 'OPENAI_PROFILE_INTERPRETER_MODEL',
+        'knowledge_retriever': 'OPENAI_KNOWLEDGE_RETRIEVER_MODEL',
+        'instructional_designer': 'OPENAI_INSTRUCTIONAL_DESIGNER_MODEL',
+        'path_planner': 'OPENAI_PATH_PLANNER_MODEL',
+    }.get(role)
+    model = (
+        (os.getenv(model_env, '').strip() if model_env else '')
+        or os.getenv('OPENAI_MODEL', 'gpt-4o-mini').strip()
+        or 'gpt-4o-mini'
+    )
+    return (
+        api_key,
+        f'{base}/chat/completions',
+        model,
+    )
+
+
 def llm_provider() -> tuple[str, str, str] | None:
     """返回 (api_key, endpoint, model)，优先 DeepSeek，其次 OpenRouter。"""
+    if _blocked_in_tests():
+        return None
     deepseek = os.getenv('DEEPSEEK_API_KEY', '').strip()
     if deepseek:
         return _deepseek_tuple(deepseek)
@@ -31,19 +96,13 @@ def llm_provider() -> tuple[str, str, str] | None:
             'https://openrouter.ai/api/v1/chat/completions',
             os.getenv('OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
         )
-    openai_key = os.getenv('OPENAI_API_KEY', '').strip()
-    if openai_key:
-        base = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')
-        return (
-            openai_key,
-            f'{base}/chat/completions',
-            os.getenv('OPENAI_MODEL', 'gpt-4o-mini'),
-        )
-    return None
+    return openai_provider()
 
 
 def messenger_provider() -> tuple[str, str, str] | None:
     """驿站助手 / 小E 对话专用 DeepSeek 密钥。"""
+    if _blocked_in_tests():
+        return None
     key = (
         os.getenv('DEEPSEEK_MESSENGER_API_KEY', '').strip()
         or os.getenv('DEEPSEEK_API_KEY', '').strip()
@@ -53,6 +112,8 @@ def messenger_provider() -> tuple[str, str, str] | None:
 
 def emergency_provider() -> tuple[str, str, str] | None:
     """边界条件补给站 · 成长轨迹 AI 解析专用 DeepSeek 密钥。"""
+    if _blocked_in_tests():
+        return None
     key = (
         os.getenv('DEEPSEEK_EMERGENCY_API_KEY', '').strip()
         or os.getenv('DEEPSEEK_API_KEY', '').strip()
@@ -98,30 +159,36 @@ def chat_json(
     *,
     system: str,
     user: str,
-    timeout: float = 45.0,
+    timeout: float = 12.0,
     max_tokens: int = 640,
+    provider: tuple[str, str, str] | None = None,
+    temperature: float = 0.4,
+    force_json_object: bool = False,
 ) -> dict[str, Any] | None:
     """调用 LLM 并解析 JSON 对象响应。"""
-    provider = llm_provider()
+    provider = provider or llm_provider()
     if not provider:
         return None
     api_key, endpoint, model = provider
+    payload: dict[str, Any] = {
+        'model': model,
+        'messages': [
+            {'role': 'system', 'content': system},
+            {'role': 'user', 'content': user},
+        ],
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+    }
+    if force_json_object:
+        payload['response_format'] = {'type': 'json_object'}
     try:
-        resp = requests.post(
+        resp = direct_post(
             endpoint,
             headers={
                 'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json',
             },
-            json={
-                'model': model,
-                'messages': [
-                    {'role': 'system', 'content': system},
-                    {'role': 'user', 'content': user},
-                ],
-                'max_tokens': max_tokens,
-                'temperature': 0.4,
-            },
+            json=payload,
             timeout=timeout,
         )
         resp.raise_for_status()
@@ -137,7 +204,7 @@ def chat_text(
     system: str,
     user: str,
     history: list[dict[str, str]] | None = None,
-    timeout: float = 45.0,
+    timeout: float = 12.0,
     max_tokens: int = 900,
     provider: tuple[str, str, str] | None = None,
 ) -> str | None:
@@ -154,7 +221,7 @@ def chat_text(
             messages.append({'role': role, 'content': content})
     messages.append({'role': 'user', 'content': user})
     try:
-        resp = requests.post(
+        resp = direct_post(
             endpoint,
             headers={
                 'Authorization': f'Bearer {api_key}',

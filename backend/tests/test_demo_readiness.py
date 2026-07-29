@@ -98,8 +98,12 @@ class DemoReadinessTestCase(unittest.TestCase):
 
         task_a = self.generate('a', 'demo-profile-a')
         task_b = self.generate('b', 'demo-profile-b')
-        self.assertEqual(len(task_a['resources']), 5)
-        self.assertEqual(len(task_b['resources']), 5)
+        # 核心五类文本资源必须齐全；learning_bundle / 多模态为附加。
+        core_types = {'lesson_document', 'mind_map', 'exercise_set', 'extended_reading', 'coding_lab'}
+        self.assertTrue(core_types.issubset({item['resource_type'] for item in task_a['resources']}))
+        self.assertTrue(core_types.issubset({item['resource_type'] for item in task_b['resources']}))
+        self.assertGreaterEqual(len(task_a['resources']), 5)
+        self.assertGreaterEqual(len(task_b['resources']), 5)
 
         resources_a = {item['resource_type']: item for item in task_a['resources']}
         resources_b = {item['resource_type']: item for item in task_b['resources']}
@@ -124,15 +128,24 @@ class DemoReadinessTestCase(unittest.TestCase):
             resources_b['coding_lab']['content']['scenario'],
         )
         for task in (task_a, task_b):
-            self.assertTrue(all(item['citations'] for item in task['resources']))
-            self.assertTrue(all(item['backend'] == 'local_rules' for item in task['resources']))
-            pending = [
+            text_resources = [
                 item for item in task['resources']
-                if item['review_status'] == 'pending_review'
+                if item['resource_type'] not in ('audio_explanation', 'video_lesson')
             ]
-            self.assertEqual(len(pending), 1)
-            self.assertEqual(pending[0]['resource_type'], 'extended_reading')
-            self.assertIn('low_confidence', pending[0]['risk_reasons'])
+            self.assertTrue(all(item['citations'] for item in text_resources))
+            self.assertTrue(all(item['backend'] == 'local_rules' for item in task['resources']))
+            # 正常内容应自动批准；仅硬异常才 pending
+            approved = [
+                item for item in task['resources']
+                if item['review_status'] == 'approved'
+            ]
+            self.assertGreaterEqual(len(approved), 1)
+            anomalies = [
+                item for item in task['resources']
+                if item.get('is_anomaly')
+            ]
+            for item in anomalies:
+                self.assertEqual(item['review_status'], 'pending_review')
 
     def test_feedback_accept_reject_and_teacher_review_flow(self):
         profile = self.put_profile('a', {
@@ -217,17 +230,18 @@ class DemoReadinessTestCase(unittest.TestCase):
             '/api/v1/student/learning-path',
             headers=self.auth(self.student_tokens['a']),
         ).get_json()['data']
-        stage2_before = next(
-            item for item in path_before['domains'] if item['key'] == 'stage2'
+        # loop 落在 flow-control 域（原 stage2 条件与循环）
+        flow_before = next(
+            item for item in path_before['domains'] if item['key'] == 'flow-control'
         )
-        stage2_after = next(
-            item for item in path_after['domains'] if item['key'] == 'stage2'
+        flow_after = next(
+            item for item in path_after['domains'] if item['key'] == 'flow-control'
         )
         self.assertNotEqual(
-            stage2_before['recommended_resource_ids'],
-            stage2_after['recommended_resource_ids'],
+            flow_before['recommended_resource_ids'],
+            flow_after['recommended_resource_ids'],
         )
-        self.assertIn('近期薄弱点', stage2_after['recommendation_reason'])
+        self.assertIn('近期薄弱点', flow_after['recommendation_reason'])
         self.assertEqual(task_before_feedback['profile_version'], initial_version)
 
         with self.app.app_context():

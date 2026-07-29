@@ -81,9 +81,26 @@ def list_personalized_resources():
 @jwt_required()
 @role_required('teacher', 'admin')
 def list_resource_review():
+    anomaly_raw = (request.args.get('anomaly_only') or '').strip().lower()
+    anomaly_only = None
+    if anomaly_raw in ('1', 'true', 'yes'):
+        anomaly_only = True
+    elif anomaly_raw in ('0', 'false', 'no'):
+        anomaly_only = False
     return success_response(PersonalizedResourceService.list_review(
-        request.args.get('review_status', 'pending_review')
+        request.args.get('review_status', 'pending_review'),
+        anomaly_only=anomaly_only,
     ))
+
+
+@personalized_resources_bp.route('/teacher/personalized-resources/smart-review', methods=['POST'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def smart_review_resources():
+    return success_response(
+        PersonalizedResourceService.smart_review(int(get_jwt_identity())),
+        '智能审核完成',
+    )
 
 
 @personalized_resources_bp.route('/teacher/personalized-resources/metrics', methods=['GET'])

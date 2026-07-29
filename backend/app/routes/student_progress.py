@@ -1,11 +1,12 @@
 """学生星轨 / 档案聚合 API"""
-from flask import Blueprint, request
+from flask import Blueprint, Response, request, stream_with_context
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.services.emergency_mission import EmergencyMissionService
-from app.services.course_safety import SafetyViolation
+from app.services.course_safety import CourseSafetyService, SafetyViolation
 from app.services.evaluation import EvaluationService
 from app.services.learning_resource import LearningResourceService
+from app.services.llm_stream import sse_event, sse_headers
 from app.services.messenger_chat import MessengerChatService
 from app.services.mistake import MistakeService
 from app.services.recommendation import RecommendationService
@@ -228,6 +229,37 @@ def messenger_chat():
         return error_response(str(exc), 40001, None, 400)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/messenger/chat/stream', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def messenger_chat_stream():
+    """SSE 流式驿站对话：逐 token 推送回复，最后推送 done 事件。"""
+    user_id = int(get_jwt_identity())
+    payload = request.get_json() or {}
+    message = (payload.get('message') or payload.get('content') or '').strip()
+    history = payload.get('history') or payload.get('messages') or []
+    if not message:
+        return error_response('消息不能为空', 40001, None, 400)
+    try:
+        # 安全检查必须在建立流式响应之前完成，违规时返回普通 JSON 错误。
+        CourseSafetyService.ensure_safe(message, enforce_course_scope=True)
+    except SafetyViolation as exc:
+        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
+
+    def generate():
+        try:
+            for event in MessengerChatService.chat_stream(user_id, message, history):
+                yield sse_event(event)
+        except Exception as exc:  # 流中异常只能通过 SSE 帧告知前端
+            yield sse_event({'type': 'error', 'message': str(exc)})
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers=sse_headers(),
+    )
 
 
 @student_progress_bp.route('/learning-report', methods=['GET'])

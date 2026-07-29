@@ -74,7 +74,7 @@ def ensure_emergency_mission_schema() -> None:
 
 
 def ensure_resource_audit_schema() -> None:
-    """补齐资源生成任务的 audit_report 列。"""
+    """补齐资源生成任务的 audit_report 列，以及 AI 审核异常字段。"""
     inspector = inspect(db.engine)
     if 'resource_generation_tasks' not in inspector.get_table_names():
         return
@@ -82,4 +82,22 @@ def ensure_resource_audit_schema() -> None:
     if 'audit_report' not in columns:
         db.session.execute(text('ALTER TABLE resource_generation_tasks ADD COLUMN audit_report JSON'))
         db.session.commit()
+
+    if 'personalized_learning_resources' not in inspector.get_table_names():
+        return
+    resource_columns = {
+        col['name'] for col in inspector.get_columns('personalized_learning_resources')
+    }
+    additions = {
+        'is_anomaly': 'BOOLEAN DEFAULT 0',
+        'student_warning': 'VARCHAR(500)',
+        'ai_review': 'JSON',
+    }
+    for name, col_type in additions.items():
+        if name in resource_columns:
+            continue
+        db.session.execute(
+            text(f'ALTER TABLE personalized_learning_resources ADD COLUMN {name} {col_type}')
+        )
+    db.session.commit()
 

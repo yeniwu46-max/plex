@@ -55,7 +55,7 @@ class StabilityTestCase(unittest.TestCase):
             'choices': [{'message': {'content': '{"ok": true}'}}],
         }
         with patch.dict(os.environ, {'IFLYTEK_SPARK_API_PASSWORD': 'test-only'}):
-            with patch('app.services.iflytek_spark.requests.post', return_value=response):
+            with patch('app.services.iflytek_spark.direct_post', return_value=response):
                 result = IflytekSparkService.chat_json('system', 'user')
         self.assertTrue(result['ok'])
         self.assertEqual(IflytekSparkService.status()['request_id'], 'req-test')
@@ -64,12 +64,12 @@ class StabilityTestCase(unittest.TestCase):
             'choices': [{'message': {'content': '结果如下：\n```json\n{"ok": true}\n```'}}],
         }
         with patch.dict(os.environ, {'IFLYTEK_SPARK_API_PASSWORD': 'test-only'}):
-            with patch('app.services.iflytek_spark.requests.post', return_value=response):
+            with patch('app.services.iflytek_spark.direct_post', return_value=response):
                 self.assertTrue(IflytekSparkService.chat_json('system', 'user')['ok'])
 
         response.status_code = 429
         with patch.dict(os.environ, {'IFLYTEK_SPARK_API_PASSWORD': 'test-only'}):
-            with patch('app.services.iflytek_spark.requests.post', return_value=response):
+            with patch('app.services.iflytek_spark.direct_post', return_value=response):
                 with self.assertRaises(SparkServiceError) as context:
                     IflytekSparkService.chat_json('system', 'user')
         self.assertEqual(context.exception.code, 'rate_limited')
@@ -84,13 +84,13 @@ class StabilityTestCase(unittest.TestCase):
             response.status_code = status
             response.json.return_value = payload
             with patch.dict(os.environ, {'IFLYTEK_SPARK_API_PASSWORD': 'test-only'}):
-                with patch('app.services.iflytek_spark.requests.post', return_value=response):
+                with patch('app.services.iflytek_spark.direct_post', return_value=response):
                     with self.assertRaises(SparkServiceError) as context:
                         IflytekSparkService.chat_json('system', 'user')
             self.assertEqual(context.exception.code, expected)
 
         with patch.dict(os.environ, {'IFLYTEK_SPARK_API_PASSWORD': 'test-only'}):
-            with patch('app.services.iflytek_spark.requests.post', side_effect=requests.Timeout()):
+            with patch('app.services.iflytek_spark.direct_post', side_effect=requests.Timeout()):
                 with self.assertRaises(SparkServiceError) as context:
                     IflytekSparkService.chat_json('system', 'user')
         self.assertEqual(context.exception.code, 'timeout')
@@ -108,7 +108,7 @@ class StabilityTestCase(unittest.TestCase):
             'XFYUN_AGENT_API_SECRET': 'secret-test',
             'XFYUN_AGENT_BOT_ID': '2208791',
         }):
-            with patch('app.services.xfyun_agent.requests.post', return_value=response) as post:
+            with patch('app.services.xfyun_agent.direct_post', return_value=response) as post:
                 result = XfyunAgentService.chat_text(user_id=self.student_id, message='Python print 怎么用？', context='课程：Python 入门')
 
         self.assertIn('print', result)
@@ -129,7 +129,7 @@ class StabilityTestCase(unittest.TestCase):
             'XFYUN_AGENT_API_KEY': 'key-test',
             'XFYUN_AGENT_API_SECRET': 'secret-test',
         }):
-            with patch('app.services.xfyun_agent.requests.post', return_value=response):
+            with patch('app.services.xfyun_agent.direct_post', return_value=response):
                 self.assertIn('工作流', XfyunAgentService.chat_text(user_id=self.student_id, message='测试', context=''))
 
         response.json.return_value = {
@@ -142,7 +142,7 @@ class StabilityTestCase(unittest.TestCase):
             'XFYUN_AGENT_API_KEY': 'key-test',
             'XFYUN_AGENT_API_SECRET': 'secret-test',
         }):
-            with patch('app.services.xfyun_agent.requests.post', return_value=response):
+            with patch('app.services.xfyun_agent.direct_post', return_value=response):
                 with self.assertRaises(Exception) as context:
                     XfyunAgentService.chat_text(user_id=self.student_id, message='测试', context='')
         self.assertIn('草稿', str(context.exception))
@@ -160,7 +160,7 @@ class StabilityTestCase(unittest.TestCase):
             'XFYUN_AGENT_API_KEY': 'key-test',
             'XFYUN_AGENT_API_SECRET': 'secret-test',
         }):
-            with patch('app.services.xfyun_agent.requests.post', return_value=response):
+            with patch('app.services.xfyun_agent.direct_post', return_value=response):
                 with self.assertRaises(Exception) as context:
                     XfyunAgentService.chat_text(user_id=self.student_id, message='test', context='')
         self.assertEqual(context.exception.code, 'placeholder_response')

@@ -18,7 +18,15 @@ set "BACKEND_RUNNING=0"
 set "FRONTEND_RUNNING=0"
 set "WAIT_SECONDS=30"
 set "HELP_ONLY=0"
+set "PLEX_FRONTEND_MODE=dev"
+set "PLEX_FRONTEND_DIST="
+set "SKIP_DEMO_SEED=0"
 
+rem Local API must bypass system HTTP proxy (Clash/VPN breaks /api reverse proxy)
+set "NO_PROXY=127.0.0.1,localhost,::1"
+set "no_proxy=127.0.0.1,localhost,::1"
+
+call :detect_prebuilt_assets
 call :parse_args %*
 if errorlevel 1 exit /b 1
 if "%HELP_ONLY%"=="1" exit /b 0
@@ -32,10 +40,12 @@ if not exist "%FRONTEND%\package.json" goto :missing_frontend
 where py >nul 2>&1
 if errorlevel 1 where python >nul 2>&1
 if errorlevel 1 goto :missing_python
-where node >nul 2>&1
-if errorlevel 1 goto :missing_node
-where npm >nul 2>&1
-if errorlevel 1 goto :missing_npm
+if /I not "%PLEX_FRONTEND_MODE%"=="static" (
+    where node >nul 2>&1
+    if errorlevel 1 goto :missing_node
+    where npm >nul 2>&1
+    if errorlevel 1 goto :missing_npm
+)
 
 call :use_venv "%VENV%"
 
@@ -68,16 +78,36 @@ if not defined PYTHON (
 
 echo [2/6] Runtime versions
 "%PYTHON%" --version
-node --version
-call npm --version
-if errorlevel 1 exit /b 1
+if /I not "%PLEX_FRONTEND_MODE%"=="static" (
+    node --version
+    call npm --version
+    if errorlevel 1 exit /b 1
+) else (
+    echo Frontend mode: prebuilt static - Python proxy, no npm ci
+)
 
 echo [3/6] Backend dependencies
 "%PYTHON%" -m pip install -r "%BACKEND%\requirements.txt" --disable-pip-version-check >nul
 if errorlevel 1 exit /b 1
+echo [3b/6] Multi-agent dependencies
+if defined PLEX_PACKAGE_ROOT (
+    dir /b "%PLEX_PACKAGE_ROOT%\runtime\python-wheels\*.whl" >nul 2>&1
+    if not errorlevel 1 (
+        echo Installing agent wheels from submission runtime cache...
+        "%PYTHON%" -m pip install --no-index --find-links "%PLEX_PACKAGE_ROOT%\runtime\python-wheels" -r "%BACKEND%\requirements-agents.txt" --disable-pip-version-check >nul 2>&1
+    )
+)
+"%PYTHON%" -m pip install -r "%BACKEND%\requirements-agents.txt" --disable-pip-version-check >nul 2>&1
+
+if defined PLEX_PACKAGE_ROOT (
+    echo [3c/6] Apply submission API env
+    "%PYTHON%" "%BACKEND%\scripts\apply_submission_env.py" "%PLEX_PACKAGE_ROOT%" >nul 2>&1
+)
 
 echo [4/6] Frontend dependencies
-if not exist "%FRONTEND%\node_modules\.package-lock.json" (
+if /I "%PLEX_FRONTEND_MODE%"=="static" (
+    echo Skipped npm ci - using prebuilt frontend-dist
+) else if not exist "%FRONTEND%\node_modules\.package-lock.json" (
     pushd "%FRONTEND%"
     call npm ci --cache "%NPM_CACHE%"
     set "NPM_RESULT=%ERRORLEVEL%"
@@ -86,6 +116,14 @@ if not exist "%FRONTEND%\node_modules\.package-lock.json" (
 )
 
 echo [5/6] Database migration and demo data
+if defined PLEX_PACKAGE_ROOT (
+    if exist "%PLEX_PACKAGE_ROOT%\data\database\learning_system.db" (
+        if not exist "%BACKEND%\instance" mkdir "%BACKEND%\instance"
+        echo Using prebuilt submission database
+        copy /Y "%PLEX_PACKAGE_ROOT%\data\database\learning_system.db" "%BACKEND%\instance\learning_system.db" >nul
+        set "SKIP_DEMO_SEED=1"
+    )
+)
 pushd "%BACKEND%"
 "%PYTHON%" manage.py upgrade
 if errorlevel 1 (
@@ -95,10 +133,14 @@ if errorlevel 1 (
         exit /b 1
     )
 )
-"%PYTHON%" manage.py seed-demo
-if errorlevel 1 (
-    popd
-    exit /b 1
+if "%SKIP_DEMO_SEED%"=="0" (
+    "%PYTHON%" manage.py seed-demo
+    if errorlevel 1 (
+        popd
+        exit /b 1
+    )
+) else (
+    echo Skipped seed-demo - using prebuilt submission database
 )
 
 echo [6/6] Health, database, and demo-account checks
@@ -122,13 +164,18 @@ if errorlevel 1 exit /b 1
 
 if "%BACKEND_RUNNING%"=="0" (
     echo Starting backend at http://127.0.0.1:%BACKEND_PORT%
-    start "PLEX Backend" /min /D "%BACKEND%" cmd /c "set SERVER_PORT=%BACKEND_PORT%&& \"%PYTHON%\" run.py"
+    start "PLEX Backend" /min /D "%BACKEND%" cmd /k "set PLEX_PYTHON=%PYTHON%&& set FLASK_ENV=development&& set SERVER_PORT=%BACKEND_PORT%&& call start_backend.bat"
 ) else (
     echo Backend already running at http://127.0.0.1:%BACKEND_PORT%
 )
 if "%FRONTEND_RUNNING%"=="0" (
-    echo Starting frontend at http://localhost:%FRONTEND_PORT%
-    start "PLEX Frontend" /min /D "%FRONTEND%" cmd /k "npm run dev"
+    if /I "%PLEX_FRONTEND_MODE%"=="static" (
+        echo Starting prebuilt frontend at http://localhost:%FRONTEND_PORT%
+        start "PLEX Frontend" /min /D "%BACKEND%" cmd /k ""%PYTHON%" scripts\serve_frontend_static.py --dist "%PLEX_FRONTEND_DIST%" --port %FRONTEND_PORT% --api-target http://127.0.0.1:%BACKEND_PORT%"
+    ) else (
+        echo Starting frontend at http://localhost:%FRONTEND_PORT%
+        start "PLEX Frontend" /min /D "%FRONTEND%" cmd /k "npm run dev"
+    )
 ) else (
     echo Frontend already running at http://localhost:%FRONTEND_PORT%
 )
@@ -147,6 +194,14 @@ echo PLEX is ready.
 echo Student: student001 / student123
 echo Teacher: teacher001 / teacher123
 echo Admin:   admin / admin123
+exit /b 0
+
+:detect_prebuilt_assets
+if not defined PLEX_PACKAGE_ROOT exit /b 0
+if exist "%PLEX_PACKAGE_ROOT%\runtime\frontend-dist\index.html" (
+    set "PLEX_FRONTEND_MODE=static"
+    set "PLEX_FRONTEND_DIST=%PLEX_PACKAGE_ROOT%\runtime\frontend-dist"
+)
 exit /b 0
 
 :parse_args
@@ -205,7 +260,11 @@ exit /b 0
 :check_frontend
 netstat -ano | findstr /R /C:":%FRONTEND_PORT% .*LISTENING" >nul 2>&1
 if errorlevel 1 exit /b 0
-powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:%FRONTEND_PORT%' -TimeoutSec 3; if ($r.StatusCode -eq 200 -and $r.Content -match '/@vite/client' -and $r.Content -match '<div id=') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+if /I "%PLEX_FRONTEND_MODE%"=="static" (
+    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:%FRONTEND_PORT%' -TimeoutSec 3; if ($r.StatusCode -eq 200 -and $r.Content -match 'id=\"app\"') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+) else (
+    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:%FRONTEND_PORT%' -TimeoutSec 3; if ($r.StatusCode -eq 200 -and $r.Content -match '/@vite/client' -and $r.Content -match 'id=\"app\"') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+)
 if errorlevel 1 (
     echo [ERROR] Port %FRONTEND_PORT% is already in use, but it does not look like the PLEX Vite frontend.
     exit /b 1
@@ -228,7 +287,11 @@ exit /b 1
 
 :wait_frontend
 for /L %%I in (1,1,%WAIT_SECONDS%) do (
-    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:%FRONTEND_PORT%' -TimeoutSec 2; if ($r.StatusCode -eq 200 -and $r.Content -match '/@vite/client') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+    if /I "%PLEX_FRONTEND_MODE%"=="static" (
+        powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:%FRONTEND_PORT%' -TimeoutSec 2; if ($r.StatusCode -eq 200 -and $r.Content -match 'id=\"app\"') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+    ) else (
+        powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing 'http://localhost:%FRONTEND_PORT%' -TimeoutSec 2; if ($r.StatusCode -eq 200 -and $r.Content -match '/@vite/client') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+    )
     if not errorlevel 1 (
         echo Frontend health check passed.
         exit /b 0

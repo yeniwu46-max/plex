@@ -13,9 +13,8 @@ export function xiaoEStripDash(text: string): string {
 }
 
 export function xiaoENormalizeReply(text: string): string {
-  return xiaoEStripDash(xiaoEStripAsterisks(text))
-    .replace(/智能体/g, '小E')
-    .replace(/Agent/gi, '小E')
+  // Markdown 语法（加粗、列表、代码块）保留给 MarkdownRenderer 统一渲染。
+  return xiaoEStripDash(text).replace(/智能体/g, '小E').replace(/Agent/gi, '小E')
 }
 
 /** @alias xiaoENormalizeReply */
@@ -23,10 +22,11 @@ export const xiaoECleanProse = xiaoENormalizeReply
 
 const RESOURCE_STEP_LABELS: Record<string, string> = {
   profile_interpreter: '了解你的学习情况',
-  knowledge_retrieval: '查找相关知识点',
-  instructional_design: '设计讲解方式',
-  resource_generation: '整理学习材料',
-  quality_audit: '检查内容质量',
+  knowledge_retriever: '查找课程知识库',
+  instructional_designer: '设计讲解方式',
+  resource_generator: '整理学习材料',
+  quality_reviewer: '审核学习内容',
+  path_planner: '安排学习顺序',
 }
 
 export function xiaoEResourceStepLabel(agentId: string, fallbackName?: string): string {
@@ -66,10 +66,13 @@ const BACKEND_LABELS: Record<string, string> = {
   local_rules: '快速准备',
   iflytek_spark: '云端讲解',
   deepseek: '智能讲解',
+  openai: '智能讲解',
+  openrouter: '智能讲解',
   llm: '智能讲解',
   spark: '智能讲解',
   rag: '知识库参考',
   rules: '学习建议',
+  rules_fallback: '规则审核',
 }
 
 export function xiaoEResourceBackendLabel(backend?: string | null): string {

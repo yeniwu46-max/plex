@@ -4,8 +4,8 @@ import { NCollapse, NCollapseItem, NTag } from 'naive-ui'
 import PedagogicalBundleViewer, {
   type PedagogicalBundleContent,
 } from '../student/PedagogicalBundleViewer.vue'
+import MarkdownRenderer from '../common/MarkdownRenderer.vue'
 import type { PersonalizedResource } from '../../api/personalizedResources'
-import { stripMarkdownAsterisks } from '../../utils/questionStemSanitizer'
 
 const props = withDefaults(
   defineProps<{
@@ -62,16 +62,49 @@ const codingLab = computed(() => {
 })
 
 const audioTranscript = computed(() => {
-  if (props.item.content?.format !== 'audio_fallback') return ''
+  const format = props.item.content?.format
+  if (format !== 'audio_fallback' && format !== 'audio') return ''
   return String(props.item.content.transcript || '')
 })
+
+const audioUrl = computed(() =>
+  props.item.resource_type === 'audio_explanation' ? props.item.content_url || '' : '',
+)
+
+const videoScript = computed(() => {
+  const format = props.item.content?.format
+  if (format !== 'video' && format !== 'video_script') return ''
+  return String(props.item.content.script || '')
+})
+
+const videoUrl = computed(() =>
+  props.item.resource_type === 'video_lesson' ? props.item.content_url || '' : '',
+)
 
 const showBundleToggle = computed(
   () => !isBundle.value && bundleContent.value && props.bundleItem,
 )
 
 function cleanText(value?: string) {
-  return stripMarkdownAsterisks(value ?? '')
+  return (value ?? '').trim()
+}
+
+/** 将 tree JSON 转成 mermaid mindmap 源码，交给 MarkdownRenderer 可视化。 */
+const mindMapMermaid = computed(() => {
+  const map = mindMap.value
+  if (!map) return ''
+  const sanitize = (text?: string) =>
+    (text ?? '').replace(/[()[\]{}"`]/g, ' ').replace(/\s+/g, ' ').trim() || '节点'
+  const lines = ['mindmap', `  root((${sanitize(map.root || '思维导图')}))`]
+  for (const child of map.children ?? []) {
+    lines.push(`    ${sanitize(child.label)}`)
+    if (child.note) lines.push(`      ${sanitize(child.note)}`)
+  }
+  return '```mermaid\n' + lines.join('\n') + '\n```'
+})
+
+function fencedCode(code?: string, lang = 'python') {
+  return '```' + lang + '\n' + (code ?? '').trim() + '\n```'
 }
 </script>
 
@@ -104,7 +137,9 @@ function cleanText(value?: string) {
     <template v-else-if="viewMode === 'current'">
       <n-collapse class="content-accordion" :default-expanded-names="['main']">
         <n-collapse-item v-if="markdownText" name="main" title="讲解文档">
-          <pre class="content-markdown">{{ cleanText(markdownText) }}</pre>
+          <div class="content-rendered">
+            <MarkdownRenderer :content="markdownText" />
+          </div>
         </n-collapse-item>
 
         <n-collapse-item
@@ -117,40 +152,69 @@ function cleanText(value?: string) {
               <n-tag size="small">{{ q.type || q.level || '题目' }}</n-tag>
               <strong>第 {{ index + 1 }} 题</strong>
             </header>
-            <p>{{ cleanText(String(q.question || q.stem || '')) }}</p>
+            <MarkdownRenderer :content="cleanText(String(q.question || q.stem || ''))" />
             <ul v-if="q.options?.length">
               <li v-for="opt in q.options" :key="String(opt)">{{ cleanText(String(opt)) }}</li>
             </ul>
             <n-collapse>
               <n-collapse-item title="参考答案与解析" :name="`q-${index}`">
-                <pre v-if="q.answer" class="content-code">{{ cleanText(String(q.answer)) }}</pre>
-                <p>{{ cleanText(String(q.explanation || '')) }}</p>
+                <MarkdownRenderer
+                  v-if="q.answer"
+                  :content="fencedCode(String(q.answer))"
+                />
+                <MarkdownRenderer :content="cleanText(String(q.explanation || ''))" />
               </n-collapse-item>
             </n-collapse>
           </article>
         </n-collapse-item>
 
         <n-collapse-item v-else-if="mindMap" name="main" title="思维导图">
-          <h4>{{ cleanText(mindMap.root || '思维导图') }}</h4>
-          <ul>
-            <li v-for="child in mindMap.children ?? []" :key="child.label">
-              <strong>{{ cleanText(child.label) }}</strong>
-              <span v-if="child.note"> — {{ cleanText(child.note) }}</span>
-            </li>
-          </ul>
+          <MarkdownRenderer v-if="mindMapMermaid" :content="mindMapMermaid" />
+          <details class="content-outline">
+            <summary>大纲视图</summary>
+            <h4>{{ cleanText(mindMap.root || '思维导图') }}</h4>
+            <ul>
+              <li v-for="child in mindMap.children ?? []" :key="child.label">
+                <strong>{{ cleanText(child.label) }}</strong>
+                <span v-if="child.note"> — {{ cleanText(child.note) }}</span>
+              </li>
+            </ul>
+          </details>
         </n-collapse-item>
 
         <n-collapse-item v-else-if="codingLab" name="main" title="代码实操">
-          <p>{{ cleanText(codingLab.scenario) }}</p>
+          <MarkdownRenderer :content="cleanText(codingLab.scenario)" />
           <h4>Starter Code</h4>
-          <pre class="content-code">{{ cleanText(codingLab.starter_code) }}</pre>
+          <MarkdownRenderer :content="fencedCode(codingLab.starter_code)" />
           <ul v-if="codingLab.checks?.length">
             <li v-for="check in codingLab.checks" :key="check">{{ cleanText(check) }}</li>
           </ul>
         </n-collapse-item>
 
-        <n-collapse-item v-else-if="audioTranscript" name="main" title="语音讲解文稿">
-          <pre class="content-markdown">{{ cleanText(audioTranscript) }}</pre>
+        <n-collapse-item v-else-if="audioTranscript" name="main" title="语音讲解">
+          <div v-if="audioUrl" class="audio-player">
+            <audio controls preload="metadata" :src="audioUrl">
+              当前浏览器不支持音频播放，可查看下方文稿。
+            </audio>
+            <small>由语音合成生成 · 可拖动进度条跟读</small>
+          </div>
+          <p v-else class="content-hint">语音文件生成中或暂不可用，先阅读文稿：</p>
+          <div class="content-rendered">
+            <MarkdownRenderer :content="audioTranscript" />
+          </div>
+        </n-collapse-item>
+
+        <n-collapse-item v-else-if="videoScript || videoUrl" name="main" title="教学短视频">
+          <div v-if="videoUrl" class="video-player">
+            <video controls preload="metadata" :src="videoUrl">
+              当前浏览器不支持视频播放。
+            </video>
+            <small>由多模态生成模型制作 · 约 15–30 秒</small>
+          </div>
+          <p v-else class="content-hint">视频仍在生成或暂不可用，先看分镜脚本：</p>
+          <div class="content-rendered">
+            <MarkdownRenderer :content="videoScript" />
+          </div>
         </n-collapse-item>
 
         <n-collapse-item v-else name="main" title="原始数据">
@@ -204,6 +268,56 @@ function cleanText(value?: string) {
 
 .content-block {
   padding: 0.75rem 0;
+}
+
+.content-rendered {
+  max-height: min(60vh, 520px);
+  overflow: auto;
+  padding-right: 0.35rem;
+}
+
+.audio-player {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.audio-player audio {
+  width: 100%;
+  border-radius: 10px;
+}
+
+.audio-player small {
+  color: rgba(150, 185, 200, 0.75);
+  font-size: 0.75rem;
+}
+
+.video-player {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.video-player video {
+  width: 100%;
+  max-height: 360px;
+  border-radius: 12px;
+  background: #000;
+}
+
+.video-player small {
+  color: rgba(150, 185, 200, 0.75);
+  font-size: 0.75rem;
+}
+
+.content-outline {
+  margin-top: 0.6rem;
+  font-size: 0.88rem;
+}
+
+.content-outline summary {
+  cursor: pointer;
+  color: rgba(204, 230, 239, 0.7);
 }
 
 .content-markdown,

@@ -277,19 +277,42 @@ class StudentProfileService:
         return round(filled / len(required) * 100)
 
     @staticmethod
-    def chat(user_id: int, message: str, confirm_changes: bool = False) -> dict:
+    def chat(
+        user_id: int,
+        message: str,
+        confirm_changes: bool = False,
+        *,
+        skip_llm: bool = False,
+        llm_timeout: float | None = None,
+    ) -> dict:
         if not message or len(message.strip()) < 2:
             raise ValueError('message不能为空')
         CourseSafetyService.ensure_safe(message)
         backend = 'local_rules'
-        try:
-            from agents.learning_profile_agent import LearningProfileAgent
-            recent = TrialQuestionProgress.query.filter_by(user_id=user_id, status='completed').count()
-            extracted, backend = LearningProfileAgent.analyze({'message': message[:600], 'practice_count': recent, 'weak_knowledge': MistakeService.list_weak_knowledge(user_id, 3)})
-            if not extracted:
-                extracted = StudentProfileService._rule_extract(message)
-        except Exception:
+        extracted: dict = {}
+        if skip_llm:
             extracted = StudentProfileService._rule_extract(message)
+        else:
+            try:
+                from agents.learning_profile_agent import LearningProfileAgent
+
+                recent = TrialQuestionProgress.query.filter_by(
+                    user_id=user_id, status='completed'
+                ).count()
+                extracted, backend = LearningProfileAgent.analyze(
+                    {
+                        'message': message[:600],
+                        'practice_count': recent,
+                        'weak_knowledge': MistakeService.list_weak_knowledge(user_id, 3),
+                    },
+                    timeout_seconds=llm_timeout,
+                )
+                if not extracted:
+                    extracted = StudentProfileService._rule_extract(message)
+                    backend = 'local_rules'
+            except Exception:
+                extracted = StudentProfileService._rule_extract(message)
+                backend = 'local_rules'
         extracted.update(StudentProfileService._behavior_changes(user_id))
         extracted.setdefault('cognitive_state', StudentProfileService._dimension(
             '当前状态待后续练习补全', '尚无足够连续作答行为', 0.75, 'mixed'
@@ -320,12 +343,27 @@ class StudentProfileService:
 
         return {
             'conversation_id': f'profile-{user_id}',
-            'assistant_reply': '已识别画像信息，请确认低置信度字段。' if proposed else '暂未识别到画像字段，请补充专业、目标、偏好、节奏或兴趣。',
+            'assistant_reply': StudentProfileService._compose_assistant_reply(message, proposed),
             'proposed_changes': proposed,
             'profile': row.to_dict() if row and row.id else StudentProfileService.get_or_create(user_id).to_dict(),
             'backend': backend,
             'safety': {'passed': True, 'flags': []},
         }
+
+    @staticmethod
+    def _compose_assistant_reply(message: str, proposed: list[dict]) -> str:
+        if not proposed:
+            return (
+                '我先记下了你的话。可以再补充专业背景、学习目标、讲解偏好、节奏或兴趣，'
+                '我就能更准确地更新画像。'
+            )
+        preview = (message or '').strip().replace('\n', ' ')[:48]
+        lines = [f'收到：「{preview}{"…" if len((message or "").strip()) > 48 else ""}」。我先这样理解：']
+        for item in proposed[:5]:
+            flag = '（我不太确定，需要你确认）' if item.get('requires_confirmation') else ''
+            lines.append(f'- **{item.get("label")}**：{item.get("new_value")}{flag}')
+        lines.append('右侧画像会同步刷新；不确定的条目可以点下方确认。')
+        return '\n'.join(lines)
 
     @staticmethod
     def apply_changes(user_id: int, changes: dict, reason: str, backend: str = 'manual') -> dict:

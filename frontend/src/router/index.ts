@@ -3,6 +3,13 @@ import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.hash) return { el: to.hash, behavior: 'smooth' }
+    // 同壳内切页：保持滚动位置感知更轻，仅跨页回到顶部
+    if (to.path !== from.path) return { top: 0 }
+    return undefined
+  },
   routes: [
     {
       path: '/',
@@ -31,68 +38,67 @@ const router = createRouter({
     },
     {
       path: '/student',
-      name: 'student-home',
       meta: { roles: ['student'] },
-      component: () => import('../views/StudentHomeView.vue'),
+      component: () => import('../layouts/StudentShellLayout.vue'),
+      children: [
+        {
+          path: '',
+          name: 'student-home',
+          component: () => import('../views/StudentHomeView.vue'),
+        },
+        {
+          path: 'discovery',
+          name: 'student-discovery',
+          component: () => import('../views/DiscoveryCabinView.vue'),
+        },
+        {
+          path: 'star-path',
+          name: 'student-star-path-lab',
+          component: () => import('../views/StarPathLabView.vue'),
+        },
+        {
+          path: 'star-path/resources',
+          name: 'student-star-path-resources',
+          component: () => import('../views/StudentResourcesView.vue'),
+        },
+        {
+          path: 'trials',
+          name: 'student-trials',
+          component: () => import('../views/StudentTrialView.vue'),
+        },
+        {
+          path: 'trials/practice/:questionId',
+          name: 'student-trial-practice',
+          component: () => import('../views/StudentTrialPracticeView.vue'),
+        },
+        {
+          path: 'messenger',
+          name: 'student-messenger',
+          component: () => import('../views/MessengerView.vue'),
+        },
+        { path: 'me', redirect: '/student/me/growth' },
+        {
+          path: 'me/growth',
+          name: 'student-growth',
+          component: () => import('../views/StudentGrowthView.vue'),
+        },
+        {
+          path: 'me/profile',
+          name: 'student-profile',
+          component: () => import('../views/StudentProfileView.vue'),
+        },
+        {
+          path: 'me/settings',
+          name: 'student-settings',
+          component: () => import('../views/StudentControlView.vue'),
+        },
+        { path: 'daily', redirect: { path: '/student', hash: '#daily' } },
+        { path: 'archives', redirect: '/student/me/growth' },
+        { path: 'profile', redirect: '/student/me/growth' },
+        { path: 'control', redirect: '/student/me/settings' },
+        { path: 'resources', redirect: '/student/star-path/resources' },
+      ],
     },
-    {
-      path: '/student/discovery',
-      name: 'student-discovery',
-      meta: { roles: ['student'] },
-      component: () => import('../views/DiscoveryCabinView.vue'),
-    },
-    {
-      path: '/student/star-path',
-      name: 'student-star-path-lab',
-      meta: { roles: ['student'] },
-      component: () => import('../views/StarPathLabView.vue'),
-    },
-    {
-      path: '/student/star-path/resources',
-      name: 'student-star-path-resources',
-      meta: { roles: ['student'] },
-      component: () => import('../views/StudentResourcesView.vue'),
-    },
-    {
-      path: '/student/trials',
-      name: 'student-trials',
-      meta: { roles: ['student'] },
-      component: () => import('../views/StudentTrialView.vue'),
-    },
-    {
-      path: '/student/trials/practice/:questionId',
-      name: 'student-trial-practice',
-      meta: { roles: ['student'] },
-      component: () => import('../views/StudentTrialPracticeView.vue'),
-    },
-    {
-      path: '/student/messenger',
-      name: 'student-messenger',
-      meta: { roles: ['student'] },
-      component: () => import('../views/MessengerView.vue'),
-    },
-    { path: '/student/me', redirect: '/student/me/growth' },
-    {
-      path: '/student/me/growth',
-      name: 'student-growth',
-      meta: { roles: ['student'] },
-      component: () => import('../views/StudentGrowthView.vue'),
-    },
-    {
-      path: '/student/me/profile',
-      redirect: '/student/me/growth',
-    },
-    {
-      path: '/student/me/settings',
-      name: 'student-settings',
-      meta: { roles: ['student'] },
-      component: () => import('../views/StudentControlView.vue'),
-    },
-    { path: '/student/daily', redirect: { path: '/student', hash: '#daily' } },
-    { path: '/student/archives', redirect: '/student/me/growth' },
-    { path: '/student/profile', redirect: '/student/me/growth' },
-    { path: '/student/control', redirect: '/student/me/settings' },
-    { path: '/student/resources', redirect: '/student/star-path/resources' },
     {
       path: '/teacher',
       meta: { roles: ['teacher', 'admin'] },

@@ -41,8 +41,9 @@ AGENT_META: dict[str, dict[str, str]] = {
 NO_ANSWER_POLICY = 'no_direct_answer'
 
 NO_ANSWER_RULE = (
-    '【硬性规则】你是耐心的 Python 编程辅导老师。'
-    '绝对不能给出完整答案、不能直接给出可通过测试的代码、不能写出预期输出的完整解法。'
+    '你叫小E，是 A3 学习系统里陪学生闯试炼的编程辅导伙伴，语气温和、聪明、具体，像学习伙伴而不是老师训话。'
+    '不要提到模型、接口、AI 或供应商，也不要用“小E：”开头自我署名。'
+    '【硬性规则】绝对不能给出完整答案、不能直接给出可通过测试的代码、不能写出预期输出的完整解法。'
     '只能用提问、思路引导、检查清单和类比，帮助学生自己发现和修正。'
     '回复使用简洁中文，150字以内优先；必要时可稍长，但仍不得泄露答案。'
     '不要使用星号（*）或 Markdown 加粗。'
@@ -351,8 +352,8 @@ def execute(intent: str, payload: dict) -> dict:
             system=_chat_system(intent),
             user=prompt_user,
             history=history if isinstance(history, list) else None,
-            timeout=40.0,
-            max_tokens=900,
+            timeout=5.0,
+            max_tokens=360,
         )
         if text:
             body = {'response': text[:1200]}
@@ -363,7 +364,7 @@ def execute(intent: str, payload: dict) -> dict:
         llm_out = chat_json(
             system=_llm_prompt(intent),
             user=json.dumps(llm_context, ensure_ascii=False),
-            timeout=35.0,
+            timeout=5.0,
         )
         if llm_out and llm_out.get('response'):
             body = {**body, **{k: v for k, v in llm_out.items() if v}}

@@ -22,7 +22,7 @@ const emit = defineEmits<{
 
 const displayNodes = computed(() => {
   const seen = new Map<string, number>()
-  return props.nodes.map((node, index) => {
+  return props.nodes.map((node) => {
     const key = node.domainKey ?? node.label
     const dup = seen.get(key) ?? 0
     seen.set(key, dup + 1)

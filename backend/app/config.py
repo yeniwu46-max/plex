@@ -106,9 +106,13 @@ class ProductionConfig(Config):
     SECRET_KEY = os.getenv('SECRET_KEY')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 
-    if not SECRET_KEY:
+
+def _validate_production_config(cfg: type[Config]) -> None:
+    if cfg is not ProductionConfig:
+        return
+    if not cfg.SECRET_KEY:
         raise ValueError("生产环境必须设置 SECRET_KEY 环境变量")
-    if not JWT_SECRET_KEY:
+    if not cfg.JWT_SECRET_KEY:
         raise ValueError("生产环境必须设置 JWT_SECRET_KEY 环境变量")
 
 
@@ -135,4 +139,6 @@ def get_config(env=None):
     if env is None:
         env = os.getenv('FLASK_ENV', 'development')
 
-    return config.get(env, config['default'])
+    cfg = config.get(env, config['default'])
+    _validate_production_config(cfg)
+    return cfg

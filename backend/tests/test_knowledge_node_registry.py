@@ -27,4 +27,4 @@ class KnowledgeNodeRegistryTests(unittest.TestCase):
     def test_get_entry(self):
         entry = get_entry('var')
         self.assertIsNotNone(entry)
-        self.assertEqual(entry.domain_key, 'stage1')
+        self.assertEqual(entry.domain_key, 'data-vars')

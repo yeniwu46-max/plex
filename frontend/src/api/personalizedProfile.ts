@@ -1,4 +1,5 @@
 import { http, type ApiEnvelope } from './http'
+import { postSseStream } from './sse'
 
 export type ProfileDimensionKey =
   | 'major_background'
@@ -76,6 +77,38 @@ export async function chatDynamicProfile(message: string, confirmChanges = false
   })
   if (data.code !== 0) throw new Error(data.message || '画像分析失败')
   return data.data
+}
+
+/** SSE 流式画像对话：阶段回调 + 逐 token 回复，返回完整抽取结果。 */
+export async function streamProfileChat(
+  message: string,
+  confirmChanges: boolean,
+  onDelta: (text: string) => void,
+  onStage?: (stage: string, label: string) => void,
+  signal?: AbortSignal,
+): Promise<ProfileChatResult> {
+  const controller = new AbortController()
+  const onExternalAbort = () => controller.abort()
+  signal?.addEventListener('abort', onExternalAbort)
+  const timer = window.setTimeout(() => controller.abort(), 30_000)
+  try {
+    const done = await postSseStream(
+      '/v1/student/profile/chat/stream',
+      { message, confirm_changes: confirmChanges },
+      { onDelta, onStage, signal: controller.signal },
+    )
+    const result = done?.result as ProfileChatResult | undefined
+    if (!result) throw new Error('画像分析流意外结束，请重试')
+    return result
+  } catch (error) {
+    if (controller.signal.aborted && !signal?.aborted) {
+      throw new Error('画像对话超时，请重试')
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timer)
+    signal?.removeEventListener('abort', onExternalAbort)
+  }
 }
 
 export async function updateDynamicProfile(changes: Partial<Record<ProfileDimensionKey, string>>) {

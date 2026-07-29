@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { NButton, NIcon, NInput, NSpin } from 'naive-ui'
 import { ChatbubbleEllipsesOutline, CloseOutline, SendOutline } from '@vicons/ionicons5'
 import { trialCoach, messengerQuickAction, type TrialCoachIntent, type TrialCoachPayload, type TrialCoachResult } from '../../api/agentService'
+import MarkdownRenderer from '../common/MarkdownRenderer.vue'
 import { xiaoECleanProse, xiaoEThinkingMessage, XIAO_E_PERSONA_INTRO } from '../../utils/xiaoEPersona'
 import { openPracticeQuestionByRef } from '../../utils/practiceQuestionNav'
 
@@ -399,7 +400,8 @@ onBeforeUnmount(() => {
               <header v-if="msg.role === 'assistant' && msg.agentName">
                 <small>{{ msg.agentName }}</small>
               </header>
-              <p>{{ msg.content }}</p>
+              <MarkdownRenderer v-if="msg.role === 'assistant'" :content="msg.content" />
+              <p v-else>{{ msg.content }}</p>
               <button
                 v-if="msg.questionPick"
                 type="button"

@@ -3,6 +3,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, useMessage } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
+
+defineOptions({ name: 'StudentTrialPracticeView' })
 import PythonTrialWorkspace from '../components/trial/PythonTrialWorkspace.vue'
 import { getPythonTrialQuestion, type PythonTrialQuestion } from '../data/pythonTrialQuestions'
 import { getStarPathNodeByQuestionId } from '../data/starPathTrail'

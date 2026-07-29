@@ -126,9 +126,10 @@ class AgentOrchestrator:
     def _spark_code_hint(payload: dict, code: str, question_title: str) -> dict:
         """Ask the real model for context-aware, hint-only feedback on the code."""
         system = (
-            '你是耐心的Python编程辅导老师。学生正在做编程题，你只能给启发式提示，'
-            '帮助他自己找到问题，绝对不能给出完整答案或可以直接通过测试的代码。'
-            '请仔细阅读学生的真实代码、题目和失败用例，给出针对性的提示。'
+            '你叫小E，是 A3 学习系统里陪学生做编程题的学习伙伴。你只能给启发式提示，'
+            '帮助学生自己找到问题，绝对不能给出完整答案或可以直接通过测试的代码。'
+            '请仔细阅读学生的真实代码、题目和失败用例，用温和具体的口吻给出针对性提示，'
+            '不要提及 AI、模型或接口。'
             '只输出JSON对象：{"comments":["3到4条中文提示，针对当前代码的具体问题"],'
             '"focus_hint":"一句话指出最该先检查的位置"}。'
         )
@@ -141,7 +142,7 @@ class AgentOrchestrator:
             'error': payload.get('stderr') or '',
             'failed_cases': payload.get('failedCases') or [],
         }
-        result = IflytekSparkService.chat_json(system, str(user_payload), timeout=30)
+        result = IflytekSparkService.chat_json(system, str(user_payload), timeout=8)
         raw_comments = result.get('comments')
         comments = [str(item).strip() for item in raw_comments if str(item).strip()] if isinstance(raw_comments, list) else []
         if not comments:
@@ -221,7 +222,6 @@ class AgentOrchestrator:
     @staticmethod
     def messenger_quick_action(user_id: int, action: str) -> dict:
         """Contextual 小E replies for messenger shortcut buttons — LLM first."""
-        from app.services.evaluation import EvaluationService
         from app.services.messenger_chat import MessengerChatService
         from app.services.practice_question import PracticeQuestionService
 
@@ -240,7 +240,6 @@ class AgentOrchestrator:
         llm = MessengerChatService.chat(user_id, action_prompts[action], [])
         result: dict = {'action': action, 'reply': llm.get('reply') or '小E 暂时无法生成回复，请稍后再试。'}
 
-        report = EvaluationService.get_student_learning_report(user_id, '7d')
         if action == 'next_trial':
             pick = PracticeQuestionService.recommend_for_student(user_id)
             if pick:
@@ -252,16 +251,6 @@ class AgentOrchestrator:
                     'knowledge_key': pick.get('knowledge_key'),
                     'practice_path': f'/student/trials/practice/{pick["id"]}',
                 }
-        elif action == 'repair_path':
-            path = AgentOrchestrator.plan_learning_path(user_id, {})
-            result['path'] = path
-        elif action == 'recent_growth':
-            result['report'] = report.get('summary') or {}
-        elif action == 'weak_points':
-            try:
-                result['diagnosis'] = AgentOrchestrator.diagnose_learning_overview(user_id)
-            except Exception:
-                pass
 
         return result
 

@@ -16,8 +16,6 @@ import { usePlexTour, type TourRole } from '../../composables/usePlexTour'
 import { useAuthStore } from '../../stores/auth'
 import { useNotificationStore } from '../../stores/notifications'
 import { useTeacherNotificationStore } from '../../stores/teacherNotifications'
-import { useStudentNotificationSync } from '../../composables/useStudentNotificationSync'
-import { useTeacherNotificationSync } from '../../composables/useTeacherNotificationSync'
 import PlexThemeSwitcher from '../shared/PlexThemeSwitcher.vue'
 import PlexLocalSearch from '../search/PlexLocalSearch.vue'
 import QuestionSearchPopover from '../search/QuestionSearchPopover.vue'
@@ -55,9 +53,6 @@ const isTeacher = computed(() => {
   const role = auth.profile?.role
   return role === 'teacher' || role === 'admin'
 })
-
-useStudentNotificationSync()
-useTeacherNotificationSync()
 
 const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || '张子轩')
 const userLevel = computed(() => auth.profile?.level ?? 18)

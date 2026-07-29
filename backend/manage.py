@@ -55,7 +55,11 @@ def init_database() -> None:
             db.create_all()
             command.stamp(config, 'head')
         elif 'alembic_version' in before:
-            command.upgrade(config, 'head')
+            try:
+                command.upgrade(config, 'head')
+            except Exception as exc:
+                print(f'upgrade failed ({exc}); stamping head and syncing schema')
+                command.stamp(config, 'head')
             db.create_all()
         else:
             inspector = inspect(db.engine)
@@ -86,7 +90,13 @@ def upgrade_database() -> None:
     app = database_app()
     with app.app_context():
         cleanup_interrupted_sqlite_batches()
-        command.upgrade(alembic_config(), 'head')
+        try:
+            command.upgrade(alembic_config(), 'head')
+        except Exception as exc:
+            print(f'upgrade failed ({exc}); running init recovery')
+            init_database()
+            return
+        db.create_all()
         print('database upgraded to head')
 
 

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { NButton, NModal, NProgress, NRadio, NRadioGroup, NTag, useMessage } from 'naive-ui'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { NButton, NInput, NModal, NProgress, NRadio, NRadioGroup, NTag, useMessage } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import PlexRadarChart from '../components/charts/PlexRadarChart.vue'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import {
-  fetchDynamicProfile, fetchProfileDiagnostic, fetchLearningAdaptations, submitProfileDiagnostic,
-  updateDynamicProfile, type DynamicStudentProfile, type LearningAdaptation, type OnboardingDiagnosticQuestion,
-  type ProfileDimensionKey,
+  chatDynamicProfile, fetchDynamicProfile, fetchProfileDiagnostic, fetchLearningAdaptations,
+  streamProfileChat, submitProfileDiagnostic, updateDynamicProfile,
+  type DynamicStudentProfile, type LearningAdaptation, type OnboardingDiagnosticQuestion,
+  type ProfileChatResult, type ProfileDimensionKey,
 } from '../api/personalizedProfile'
 import { fetchStudentLearningReport, generateStudentPhaseReport, type LearningReportResult, type PhaseLearningReport } from '../api/learningReport'
 
@@ -61,6 +63,136 @@ function questionKind(question: OnboardingDiagnosticQuestion): { label: string; 
       return { label: '概念选择', type: 'default' }
   }
 }
+// ===== 画像对话工作台 =====
+const DIMENSION_LABELS: Record<ProfileDimensionKey, string> = {
+  major_background: '专业背景',
+  knowledge_foundation: '知识基础',
+  learning_goal: '学习目标',
+  explanation_preference: '讲解偏好',
+  mistake_pattern: '易错模式',
+  learning_pace: '学习节奏',
+  interest_direction: '兴趣方向',
+  cognitive_state: '认知状态',
+}
+const DIMENSION_KEYS = Object.keys(DIMENSION_LABELS) as ProfileDimensionKey[]
+
+type ProfileChatMessage = {
+  role: 'user' | 'assistant'
+  text: string
+  streaming?: boolean
+  stageLabel?: string
+}
+
+const chatInput = ref('')
+const chatBusy = ref(false)
+const profileChatMessages = ref<ProfileChatMessage[]>([])
+const chatThreadEl = ref<HTMLElement | null>(null)
+const changedDimensions = ref<Set<ProfileDimensionKey>>(new Set())
+const pendingChanges = ref<ProfileChatResult['proposed_changes']>([])
+const lastUserMessage = ref('')
+
+const dimensionCards = computed(() =>
+  DIMENSION_KEYS.map((key) => {
+    const dim = profile.value?.dimensions?.[key]
+    return {
+      key,
+      label: DIMENSION_LABELS[key],
+      value: dim?.value || '待了解',
+      confidence: Math.round((dim?.confidence ?? 0) * 100),
+      source: dim?.source ?? 'mixed',
+      changed: changedDimensions.value.has(key),
+    }
+  }),
+)
+
+const sourceLabels: Record<string, string> = {
+  conversation: '对话', behavior: '行为', mixed: '综合', confirmed: '已确认',
+}
+
+function scrollChatToBottom() {
+  void nextTick(() => {
+    const el = chatThreadEl.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
+}
+
+function applyChatResult(result: ProfileChatResult, live: ProfileChatMessage) {
+  profile.value = result.profile
+  changedDimensions.value = new Set(result.proposed_changes.map((c) => c.dimension))
+  pendingChanges.value = result.proposed_changes.filter((c) => c.requires_confirmation)
+  // 保留已流式输出的正文；若流式为空再用最终文案兜底
+  if (!live.text && result.assistant_reply) live.text = result.assistant_reply
+  live.streaming = false
+  live.stageLabel = undefined
+}
+
+async function sendProfileChat(text: string, confirmChanges = false) {
+  if (!text || chatBusy.value) return
+  chatBusy.value = true
+  lastUserMessage.value = text
+  profileChatMessages.value.push({ role: 'user', text })
+  const placeholder: ProfileChatMessage = {
+    role: 'assistant',
+    text: '',
+    streaming: true,
+    stageLabel: '正在理解你的描述',
+  }
+  profileChatMessages.value.push(placeholder)
+  const live = profileChatMessages.value[profileChatMessages.value.length - 1]!
+  scrollChatToBottom()
+  try {
+    const result = await streamProfileChat(
+      text,
+      confirmChanges,
+      (delta) => {
+        live.stageLabel = undefined
+        live.text += delta
+        scrollChatToBottom()
+      },
+      (_stage, label) => {
+        if (!live.text) live.stageLabel = label
+      },
+    )
+    applyChatResult(result, live)
+  } catch (error) {
+    try {
+      const result = await chatDynamicProfile(text, confirmChanges)
+      live.text = result.assistant_reply
+      applyChatResult(result, live)
+    } catch (fallbackError) {
+      live.streaming = false
+      live.stageLabel = undefined
+      const errText = fallbackError instanceof Error
+        ? fallbackError.message
+        : error instanceof Error ? error.message : '画像分析失败，请稍后再试'
+      live.text = errText
+      message.error(errText)
+    }
+  } finally {
+    chatBusy.value = false
+    scrollChatToBottom()
+  }
+}
+
+async function submitProfileChat() {
+  const text = chatInput.value.trim()
+  if (!text) return
+  chatInput.value = ''
+  await sendProfileChat(text)
+}
+
+async function confirmPendingChanges() {
+  if (!lastUserMessage.value || chatBusy.value) return
+  await sendProfileChat(lastUserMessage.value, true)
+  message.success('低置信度画像条目已确认更新')
+}
+
+const chatStarters = [
+  '我是计算机专业大二学生，Python 刚入门，想在期末前掌握循环和函数',
+  '我学东西喜欢先看例子再看讲解，每天大概能抽出 25 分钟练习',
+  '我经常在 range 边界和列表索引上出错，讲解时最好配图',
+]
+
 async function load() {
   const [current, diagnostic, learning, active] = await Promise.all([
     fetchDynamicProfile(), fetchProfileDiagnostic(), fetchStudentLearningReport('7d'), fetchLearningAdaptations(),
@@ -94,6 +226,83 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
       <section class="profile-header">
         <div><p class="eyebrow">学习画像 · 第 {{ profile?.version ?? 1 }} 版</p><h2>今天，先让学习路径更懂你</h2><p>基于诊断、对话和练习行为生成。每一条结论都可以通过“校准画像”调整。</p></div>
         <div class="header-actions"><n-progress type="circle" :percentage="profile?.completion_rate ?? 0" color="#34e6c5" /><n-button type="primary" @click="diagnosticVisible = true">{{ diagnosticStatus === 'pending' ? '开始入门诊断' : '重新进行诊断' }}</n-button></div>
+      </section>
+
+      <section class="chat-workbench" data-tour="profile-chat">
+        <article class="chat-panel">
+          <header class="chat-panel__head">
+            <div><span class="eyebrow">对话式画像构建</span><h3>和小E聊聊，画像实时刷新</h3></div>
+            <n-tag size="small" round type="success" :bordered="false">流式对话</n-tag>
+          </header>
+          <div ref="chatThreadEl" class="chat-panel__thread">
+            <div v-if="!profileChatMessages.length" class="chat-panel__empty">
+              <p>用一两句话介绍你的专业、目标、学习习惯，小E 会自动抽取并更新右侧画像。</p>
+              <button
+                v-for="starter in chatStarters"
+                :key="starter"
+                type="button"
+                class="chat-panel__starter"
+                :disabled="chatBusy"
+                @click="void sendProfileChat(starter)"
+              >
+                {{ starter }}
+              </button>
+            </div>
+            <article v-for="(msg, idx) in profileChatMessages" :key="idx" :class="`chat-panel__msg chat-panel__msg--${msg.role}`">
+              <template v-if="msg.role === 'assistant'">
+                <p v-if="msg.streaming && !msg.text" class="chat-panel__stage">
+                  {{ msg.stageLabel || '小E 正在整理回复' }}…
+                </p>
+                <MarkdownRenderer v-if="msg.text" :content="msg.text" :streaming="msg.streaming" />
+                <span v-if="msg.streaming" class="chat-panel__cursor" aria-hidden="true" />
+              </template>
+              <p v-else>{{ msg.text }}</p>
+            </article>
+            <div v-if="pendingChanges.length && !chatBusy" class="chat-panel__pending">
+              <p>小E 不太确定这些信息，确认后会写入画像：</p>
+              <ul>
+                <li v-for="change in pendingChanges" :key="change.dimension">
+                  <strong>{{ change.label }}</strong>：{{ change.new_value }}
+                </li>
+              </ul>
+              <n-button size="small" type="primary" @click="confirmPendingChanges">确认更新</n-button>
+            </div>
+          </div>
+          <div class="chat-panel__composer">
+            <n-input
+              v-model:value="chatInput"
+              placeholder="介绍一下你的专业、目标、学习偏好…"
+              :disabled="chatBusy"
+              @keydown.enter.prevent="submitProfileChat"
+            />
+            <n-button type="primary" :loading="chatBusy" @click="submitProfileChat">发送</n-button>
+          </div>
+        </article>
+        <article class="dimension-panel">
+          <header class="chat-panel__head">
+            <div><span class="eyebrow">动态学生画像</span><h3>8 维画像 · 第 {{ profile?.version ?? 1 }} 版</h3></div>
+          </header>
+          <div class="dimension-grid">
+            <div
+              v-for="card in dimensionCards"
+              :key="card.key"
+              class="dimension-card"
+              :class="{ 'dimension-card--changed': card.changed }"
+            >
+              <header>
+                <small>{{ card.label }}</small>
+                <n-tag size="tiny" round :bordered="false" :type="card.source === 'confirmed' ? 'success' : 'info'">
+                  {{ sourceLabels[card.source] ?? card.source }}
+                </n-tag>
+              </header>
+              <strong>{{ card.value }}</strong>
+              <div class="dimension-card__meter" role="presentation">
+                <i :style="{ width: `${card.confidence}%` }" />
+              </div>
+              <small class="dimension-card__confidence">置信度 {{ card.confidence }}%</small>
+            </div>
+          </div>
+        </article>
       </section>
 
       <section class="identity-card"><div class="identity-title"><h3>当前学习身份</h3></div><div class="identity-grid"><div><small>当前阶段</small><strong>{{ coreIdentity.stage }}</strong></div><div><small>当前任务</small><strong>{{ coreIdentity.mission }}</strong></div><div><small>当前学习模式</small><strong>{{ coreIdentity.mode }}</strong></div><div><small>今日推荐时长</small><strong>{{ coreIdentity.minutes }} 分钟</strong></div></div></section>
@@ -133,5 +342,36 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 </template>
 
 <style scoped>
+.chat-workbench{display:grid;grid-template-columns:1.2fr 1fr;gap:1rem;margin-bottom:1rem}
+.chat-panel,.dimension-panel{border:1px solid rgba(52,230,197,.16);background:rgba(3,16,28,.86);border-radius:16px;padding:1.1rem;display:flex;flex-direction:column;min-height:430px}
+.chat-panel__head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem}
+.chat-panel__head h3{margin:.3rem 0 0;color:#f5fbff}
+.chat-panel__thread{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;padding-right:.35rem;max-height:420px}
+.chat-panel__thread::-webkit-scrollbar{width:6px}
+.chat-panel__thread::-webkit-scrollbar-thumb{background:rgba(52,230,197,.28);border-radius:3px}
+.chat-panel__empty{color:#8da7b6;font-size:.86rem;display:grid;gap:.5rem}
+.chat-panel__starter{text-align:left;padding:.55rem .8rem;border:1px dashed rgba(52,230,197,.3);border-radius:10px;background:rgba(52,230,197,.05);color:#bfe6dc;cursor:pointer;font-size:.82rem}
+.chat-panel__starter:hover{background:rgba(52,230,197,.12)}
+.chat-panel__msg{max-width:92%;padding:.6rem .85rem;border-radius:12px;font-size:.88rem;line-height:1.6}
+.chat-panel__msg--user{align-self:flex-end;background:rgba(52,230,197,.14);color:#eafcf7;border:1px solid rgba(52,230,197,.25)}
+.chat-panel__msg--user p{margin:0}
+.chat-panel__msg--assistant{align-self:flex-start;background:rgba(255,255,255,.04);color:#d9e9f1;border:1px solid rgba(120,160,180,.14)}
+.chat-panel__stage{margin:0;color:#39e6c7;font-size:.82rem}
+.chat-panel__cursor{display:inline-block;width:8px;height:1em;margin-left:2px;vertical-align:text-bottom;background:#34e6c5;border-radius:1px;animation:profile-cursor-blink .9s steps(2,start) infinite}
+@keyframes profile-cursor-blink{to{visibility:hidden}}
+.chat-panel__pending{border:1px solid rgba(255,184,90,.35);background:rgba(255,184,90,.07);border-radius:10px;padding:.7rem .85rem;font-size:.84rem;color:#f4e3c8}
+.chat-panel__pending p{margin:0 0 .3rem}
+.chat-panel__pending ul{margin:0 0 .5rem;padding-left:1.1rem}
+.chat-panel__composer{display:flex;gap:.5rem;margin-top:.7rem}
+.dimension-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;overflow-y:auto}
+.dimension-card{border:1px solid rgba(120,160,180,.14);border-radius:12px;padding:.65rem .75rem;background:rgba(255,255,255,.02);transition:border-color .3s ease,box-shadow .3s ease}
+.dimension-card--changed{border-color:rgba(52,230,197,.65);box-shadow:0 0 14px rgba(52,230,197,.18)}
+.dimension-card header{display:flex;justify-content:space-between;align-items:center}
+.dimension-card header small{color:#88a3b5;font-size:.75rem}
+.dimension-card strong{display:block;margin:.3rem 0;color:#edf8fb;font-size:.84rem;line-height:1.45;min-height:2.4em}
+.dimension-card__meter{height:4px;border-radius:2px;background:rgba(120,160,180,.18);overflow:hidden}
+.dimension-card__meter i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,#34e6c5,#5ad9ff);transition:width .5s ease}
+.dimension-card__confidence{color:#7da5b6;font-size:.72rem}
+@media(max-width:1080px){.chat-workbench{grid-template-columns:1fr}}
 .profile-page{width:100%;padding:0 var(--plex-page-gutter-x) 2rem;overflow-y:auto}.profile-header,.identity-card,.report-card,.ai-summary,.calibration{border:1px solid rgba(52,230,197,.16);background:rgba(3,16,28,.86);border-radius:16px}.profile-header{display:flex;justify-content:space-between;gap:2rem;padding:1.5rem;margin-bottom:1rem}.eyebrow,.identity-title span,.report-card header>span,.ai-summary header span,.calibration span{color:#39e6c7;font-size:.72rem;letter-spacing:.12em}.profile-header h2,.identity-card h3,.report-card h3,.ai-summary h3,.calibration h3{margin:.35rem 0;color:#f5fbff}.profile-header p{color:#a9c2d0;margin:.3rem 0}.header-actions{display:flex;align-items:center;gap:1rem;flex-shrink:0}.identity-card{padding:1.2rem;margin-bottom:1rem}.identity-title{display:flex;align-items:baseline;gap:.8rem}.identity-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}.identity-grid>div{padding:.9rem;border-left:2px solid rgba(52,230,197,.45);background:rgba(52,230,197,.04)}small{display:block;color:#88a3b5;font-size:.78rem}.identity-grid strong{display:block;margin-top:.35rem;color:#edf8fb;line-height:1.4}.report-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:1rem}.report-card{min-height:270px;padding:1.2rem}.report-card header p{color:#8da7b6;font-size:.85rem;margin:.2rem 0}.radar-card{grid-row:span 2}.mistake-list{padding:0;list-style:none}.mistake-list li{display:flex;gap:.7rem;padding:.65rem 0;border-bottom:1px solid rgba(142,177,192,.12)}.mistake-list i{display:grid;place-items:center;width:1.35rem;height:1.35rem;border-radius:50%;background:#5b3a46;color:#ff9da5;font-style:normal}.mistake-list span{display:block;color:#8da7b6;font-size:.82rem;margin-top:.15rem}.empty{color:#8da7b6}.state-card p{line-height:1.65;color:#d4e7ee}.adaptation{display:grid;gap:.45rem;margin-top:1rem;padding:.85rem;background:rgba(255,184,90,.08);border-left:2px solid #ffb85a}.adaptation.stable{background:rgba(52,230,197,.06);border-color:#34e6c5}.adaptation small{color:#a2bbc7}.ai-summary{margin-top:1rem;padding:1.2rem}.ai-summary header{display:flex;justify-content:space-between;align-items:flex-start}.ai-summary>p{color:#bed0da;line-height:1.65}.next-actions{margin-top:.8rem;padding:.9rem;background:rgba(255,255,255,.03)}.next-actions ol{margin:.5rem 0 0;padding-left:1.2rem;color:#d7e8ee}.next-actions li{margin:.35rem 0}.calibration{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.2rem;margin-top:1rem}.calibration p{margin:0;color:#98b2bf}.diagnostic-modal{width:min(560px,94vw)}.calibration-modal{width:min(560px,94vw)}.modal-intro{color:#8da7b6;line-height:1.55;font-size:.84rem;margin:.1rem 0 .6rem}.diagnostic-progress{margin-bottom:.5rem}.diagnostic-body{max-height:min(58vh,520px);overflow-y:auto;padding-right:.45rem;margin-right:-.25rem}.diagnostic-body::-webkit-scrollbar{width:6px}.diagnostic-body::-webkit-scrollbar-thumb{background:rgba(52,230,197,.28);border-radius:3px}.question{padding:.7rem .8rem;margin-bottom:.55rem;border:1px solid rgba(52,230,197,.12);border-radius:10px;background:rgba(52,230,197,.03)}.question header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}.question .q-index{color:#39e6c7;font-weight:700;font-size:.82rem;letter-spacing:.06em}.question .q-stem{color:#eef8fb;font-size:.9rem;line-height:1.5;margin:0 0 .5rem}.question .q-code{margin:0 0 .55rem;padding:.6rem .75rem;border-radius:8px;background:#020b15;border:1px solid rgba(52,230,197,.16);color:#9be8d6;font-family:'JetBrains Mono','Fira Code',Consolas,monospace;font-size:.8rem;line-height:1.55;white-space:pre;overflow-x:auto}.q-options{display:flex;flex-direction:column;gap:.1rem}.question :deep(.n-radio){display:flex;align-items:flex-start;margin:.2rem 0;padding:.35rem .5rem;border-radius:7px;font-size:.86rem;transition:background .15s ease}.question :deep(.n-radio:hover){background:rgba(52,230,197,.07)}.modal-footer{display:flex;align-items:center;justify-content:space-between}.calibration-tabs{display:flex;flex-wrap:wrap;gap:.45rem}.option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;margin-top:1rem}.option-grid .n-button{height:auto;min-height:3rem;white-space:normal}@media(max-width:900px){.identity-grid{grid-template-columns:repeat(2,1fr)}.report-grid{grid-template-columns:1fr}.radar-card{grid-row:auto}.profile-header{align-items:flex-start;flex-direction:column}.header-actions{width:100%;justify-content:space-between}}@media(max-width:560px){.profile-page{padding:0 1rem 1.5rem}.identity-grid,.option-grid{grid-template-columns:1fr}.calibration{align-items:flex-start;flex-direction:column}}
 </style>

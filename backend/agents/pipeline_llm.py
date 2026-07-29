@@ -46,7 +46,7 @@ def enhance_student_pipeline(baseline: dict, payload: dict) -> dict:
             '只输出 JSON，不要 markdown。'
         ),
         user=json.dumps(context, ensure_ascii=False),
-        timeout=35.0,
+        timeout=5.0,
     )
     if llm_diagnosis:
         if llm_diagnosis.get('diagnosis'):
@@ -72,12 +72,14 @@ def enhance_student_pipeline(baseline: dict, payload: dict) -> dict:
     }
     llm_feedback = chat_json(
         system=(
-            '你是 Python 初学者学习反馈教练。根据诊断与代码分析输出 JSON，字段：'
+            '你叫小E，是 A3 学习系统的学习伙伴，负责给学生写反馈。'
+            '语气温和、具体、鼓励式，像伙伴而不是老师训话，不要提到 AI、模型或接口。'
+            '根据诊断与代码分析输出 JSON，字段：'
             'shortFeedback(字符串,100字内)、stepHints(字符串数组,2-3条)、encouragement(字符串,50字内)。'
             '不要给出完整代码答案。只输出 JSON。'
         ),
         user=json.dumps(feedback_context, ensure_ascii=False),
-        timeout=35.0,
+        timeout=5.0,
     )
     if llm_feedback:
         merged_feedback = {**feedback}

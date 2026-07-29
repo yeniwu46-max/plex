@@ -1,15 +1,15 @@
 {
-  "run_at": "2026-06-12T07:11:27+00:00",
-  "passed": true,
+  "run_at": "2026-07-19T17:17:54+00:00",
+  "passed": false,
   "release": {
-    "git_commit": "b30338636d90366eaa40e85b56039b38be4cd594",
-    "git_branch": "codex/pre-sprint-baseline-20260608",
-    "worktree_dirty": true
+    "git_commit": "eaeda7697b171e21a89f7b5931842f3c616c9d32",
+    "git_branch": "codex/multi-ai-assistents",
+    "worktree_dirty": false
   },
   "summary": {
-    "file_count": 531,
-    "total_bytes": 66928901,
-    "oversized_count": 0
+    "file_count": 668,
+    "total_bytes": 186815176,
+    "oversized_count": 2
   },
   "excluded": {
     "directories": [
@@ -51,7 +51,10 @@
       "release-readiness.json"
     ]
   },
-  "oversized_files": [],
+  "oversized_files": [
+    "data/learning_core_groups_masked_normal.sql",
+    "data/learning_core_import/learning_core_groups_masked_normal.sql"
+  ],
   "files": [
     {
       "path": ".continue/checks/db-portability-secrets.md",
@@ -89,14 +92,24 @@
       "sha256": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d"
     },
     {
+      "path": ".vscode/tasks.json",
+      "bytes": 438,
+      "sha256": "d61426f41e1dfbba2e0cb3e706ce96ee5f258e9f72c43025936adf08fd75daac"
+    },
+    {
       "path": "AGENTS.md",
-      "bytes": 4954,
-      "sha256": "2e5164902c9ed2256ee64a593d9e0479a0797416503778a7123b2232301b961a"
+      "bytes": 6204,
+      "sha256": "6a32eeba54e65dc5fddf60f37b6306cf4403b7a762cf9123d68acd87688bbd22"
     },
     {
       "path": "backend/.env.example",
-      "bytes": 1684,
-      "sha256": "bbe9362ad99d9addb44d4c3a391314c0f000538efdc05d2b0cef93a2457f608a"
+      "bytes": 3247,
+      "sha256": "1783b0eed306fa1375a53c59bd3fd3416e4c603f110b909c7a6326357f92baab"
+    },
+    {
+      "path": "backend/.env.spark.local",
+      "bytes": 473,
+      "sha256": "9852765bf9dc4616861ce6c0cab9375036b6eedbc284af406868689557e5f187"
     },
     {
       "path": "backend/.gitignore",
@@ -115,28 +128,68 @@
     },
     {
       "path": "backend/agents/code_analysis_agent.py",
-      "bytes": 4190,
-      "sha256": "d66ac98eaa24e4c508f0be02b97c51854bb8e19c3caa104cf76a719e50da9980"
+      "bytes": 3505,
+      "sha256": "f5186fa72d296b50b9595fd4751beb0bd2e8e783c5e75bfc809837e28e827f13"
     },
     {
       "path": "backend/agents/crew.py",
-      "bytes": 8678,
-      "sha256": "4b75eafb456c3f597f9a763ddab2fc9090791e77c728be5688ef32c86d6aed66"
+      "bytes": 12202,
+      "sha256": "973c8af70f6f6478acda51320ae1e26d2eb58a53770196e80b6d9ad54d94cac9"
     },
     {
       "path": "backend/agents/crewai_subprocess.py",
-      "bytes": 2258,
-      "sha256": "3697a308b639ffe8d3fd5753355432ac4d8f1b9a134a0283ad8e7edd580ab044"
+      "bytes": 2517,
+      "sha256": "e596985eb36ff29b3de4422be85d04f496c76db1c6f81c212e0b5d170e9e925e"
+    },
+    {
+      "path": "backend/agents/diagnosis/__init__.py",
+      "bytes": 653,
+      "sha256": "8d2ba3a8f963ef1ac84c31d900f96381148da3d16fde9cd3864ecb9cd03f0370"
+    },
+    {
+      "path": "backend/agents/diagnosis/analyzer.py",
+      "bytes": 7226,
+      "sha256": "c7270bc6eae6b800946d952e330bb233e62e4cd80de1054bd549c8ab76c53811"
+    },
+    {
+      "path": "backend/agents/diagnosis/engine.py",
+      "bytes": 8421,
+      "sha256": "32fee4aa1e8a5e835d3677138db29ba154018cf0170795d897f06cf8302b1e33"
+    },
+    {
+      "path": "backend/agents/diagnosis/proficiency.py",
+      "bytes": 5767,
+      "sha256": "2566b12e203b1d4ba1c63b64d8d6642781c67d4800e87443cbaed405090113bd"
+    },
+    {
+      "path": "backend/agents/diagnosis/rules.py",
+      "bytes": 9795,
+      "sha256": "e7452f54498dede04772d43fbf34ae8f38b17b15d00860b2e2d903a0be98689f"
+    },
+    {
+      "path": "backend/agents/diagnosis/schema.py",
+      "bytes": 7928,
+      "sha256": "07a2cd29a3d5a3727bf6996fec51a68227824f4cae9b0c1af57764ea7b180712"
     },
     {
       "path": "backend/agents/feedback_agent.py",
-      "bytes": 1826,
-      "sha256": "88e1fd24f8d2cb90b4cee1eb39d0d457613be7d62af5c504ab8a8e0b30f7eaca"
+      "bytes": 3593,
+      "sha256": "85b8f234c85621a1cdb9f730b0c35d872707acf24cb9a1f01ea3c0f3d1dc772a"
+    },
+    {
+      "path": "backend/agents/graphs/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "backend/agents/graphs/learning_path_graph.py",
+      "bytes": 7495,
+      "sha256": "8386d9767056797c224f54803301aff7b351a355acec0e53f52aa9d8ec8f9f15"
     },
     {
       "path": "backend/agents/knowledge_graph_agent.py",
-      "bytes": 2002,
-      "sha256": "38d907a143364ae4df1bd6395dc0b57f1c3026a55cf567e7482b842c074bbd42"
+      "bytes": 3445,
+      "sha256": "bfc62eff44a5660334aeb4b6fdb974b08da89be8082544f25ade4ccdca8ff028"
     },
     {
       "path": "backend/agents/knowledge_scope.py",
@@ -145,8 +198,23 @@
     },
     {
       "path": "backend/agents/learning_diagnosis_agent.py",
-      "bytes": 2891,
-      "sha256": "52cff5b108b9937095abecf2c777b9e011710130286c4a369bc9f446d5259aa3"
+      "bytes": 1092,
+      "sha256": "3e75de0c76ac7c108c8281cf6a3ca01c6058fddfc9dba5f449dfe09fa427a8f3"
+    },
+    {
+      "path": "backend/agents/learning_path_agent.py",
+      "bytes": 588,
+      "sha256": "b7e967a0eb905d0207925b0575eb167aa9b9a964d820a4dd954e01fa1d34974c"
+    },
+    {
+      "path": "backend/agents/learning_profile_agent.py",
+      "bytes": 3121,
+      "sha256": "47b9e14f6fe4a296ff26328fa4a1e3b00005ac20fb42d0271388c3fbc513dfd5"
+    },
+    {
+      "path": "backend/agents/llm_client.py",
+      "bytes": 5401,
+      "sha256": "49a2d10a32b0317ac7e34df708d8daede748c946e955ba28668da6177649f445"
     },
     {
       "path": "backend/agents/path_recommendation_agent.py",
@@ -154,9 +222,24 @@
       "sha256": "9d2e28b645abd868a2e30737db8a20f156c2cdcdeec8c1cafffad006a8674a55"
     },
     {
+      "path": "backend/agents/pipeline_llm.py",
+      "bytes": 4530,
+      "sha256": "e776374763f42741a8d3a7fe02f21f4e428c3c1909724f06d05e721a5aca8768"
+    },
+    {
+      "path": "backend/agents/resource_review_agent.py",
+      "bytes": 1488,
+      "sha256": "e0f49fb83294eb1157b673b170d41ebfa7ddc5327e59db2d127efea70718b68c"
+    },
+    {
       "path": "backend/agents/teacher_assistant_agent.py",
-      "bytes": 2457,
-      "sha256": "3aedd00eb8c84b436953762c90799902854154e1c941411609675fba93cfd69c"
+      "bytes": 4953,
+      "sha256": "429bc3ad10ec2af077536f34158ce647365d98e1d5926374f3e667b36a13193e"
+    },
+    {
+      "path": "backend/agents/trial_coach_agents.py",
+      "bytes": 16323,
+      "sha256": "240c2992223d880e508ff8c6aa96febdfdcb16ef54f62808a28cfec531c4e34f"
     },
     {
       "path": "backend/alembic.ini",
@@ -165,13 +248,33 @@
     },
     {
       "path": "backend/app/__init__.py",
-      "bytes": 7117,
-      "sha256": "192b2f1ba3f01c71283ae282c8273dcee231e354d2a9231a6ba2eb8a6c7b8707"
+      "bytes": 8268,
+      "sha256": "9b6fc0ea98a03d383ce125101aa7dcf7ee5d88d545cc5f4e6238bfe3a404357a"
     },
     {
       "path": "backend/app/config.py",
-      "bytes": 3909,
-      "sha256": "89ecd3da490e25dd1582864a8e41fa5a70b61b3119764d8a9727384756b1a0fa"
+      "bytes": 4664,
+      "sha256": "4d24de089729f5a79c1d1ca9ac945bd06cac979adc77edb9d278388d2ccc355d"
+    },
+    {
+      "path": "backend/app/constants/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "backend/app/constants/star_path_unlock.py",
+      "bytes": 334,
+      "sha256": "e0aab639a5f557dda3120af4be8e9ab2f0dfc0a76d34cb3e400faaa3d65ebfc7"
+    },
+    {
+      "path": "backend/app/constants/test_accounts.py",
+      "bytes": 1290,
+      "sha256": "ba6e415c27bbf1000e32355796b431ea0f8e20f560cfe2ee3192eb7ce2941f96"
+    },
+    {
+      "path": "backend/app/data/agent_registry.py",
+      "bytes": 9226,
+      "sha256": "71bb766705b1b13742c76399dd5aa45c9f6afc6f545e348a2641979439661fce"
     },
     {
       "path": "backend/app/data/coding_question_bank.py",
@@ -180,13 +283,28 @@
     },
     {
       "path": "backend/app/data/course_knowledge.py",
-      "bytes": 6453,
-      "sha256": "452075ce3fbb45970c8071da9095c628b77e980b6705cbf23f0956ccc3b27b81"
+      "bytes": 9302,
+      "sha256": "9989499b4ef0d86a55e3f05c65856db12abe3da3cb6338aa103fd4f31be218d3"
+    },
+    {
+      "path": "backend/app/data/kg_topology.py",
+      "bytes": 5313,
+      "sha256": "eb5d9c8926b4ebd11db45903e76e943f50ed528a2d1567701a9450b765835cba"
     },
     {
       "path": "backend/app/data/knowledge_catalog.py",
       "bytes": 1839,
       "sha256": "ee11ac73fb3912d54ad9d42311e6b76adb39312ddd7ed2f863a60c5e32d3e8d3"
+    },
+    {
+      "path": "backend/app/data/knowledge_node_registry.py",
+      "bytes": 5435,
+      "sha256": "ce9b8feb86d4f6f5bac5f0dcd52b7ab48269e40e706f84965d5db772f8cbbbc6"
+    },
+    {
+      "path": "backend/app/data/pedagogical_cases.py",
+      "bytes": 10861,
+      "sha256": "b19bcd8e369ad80e9d3d215a2d25fc3afeab4f0b9ca382fa081ba8e898e372bd"
     },
     {
       "path": "backend/app/middleware/__init__.py",
@@ -205,8 +323,8 @@
     },
     {
       "path": "backend/app/models/__init__.py",
-      "bytes": 1908,
-      "sha256": "d8cbd6e9479d557ab8a285cf30308d763831286ce244ec1ae5f12f6042941f55"
+      "bytes": 2238,
+      "sha256": "8b56b5be5633d9e6dfb4cbd34e9e64121b0bbd02a0be23f2fc0a1c69efe2baff"
     },
     {
       "path": "backend/app/models/achievement.py",
@@ -224,9 +342,14 @@
       "sha256": "c70cafa89a037056efab3977e05eaabd18f6b2971708b17b0bbce94e48c28820"
     },
     {
+      "path": "backend/app/models/class_enrollment_request.py",
+      "bytes": 2080,
+      "sha256": "17114e2502e6d980d202b976673196da84d623cfb940e041be7209767df30be3"
+    },
+    {
       "path": "backend/app/models/class_model.py",
-      "bytes": 1376,
-      "sha256": "880e7aef3d0cff95657aee4d1d41520611efaa3e57d1d246238c71f16b869e2a"
+      "bytes": 1502,
+      "sha256": "1f7ac3528dcb0bd694ee207659ffc5202d569926deda90114ed7a2471226f1b0"
     },
     {
       "path": "backend/app/models/daily_quest.py",
@@ -235,8 +358,8 @@
     },
     {
       "path": "backend/app/models/emergency_mission.py",
-      "bytes": 3198,
-      "sha256": "9851844876b75d49488d7528133d73134b1124defcb9bea85a8fa14fb16581fb"
+      "bytes": 3289,
+      "sha256": "32975b655b766a8aa44c9b7feca18f0c2c9260ad273300a7b06a7861f7c87073"
     },
     {
       "path": "backend/app/models/learning_resource.py",
@@ -250,8 +373,8 @@
     },
     {
       "path": "backend/app/models/personalized_resource.py",
-      "bytes": 4999,
-      "sha256": "d574a9a0ab230e7063ed21dbba74c990b5624c7bf856ea0cdd60ba7dd87777cf"
+      "bytes": 5084,
+      "sha256": "1a0dbfaca4e8bc94df5e2b34f81da22c3fb4c95abba75e2caf1b36f5149f6122"
     },
     {
       "path": "backend/app/models/points_log.py",
@@ -285,8 +408,8 @@
     },
     {
       "path": "backend/app/models/student_profile.py",
-      "bytes": 3138,
-      "sha256": "2db9ad13ea62b1d059662955dbc778f5f9fa09d2885e3498517a3d9a84aedb22"
+      "bytes": 5530,
+      "sha256": "ae9a2c53c74c2988d88e36e7cd95246f155dc75c05f9772ed99758da299604a5"
     },
     {
       "path": "backend/app/models/system_announcement.py",
@@ -309,9 +432,14 @@
       "sha256": "91381e52cb43f2544365c9870ea79b39cff77d8f7b70ade3b22d36211a0b7309"
     },
     {
+      "path": "backend/app/models/trial_comment.py",
+      "bytes": 2386,
+      "sha256": "60f6b20cc697abfb4551dc83b76ff666b32e611ce6c0cf28a5456daf100e13c0"
+    },
+    {
       "path": "backend/app/models/trial_question.py",
-      "bytes": 4355,
-      "sha256": "b5de3e33728161280fd35696898ba77ac939a3ec721aa70e173fbe22af729533"
+      "bytes": 4884,
+      "sha256": "24b21e59f2a8b6112f66f2bef9c84f1a84a994f21752426390e0c4ac5e5ff936"
     },
     {
       "path": "backend/app/models/user.py",
@@ -325,8 +453,8 @@
     },
     {
       "path": "backend/app/routes/__init__.py",
-      "bytes": 2103,
-      "sha256": "6d2980e8c7e3428cda6fc56fa61e87455e6277d5c143781720910e2543332513"
+      "bytes": 2308,
+      "sha256": "f94aecadb1668a64a75d3269b05f29e6aa838108a9b02449f07194f90c7e0dd1"
     },
     {
       "path": "backend/app/routes/achievements.py",
@@ -335,13 +463,13 @@
     },
     {
       "path": "backend/app/routes/admin_settings.py",
-      "bytes": 3508,
-      "sha256": "6df8766a4e4a901bf04b1b95cc7328eeb9f34b850fd3d0b0d80e736eed88f1d3"
+      "bytes": 4765,
+      "sha256": "73782d15abc9c275bc7eb9cdd3d33d84a7857b28b3855c00476716df628415ac"
     },
     {
       "path": "backend/app/routes/agent_service.py",
-      "bytes": 4116,
-      "sha256": "40e9e7a9044b4e7e0b3798b31821707f55a49d24f62e2179895be602ddd166f4"
+      "bytes": 6720,
+      "sha256": "bb5cb653eb23b9ac36829f0d3ef482aef12edbf88a8fdb696167c8fb7d84edf9"
     },
     {
       "path": "backend/app/routes/announcements.py",
@@ -350,13 +478,18 @@
     },
     {
       "path": "backend/app/routes/auth.py",
-      "bytes": 2535,
-      "sha256": "049cbeb571c90561ae26fe9ef9d355eabadeb821e24e167bca8e6581bef330de"
+      "bytes": 8823,
+      "sha256": "2ac1a029978e2e3a8c0a4759bad75fbb215c3250863c2ef5df1b8ba6f3553767"
+    },
+    {
+      "path": "backend/app/routes/class_enrollments.py",
+      "bytes": 3981,
+      "sha256": "a0b049f4b10ee8ae3e9938718604d73f1945195c69108c43303bcaeb9c7d0140"
     },
     {
       "path": "backend/app/routes/class_requests.py",
-      "bytes": 2775,
-      "sha256": "ccb11018fa35d234493462cbe95f2fc6decc9e47abb16ca7216b5e2f9a7c659d"
+      "bytes": 2926,
+      "sha256": "412bc148d23aed988fd110a658bdd3d724455e99548d8ce2b650a1ee8ddae57c"
     },
     {
       "path": "backend/app/routes/classes.py",
@@ -375,13 +508,13 @@
     },
     {
       "path": "backend/app/routes/file_upload.py",
-      "bytes": 4435,
-      "sha256": "9ac6c94a1b1ba775cbdcad2be776a0df0dd6eaa794037c9488e54a2b6295ae11"
+      "bytes": 4886,
+      "sha256": "9f1055370b8593adf232e31697f24ef6b780a97f8f8e5658f3375a33d9b542d6"
     },
     {
       "path": "backend/app/routes/health.py",
-      "bytes": 1418,
-      "sha256": "ffa36cac3226fe17741fa53785e217140d7d8b631482fdd7684a37c060ed84e7"
+      "bytes": 1725,
+      "sha256": "eca3fe9946f5799b6efd2ecff1f9ea7ac4cc930bc601f4c871042fa984532850"
     },
     {
       "path": "backend/app/routes/knowledge_base.py",
@@ -400,8 +533,8 @@
     },
     {
       "path": "backend/app/routes/personalized_resources.py",
-      "bytes": 4215,
-      "sha256": "45b41abd95fac3b011179dbdf899de20b97a83d6c58c052795d4721a2663df3a"
+      "bytes": 5101,
+      "sha256": "e232979a5671dc02a39473af8a73702ee1a33936c2564208b121d2422886e80f"
     },
     {
       "path": "backend/app/routes/search.py",
@@ -415,28 +548,33 @@
     },
     {
       "path": "backend/app/routes/student_profile.py",
-      "bytes": 2998,
-      "sha256": "f3ab8a3a1c9f9bd30351729de1a44468c87b9f1befda1818a64bd25f42f556a1"
+      "bytes": 3933,
+      "sha256": "f6c5073d34b80992b6a25659188a9f7f6da7791d88b8d5f08e7576716c7000c5"
     },
     {
       "path": "backend/app/routes/student_progress.py",
-      "bytes": 8574,
-      "sha256": "9356a5fed4157a997a58702c4aade02edb911b5cc3c834b70ca03544cb27ccea"
+      "bytes": 10278,
+      "sha256": "ac78026d7951cd32878140ce53be290f33ae6d842bc4fe2be171acb2782dedad"
     },
     {
       "path": "backend/app/routes/teacher.py",
-      "bytes": 7529,
-      "sha256": "192a4bd6f60f8e580c3ede02a32237c1b1c2c2cad25e709c97ec4ad656d84d14"
+      "bytes": 11307,
+      "sha256": "e84e1ac9942e22c48cd06cd7acb7ea264f9249cbb184f589a66db1745d1fbaca"
     },
     {
       "path": "backend/app/routes/teacher_resources.py",
-      "bytes": 3402,
-      "sha256": "81c252c6e785eb3c38e3e4746678f46c9ba1d7e7093d48942ebd973c6b639047"
+      "bytes": 3484,
+      "sha256": "03d928192807370db19f2a3234e257b73d1401f512539b47772d8694d3c21546"
+    },
+    {
+      "path": "backend/app/routes/trial_comments.py",
+      "bytes": 2177,
+      "sha256": "3017789d27cf7259dede84c123c093353ec5af848c660637a761b29b6ace1150"
     },
     {
       "path": "backend/app/routes/trials.py",
-      "bytes": 12412,
-      "sha256": "bc779151c68c05372c3847d00a7016e6d008bf67f63281c0a60c8ac143dbda47"
+      "bytes": 14204,
+      "sha256": "7ef46bd39cfddd16692c6629196bf568bd609a7b4222dbb5bf358b739be3b67c"
     },
     {
       "path": "backend/app/routes/uploads.py",
@@ -460,18 +598,18 @@
     },
     {
       "path": "backend/app/services/admin_dashboard.py",
-      "bytes": 8307,
-      "sha256": "f3b62d0733d4bfaaf38af054d8416d4f8770e376a1ccfbfe429ba85ad6a18d6d"
+      "bytes": 8673,
+      "sha256": "35e15ef3a3d61f4c089621ecd65a35cc21f9e679bc322d661442c6eb6af6c958"
     },
     {
       "path": "backend/app/services/agent_orchestrator.py",
-      "bytes": 3941,
-      "sha256": "a559c3f28abecea23138887a623288934c583b8e3a97eed4ea7dd70fa5bd0682"
+      "bytes": 21509,
+      "sha256": "8fb7f57800a56aeda1051e1d7e4524832456b1fd940aa3e9da41c995c9da039d"
     },
     {
       "path": "backend/app/services/ai_question_generator.py",
-      "bytes": 3495,
-      "sha256": "1d720eba1c620ea92b8582ef67f75f23377c29bb2056cfc4401b76167957890b"
+      "bytes": 8790,
+      "sha256": "173d2200bb2a28f7da1cf8ff57e5fe3c7541750f1cf835f7ed1753374d15d860"
     },
     {
       "path": "backend/app/services/announcement.py",
@@ -480,18 +618,28 @@
     },
     {
       "path": "backend/app/services/assignment.py",
-      "bytes": 31352,
-      "sha256": "d8410635517a6fe5fb2b8b03bfda4c00dfee505a9b079928078c69884179bfdb"
+      "bytes": 33614,
+      "sha256": "5c3f7f5bd26870f049fd1df729185ac967b52567f71aa1701567d8a41c46c36b"
     },
     {
       "path": "backend/app/services/auth.py",
-      "bytes": 4690,
-      "sha256": "9d83968535e5d6482b10ebbb50bbf05597a5d4b2516d5b706a56047348d5ab94"
+      "bytes": 7288,
+      "sha256": "458039f8d4a5e0147f201c5572008c49d6f4037a083e051bf7853f92a9d3f14f"
     },
     {
       "path": "backend/app/services/base.py",
       "bytes": 491,
       "sha256": "92832cf3e362d54c142a8bf10997a10d34b4e61bd9f02a7878d0664015bfa63a"
+    },
+    {
+      "path": "backend/app/services/class_enrollment.py",
+      "bytes": 4826,
+      "sha256": "16ba425ea1b08b715f4329bd644ca627eb851f20086c203a0254d83e8b133016"
+    },
+    {
+      "path": "backend/app/services/class_files.py",
+      "bytes": 5133,
+      "sha256": "c87b06c00b40f16bfd24cc4979fb26a1afe9eed2551102b4e1451c9ba673ae18"
     },
     {
       "path": "backend/app/services/class_request.py",
@@ -500,8 +648,8 @@
     },
     {
       "path": "backend/app/services/class_service.py",
-      "bytes": 5412,
-      "sha256": "1444b7204a608004db200484eb322fff48de484cd454bb3734000c5b6c2bdfcd"
+      "bytes": 6503,
+      "sha256": "6666c4e886fef6bf683be67521a1c588e99c9995c6dc01e3db28dc7e7a35c7f2"
     },
     {
       "path": "backend/app/services/code_execution.py",
@@ -520,13 +668,13 @@
     },
     {
       "path": "backend/app/services/emergency_mission.py",
-      "bytes": 8409,
-      "sha256": "ec3361ad75dd5fe5df7685e0e044f77e8dd05d2d2f832500555677cb567dac69"
+      "bytes": 11476,
+      "sha256": "361748d4ca6979a0cffe9816238b3fae7049738f0972c9a9bcde76e8d49ce02e"
     },
     {
       "path": "backend/app/services/evaluation.py",
-      "bytes": 18354,
-      "sha256": "e4fd72f32fee86ac49b6af18491cf146822842175cddde08531210930fb9b30c"
+      "bytes": 24529,
+      "sha256": "918a3072c468019389d14e5b06279123826a1959fb7ddb3dce5c989359fe5b53"
     },
     {
       "path": "backend/app/services/file_upload.py",
@@ -534,19 +682,39 @@
       "sha256": "e9ea3da00d579a634ff27f6b19b1e3a7ed07cf8af6e0ba31fa3d2f25f6c18ed2"
     },
     {
+      "path": "backend/app/services/grading_orchestrator.py",
+      "bytes": 14234,
+      "sha256": "2bb4646383f511e7e416081007a11bd06ffbc459a2fa22ee5ccc3e3f812ec168"
+    },
+    {
       "path": "backend/app/services/iflytek_spark.py",
-      "bytes": 5833,
-      "sha256": "5ac28f1f29ec85796271fdbd34855f63b9e07f8d893ffc6debc4d7f3a4af850f"
+      "bytes": 11380,
+      "sha256": "cc03f7a49d3c1165b0b5bfe5f7aaed436ac822dd54faba5fff4c4736d0917dfb"
     },
     {
       "path": "backend/app/services/incentive.py",
-      "bytes": 10912,
-      "sha256": "b4efb79bcd4d3fe537a724973b072ec3110ef399a759669d90d0255078c21496"
+      "bytes": 12254,
+      "sha256": "41d82871c4180a6ac75328c61ca1ec7b45e6ed21835ffd27ca35572dab66dfa5"
     },
     {
       "path": "backend/app/services/knowledge_graph.py",
-      "bytes": 10700,
-      "sha256": "d7b2740c1b2ffc7b130ed0844f7b78999ca8159740fc0728d87c8722c492ab4c"
+      "bytes": 11598,
+      "sha256": "20647767c074221ec53ddfff8a62b9585c6691655350d8f9aca74c474531e7ab"
+    },
+    {
+      "path": "backend/app/services/learning_adaptation.py",
+      "bytes": 3086,
+      "sha256": "0f7938e9e1350fc38ae3e53a9c5415094401894fd55ebd6092d8863898b83c52"
+    },
+    {
+      "path": "backend/app/services/learning_cycle.py",
+      "bytes": 13522,
+      "sha256": "a6789dd0e0e76beaa9bac5707ebd520e339eae2dd66401b2cfce1cb16cced71f"
+    },
+    {
+      "path": "backend/app/services/learning_path.py",
+      "bytes": 10852,
+      "sha256": "0abf455041bcc6ce34a046be21ae98378405a8fcad4a613da587e6d754a01071"
     },
     {
       "path": "backend/app/services/learning_resource.py",
@@ -555,13 +723,23 @@
     },
     {
       "path": "backend/app/services/messenger_chat.py",
-      "bytes": 4123,
-      "sha256": "bbc295d433914066c28622689c64c0cf324e38f538b87d362e022a4d186e4bdd"
+      "bytes": 10936,
+      "sha256": "e09f4298e9c76d6ff19f21b73256f944372f15c3602c6354009be3aadff6f175"
     },
     {
       "path": "backend/app/services/mistake.py",
-      "bytes": 9349,
-      "sha256": "a281b9df511c22b4a926e76f988ea6ccf3e83bcaa7eddc9b6ac97831bf49b85d"
+      "bytes": 11838,
+      "sha256": "66550f4a6ee41af316794516ff4c385196e58169484781e4e4bfcd364c2124d9"
+    },
+    {
+      "path": "backend/app/services/neo4j_client.py",
+      "bytes": 5090,
+      "sha256": "ba239cacf58594273586f5fb2cde444d65e1afd9fc42213d2ae82e25821aacaf"
+    },
+    {
+      "path": "backend/app/services/pedagogical_resource.py",
+      "bytes": 25885,
+      "sha256": "15a603d7694c4068f2e5e955e70cc596c6bc97e19355cb3b586d9c2c9f53fca1"
     },
     {
       "path": "backend/app/services/permission.py",
@@ -570,8 +748,18 @@
     },
     {
       "path": "backend/app/services/personalized_resource.py",
-      "bytes": 36688,
-      "sha256": "01be61da4256cd18518b566ceb11d8085a8212f118de892b7d9d66e509e9e1cb"
+      "bytes": 46008,
+      "sha256": "42cd40a6ddb617cb77bf34430faa4970d124bd74420bdf61f44ef22a56157c38"
+    },
+    {
+      "path": "backend/app/services/practice_question.py",
+      "bytes": 16538,
+      "sha256": "0e25ad3b55a6dfb51ff8fbb942ae6e60289dece79ab02abe092e7c9a69913866"
+    },
+    {
+      "path": "backend/app/services/presence.py",
+      "bytes": 2191,
+      "sha256": "c27bcd5c011209f2ab5e6104b0483193980b7b729628d6bcd976fe911756209f"
     },
     {
       "path": "backend/app/services/question_generator.py",
@@ -589,6 +777,61 @@
       "sha256": "2485b9834221eef0ff5c510f735a357cbef6a5fd9509cd6a76dce6da013719e6"
     },
     {
+      "path": "backend/app/services/resource_audit/__init__.py",
+      "bytes": 130,
+      "sha256": "d66b9b2d191a9efa709b16bdcccb8e9a9032e6021eaee9bcb75a3930b231cf11"
+    },
+    {
+      "path": "backend/app/services/resource_audit/case_checker.py",
+      "bytes": 2902,
+      "sha256": "f0e6ce262df35047da49207be6581b9bc2a10df788f318da38fe8733cd7afe2f"
+    },
+    {
+      "path": "backend/app/services/resource_audit/code_checker.py",
+      "bytes": 2445,
+      "sha256": "892364cccf3356a8d6f047c6c2648d40e991be68c4759e4cad55905ce5903c71"
+    },
+    {
+      "path": "backend/app/services/resource_audit/code_tools.py",
+      "bytes": 7322,
+      "sha256": "1c1a12193753ab595ebacc55f72c4aa2f55739c9d8c75dc31d9913c1fcf1557a"
+    },
+    {
+      "path": "backend/app/services/resource_audit/exercise_checker.py",
+      "bytes": 2932,
+      "sha256": "fd9f0ac251940dcd336346a3ab25513d6f81a5a98d0083d6da69b9c1143fe56a"
+    },
+    {
+      "path": "backend/app/services/resource_audit/graph.py",
+      "bytes": 3826,
+      "sha256": "0e21194cd060e13efe009d4ba912c82b11d772d9d97a6549d43b823487a2160f"
+    },
+    {
+      "path": "backend/app/services/resource_audit/knowledge_checker.py",
+      "bytes": 4597,
+      "sha256": "96d448f5fc373fef6222255870758ad3ebfea39e8dd2206ee2aab41379967c50"
+    },
+    {
+      "path": "backend/app/services/resource_audit/pedagogy_checker.py",
+      "bytes": 3520,
+      "sha256": "5e848a376131ea72e3f0df05ab667859470a0866a02dcc072e075b9b30ddd1bf"
+    },
+    {
+      "path": "backend/app/services/resource_audit/report_builder.py",
+      "bytes": 3595,
+      "sha256": "9ed53f980d9658a9b4535ead2d14df239ca6ae0c7eb34e6b3d58a9dc1e15d935"
+    },
+    {
+      "path": "backend/app/services/resource_audit/schema.py",
+      "bytes": 2549,
+      "sha256": "a74a5565f22ff0b707b5c4f4cfdca8e62e3145d2d72cf5743fca9943e8d787eb"
+    },
+    {
+      "path": "backend/app/services/resource_audit/service.py",
+      "bytes": 2392,
+      "sha256": "a6e9c3728a20bad5ddb9266b4cfcc48dbad1682f585ed02d94b1b74385b25d90"
+    },
+    {
       "path": "backend/app/services/search.py",
       "bytes": 1974,
       "sha256": "b42bb44238fe95fd3e58bdd0b7973fe02964669fc903d4c6b23b737580fcd642"
@@ -600,18 +843,18 @@
     },
     {
       "path": "backend/app/services/student_profile.py",
-      "bytes": 11785,
-      "sha256": "2cdc8a769759e2d0429ca1ca626309cf727e80fa80af39e473ae32ee31202613"
+      "bytes": 20842,
+      "sha256": "2df8491dc8ce08a552434e5312aa793e477bdcbec515b38633415067c99cdf3b"
     },
     {
       "path": "backend/app/services/student_progress.py",
-      "bytes": 12205,
-      "sha256": "9c63163136661aeee945885e9fdb949ac475483a7240d32d601114200c1af8aa"
+      "bytes": 14838,
+      "sha256": "f3a3bbbd1bea093cf2472cd3a44f6f1feb87a1d268b46a0ba492c4de26c2240c"
     },
     {
       "path": "backend/app/services/system_setting.py",
-      "bytes": 3721,
-      "sha256": "24f4e69cb5cafd32e31ec168621a14789721ad88bed12371bd247e6a681696fe"
+      "bytes": 4727,
+      "sha256": "f6351dfdd8f60e6db58a670e49d59794f32d3d007eaa53b0b2255ee805992121"
     },
     {
       "path": "backend/app/services/teacher.py",
@@ -625,13 +868,23 @@
     },
     {
       "path": "backend/app/services/trial.py",
-      "bytes": 21968,
-      "sha256": "321f2c731bde0df0ffcede7ce5cfa6c64398da3c8e3a9b045ef791a226d41f0a"
+      "bytes": 23198,
+      "sha256": "42a9246d9edf01d5e2295ad513473e97beab9c229bfcc679a6279ba8dfa24476"
+    },
+    {
+      "path": "backend/app/services/trial_comment.py",
+      "bytes": 3552,
+      "sha256": "89c6b2d4f0f183a734d630d1931c1bd1765315fccec0775b8b4238305e594323"
     },
     {
       "path": "backend/app/services/user.py",
-      "bytes": 9303,
-      "sha256": "e9195af883a2190a18c35a8f2a99e3998cfeb166e5d0503c28d13583a9c8c674"
+      "bytes": 9358,
+      "sha256": "ab73972a74c5df0a98bcf564faa06f14240dfd91e5c410e5c47ed653ce70f3ef"
+    },
+    {
+      "path": "backend/app/services/xfyun_agent.py",
+      "bytes": 7226,
+      "sha256": "c78398e99b83153e5276f1223f50176828d0a24a74441809576530df4021e7c1"
     },
     {
       "path": "backend/app/utils/__init__.py",
@@ -645,8 +898,8 @@
     },
     {
       "path": "backend/app/utils/db_migrate.py",
-      "bytes": 767,
-      "sha256": "a4c04e4df312db9349c65ddf7e8668075dcb8849b625704e0815dcede30c5d28"
+      "bytes": 3168,
+      "sha256": "8cdc43da5d285e1051c8f48c2185d2570c6da38bc8a9e431224261aa76d58403"
     },
     {
       "path": "backend/app/utils/decorators.py",
@@ -706,7 +959,7 @@
     {
       "path": "backend/dev_browser_login.py",
       "bytes": 1855,
-      "sha256": "27a4cfff953290a7cfe711b89ff8a55dfebc4c438f160bc2c3e6761f9b48ce48"
+      "sha256": "3d1e4739a527b196a2a3c2bcaa9cbcb030d4a510941c68c2ee56192d60192ee9"
     },
     {
       "path": "backend/init_db.py",
@@ -715,8 +968,8 @@
     },
     {
       "path": "backend/manage.py",
-      "bytes": 6898,
-      "sha256": "af5f896171dc52ccc4a11c1218d08ea25e7de386150ef7c69e1b6c26fc448e7b"
+      "bytes": 7113,
+      "sha256": "483203b9a3d8c878fb037dedcdea0918a3b380378d87835440e6f6693cc43bb6"
     },
     {
       "path": "backend/migrations/env.py",
@@ -744,6 +997,21 @@
       "sha256": "051b74a86c5c0bd2527297bfb5d5e8004136ea2c112d28d7ec4734d3ce95d063"
     },
     {
+      "path": "backend/migrations/versions/20260627_0005_class_enrollment.py",
+      "bytes": 2569,
+      "sha256": "fac39570ce116c71310e04ef5f27c135c37bc66c088da15b659752d3e4b205e7"
+    },
+    {
+      "path": "backend/migrations/versions/20260628_0006_resource_audit.py",
+      "bytes": 498,
+      "sha256": "ceb6a3a0802b0776fea3726d6b67340f4d2401678b124334bdd68595df283f1e"
+    },
+    {
+      "path": "backend/migrations/versions/20260715_0007_trial_comments.py",
+      "bytes": 2315,
+      "sha256": "34c402d164282ad91fb28f3304224aed33af6d16afd7ee90a777a4e5b41b3f51"
+    },
+    {
       "path": "backend/PROJECT_SUMMARY.md",
       "bytes": 14747,
       "sha256": "a3c7c12986ff592ca48b8378268e08812daac870514ec31ed42f5394d90b0778"
@@ -755,8 +1023,8 @@
     },
     {
       "path": "backend/QUICKSTART.md",
-      "bytes": 7844,
-      "sha256": "90fcdb06bf6d5d53fe005d4dca956f982e70d9c9e62b80cb6f1582a50a4ea327"
+      "bytes": 9079,
+      "sha256": "c2f071a538db4bbb310778768a483b3fc1f7aab48b0ed460b0051d682d924fa8"
     },
     {
       "path": "backend/README.md",
@@ -765,8 +1033,8 @@
     },
     {
       "path": "backend/reports/a3-next-stage/clean-environment.json",
-      "bytes": 802,
-      "sha256": "fa321c2a51b51839f65ffd98f6f12ca2abb90e47439c75d822c806c23cdfc2e6"
+      "bytes": 781,
+      "sha256": "e3c4fc5ee5a7a306ca27ebebd755d76b1a9008c2fff8dc2d5f2e0244c592b1cd"
     },
     {
       "path": "backend/reports/a3-next-stage/learning-effect.json",
@@ -829,24 +1097,54 @@
       "sha256": "8bebf18172f248e807c9db67e4c187b30142df1ab49f9fd4c3d8c0e1982552d6"
     },
     {
+      "path": "backend/reports/personalization-test/personalization-comparisons.csv",
+      "bytes": 2275,
+      "sha256": "68492b76278f5da72cf29173e42572f4f5a4354ef72649d3534c4437eac04885"
+    },
+    {
+      "path": "backend/reports/personalization-test/personalization-evaluation.json",
+      "bytes": 724659,
+      "sha256": "0ffdc1fdb22975a05c10dc98acaa7cf764f0344830003ab763dc3be17d1872db"
+    },
+    {
       "path": "backend/requirements-agents.txt",
       "bytes": 536,
       "sha256": "b50b6368645aa2dffe1fc8a0cd47d75009a2c575262f32aebd8e01843dfc4ef5"
     },
     {
+      "path": "backend/requirements-audit.txt",
+      "bytes": 181,
+      "sha256": "9dfa56775cd6fdd0cc3ed14e70edbef1640472e82cf0dcc0da5d8a6d19b9a8d8"
+    },
+    {
       "path": "backend/requirements.txt",
-      "bytes": 273,
-      "sha256": "408237ee26a87ba64285a1843d086b7dc9238cd53e5c563ade752278f181f7e6"
+      "bytes": 287,
+      "sha256": "31e5caa5d49946fb205df62bbb8bfed1eed1a85276794d04d165013e3809fb53"
     },
     {
       "path": "backend/run.py",
-      "bytes": 510,
-      "sha256": "5d5309c264e052e35f4dc9e8f0794845125742d461187504b7d8510b860ba118"
+      "bytes": 637,
+      "sha256": "521645ad3a5eb37fd66370b43f5bb107a147a90488a96f2e15f828d1c8b7a15c"
+    },
+    {
+      "path": "backend/scripts/audit_practice_questions.py",
+      "bytes": 1891,
+      "sha256": "84cd20dfc9034ca1fd85a6cbe3f6b2daa0edfed9409e3b76cb1a978995107de7"
+    },
+    {
+      "path": "backend/scripts/bootstrap_test_student.py",
+      "bytes": 8529,
+      "sha256": "8f1f1d0d5cfc6d84e8675c37e66bc8a7a76f4b1f6fd3f8ace7d2ef88f6eec626"
+    },
+    {
+      "path": "backend/scripts/ensure_demo_class_trial.py",
+      "bytes": 3186,
+      "sha256": "3a1863fe13008a24c6298b0c9c9f67fa5d4b76bef8352ae8bcf246343ca65f8a"
     },
     {
       "path": "backend/scripts/evaluate_personalization.py",
-      "bytes": 14446,
-      "sha256": "2d19efe8baeddb3673851ec5ba8c420e56c221a4f659d2a8219119083c284fee"
+      "bytes": 16694,
+      "sha256": "503635f6af0191cef6bb663fd8502292ab61c6b403db4d9bf391664c6630834d"
     },
     {
       "path": "backend/scripts/evaluate_profile_extraction.py",
@@ -869,6 +1167,16 @@
       "sha256": "36ec220343425b0a42aeffff4438fc9ad5d1c1217a6541f3c64f4522ed4a9515"
     },
     {
+      "path": "backend/scripts/import_learning_core.py",
+      "bytes": 25239,
+      "sha256": "aacbbe16c6d669fe4386bcb33f175952f128fed8ceb5155de4c06bd75c4b6b3b"
+    },
+    {
+      "path": "backend/scripts/ingest_course_materials.py",
+      "bytes": 2114,
+      "sha256": "8c9552afeaeeacab1e176a86828bcf065efa34765bcf940b59983529545cd14c"
+    },
+    {
       "path": "backend/scripts/install_crewai.ps1",
       "bytes": 979,
       "sha256": "2900a24a2986c286023a7c4977ad17b23a93239538742f620fe97897bc1bd8ca"
@@ -879,9 +1187,19 @@
       "sha256": "bf8c21df406edaac0bc926381fd033e0c53ca5508703d522763588ba5b62ae16"
     },
     {
+      "path": "backend/scripts/seed_neo4j_knowledge_graph.py",
+      "bytes": 2555,
+      "sha256": "5de068fe876d4851c122ae1932ab9a0ecefb6016ecf421c9d9063e1ee831eb76"
+    },
+    {
       "path": "backend/scripts/smoke_iflytek.py",
-      "bytes": 1054,
-      "sha256": "1a088a1e96e72fb064306485ef59443437aff14c63fa2dfd7d5404f89b7710ea"
+      "bytes": 1131,
+      "sha256": "852438fd7a08809dc9f2b8105790568da98c8069e2d72bd107d1e437f4e48200"
+    },
+    {
+      "path": "backend/scripts/smoke_xfyun_agent.py",
+      "bytes": 1643,
+      "sha256": "eaca4713f70fbdcc9084c7ad935181299b3e8c30571160d1543b782bb15a516b"
     },
     {
       "path": "backend/scripts/verify_clean_environment.py",
@@ -950,8 +1268,8 @@
     },
     {
       "path": "backend/start.bat",
-      "bytes": 1273,
-      "sha256": "35bc2ae13030a9fb172ca7ba6bf2b1e0eb5ba4fa5ed6610a9562d7479851c225"
+      "bytes": 1276,
+      "sha256": "62635f0eb232df793f3b9aafe47e1befd449d69a4dfec0b5987843a558c927be"
     },
     {
       "path": "backend/start.sh",
@@ -965,8 +1283,8 @@
     },
     {
       "path": "backend/tests/test_agent_rag.py",
-      "bytes": 2022,
-      "sha256": "bdf32142c2f7b8277c64e1c3231f7a47c9247d29f38c1d73d17ec598c91847e1"
+      "bytes": 4068,
+      "sha256": "0c930971e8c06e35a5b24ec30a58c0421f85ec730da670e528b877da6adbad5e"
     },
     {
       "path": "backend/tests/test_announcements.py",
@@ -977,6 +1295,21 @@
       "path": "backend/tests/test_assignments.py",
       "bytes": 3285,
       "sha256": "d3cecf962866a0a9ce6daf997aa086e858ce144347ad1ba54dc82fcf2e0b2ab5"
+    },
+    {
+      "path": "backend/tests/test_auth_oauth.py",
+      "bytes": 5235,
+      "sha256": "95b3071a292c8df3c37ec28e4f24ce9f921d6a764016fcecd28528e5b5e879a2"
+    },
+    {
+      "path": "backend/tests/test_class_enrollment.py",
+      "bytes": 4475,
+      "sha256": "15d9d620aca88450d520f3774d66312c69154e5b21c9f7d65abc475fc41350b3"
+    },
+    {
+      "path": "backend/tests/test_class_files.py",
+      "bytes": 4843,
+      "sha256": "aa3676ffab479444920eb267041901e1a4160d4b48b59490683a108c7d71d96f"
     },
     {
       "path": "backend/tests/test_code_execution.py",
@@ -995,8 +1328,13 @@
     },
     {
       "path": "backend/tests/test_demo_readiness.py",
-      "bytes": 12671,
-      "sha256": "d76cfd8632a389825db788d88d3b19a7b77ce53730f22644a5f1f9bacb68fc90"
+      "bytes": 13161,
+      "sha256": "08944d7a9c8aa61f0b8827bb8620ec175d7fb78ebf695ca6e276672700c38994"
+    },
+    {
+      "path": "backend/tests/test_diagnosis_rules.py",
+      "bytes": 5394,
+      "sha256": "62237c9cf72ef66cddf13e1330af3c4ef6a6b8b8c1dc05f781f7e3a94065936f"
     },
     {
       "path": "backend/tests/test_emergency_mission.py",
@@ -1019,14 +1357,39 @@
       "sha256": "c1add04395b3a3c1c88f46a52645f8ee49dccbc6e710af6eac4b989d5e9be8e2"
     },
     {
+      "path": "backend/tests/test_knowledge_node_registry.py",
+      "bytes": 1033,
+      "sha256": "3760082444ca375dca742f19dc1abce148ca84ded17aff42341d9edc691e4c6d"
+    },
+    {
+      "path": "backend/tests/test_learning_cycle.py",
+      "bytes": 4886,
+      "sha256": "f516b8d267d79e072aace4f527c26994e8d6fc7cbeefe6830f088b908ada6575"
+    },
+    {
+      "path": "backend/tests/test_learning_path_service.py",
+      "bytes": 1717,
+      "sha256": "44e3cf0bc538d84353a21a010ab7309b4ffa7dc1c4d7d0a5cc9a5cb24e4c9ee2"
+    },
+    {
       "path": "backend/tests/test_mistakes.py",
-      "bytes": 4712,
-      "sha256": "c15b6578419b884237853ecd2d9aba7ad06f2286182ff235be2f573f348dbccf"
+      "bytes": 5581,
+      "sha256": "9d6d730b77c259da6b4530ed737b6a70942bb00102019cbd08fd15e66d2a1da6"
+    },
+    {
+      "path": "backend/tests/test_neo4j_learning_path.py",
+      "bytes": 678,
+      "sha256": "8a5af7ac0fefc0f67432c8e6c3c3ac1c81e5fc998dd741eb8a6b61fc420c289e"
     },
     {
       "path": "backend/tests/test_personalized_resources.py",
-      "bytes": 8477,
-      "sha256": "e2040785d007d3dce218d5b8c8a73aedc00cf925c36ca4356741684193ea3995"
+      "bytes": 10040,
+      "sha256": "46d2b7bee00c2d05d38a591179b07217b1320a1d58ad2794c5afc56428547e0f"
+    },
+    {
+      "path": "backend/tests/test_practice_questions.py",
+      "bytes": 4649,
+      "sha256": "6973741355c8e969fbaf4a320196664e448561a27d32407237e3aeaf8de12ed0"
     },
     {
       "path": "backend/tests/test_recommendation.py",
@@ -1034,24 +1397,34 @@
       "sha256": "036129f800900095f77bdea21b3b2bc7b3f8323ffa05826efa5733a30adef23d"
     },
     {
+      "path": "backend/tests/test_resource_audit.py",
+      "bytes": 4012,
+      "sha256": "c93917223661a009dba19c1f4ac6f057d6f356729df670faf9f82ba8b32a9b88"
+    },
+    {
       "path": "backend/tests/test_stability.py",
-      "bytes": 8325,
-      "sha256": "df4a97a0148e7d5d4f2d32a436dcfea69bf3ac85b87a2dc371374355ee766b56"
+      "bytes": 12309,
+      "sha256": "91208c2cfcaf198e0eb43c2110e85bd8d34c17f3a0bb08f77dd97b04e9cd0b3b"
     },
     {
       "path": "backend/tests/test_student_profile.py",
-      "bytes": 2552,
-      "sha256": "aa6ec1eb1ae7222c95488dbb10d9fb9e2ff7675745f3cfd3f772fcdd689b7125"
+      "bytes": 3228,
+      "sha256": "e9c3171c21df6460e825020a537bc2d8d4f1330f6f3df232a5bd463542235c2a"
     },
     {
       "path": "backend/tests/test_student_progress.py",
-      "bytes": 3243,
-      "sha256": "eb4719665139e0efe67a368c9019eae8cfba632785cf9a8501c7aa504c842e6e"
+      "bytes": 3505,
+      "sha256": "456a5e394314ebd56189476031155878255fc859b101eadca9949c9b9a5ea6b8"
     },
     {
       "path": "backend/tests/test_submission_readiness.py",
       "bytes": 2762,
       "sha256": "e17f8e12f02c9c01747ff39115779b010921813a7e68828d6595fa2a78559471"
+    },
+    {
+      "path": "backend/tests/test_teacher_agents.py",
+      "bytes": 4483,
+      "sha256": "050f18afaeb9d904d9f745818a7f907dc668cf1b24b5578f4d194f27cd753b2a"
     },
     {
       "path": "backend/tests/test_teacher_overview.py",
@@ -1062,6 +1435,26 @@
       "path": "backend/tests/test_teacher_student_trials.py",
       "bytes": 2715,
       "sha256": "fb7305e333ba8f1629d034ec141456da5db119c300095d5c5d00ae89cc50016e"
+    },
+    {
+      "path": "backend/tests/test_teacher_templates.py",
+      "bytes": 3521,
+      "sha256": "40b52a81581e8deef4921501342615505c0d1fa4a980353d5db9cea10b493021"
+    },
+    {
+      "path": "backend/tests/test_trial_coach_agents.py",
+      "bytes": 3904,
+      "sha256": "770586d6159df910b5608a420b7c26557b87b54275d035f7d8e733a64d07f5cc"
+    },
+    {
+      "path": "backend/tests/test_trial_comments.py",
+      "bytes": 2960,
+      "sha256": "67444c689f25de4d5cad833bf1003ff8bc3675d487c9f5fb9f3c876044e2ae83"
+    },
+    {
+      "path": "backend/tests/test_trial_feedback.py",
+      "bytes": 1966,
+      "sha256": "57ea2e4e92766e97d6676818d419df9703e68601072431f7b341f5bd43963ea6"
     },
     {
       "path": "backend/tests/test_trial_operations.py",
@@ -1080,13 +1473,33 @@
     },
     {
       "path": "backend/verify_real_submit.py",
-      "bytes": 2486,
-      "sha256": "1dd05936cd1f4481586b720c9a8a281bb600110d8cc482ce8dbd2630de82e0b3"
+      "bytes": 3655,
+      "sha256": "525717ca7bc803394aaf8e6e287bdc6c7d3a08b2f24e899d8e54628b71621e14"
     },
     {
       "path": "backend_api_design.md",
       "bytes": 30455,
       "sha256": "651471d83264ae5a436880687bb3a6f4d1107e66a5934a48961006d9f594a9cd"
+    },
+    {
+      "path": "data/2026-07-15-student端优化总结.md",
+      "bytes": 5180,
+      "sha256": "74e4301d0e841590fca9329b7472f17de51d740f4edfea870cdce30843043f2b"
+    },
+    {
+      "path": "data/learning_core_groups_masked_normal.sql",
+      "bytes": 54672046,
+      "sha256": "b1f2e782aa1cc2ca34b93f90d3b79fbf2db5d1314fbb5e70e5ed2eb6f7c8aab2"
+    },
+    {
+      "path": "data/learning_core_import/learning_core_groups_masked_normal.sql",
+      "bytes": 54672046,
+      "sha256": "b1f2e782aa1cc2ca34b93f90d3b79fbf2db5d1314fbb5e70e5ed2eb6f7c8aab2"
+    },
+    {
+      "path": "docker-compose.neo4j.yml",
+      "bytes": 550,
+      "sha256": "ee3b84ccfa1db32d5dad7e234149634d1b294889320688fc68b78c35b6dfb816"
     },
     {
       "path": "docs/2026-05-26-teacher-workbench-summary.md",
@@ -1169,6 +1582,21 @@
       "sha256": "5ac6322ceb05681c69e5e970e88ecb576878672aaf6e0f8347bbc149875341ba"
     },
     {
+      "path": "docs/2026-06-25-student-quality-closure.md",
+      "bytes": 4291,
+      "sha256": "868902dbb0c5a7d199704b298fe9cae9114b88d6388196a326f7fb37c6989c21"
+    },
+    {
+      "path": "docs/2026-07-17-star-path-ui-and-question-bank-closure.md",
+      "bytes": 7547,
+      "sha256": "1df0dc6a37994bdf8fae4739ea8ed9e1e0541e7baca0d4fabbdc0bdb92451e40"
+    },
+    {
+      "path": "docs/2026-07-18-star-path-inline-practice.md",
+      "bytes": 2180,
+      "sha256": "db55ca242e3d77bcd807c4a1a34f1d5f588a6f56f567ad8115acafc7f195ecd8"
+    },
+    {
       "path": "docs/AI-Agent-Python栈.md",
       "bytes": 3535,
       "sha256": "859d758cc2a6a65ab0c000386b88c5dffe42b9feae797a3016f0e2caf346f107"
@@ -1182,6 +1610,11 @@
       "path": "docs/defense/manifest.json",
       "bytes": 9560,
       "sha256": "0e4367629c978d7dede0ca0e104d3d9283743fc62c29ae429a9fa25dd5f4e1d1"
+    },
+    {
+      "path": "docs/submission/00-submission-package-map.md",
+      "bytes": 4951,
+      "sha256": "545abc3ce2b5b58431626428d4246b4060449dcf313eb6abfa54c25c5484d714"
     },
     {
       "path": "docs/submission/01-requirements.md",
@@ -1210,8 +1643,8 @@
     },
     {
       "path": "docs/submission/06-deployment.md",
-      "bytes": 935,
-      "sha256": "4d7d842fa81aae39a6fe0623af8b0345c577eb42e40340c6133f29a3c0a8273b"
+      "bytes": 1092,
+      "sha256": "c98bc47c59a483b616aa2ac137db30913ef4644776adf6a4ca6c0802ca6142cd"
     },
     {
       "path": "docs/submission/07-user-manual.md",
@@ -1230,8 +1663,8 @@
     },
     {
       "path": "docs/submission/10-demo-script.md",
-      "bytes": 1259,
-      "sha256": "973350423facd51b74a06fd152fef1f29b9c32bcafabb6a5a814458596487068"
+      "bytes": 1412,
+      "sha256": "2e75acba99294fb57de6a4d601e0b62dd38237c531c4c8f55bd23c50ad67d018"
     },
     {
       "path": "docs/submission/11-external-acceptance-checklist.md",
@@ -1254,9 +1687,19 @@
       "sha256": "c1201326030583ba442efc7fc64e22c81349bced2f9f8623062754cab8441238"
     },
     {
+      "path": "docs/submission/A3-PLEX-配套文档总册.md",
+      "bytes": 11755,
+      "sha256": "68c57eb383b06bd571644119a21492484e685aad41aae599455605db3b58a1b9"
+    },
+    {
+      "path": "docs/submission/artifacts/PLEX-A3-supporting-documentation.docx",
+      "bytes": 47450,
+      "sha256": "cd49501b4a6c67612a4007f7d6c9a5f7526b2b90585bfbf3ac9eb4864080c099"
+    },
+    {
       "path": "docs/submission/README.md",
-      "bytes": 751,
-      "sha256": "29f9ffa020ea132aff219c7ccc2c5528eeb6f2f7462110006693e6d027a375b7"
+      "bytes": 3396,
+      "sha256": "d0486ed3f2154c054e3c71d9806e3bb769154316baf7a1045993adf008a21dfa"
     },
     {
       "path": "docs/中国软件杯赛题对照评估与冲刺计划-2026-06.md",
@@ -1270,8 +1713,8 @@
     },
     {
       "path": "frontend/.env.development",
-      "bytes": 129,
-      "sha256": "2030d094e372698d57f23bc5b45619a2bc7a37b3c20972a22290e1ee16e48a18"
+      "bytes": 148,
+      "sha256": "66eb41be33d9318af659882c02986255eef1388a52bf20ef5e5eaf114e43f2eb"
     },
     {
       "path": "frontend/.gitignore",
@@ -1295,13 +1738,13 @@
     },
     {
       "path": "frontend/package-lock.json",
-      "bytes": 163889,
-      "sha256": "a3e61c01c3b75d2aabe0055607c29d785cd4fa3dea4998659e39aa16aa1f1383"
+      "bytes": 189034,
+      "sha256": "e559e2be9efbc0f34320a78c3667d4ca5184e0429d05894ee6ed6804376db16c"
     },
     {
       "path": "frontend/package.json",
-      "bytes": 1335,
-      "sha256": "9e8f9ad78376086f9d32cb39c2244c0164b849802c7805e7d158f3524e140913"
+      "bytes": 1394,
+      "sha256": "c2226a356d9d4cb60b48f5aa29dd33760bbd27b1bb98219e2a3298fd5f258040"
     },
     {
       "path": "frontend/pnpm-lock.yaml",
@@ -1345,8 +1788,8 @@
     },
     {
       "path": "frontend/reports/bundle-budget.json",
-      "bytes": 3251,
-      "sha256": "b967e2f730c7295676490a631677d8bc51e737234435f815ace6465410a7f4ba"
+      "bytes": 3356,
+      "sha256": "9d10e02807ef408c3afebff3a248f157d166a07c64fdf3e762b605c427afdb7b"
     },
     {
       "path": "frontend/scripts/verify-bundle.mjs",
@@ -1360,8 +1803,8 @@
     },
     {
       "path": "frontend/src/api/adminSettings.ts",
-      "bytes": 2524,
-      "sha256": "b841996ff8fb6729fc93019d50c672e1b742837a71fcc0592a8950f9bec376dd"
+      "bytes": 2597,
+      "sha256": "3c7a9f9919be8ac6aa59c22a6d7ec08a8ca9dca61d80f17048c66a5a1bcc6c7e"
     },
     {
       "path": "frontend/src/api/adminTrials.ts",
@@ -1369,9 +1812,24 @@
       "sha256": "d6e6cb625bcb3fe45bb2eecb8503887eda23519dfb5e626924624bd0c4fff11b"
     },
     {
+      "path": "frontend/src/api/agentOrchestration.ts",
+      "bytes": 1998,
+      "sha256": "18353821ab9401dcdf92d40f727d7b1037f4686c342470edb0898d804627a97b"
+    },
+    {
       "path": "frontend/src/api/agentService.ts",
-      "bytes": 4834,
-      "sha256": "b6bb14f9692921849a7a947c32df064a632d7de1ffa627eb95ba04d49dbf8b95"
+      "bytes": 15036,
+      "sha256": "c984501970d4e9f2f22be7d9cd307cfcf4c7d320cf721bfb54f3b044d568a0eb"
+    },
+    {
+      "path": "frontend/src/api/classEnrollments.ts",
+      "bytes": 2333,
+      "sha256": "ef818ff6e5d3696a1e17ed911acf03fafd335f080531652562de90ed0f48c432"
+    },
+    {
+      "path": "frontend/src/api/classFiles.ts",
+      "bytes": 852,
+      "sha256": "a9686aa4a8fefc5b9f6c5559cf2dcf9c55c767ae5fff03c9726c26390301f561"
     },
     {
       "path": "frontend/src/api/classManagement.ts",
@@ -1390,8 +1848,8 @@
     },
     {
       "path": "frontend/src/api/emergencyMission.ts",
-      "bytes": 2103,
-      "sha256": "759467b5259882a87212d5c5d41877779098db1cbb071b5e58cc06981480b762"
+      "bytes": 2611,
+      "sha256": "3da59a8dd5f6bb11b7852053b98f173c3832279bf4b6da60ddf20b73aaa1a08c"
     },
     {
       "path": "frontend/src/api/health.ts",
@@ -1400,8 +1858,8 @@
     },
     {
       "path": "frontend/src/api/http.ts",
-      "bytes": 2288,
-      "sha256": "bc86016faded9084e9d1143b8dfa596d284f6321bdaf90ff12c576583c1a4c48"
+      "bytes": 2976,
+      "sha256": "9becbae38e20643dce6db4210489dc3cc3239c0f471db626ef116c2f2aceb95f"
     },
     {
       "path": "frontend/src/api/knowledgeBase.ts",
@@ -1410,13 +1868,13 @@
     },
     {
       "path": "frontend/src/api/knowledgeGraph.ts",
-      "bytes": 1408,
-      "sha256": "eda32423a38b7fd5bd8e50d47af17c3c732acdf453d5e1c6658a41297ef0ce69"
+      "bytes": 1878,
+      "sha256": "c7c4ba7d897cf9c55abc5da3bc02545106dec4c8b5d36ff140a69e051a9bf2bb"
     },
     {
       "path": "frontend/src/api/learningReport.ts",
-      "bytes": 4846,
-      "sha256": "5424135f9e73e3ba5752fa2f9d65ad3eb4858f269993acd389c340a83cfec65d"
+      "bytes": 9284,
+      "sha256": "4f0b06f5da2e99392f04c5f46692141ba7b3844f2752a128bdca7eae75881c61"
     },
     {
       "path": "frontend/src/api/learningResources.ts",
@@ -1425,18 +1883,23 @@
     },
     {
       "path": "frontend/src/api/messenger.ts",
-      "bytes": 615,
-      "sha256": "4a24666ad4b71ebc18de80483b703c24be5d08a49bb6c270f59ee4ef04a29732"
+      "bytes": 953,
+      "sha256": "a2cef6b36b9f58c8e7ab6dbbc8ba4b0ca51d0e1ff2ae7e43b16d7003bd74eaf7"
     },
     {
       "path": "frontend/src/api/personalizedProfile.ts",
-      "bytes": 2815,
-      "sha256": "02789274843fd88ccd915d5fc0a6556e9482f6420e072ddb4e25c1dc2d90f764"
+      "bytes": 4346,
+      "sha256": "42902fd35f4c7dd889bd0f66d5480075f4d761af9d0d94a2ce59f5f49045f3c5"
     },
     {
       "path": "frontend/src/api/personalizedResources.ts",
-      "bytes": 4749,
-      "sha256": "876fcebdcb1fc3ae1b444949e2d7710e4730ea285647c99721968622289044db"
+      "bytes": 6963,
+      "sha256": "37156b40d949a58db6cf793d37544e3ac667e916e5e80e3882d44b09414c7c29"
+    },
+    {
+      "path": "frontend/src/api/practiceQuestions.ts",
+      "bytes": 1505,
+      "sha256": "04c51a5470d826b2e5cf667947c2fe10fc634f53e0c6ae3e18fa1688fcc1b03a"
     },
     {
       "path": "frontend/src/api/recommendations.ts",
@@ -1445,8 +1908,8 @@
     },
     {
       "path": "frontend/src/api/studentAssignments.ts",
-      "bytes": 2884,
-      "sha256": "3f597872025790cd64ccbe487bb13fb3821f0ea9e55c58431dea45fdecc917e1"
+      "bytes": 3014,
+      "sha256": "475b68225a4dbf20611851a7684b7f943c99510550404f02160c491a402e0424"
     },
     {
       "path": "frontend/src/api/studentInbox.ts",
@@ -1455,8 +1918,8 @@
     },
     {
       "path": "frontend/src/api/studentManagement.ts",
-      "bytes": 2630,
-      "sha256": "d172711429b9ed1e97e3bfc1ad0feecbe4210f87aed77508ec8ab8a170675c93"
+      "bytes": 2658,
+      "sha256": "8d567c099dbcfca01ac1f784e878e6b74ada0ea3f0f8581ae6f7be55123e7cbf"
     },
     {
       "path": "frontend/src/api/studentMistakes.ts",
@@ -1465,23 +1928,28 @@
     },
     {
       "path": "frontend/src/api/studentOverview.ts",
-      "bytes": 5854,
-      "sha256": "95ac0ab883b049c369ba5f4c5c2c0044bd2f27b956389618d7baf272d4f927f7"
+      "bytes": 6844,
+      "sha256": "160570dd5ab47d4038e35c2add99f92583a581f1d959959cb4ea1fec954900a2"
     },
     {
       "path": "frontend/src/api/studentProfile.ts",
-      "bytes": 1285,
-      "sha256": "c7351e62cdcfc1be4500e95e549427aabb9a03afe10ca6496ccf13cd884f999c"
+      "bytes": 1222,
+      "sha256": "f4b80e977be4625bfc66b4217c3566dcb0deec85c116e379dd794c8f6086f558"
     },
     {
       "path": "frontend/src/api/studentProgress.ts",
-      "bytes": 2112,
-      "sha256": "0f66d9e4a46d21b6e125fb24ccf7c014dd117d53ea697809ecef5f5aba579638"
+      "bytes": 3333,
+      "sha256": "6c6891fb6a060ad7b8f2ced37271169f04ce2b31436cf2a4a84c9abb46b9ce99"
     },
     {
       "path": "frontend/src/api/studentTrials.ts",
       "bytes": 3216,
       "sha256": "6f322f157e0795bb869b09423c57a7f0b15dd1f97fdbd82b2d9d65186ba6324d"
+    },
+    {
+      "path": "frontend/src/api/teacherAgents.ts",
+      "bytes": 3772,
+      "sha256": "33e2f4c74ab4da4e552e693f682ce3b22ca28c2a8df337db6633af53c4c97f0b"
     },
     {
       "path": "frontend/src/api/teacherAnnouncements.ts",
@@ -1505,8 +1973,13 @@
     },
     {
       "path": "frontend/src/api/teacherTrials.ts",
-      "bytes": 9048,
-      "sha256": "53130b8337aabbefebc461ef3806af4663815c7ccbc4665602ea29da82630118"
+      "bytes": 10098,
+      "sha256": "4091ee3b6fafaf0dc827fbb99330abcbb4fcb26420c9921b6ba163a7952382fe"
+    },
+    {
+      "path": "frontend/src/api/trialComments.ts",
+      "bytes": 1777,
+      "sha256": "23fd97fe60178866c7eef345f08be2731395a5b689bc3985870a1ad66fe97d7d"
     },
     {
       "path": "frontend/src/api/upload.ts",
@@ -1515,8 +1988,8 @@
     },
     {
       "path": "frontend/src/App.vue",
-      "bytes": 2467,
-      "sha256": "654e87b5a6488a710b7fe4e3b780b265fdd5c33193f96bdbf8c1ae5325646e6b"
+      "bytes": 1443,
+      "sha256": "f179a19b810b0e8a23c502133bf961aa19c1dfb44ebcf8ca4444e43cc3054d6b"
     },
     {
       "path": "frontend/src/assets/hero.png",
@@ -1535,28 +2008,28 @@
     },
     {
       "path": "frontend/src/components/admin/AdminAgentOrchestrationPanel.vue",
-      "bytes": 11459,
-      "sha256": "f376bc470d7f5685a4a1d2b7a24e5367b6d7c3705245d6c39a270760a4aabd10"
+      "bytes": 17673,
+      "sha256": "ae8e47e85df179ccb90c4333cd2530fa420ee46add5edeaf24522958569b78d4"
     },
     {
       "path": "frontend/src/components/admin/AdminClassRequestPanel.vue",
-      "bytes": 5204,
-      "sha256": "55f7d9116d0140c2ce51bc51421e3c78661a9a57c72e6389217a020288d6a903"
+      "bytes": 6358,
+      "sha256": "80169866886a643d0d7d9f9c0c208ab3234f26c1b7ee38c01bdf516cb54d912f"
     },
     {
       "path": "frontend/src/components/admin/AdminKnowledgeNexusPanel.vue",
-      "bytes": 16610,
-      "sha256": "bbd01e717b312dfe7928133eae8f33c6c3784ee81afc83b0b1224a0d91e83966"
+      "bytes": 17206,
+      "sha256": "1572d06188b5d59020169a7425ca9407fe39f7d6ee3d0f6ee02054f3a160808c"
     },
     {
       "path": "frontend/src/components/admin/AdminTrialObservatoryPanel.vue",
-      "bytes": 10895,
-      "sha256": "0ee80f1c704ad884c70afaa647101f999858ac52d4fe8e158f2054cfe7719495"
+      "bytes": 11883,
+      "sha256": "6679039ce82c525291a18eb79de1b30368ad61abcc8314447a10b8215c94be88"
     },
     {
       "path": "frontend/src/components/admin/PlexAgentFlow.vue",
-      "bytes": 18575,
-      "sha256": "9d65065d9d08cd98c29c642adda5ac6d6c117ef2a38a0cf212ea132477aeb706"
+      "bytes": 19120,
+      "sha256": "85e6f9f3d6ada76bf170600a76aba20901b8753ed5c49a3b67d79941ba0af4e0"
     },
     {
       "path": "frontend/src/components/agent/PlexAgentStatusCard.vue",
@@ -1564,9 +2037,14 @@
       "sha256": "882238bb435f8d6e303bdf14755b6d56e427680b205bfbbd1f49b37dbfad79ee"
     },
     {
+      "path": "frontend/src/components/agent/PlexAgentTracePanel.vue",
+      "bytes": 5178,
+      "sha256": "d30603d30dd4582e5a833f0a648c47303b62d1606350bf03a0bdc3a8adde1401"
+    },
+    {
       "path": "frontend/src/components/agent/PlexDiagnosisPanel.vue",
-      "bytes": 4030,
-      "sha256": "59ecaf8ad9db6e4921a08045e89bfd78b4da0119f963665d24c3e8783c1d9f2d"
+      "bytes": 9815,
+      "sha256": "76031add8f81948bbd4948a1e65360643a6d53b2c80e53887cf4079ca11bc569"
     },
     {
       "path": "frontend/src/components/agent/PlexLearningAdvicePanel.vue",
@@ -1574,39 +2052,19 @@
       "sha256": "13facb3a218a8c59302c5b77d746c6931f5b48e54aee8b1a2b07446ddb2c0a47"
     },
     {
+      "path": "frontend/src/components/agent/PlexLearningCyclePanel.vue",
+      "bytes": 4259,
+      "sha256": "89a3cf702d1bba7ae611b1529a475f13d7041068617b04bc1fa0dc785a077137"
+    },
+    {
+      "path": "frontend/src/components/agent/PlexLearningPathPanel.vue",
+      "bytes": 6067,
+      "sha256": "5ba11cd1fd27789c855369f3776f11efae9ee66a7651a521307eabdcf51b05a3"
+    },
+    {
       "path": "frontend/src/components/agent/PlexTeacherSuggestionPanel.vue",
-      "bytes": 3598,
-      "sha256": "0d41fee672be9ba0dede9ee45c24585d7e08c37770bb45846869171e181611db"
-    },
-    {
-      "path": "frontend/src/components/archives/AchievementCollection.vue",
-      "bytes": 2900,
-      "sha256": "cb8de6640698f2a963df447b8a937cba9e8cb0cf4f7428ae8db520fa65c76fa0"
-    },
-    {
-      "path": "frontend/src/components/archives/ArchiveProfileCard.vue",
-      "bytes": 2890,
-      "sha256": "d211fbcd6c6ebef43c264e5733e13bc38f1b8023db05472d4af0f4fa47032060"
-    },
-    {
-      "path": "frontend/src/components/archives/EmergencyMissionRecords.vue",
-      "bytes": 3499,
-      "sha256": "d1ae0dfa8af7bf576eb1452e5d3ec0f4c7460b492b9238b55fd180471f38c844"
-    },
-    {
-      "path": "frontend/src/components/archives/ExplorationTendencyCard.vue",
-      "bytes": 1870,
-      "sha256": "afa4d77460266615a005f03c55874c321188ac8a7a3df4298ca155e9526a864c"
-    },
-    {
-      "path": "frontend/src/components/archives/GrowthTrajectory.vue",
-      "bytes": 3347,
-      "sha256": "f243b2d57ca3a97d4e4a6b4533496c189c16cd1a1705a929ec5021b4e30bb974"
-    },
-    {
-      "path": "frontend/src/components/archives/SkillDistribution.vue",
-      "bytes": 2687,
-      "sha256": "4bce0494c77cc55c9d749fdea0f287365af00ce8416d04e10c95768e7089ef31"
+      "bytes": 4683,
+      "sha256": "2f05672709a8805db7536a10f0b7f9c010c43fc5a82898d32cedff0556fc175a"
     },
     {
       "path": "frontend/src/components/charts/PlexBarChart.vue",
@@ -1625,8 +2083,8 @@
     },
     {
       "path": "frontend/src/components/charts/PlexPieChart.vue",
-      "bytes": 2206,
-      "sha256": "9edef68bfad023e8a9e99bc6067b05fb0c7f1773b6cd4b01dca7da97d0e9bbdb"
+      "bytes": 3590,
+      "sha256": "420747eab798b32f8dcabbf02bf0995862b556c97e74103f455024127a05b8ec"
     },
     {
       "path": "frontend/src/components/charts/PlexRadarChart.vue",
@@ -1635,13 +2093,13 @@
     },
     {
       "path": "frontend/src/components/common/PlexGuideTour.vue",
-      "bytes": 1065,
-      "sha256": "0b8b39dd50bba53502301bd472ab0fccff45b8ffd314e06521d25f0f49cb0429"
+      "bytes": 1044,
+      "sha256": "fdff3d376aa1fc7ccd0e20d84be8a61b15ad9873a617809d25f9180cd43ca34b"
     },
     {
       "path": "frontend/src/components/discovery/ClassArenaHub.vue",
-      "bytes": 24347,
-      "sha256": "baad210fda4988a7a4aa6893faa563a02013c9dd7f75df5ff4ccf863dc0ab403"
+      "bytes": 26161,
+      "sha256": "fc8d987fbb8349fae34aefea6043525e874729105aba643b6e80c266cb5bb462"
     },
     {
       "path": "frontend/src/components/discovery/EmergencyMissionModal.vue",
@@ -1650,8 +2108,13 @@
     },
     {
       "path": "frontend/src/components/discovery/StarFieldMap.vue",
-      "bytes": 12253,
-      "sha256": "3d047a51ddcffc99022c9ac19df115b4a22fe18a19eafdc439aad1efaf42dea2"
+      "bytes": 14229,
+      "sha256": "3fad1a51249c4dfac3372a84c3d8899f03b2921d2f7f4e6856447afc72a2c653"
+    },
+    {
+      "path": "frontend/src/components/discovery/StarMapParticles.vue",
+      "bytes": 2223,
+      "sha256": "9150777c7dec1b508d68c902c03085f1fc51fafec1ef071de880fbb8f3edb722"
     },
     {
       "path": "frontend/src/components/discovery/TrialArenaMap.vue",
@@ -1659,29 +2122,39 @@
       "sha256": "f8cdd4dac9e14cb685a812949c3d7a1dc468c052827a254ee0902e33d89cd277"
     },
     {
+      "path": "frontend/src/components/growth/EmergencyMissionGrowthModal.vue",
+      "bytes": 5303,
+      "sha256": "da26c0071a31b1c4c2b065f4829060a56baaefe8337b4c37abe75b11cad11bec"
+    },
+    {
       "path": "frontend/src/components/layout/DashboardShell.vue",
-      "bytes": 7971,
-      "sha256": "3d9da10c7acd4b5746151fda47d93f28a11f23ab331149d0c6c125390d2ea15c"
+      "bytes": 7818,
+      "sha256": "f7f1e8871b7cfd531563e1036db77ab63cb7cc8c726ea789accab33301be8eff"
     },
     {
       "path": "frontend/src/components/layout/PlexSidebar.vue",
-      "bytes": 6197,
-      "sha256": "e3d51b09796162280d047fafd491e5a583b4776e280a9f9e5a69e9082545561d"
+      "bytes": 6521,
+      "sha256": "ff03c6b7b327ad1bb2228b12b0dd9bf9dc4ce7f0d11620549f23887fb10f4f92"
     },
     {
       "path": "frontend/src/components/layout/PlexTopbar.vue",
-      "bytes": 11690,
-      "sha256": "af6e3c9f3d57bfb247292b6d0fe1d620e0937d573651819aa9a5f5139223a924"
+      "bytes": 12886,
+      "sha256": "92edf545d44e76a52256c0f6292ee45c658e4916273ddfb34e817b78aa2fa29c"
     },
     {
       "path": "frontend/src/components/layout/TeacherDashboardShell.vue",
-      "bytes": 5892,
-      "sha256": "ae8c1695643ba430a5161bb8f5722964fde6e17315d66ca8a6235aba4d24c959"
+      "bytes": 5622,
+      "sha256": "963c039f137767848ecf1760789814b0c822f94a79d40bd77b56443ffac0bd1c"
     },
     {
       "path": "frontend/src/components/layout/TeacherSidebar.vue",
-      "bytes": 8596,
-      "sha256": "a0964ba5bccf206f85a051b68ba04762b69ddd339cd0466c41c6a01921c775e0"
+      "bytes": 8598,
+      "sha256": "49e854cfd8b39748d60c92262a76e6f3e702692e3099d8ee42c9dd02cef8a238"
+    },
+    {
+      "path": "frontend/src/components/personalized/PersonalizedResourceContentViewer.vue",
+      "bytes": 7634,
+      "sha256": "38d15ab56553b0f8c791c157114b5d7a8d7cb2774c225d507e6b3a2692a9fc7f"
     },
     {
       "path": "frontend/src/components/search/PlexLocalSearch.vue",
@@ -1689,9 +2162,14 @@
       "sha256": "558b78660613e8aab5524dcdeead890247bff5a59bcc06911a46dfc60c46e485"
     },
     {
+      "path": "frontend/src/components/search/QuestionSearchPopover.vue",
+      "bytes": 3449,
+      "sha256": "46889471613e181b54dc8b98beef8b39ae06cde912dc099e4507d28614efd89e"
+    },
+    {
       "path": "frontend/src/components/shared/PlexKnowledgeGraph.vue",
-      "bytes": 10102,
-      "sha256": "93d75ffc42763fefd66e3867c03286621863f95d02f4cd60313e7b5261ac6ee5"
+      "bytes": 15989,
+      "sha256": "300cbbdd7146bbd6aafe72d784d667f93347e7cbb8fc3893f2833e331c5a410f"
     },
     {
       "path": "frontend/src/components/shared/PlexThemeSwitcher.vue",
@@ -1725,23 +2203,33 @@
     },
     {
       "path": "frontend/src/components/starpath/StarPathTrackCanvas.vue",
-      "bytes": 8685,
-      "sha256": "0f63504779f550cc9639bc6d660499011bed3d1d012e5971ceeb5734099302b1"
+      "bytes": 15116,
+      "sha256": "dc8f852795f1dac17da9764bca324fff4e74de0402f41fde8b9a5e73473adb8e"
+    },
+    {
+      "path": "frontend/src/components/student/ClassFileExchangePanel.vue",
+      "bytes": 5945,
+      "sha256": "afb15affa06c4504650931b4902ee23fb7feeba5c191574be163ecbc98d5e099"
+    },
+    {
+      "path": "frontend/src/components/student/PedagogicalBundleViewer.vue",
+      "bytes": 6849,
+      "sha256": "0b2b11dd2f841991bbe6b53c1cf2d9c706a152fa6b0fa3846fe0089ac6f27d15"
+    },
+    {
+      "path": "frontend/src/components/student/StudentJoinClassPanel.vue",
+      "bytes": 7082,
+      "sha256": "f224413fd876901adf3549b572cf3f198e410685d9ffe2d4ac9dd609ca632b93"
     },
     {
       "path": "frontend/src/components/student/StudentSectionTabs.vue",
-      "bytes": 1320,
-      "sha256": "542f223882702627d7764b63f0660b4d9206fad2accccdc16ae76cc86cce98f6"
+      "bytes": 1239,
+      "sha256": "75efacf4a37a0bc26accae0e69587b429ac2819bde2039981eb1d68ba9545871"
     },
     {
       "path": "frontend/src/components/student/TeacherAssignmentPanel.vue",
       "bytes": 7809,
       "sha256": "8b33ac374bca8d4567d2b7bc675b94de7c973f3a4900939cf7d9a3059d8c7b50"
-    },
-    {
-      "path": "frontend/src/components/teacher/AbilityRadarChart.vue",
-      "bytes": 3390,
-      "sha256": "3916db539e8f7a98280a463d6a6e225f0348cda154893985e01478cba549b00e"
     },
     {
       "path": "frontend/src/components/teacher/ClassActivityFeed.vue",
@@ -1750,23 +2238,13 @@
     },
     {
       "path": "frontend/src/components/teacher/ClassHeatmapPanel.vue",
-      "bytes": 5501,
-      "sha256": "40e263ccdb133bc7339d3cd3a1ff96bae78b4b9b3e988c859ab2566870e99709"
+      "bytes": 6696,
+      "sha256": "037aa25d6bc427a76b3fa749a3ab4675382e7f879c5f335b7bb5a9fa228d610c"
     },
     {
       "path": "frontend/src/components/teacher/ClassRankingBoard.vue",
       "bytes": 3076,
-      "sha256": "64b62f6064ebbee209f15b0f8d053c01f5f23947b77f8fde06e14c807d4efb3f"
-    },
-    {
-      "path": "frontend/src/components/teacher/ExplorerKnowledgePanel.vue",
-      "bytes": 7884,
-      "sha256": "bb839838f5cafae7b966cf6360e648417dd969d9da0d8234d20e0c1da9d78e01"
-    },
-    {
-      "path": "frontend/src/components/teacher/ExplorerListPanel.vue",
-      "bytes": 7663,
-      "sha256": "964e012ffcf1200e3f3dbddc6f4814699d35fd0f203f6cba8d5e1ba323dd2062"
+      "sha256": "30071fc2cc34a6f75cd52b96fcc7259d9cd0c9af6087c45b0537044158b901b5"
     },
     {
       "path": "frontend/src/components/teacher/ExplorerMemberManage.vue",
@@ -1774,39 +2252,9 @@
       "sha256": "fd90bb195e4635a577e04085b7ca1f0184664f7502754ed0123e5bf79754abb8"
     },
     {
-      "path": "frontend/src/components/teacher/ExplorerProfileHero.vue",
-      "bytes": 3336,
-      "sha256": "603ee516d7e2ed9097605e0a44da2056e95a490cdb6e56c066f5b98fdae276ad"
-    },
-    {
-      "path": "frontend/src/components/teacher/ExplorerQuestPanel.vue",
-      "bytes": 3571,
-      "sha256": "d5e8e419f2d562394d9a46273935a9b182a5f90b248d1cad32153dc695bbad96"
-    },
-    {
-      "path": "frontend/src/components/teacher/ExplorerStatusAside.vue",
-      "bytes": 4148,
-      "sha256": "002b2120b4cce096a93745f0c746217d0dad719dad59d9c92ea815ddda4c1aaf"
-    },
-    {
-      "path": "frontend/src/components/teacher/ExplorerTrialPanel.vue",
-      "bytes": 7091,
-      "sha256": "2b39eb4f613fa87eca7c875ac14637bc7e594174d4c6d04d5eb7848f63f06bb3"
-    },
-    {
-      "path": "frontend/src/components/teacher/ExplorerTrialPlaceholder.vue",
-      "bytes": 1204,
-      "sha256": "7c4f195f6bc3507f351b8789eb38b92d620320ddb8579cc2bcd4adfd97fc4a35"
-    },
-    {
-      "path": "frontend/src/components/teacher/GrowthLineChart.vue",
-      "bytes": 1655,
-      "sha256": "c13d34041e9786b26c488b0b40d6999a07d189b0696ccaf98f5006c45b673971"
-    },
-    {
       "path": "frontend/src/components/teacher/KnowledgeOrbitMap.vue",
-      "bytes": 6496,
-      "sha256": "ce76898549dc4c146649021e3cbc1137ab4a43b961a6b07bc324c2072d87c1bc"
+      "bytes": 8740,
+      "sha256": "33cbfa8563d899b0144bc669aeb93b2b7773245ea98e4138ccf8ba38800bedd6"
     },
     {
       "path": "frontend/src/components/teacher/KnowledgePointPicker.vue",
@@ -1816,22 +2264,22 @@
     {
       "path": "frontend/src/components/teacher/SparklineCard.vue",
       "bytes": 1480,
-      "sha256": "6af53468eac4aa0ea65ee519423b782fc9bb8d1f67390c40507249399557f26a"
+      "sha256": "74b2d5c75cd043b6d13de75099541e23e15f903cba2ef94d77247c28e4f7d0bf"
     },
     {
       "path": "frontend/src/components/teacher/StarfieldDomainDrawer.vue",
-      "bytes": 5778,
-      "sha256": "e62061ff8bca781363b86fc78804a82ce1bdcb1a05082ab0eef5ff883c684ee8"
-    },
-    {
-      "path": "frontend/src/components/teacher/TeacherClassAnswerBoard.vue",
-      "bytes": 10671,
-      "sha256": "91334249a4c5abd07cfd6958693db25f57f4d7f1f8306ad44c932004ca354cc7"
+      "bytes": 5800,
+      "sha256": "12827ca391e9b7533505f64931f0bad99d64a025c712058f914013f4fe49cd24"
     },
     {
       "path": "frontend/src/components/teacher/TeacherClassManagePanel.vue",
-      "bytes": 10461,
-      "sha256": "72a529263647923648cace47304364ef07953f49fa8876907dfb5093b123385c"
+      "bytes": 12242,
+      "sha256": "36a2faeab2d5ae35b57c1f1fa71320a6076c4a1defcc17e0b1c6673bd886f042"
+    },
+    {
+      "path": "frontend/src/components/teacher/TeacherEnrollmentReviewPanel.vue",
+      "bytes": 7284,
+      "sha256": "ef98e5789ea358920f0460b55a18c5149ed66d638379a1397a68a280440f1006"
     },
     {
       "path": "frontend/src/components/teacher/TeacherInsightCard.vue",
@@ -1845,18 +2293,23 @@
     },
     {
       "path": "frontend/src/components/teacher/TeacherToolbar.vue",
-      "bytes": 5505,
-      "sha256": "ff21da73f7c6f2503f25a8b52c7633cd11f60de44d5b7b034bacd2529e7ce319"
+      "bytes": 4091,
+      "sha256": "524fe0b5342390bc0d8bdf6616206a0fe0bf26ac9dd6c3fd6fe7ffb41dab57b3"
     },
     {
       "path": "frontend/src/components/teacher/TeacherTrialDetailPanel.vue",
-      "bytes": 12872,
-      "sha256": "387d123009f3e11737dc495da366985a7b66d4db3b280f9a059c0671da9b282b"
+      "bytes": 13979,
+      "sha256": "444bbba72269912fa76df6b7c51a7cea49b51b2e8fadb6144309759ac18ec806"
     },
     {
       "path": "frontend/src/components/teacher/TrialPaperEditor.vue",
       "bytes": 11150,
       "sha256": "5b89c2448c9fc49b53a117a00789f591905dd8ff29e7dc4c5b4f98693b9ff628"
+    },
+    {
+      "path": "frontend/src/components/teacher/TrialQuestionComposer.vue",
+      "bytes": 20132,
+      "sha256": "dd5f8108659f048ad5f0b0e61ae6b9c89e47aecd4cf11e4e90fab68d89529f33"
     },
     {
       "path": "frontend/src/components/trial/PlexCodeEditor.vue",
@@ -1865,8 +2318,23 @@
     },
     {
       "path": "frontend/src/components/trial/PythonTrialWorkspace.vue",
-      "bytes": 31835,
-      "sha256": "2acd2d82ee831b5442fc5052320d728d6da6fd9a10f0baf7f27b455f24e85010"
+      "bytes": 37122,
+      "sha256": "c933a8f57a41100252ba0bebda7802bb855f8620c953ad546231966e95f904d0"
+    },
+    {
+      "path": "frontend/src/components/trial/QuestionSlotGems.vue",
+      "bytes": 3517,
+      "sha256": "b64d19679f6abf6e999fa9a0ce3b69c5ccc4062886032ac41a5b95f4590564ac"
+    },
+    {
+      "path": "frontend/src/components/trial/TrialAiFloatingBall.vue",
+      "bytes": 20970,
+      "sha256": "4797edc0ce4e5064e3e2848cd06cee6946bf262ae495ec13e12b667285658b86"
+    },
+    {
+      "path": "frontend/src/components/trial/TrialCommentPanel.vue",
+      "bytes": 7661,
+      "sha256": "06a3210ea086b2919b3a6cdb0730f7a0b964ad92447e6963bef07ff8fb8e67b7"
     },
     {
       "path": "frontend/src/components/trial/TrialExamPanel.vue",
@@ -1875,13 +2343,13 @@
     },
     {
       "path": "frontend/src/components/trial/TrialMcqPanel.vue",
-      "bytes": 10262,
-      "sha256": "bc85d94eec8c1c408bb0f379dfc30b4c296f835913f96058c52143ce25248441"
+      "bytes": 11060,
+      "sha256": "8e8cb5543e69bbed6b6f8a29022bc753ff9344ff2590a85b7496c249339bbb57"
     },
     {
       "path": "frontend/src/components/trial/TrialRecommendationPanel.vue",
-      "bytes": 3569,
-      "sha256": "c8f69dc1baa30ecd0fc941b920ab61376ae87e714fc514283320ef218cb7e478"
+      "bytes": 3568,
+      "sha256": "6f8abf50bad1f493e4f3270f9fd413bcdf376b0d31a320332d98c36f084eb3a1"
     },
     {
       "path": "frontend/src/composables/useKnowledgeCatalog.ts",
@@ -1889,9 +2357,14 @@
       "sha256": "95b3af8658519443c1e4e56cb2b68e60d30dc54b3e5880d016f8f65e549990c3"
     },
     {
+      "path": "frontend/src/composables/useMapViewport.ts",
+      "bytes": 2295,
+      "sha256": "e9c892dffb2abab8a3c40ffb4fbeb321b9ace37700a6ef07d6553b3baaffaa37"
+    },
+    {
       "path": "frontend/src/composables/usePlexTour.ts",
-      "bytes": 7075,
-      "sha256": "4b540e5e787048e658798adbeebc0f79d3eb34473ab37ba8fce2bced16952f87"
+      "bytes": 7580,
+      "sha256": "28c84c15de78e84e4caf7714287e1edf9034e03f7fb19e7e696d84a30d041a55"
     },
     {
       "path": "frontend/src/composables/usePlexUploader.ts",
@@ -1920,8 +2393,8 @@
     },
     {
       "path": "frontend/src/config/tour/adminTour.ts",
-      "bytes": 1914,
-      "sha256": "71361698980fb8ff6a73b2bcc2d1dab9e1189b56157cc79f298375efa0d848af"
+      "bytes": 2931,
+      "sha256": "5f835ea9d0c96bcf389273e2e8030fe95203a627378dfa7e46c88c6ad5cf3811"
     },
     {
       "path": "frontend/src/config/tour/index.ts",
@@ -1930,18 +2403,18 @@
     },
     {
       "path": "frontend/src/config/tour/studentTour.ts",
-      "bytes": 1249,
-      "sha256": "aea38a9a901322ed13bf6580ab61176b367103a3fe21647a6a6b4316a111a9dc"
+      "bytes": 1234,
+      "sha256": "e1f530ab105ded470ec53630bb8582087d80554415fcfbe7fa70478810ae2476"
     },
     {
       "path": "frontend/src/config/tour/teacherTour.ts",
-      "bytes": 1262,
-      "sha256": "bd2d860e7e605c212ee0179e1b1befa0e48b4a8978e8b966152b40e4b9e14bab"
+      "bytes": 1261,
+      "sha256": "4a842a0bdb0ebb7905e70a002ec73d09142bb5d9e884200b671da34627f75236"
     },
     {
       "path": "frontend/src/config/tour/types.ts",
-      "bytes": 282,
-      "sha256": "6506e63bb9462f166bc81f525b48a8c8bae99b1d200d918dbc7aa1037c83aa7d"
+      "bytes": 369,
+      "sha256": "706581a71e3186822423d782c2812cbdb14d25c733d17f1876ba48269263d374"
     },
     {
       "path": "frontend/src/config/upload/uploadPresets.ts",
@@ -1949,19 +2422,19 @@
       "sha256": "7e9264b8e717a3bc63889b4a94e8714b5ff7de5efe466a67ef1af73fbfd4ab65"
     },
     {
-      "path": "frontend/src/data/archivesMock.ts",
-      "bytes": 2296,
-      "sha256": "5e9b26bceefcce085949e2688dffda9686dda7d2bf31377be65b4c3c1eedab2e"
+      "path": "frontend/src/constants/starPathUnlock.ts",
+      "bytes": 747,
+      "sha256": "a383332916e64ea109d306fe7a0ab486634acd2a15e267e16f9ecc3ee8c7f64f"
     },
     {
       "path": "frontend/src/data/classArenaModules.ts",
-      "bytes": 2217,
-      "sha256": "06e8aa20ac8c07425c3a8d388cf9ce6436158d1bb1968ec442902d1687ea1710"
+      "bytes": 1320,
+      "sha256": "fd4f88af0928f1c2f50c1bb0792df3ac5c2008a207b0a5b42f4d68b48f094e45"
     },
     {
       "path": "frontend/src/data/classArenaQuestions.ts",
-      "bytes": 7986,
-      "sha256": "9c11742081c468ad1f11abe226082a57921a8425125bd0684b16ced85a4535df"
+      "bytes": 9107,
+      "sha256": "de45e6cb48a67c68011f43fbef77b8c53a3711440cbf5ad51446830aeaa2d598"
     },
     {
       "path": "frontend/src/data/dailyQuests.ts",
@@ -1980,33 +2453,38 @@
     },
     {
       "path": "frontend/src/data/knowledgeGraphData.ts",
-      "bytes": 6338,
-      "sha256": "fb3f7c8d14454a29fc532c1b6609cdbc42456b355996865282415342a02fa081"
+      "bytes": 6661,
+      "sha256": "03cec260c48f342f6890b7c9ec80ac1cc29cffa42cd8a1261541ec354301df6e"
+    },
+    {
+      "path": "frontend/src/data/knowledgeNodeRegistry.ts",
+      "bytes": 3509,
+      "sha256": "d06fab7f08b3c76bd93ac2e409aa54213a2ba206110809e1b8f31214cf834202"
+    },
+    {
+      "path": "frontend/src/data/mockExamSets.ts",
+      "bytes": 2499,
+      "sha256": "73c233f02e18511b241e2830eefbe600faa7a6fa2301ac7d725e80304ca112f3"
     },
     {
       "path": "frontend/src/data/pythonTrialQuestions.ts",
-      "bytes": 22344,
-      "sha256": "b7f358516a6e276504ff0695b2aefcca2da0c5838fa35e14b1c6bb014f1a202e"
+      "bytes": 32624,
+      "sha256": "4547cde0ee7c7d036db7bf190db1bde48a219c033392b629ef232c384aceff32"
     },
     {
       "path": "frontend/src/data/starPathDomains.ts",
-      "bytes": 7754,
-      "sha256": "439e4cfb11aa77ce4e8f9c17c909aaad3607d771151e1932570bbc6000281419"
+      "bytes": 9409,
+      "sha256": "f738075ac8134ac82ecb0f137602c50e7e2fa141c99659ea381f5228baaa5b7d"
     },
     {
       "path": "frontend/src/data/starPathKnowledgeTracks.ts",
-      "bytes": 2346,
-      "sha256": "b2e5cfa2fea26dd089d72e1ad179af0a6eb47c08293f0cd839b6d63b1b3752af"
+      "bytes": 7594,
+      "sha256": "f1bcc9fd1136be6c68c0d1a2e18a42d095b55c34e9fd3c3e749c35cd61c4a9ac"
     },
     {
       "path": "frontend/src/data/starPathTrail.ts",
-      "bytes": 2963,
-      "sha256": "e82adcd52cad1b20654af5b60ab0d41acc16eb00bad1b1cbf25c4e83997da4d0"
-    },
-    {
-      "path": "frontend/src/data/teacherExplorerProfile.ts",
-      "bytes": 6015,
-      "sha256": "17c0ea78cca629169e90f6eb2bae018cdd6f079118ef9aa7395f6ba35ce25392"
+      "bytes": 3777,
+      "sha256": "63b1d1330e84d7b91c431cb64902110956faed8829b3cdb9394f1e0f7aeca557"
     },
     {
       "path": "frontend/src/data/teacherKnowledgeCatalog.ts",
@@ -2015,13 +2493,13 @@
     },
     {
       "path": "frontend/src/data/teacherStarfield.ts",
-      "bytes": 7330,
-      "sha256": "ece7c112bbb030ddf59927b5188c0fbcc402665d7efd24e11f283270afd44216"
+      "bytes": 8852,
+      "sha256": "1f3a44b5af5e6cd2254934becd90f6f1b205d9097bbed07ce079c66e4ab6eee0"
     },
     {
       "path": "frontend/src/data/trialArena.ts",
-      "bytes": 4853,
-      "sha256": "9a5f8c52e681a25583476e5a20a778bae4e5ee44bd2909d060019f52ab1e583b"
+      "bytes": 5011,
+      "sha256": "819625f0071bb02cf3e5e724c0d942a45296cf08c7459e58b65d39faf5b601bc"
     },
     {
       "path": "frontend/src/layouts/TeacherOverviewLayout.vue",
@@ -2035,8 +2513,8 @@
     },
     {
       "path": "frontend/src/router/index.ts",
-      "bytes": 5524,
-      "sha256": "c9aba83f101ae9c4ffc2fc8e79c19e795d451039037ddea952590c190545c87e"
+      "bytes": 6000,
+      "sha256": "fe087e9267e357dd0e2c187263e573c66cd107b6037f9cf0a96f0149630ee141"
     },
     {
       "path": "frontend/src/services/uploadService.ts",
@@ -2045,8 +2523,8 @@
     },
     {
       "path": "frontend/src/stores/auth.ts",
-      "bytes": 3772,
-      "sha256": "c88a93415ef77993c73d46766ff021295487a1bb9856123b3eaf67532b24c18d"
+      "bytes": 4978,
+      "sha256": "ecfbfa1666d97c2acb3fc4740df7bbb666263885f8ed5cffdaadf7bc0e3abad3"
     },
     {
       "path": "frontend/src/stores/notifications.ts",
@@ -2090,13 +2568,13 @@
     },
     {
       "path": "frontend/src/styles/plex-theme.css",
-      "bytes": 12345,
-      "sha256": "50f6e5548671196d96529f56418f295b5f4104db5ae90cb0bd4e280f96be4440"
+      "bytes": 16713,
+      "sha256": "ae7dcd4c6c4565763defb7c3cd11e3bc0d70b8b1f8e6a5c738092ce0a97c0f54"
     },
     {
       "path": "frontend/src/styles/teacher-theme.css",
-      "bytes": 5336,
-      "sha256": "40a87be6d7328cb9e3a97faff741bbb406f85ac18664fcd034170cc24e89c59d"
+      "bytes": 5828,
+      "sha256": "5f807579b50706a09d538c723d3051013b7f1bd0a6d7e1502014e27b60b890fb"
     },
     {
       "path": "frontend/src/styles/upload.css",
@@ -2129,9 +2607,24 @@
       "sha256": "6a56d19d812c3dec3e1aee3ca4c2fad768d42a9ecf224a9539a36c81106bfa1a"
     },
     {
+      "path": "frontend/src/utils/achievementConditions.ts",
+      "bytes": 1324,
+      "sha256": "b389b126ed82c031296b3ec005c9fa0a844b216963c8c0b4d0dd423e60b3c222"
+    },
+    {
+      "path": "frontend/src/utils/explorationNarrative.ts",
+      "bytes": 12583,
+      "sha256": "569efdf2177e79531a14a9aee4fe01497266ad15a0b4bfc3f13e92777affc732"
+    },
+    {
       "path": "frontend/src/utils/gradingAgentValidation.ts",
       "bytes": 2736,
       "sha256": "6a7ef2ac976db9395a2e5a0b5d30c4a40232d2d5ba432ebbe4d7a70132c1d469"
+    },
+    {
+      "path": "frontend/src/utils/growthEventLabels.ts",
+      "bytes": 1961,
+      "sha256": "eca78e2a3ac95fa88ec3d51c5eed373bc10ade8d4d646bec6fa241d4acdc2cfa"
     },
     {
       "path": "frontend/src/utils/incentiveFeedback.ts",
@@ -2139,14 +2632,54 @@
       "sha256": "1f012f7272fd889cae554845e6e66df2a3c4869de9bc1367006f0df4440e8614"
     },
     {
+      "path": "frontend/src/utils/knowledgeRadar.ts",
+      "bytes": 1277,
+      "sha256": "85bfdab324661f1485b88562d97db82078cb3fb20f0548faf9c22a6d31d2fb65"
+    },
+    {
       "path": "frontend/src/utils/messengerWeakPointAnalysis.ts",
-      "bytes": 11958,
-      "sha256": "8850313dc36b9e5d0a79e0ba2896fe4e20f21fe114346fb6601b1c595fbac856"
+      "bytes": 11926,
+      "sha256": "4e34cd9450ec18fe941e0e3743c7ac724a87252b4889d72ccc8fcd73ee5cdef3"
+    },
+    {
+      "path": "frontend/src/utils/navigation.ts",
+      "bytes": 813,
+      "sha256": "180ddc3a4ad151397c13f8436b8837bb65b396304c4e900cd825ab6a482599ae"
+    },
+    {
+      "path": "frontend/src/utils/practiceQuestionCache.ts",
+      "bytes": 4726,
+      "sha256": "2fcdaa73f8b93186bdee20aa855fc04ffe072a5ec0bb8d433a9f6b391c01d945"
+    },
+    {
+      "path": "frontend/src/utils/practiceQuestionNav.ts",
+      "bytes": 2437,
+      "sha256": "a9033b7a03bc1fbaf1b38f35e10fef1a1873c6510f12c34e29be143fc61af49f"
+    },
+    {
+      "path": "frontend/src/utils/questionNaming.ts",
+      "bytes": 11852,
+      "sha256": "1073d34919498e8cfcebd090509137e242a8d46cb481a6490f881bfc92b2c4de"
+    },
+    {
+      "path": "frontend/src/utils/questionStemSanitizer.ts",
+      "bytes": 2940,
+      "sha256": "6be5acbd91f2c38b335f6ecc2852800b02559393897fcdbb7db4642e74e62d68"
+    },
+    {
+      "path": "frontend/src/utils/starPathProgress.ts",
+      "bytes": 1562,
+      "sha256": "aae9c83da261a2adbc641f82362c7544fae58368902267587502211ab07b2e9a"
     },
     {
       "path": "frontend/src/utils/starPathQuestionGenerator.ts",
-      "bytes": 10948,
-      "sha256": "721407952787a4d70da73b56c8f11a0bf42f3216a7dcdcaeda1f47e80c698af8"
+      "bytes": 34986,
+      "sha256": "e5e74554764a6f1dab1426e9b9191cef23af85fd17d414616196ef1a335ebbe1"
+    },
+    {
+      "path": "frontend/src/utils/starPathTrackLayout.ts",
+      "bytes": 4402,
+      "sha256": "12849d77bea334525cb789d2e9332422d33e1660ac842e23cefaf9f927ca4f64"
     },
     {
       "path": "frontend/src/utils/studentMockMistakes.ts",
@@ -2160,8 +2693,8 @@
     },
     {
       "path": "frontend/src/utils/trialMistakeLog.ts",
-      "bytes": 5404,
-      "sha256": "9d341435fd03531959fd1f076ad3ae21db4dc9cf946adc2b98b8df8910fe8f86"
+      "bytes": 9311,
+      "sha256": "bac268cc80b18f16dd6256f7dad72f59d52b521d2c82047ac2bf7e5f3ce6b8fe"
     },
     {
       "path": "frontend/src/utils/trialPageRecommendation.ts",
@@ -2169,9 +2702,19 @@
       "sha256": "d8099449e8365ea5891220e7fbf063a8f65bbcae7a31c589529a6ee42885892f"
     },
     {
+      "path": "frontend/src/utils/trialQuestionComposerModel.ts",
+      "bytes": 5393,
+      "sha256": "602af26c287df42624ddce9c5b8c28640abfe244000b0b613ac733f65c11d9a3"
+    },
+    {
+      "path": "frontend/src/utils/xiaoEPersona.ts",
+      "bytes": 3352,
+      "sha256": "b27211fc816809471d972143a0469b97faa351bac7611a20d1f6ed2f6568f337"
+    },
+    {
       "path": "frontend/src/views/AdminHomeView.vue",
-      "bytes": 66465,
-      "sha256": "2a2cedcb7e6c5eb68a97718d1e792fa520cf1047394678692a11d8affc4396e7"
+      "bytes": 70568,
+      "sha256": "e5a8ac9d88f586e978fe6b0f5626d29571298ceae8317bbc8c4e3a2d9bb22f71"
     },
     {
       "path": "frontend/src/views/DailyQuestView.vue",
@@ -2180,78 +2723,93 @@
     },
     {
       "path": "frontend/src/views/DiscoveryCabinView.vue",
-      "bytes": 22125,
-      "sha256": "44f2019607bbbe382dbfda4ae10acf25644c7308a916f6b53c463f6d40b20abc"
-    },
-    {
-      "path": "frontend/src/views/ExplorationArchivesView.vue",
-      "bytes": 22047,
-      "sha256": "9d3ff14f6b1b406271da7e846bf3faef6f95b773dafb99d8d6d045fb288a3a95"
+      "bytes": 22063,
+      "sha256": "6dcae02575b666fca1168bddf2264f31ede57105427b4e715d91ecc4e4ea491c"
     },
     {
       "path": "frontend/src/views/LoginView.vue",
-      "bytes": 17687,
-      "sha256": "845a84668a166e16902638b6b4510fa623f0742bf7b3791aa291db7a30a6c009"
+      "bytes": 18342,
+      "sha256": "49df957db9766070a016f39ab0e2a3c0e265e0646c49e3ce37a953aa48153518"
     },
     {
       "path": "frontend/src/views/MessengerView.vue",
-      "bytes": 36681,
-      "sha256": "f757f50c8a0d6a5fad263e398755a4cbc0e485fca8231ea216f9ac1bc1b1388c"
+      "bytes": 33728,
+      "sha256": "49124c333bfc694284062e9ba953abead622bcde541942cd994e55d7f3638a6b"
+    },
+    {
+      "path": "frontend/src/views/OAuthCallbackView.vue",
+      "bytes": 2614,
+      "sha256": "c9f71b6b83b1ff9468c4481354a1c9f96b76c077559e5eb4df03ba0609787a1b"
+    },
+    {
+      "path": "frontend/src/views/RegisterView.vue",
+      "bytes": 6381,
+      "sha256": "516f174e6cb66443791605b1556ec17a064c2e38cab3a165765e25be63487cbe"
     },
     {
       "path": "frontend/src/views/StarPathLabView.vue",
-      "bytes": 48272,
-      "sha256": "2c07921185a392a054ea94d3c87c348566a9ab6d328392e82c90c2cea5ab8dc8"
+      "bytes": 54491,
+      "sha256": "e0891ff66ac71800d68898a8c13d073b361c2702b5fe5a6c182e315a569dba7f"
     },
     {
       "path": "frontend/src/views/StudentControlView.vue",
-      "bytes": 16139,
-      "sha256": "c520557070583b69cdcf4247705e46eae003a5129d06d3474822d17752ec6fd3"
+      "bytes": 13324,
+      "sha256": "55423c9caec53b289950b1a22ba7ab80e077a556e039e677e8abb0da56e0919a"
+    },
+    {
+      "path": "frontend/src/views/StudentGrowthView.vue",
+      "bytes": 20382,
+      "sha256": "29289cf870dc5f87df864304a70a4bdbda3f44e31e4fb0a78bc1ff0ce9ca7266"
     },
     {
       "path": "frontend/src/views/StudentHomeView.vue",
-      "bytes": 17046,
-      "sha256": "85913c023a2ff1e12185773685bcefaaea2c6e02e903ddaf6b50a7865c7a8fe4"
+      "bytes": 19877,
+      "sha256": "a19e86a9f8134c1210c79742b8c4acac950604d8839643c89da12960dd60a9ce"
     },
     {
       "path": "frontend/src/views/StudentProfileView.vue",
-      "bytes": 6898,
-      "sha256": "19773f3c5fca8403fb57be1eff4f99cea241a942e0facdec5c53c295bf4082a7"
+      "bytes": 17424,
+      "sha256": "b16d350ab403e6ffc2f7846d5c7e7104f30815be61c549ac78e649bd46ab0607"
     },
     {
       "path": "frontend/src/views/StudentResourcesView.vue",
-      "bytes": 10691,
-      "sha256": "7214cc7ba0c76e62315aeaa083bb8320c3eb74ad3071098b13f48d42f8c0b95b"
+      "bytes": 21094,
+      "sha256": "3e270f2dd9cf51e74471877fcf7a495ae5514fd6adb146e80c07992b38c05709"
     },
     {
       "path": "frontend/src/views/StudentTrialPracticeView.vue",
-      "bytes": 2175,
-      "sha256": "7b95b32201abbc2112d58b4034ac31e334c85529399ce2e15c207167fde4a2fc"
+      "bytes": 7241,
+      "sha256": "3bc06181cef3242422854af7351ab07fba233562c4cb3b72dc1711d4250e9d79"
     },
     {
       "path": "frontend/src/views/StudentTrialView.vue",
-      "bytes": 22977,
-      "sha256": "a8e17c8bde296e9b001ddf00fb66db7efa1dc417a71dc1468546e691f02ef668"
+      "bytes": 23382,
+      "sha256": "b9812a7288dafb9885df69f7eb82c4a27ee95b95ce92c8ab5986db8b0e67a076"
     },
     {
-      "path": "frontend/src/views/TeacherExplorersView.vue",
-      "bytes": 17584,
-      "sha256": "5a324af1c8d94da26efdc72e1453704f2b91404b256ba3f5cc2361a84477ec32"
+      "path": "frontend/src/views/TeacherClassManageView.vue",
+      "bytes": 4102,
+      "sha256": "11d1be1ebdf83bf619ad048a4435b5fbb81f2e0665df8b390fee221883a8068a"
     },
     {
       "path": "frontend/src/views/TeacherHomeView.vue",
-      "bytes": 22992,
-      "sha256": "fed338b6d423ce2378a15f8557c7037173effcd07a606876103e1d534d7bfb8c"
+      "bytes": 20233,
+      "sha256": "1c06d2738533f6f0de91980b45cb2db4e193886f31b3c6921876c6414ae5258f"
     },
     {
       "path": "frontend/src/views/TeacherResourceReviewView.vue",
-      "bytes": 4760,
-      "sha256": "320c67663392dde0e231630784f73cd73bcfd5f1d1eeaa76a2f234b84c31e943"
+      "bytes": 19234,
+      "sha256": "eeb6d514ac94811c363d712d5744effb08caeab6b2efa6d4733402a38effe283"
     },
     {
       "path": "frontend/src/views/TeacherStarfieldView.vue",
-      "bytes": 9560,
-      "sha256": "04550b91230386aeffe4fbfa8124f9b891899afc067ae396d61e73dcd89ff106"
+      "bytes": 18253,
+      "sha256": "0e259fc83941264ac89b5311048e5936de138479cca4556513e049aeb9a255d1"
+    },
+    {
+      "path": "frontend/src/views/TeacherTrialCreateView.vue",
+      "bytes": 23942,
+      "sha256": "bcd581837266f2fdb2378a19bc211b35bf8cc770c124e026071db6a4293fadd0"
     },
     {
       "path": "frontend/src/views/TrialArenaEntry.vue",
@@ -2260,8 +2818,8 @@
     },
     {
       "path": "frontend/src/views/TrialArenaView.vue",
-      "bytes": 43538,
-      "sha256": "3da284b0d98cc975c480c2c30c03b9e19e890771399fe8f3bb0e86388ad3f144"
+      "bytes": 28306,
+      "sha256": "5800ee6011ae72ef919b27fce744bd577ca15e3b200687e5142daaa4bc9a93d1"
     },
     {
       "path": "frontend/src/vite-env.d.ts",
@@ -2290,8 +2848,8 @@
     },
     {
       "path": "frontend/vite.config.ts",
-      "bytes": 674,
-      "sha256": "d0163e73ca2108fe6efe790e0392eba2c5fc4bc56ba7d714320438a870ebf8b1"
+      "bytes": 771,
+      "sha256": "5def2184871f2cb544baeb1f784af5a0f0dfab96754c6f1b3d670ab455e044fb"
     },
     {
       "path": "Frontend_Component_List.xlsx",
@@ -2314,6 +2872,81 @@
       "sha256": "05c4fc35a2cea92702bdf4e14ea3123cd97594bb5f52108652cdd388f25540b8"
     },
     {
+      "path": "output/playwright/messenger-desktop.png",
+      "bytes": 423706,
+      "sha256": "8455ad644a2fac0e5614e7ace8b7851d4494a56a60007e4397d7a0dc9ddb75c2"
+    },
+    {
+      "path": "output/playwright/messenger-mobile.png",
+      "bytes": 201370,
+      "sha256": "d3bb3f9bf7cc00943bedc3208743667e3c44f5e91cf08877a002ecfbc4c7181b"
+    },
+    {
+      "path": "output/playwright/student-discovery-after-login.png",
+      "bytes": 796893,
+      "sha256": "e28983bae6469be052232b010b59cf6dc8286f3138871f80a4af15fcc36ac827"
+    },
+    {
+      "path": "output/playwright/student-discovery-desktop.png",
+      "bytes": 558769,
+      "sha256": "db7161e0bc5e2f3679990c0577e5ebb86c7c7088eca0989b5bddc6f96d663fb9"
+    },
+    {
+      "path": "output/playwright/student-growth-desktop.png",
+      "bytes": 438354,
+      "sha256": "b20315b24e646d383a9ad387c4c1b82e6a194243dfa176c8f1928cdb85e53fda"
+    },
+    {
+      "path": "output/playwright/student-home-desktop.png",
+      "bytes": 175911,
+      "sha256": "ab9903320dd570b62dd699226d3bfda66f1d3d11ce9f7e05357cf6827d152406"
+    },
+    {
+      "path": "output/playwright/student-messenger-desktop.png",
+      "bytes": 755242,
+      "sha256": "61ec068e4ef2ddd2ba6d9e1534af0cfd22cf86069ce7297b272c5d73992f3dbe"
+    },
+    {
+      "path": "output/playwright/student-profile-desktop.png",
+      "bytes": 534315,
+      "sha256": "60939efe1177be4bc9ed6b679a1d14db6b8057d1aa31650212507ec6714133bb"
+    },
+    {
+      "path": "output/playwright/student-resources-desktop.png",
+      "bytes": 533877,
+      "sha256": "7d1c124628c22a66147fe11f5c6208850964805148867336150021caf4d8781c"
+    },
+    {
+      "path": "output/playwright/student-resources-mobile.png",
+      "bytes": 1276621,
+      "sha256": "76343f8899daa43e1b6455b9fda6839c1c884493b9584b6feb86a6109df03a9b"
+    },
+    {
+      "path": "output/playwright/student-settings-desktop.png",
+      "bytes": 609535,
+      "sha256": "1e7a9be5b955012109b206dcbe87437c82e276bb53ca9b92b985e212a3383302"
+    },
+    {
+      "path": "output/playwright/student-settings-mobile.png",
+      "bytes": 596824,
+      "sha256": "86c142c4ce5125c353c1bb1215d52ef85fdfd67fa3f2326f51ef348bf7f96f63"
+    },
+    {
+      "path": "output/playwright/student-starpath-desktop.png",
+      "bytes": 582552,
+      "sha256": "93bff8e4a080776c04a59475958dbb63772abe50d6a381fe3873bc64db7c9485"
+    },
+    {
+      "path": "output/playwright/student-starpath-mobile.png",
+      "bytes": 511265,
+      "sha256": "5f601bac53daaa50c3858c42feacd2d775d0087472ba20689a504c338e5ce2fa"
+    },
+    {
+      "path": "output/playwright/student-trials-desktop.png",
+      "bytes": 736565,
+      "sha256": "4e861878811ae659103763a3e27b48a1bf1adc37394d4b9aaaa65f763544ae84"
+    },
+    {
       "path": "output/playwright/teacher-navigator.png",
       "bytes": 1176758,
       "sha256": "88c7c42ea7d01ed2a4c01e6009a0854a167cae58179758df612e44d1fd7c11fb"
@@ -2322,6 +2955,21 @@
       "path": "output/playwright/trial-command.png",
       "bytes": 1054257,
       "sha256": "8d8435ba4be855a153ad2ff423f1472f5f32b03a6697e84e80dd443c8314af3a"
+    },
+    {
+      "path": "outputs/PLEX_A3_PPT_原型图.html",
+      "bytes": 29575,
+      "sha256": "1722edb6c707f803c323e2464dbc7904c9f22dcfa486e198190902a5da573bf6"
+    },
+    {
+      "path": "outputs/product_description_temp.docx",
+      "bytes": 48441,
+      "sha256": "7f03f78e66bb3c9dd42fb8ca97967feb1839c1b692162e5a4b83dc151f6ede17"
+    },
+    {
+      "path": "outputs/网站产品说明文档.docx",
+      "bytes": 48441,
+      "sha256": "7f03f78e66bb3c9dd42fb8ca97967feb1839c1b692162e5a4b83dc151f6ede17"
     },
     {
       "path": "package-lock.json",
@@ -2674,9 +3322,14 @@
       "sha256": "66290cf700a8060c761ebe7c5e2961b5d82cdf7badf3f57daee9a127c5ccba86"
     },
     {
+      "path": "query",
+      "bytes": 5,
+      "sha256": "daa6249058031e97bbc8d63ef046c8ab670315731cec8da16a845dd74ca62302"
+    },
+    {
       "path": "README.md",
       "bytes": 7297,
-      "sha256": "0ca61ffaac632ce8f6b77085725e43e4d6717014a4ce66bd5ea0eaadb156c897"
+      "sha256": "92ea6a49267c1088847f153563553e6640bfc77b01db5a424c3a5208b6daed0a"
     },
     {
       "path": "request/0415-A3-第一次会议记录.pdf",
@@ -2684,9 +3337,44 @@
       "sha256": "dbf92fa272aed670c59a15655da3d055851367d053b4a4b8fc931814d5d1a675"
     },
     {
+      "path": "Run",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "scripts/build_product_description_docx.py",
+      "bytes": 29094,
+      "sha256": "55820880a53db2af0a270bc17b433cfce9ed8a76fa449e5bb3344ce0c87a952a"
+    },
+    {
       "path": "scripts/defense-md-to-manifest.mjs",
       "bytes": 1214,
       "sha256": "1884c800ddf8218e18884ab5f3e5292a581d4fd8df161554043d6ea41e2e1d51"
+    },
+    {
+      "path": "scripts/diagnose-virtualization.cmd",
+      "bytes": 1147,
+      "sha256": "73eaf8fa72ad6f22af22a872df44b8620c7b8f6ba65b189a61bb5393cf866a72"
+    },
+    {
+      "path": "scripts/enable-docker-wsl.bat",
+      "bytes": 379,
+      "sha256": "c380b1fc4e4ee71c43c42fc3000402ed508fe68dc084d80b10f7efa4663c795d"
+    },
+    {
+      "path": "scripts/enable-docker-wsl.cmd",
+      "bytes": 956,
+      "sha256": "0afa9bc67029f9f66d4f6328d3c651a0e09f13a834653132fef2fbff8d319931"
+    },
+    {
+      "path": "scripts/enable-docker-wsl.ps1",
+      "bytes": 1870,
+      "sha256": "ab568432f439d51d55d7fc146c4db59f7fc823d1e36777f300e4ce006cadb05d"
+    },
+    {
+      "path": "scripts/fix-virtualization.cmd",
+      "bytes": 1721,
+      "sha256": "55a8d51a5dff2387d4fe9b8e0548fa4964fcb0c7e2acf4db740b73521639f8a3"
     },
     {
       "path": "skills-lock.json",
@@ -2695,8 +3383,8 @@
     },
     {
       "path": "start.bat",
-      "bytes": 4051,
-      "sha256": "9643e3320bb65e21cceee30e573884ae2e2efbc4063dd04ba3e9aab20bcf4526"
+      "bytes": 7671,
+      "sha256": "f987c57f633713c8b49b59f3516568f10a757466026c1350546fde0b72cd5caf"
     },
     {
       "path": "TECH_PLAN.md",

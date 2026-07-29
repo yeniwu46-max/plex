@@ -7,7 +7,28 @@ PLEX Universe 是一个面向编程学习场景的个性化学习平台，项目
 - 前端：Vue 3 + Vite + Naive UI + Pinia + Axios
 - 后端：Flask + SQLAlchemy + JWT
 - 数据库：生产建议 MySQL，本地开发可直接使用 SQLite
-- API：REST JSON，统一前缀 `/api/v1`
+- API：REST JSON，统一前缀 `/api/v1`；对话类接口支持 SSE 流式
+
+## 开源组件与许可证（显著标注）
+
+| 组件 | 用途 | 许可证 | 来源 |
+| --- | --- | --- | --- |
+| Vue 3 | 前端框架 | MIT | https://vuejs.org |
+| Vite | 前端构建 | MIT | https://vitejs.dev |
+| Naive UI | UI 组件库 | MIT | https://www.naiveui.com |
+| Pinia | 状态管理 | MIT | https://pinia.vuejs.org |
+| Axios | HTTP 客户端 | MIT | https://axios-http.com |
+| markdown-it / highlight.js / katex / mermaid | Markdown / 代码高亮 / 公式 / 导图 | MIT | 各项目仓库 |
+| Flask | 后端 Web 框架 | BSD-3-Clause | https://flask.palletsprojects.com |
+| SQLAlchemy / Flask-SQLAlchemy | ORM | MIT | https://www.sqlalchemy.org |
+| Flask-JWT-Extended | JWT 认证 | MIT | https://flask-jwt-extended.readthedocs.io |
+| requests | HTTP 客户端 | Apache-2.0 | https://requests.readthedocs.io |
+| pydantic | 结构化校验 | MIT | https://docs.pydantic.dev |
+| CrewAI（可选） | 多智能体增强 | MIT | https://www.crewai.com |
+| LangGraph（可选） | 审核/路径图增强 | MIT | https://github.com/langchain-ai/langgraph |
+| edge-tts / pyttsx3 | TTS 兜底 | MIT / MPL-2.0 | PyPI |
+
+完整依赖与许可证机器清单见 `backend/reports/a3-submission/dependency-inventory.json`。开发过程中使用的 AI Coding 工具说明见 `docs/submission/AI-coding-tools-statement.md`。
 
 ## 功能概览
 

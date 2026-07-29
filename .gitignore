@@ -13,3 +13,9 @@ test-results/
 __pycache__/
 .pytest_cache/
 .cache/
+docs/submission/config-samples/backend.env.production-ready
+docs/submission/config-samples/api-keys.spark.local
+docs/submission/data-samples/database/learning_system.db
+docs/submission/runtime-samples/frontend-dist/
+docs/submission/runtime-samples/python-wheels/
+backend/media/

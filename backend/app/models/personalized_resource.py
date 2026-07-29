@@ -86,6 +86,9 @@ class PersonalizedLearningResource(BaseModel):
     reviewed_at = db.Column(db.DateTime)
     generator_agent = db.Column(db.String(64), nullable=False, default='resource_generator')
     backend = db.Column(db.String(32), nullable=False, default='local_rules')
+    is_anomaly = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    student_warning = db.Column(db.String(500))
+    ai_review = db.Column(db.JSON)
 
     def to_dict(self):
         return {
@@ -109,5 +112,8 @@ class PersonalizedLearningResource(BaseModel):
             'generator_agent': self.generator_agent,
             'generation_task_id': self.generation_task_id,
             'backend': self.backend,
+            'is_anomaly': bool(getattr(self, 'is_anomaly', False)),
+            'student_warning': getattr(self, 'student_warning', None),
+            'ai_review': getattr(self, 'ai_review', None) or {},
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }

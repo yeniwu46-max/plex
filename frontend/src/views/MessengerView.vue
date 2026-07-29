@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NIcon, NInput } from 'naive-ui'
-import { postMessengerChat } from '../api/messenger'
-import { messengerQuickAction, type MessengerQuickActionResult } from '../api/agentService'
+import { postMessengerChat, streamMessengerChat } from '../api/messenger'
+import type { AgentTraceStep, MessengerQuickActionResult } from '../api/agentService'
 import {
   BarbellOutline,
   GitNetworkOutline,
@@ -12,6 +12,8 @@ import {
   TrendingUpOutline,
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
+import PlexAgentTracePanel from '../components/agent/PlexAgentTracePanel.vue'
 import { xiaoEThinkingMessage, xiaoETimeoutMessage, xiaoENormalizeReply } from '../utils/xiaoEPersona'
 import { openPracticeQuestionByRef } from '../utils/practiceQuestionNav'
 
@@ -20,6 +22,10 @@ const router = useRouter()
 type ChatMessage = {
   role: 'user' | 'assistant'
   text: string
+  streaming?: boolean
+  stageLabel?: string
+  thinking?: AgentTraceStep[]
+  illustration?: { url: string; caption?: string }
   questionPick?: MessengerQuickActionResult['question_pick']
   retry?: () => void
 }
@@ -27,7 +33,7 @@ type ChatMessage = {
 function isTimeoutError(error: unknown) {
   const msg = error instanceof Error ? error.message : String(error)
   const code = (error as { code?: string })?.code
-  return code === 'ECONNABORTED' || /timeout/i.test(msg)
+  return code === 'ECONNABORTED' || /timeout/i.test(msg) || /超时/.test(msg)
 }
 
 function assistantErrorText(error: unknown, retry?: () => void): ChatMessage {
@@ -46,8 +52,8 @@ function assistantErrorText(error: unknown, retry?: () => void): ChatMessage {
 
 const prompt = ref('')
 const chatLoading = ref(false)
-const agentLoading = ref(false)
 const chatMessages = ref<ChatMessage[]>([])
+const chatThreadEl = ref<HTMLElement | null>(null)
 
 function recentChatHistory() {
   return chatMessages.value.slice(-18).map((msg) => ({
@@ -56,23 +62,11 @@ function recentChatHistory() {
   }))
 }
 
-async function runQuickAction(action: 'weak_points' | 'next_trial' | 'repair_path' | 'recent_growth', userText: string) {
-  if (agentLoading.value || chatLoading.value) return
-  chatMessages.value.push({ role: 'user', text: userText })
-  agentLoading.value = true
-  const retry = () => runQuickAction(action, userText)
-  try {
-    const result = await messengerQuickAction(action)
-    chatMessages.value.push({
-      role: 'assistant',
-      text: xiaoENormalizeReply(result.reply),
-      questionPick: result.question_pick ?? undefined,
-    })
-  } catch (error) {
-    chatMessages.value.push(assistantErrorText(error, retry))
-  } finally {
-    agentLoading.value = false
-  }
+function scrollThreadToBottom() {
+  void nextTick(() => {
+    const el = chatThreadEl.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
 }
 
 async function openQuestionPick(pick: NonNullable<MessengerQuickActionResult['question_pick']>) {
@@ -83,6 +77,11 @@ async function openQuestionPick(pick: NonNullable<MessengerQuickActionResult['qu
       text: '这道题的入口暂时打不开，请稍后在星轨学习或顶部搜索里再试一次。',
     })
   }
+}
+
+/** 快捷按钮与自由提问统一走流式对话，避免整包等待「正在思考」。 */
+async function runQuickAction(_action: string, userText: string) {
+  await sendChatText(userText)
 }
 
 async function runWeakPointsAction() {
@@ -109,21 +108,109 @@ const actions = [
 ] as const
 
 async function sendChatText(text: string, appendUserMessage = true) {
-  if (!text || chatLoading.value || agentLoading.value) return
+  if (!text || chatLoading.value) return
   const history = recentChatHistory()
   if (appendUserMessage) {
     chatMessages.value.push({ role: 'user', text })
+    scrollThreadToBottom()
   }
   chatLoading.value = true
   const retry = () => sendChatText(text, false)
+
+  const assistantMsg: ChatMessage = {
+    role: 'assistant',
+    text: '',
+    streaming: true,
+    stageLabel: '小E 正在组织回答',
+    thinking: [],
+  }
+  chatMessages.value.push(assistantMsg)
+  const liveIndex = chatMessages.value.length - 1
+
+  const live = () => chatMessages.value[liveIndex]!
+
   try {
-    const result = await postMessengerChat(text, history)
-    chatMessages.value.push({
-      role: 'assistant',
-      text: xiaoENormalizeReply(result.reply),
+    const result = await streamMessengerChat(text, history, {
+      onDelta: (delta) => {
+        const msg = live()
+        if (!msg) return
+        msg.stageLabel = undefined
+        msg.text += delta
+        scrollThreadToBottom()
+      },
+      onStage: (_stage, label) => {
+        const msg = live()
+        if (!msg) return
+        msg.stageLabel = label
+        const steps = [...(msg.thinking || [])]
+        if (!steps.some((s) => s.agentId === _stage || s.name === label)) {
+          steps.push({
+            agentId: _stage || `stage-${steps.length}`,
+            name: label || _stage || '思考中',
+            status: 'running',
+            latencyMs: 0,
+            summary: label || '处理中…',
+          })
+          msg.thinking = steps
+        }
+        scrollThreadToBottom()
+      },
+      onDone: ( partial) => {
+        const msg = live()
+        if (!msg) return
+        const reply = xiaoENormalizeReply(partial.reply || msg.text)
+        msg.text = reply || '我先根据你的近况给一点方向：优先复习薄弱知识点，再做一道对应试炼题巩固。'
+        if (partial.thinking?.length) msg.thinking = partial.thinking
+        msg.stageLabel = undefined
+        msg.streaming = false
+        scrollThreadToBottom()
+      },
+      onIllustration: (illustration) => {
+        const msg = live()
+        if (!msg) return
+        msg.illustration = illustration
+        scrollThreadToBottom()
+      },
     })
+    const msg = live()
+    if (msg) {
+      const reply = xiaoENormalizeReply(result.reply || msg.text)
+      msg.text = reply || msg.text || '我先根据你的近况给一点方向：优先复习薄弱知识点，再做一道对应试炼题巩固。'
+      if (result.illustration) msg.illustration = result.illustration
+      if (result.thinking?.length) msg.thinking = result.thinking
+      msg.stageLabel = undefined
+      msg.streaming = false
+    }
+    scrollThreadToBottom()
   } catch (error) {
-    chatMessages.value.push(assistantErrorText(error, retry))
+    const msg = live()
+    if (msg?.text) {
+      msg.streaming = false
+      msg.stageLabel = undefined
+      msg.text = `${xiaoENormalizeReply(msg.text)}\n\n> 连接中断，以上为部分回复。`
+    } else {
+      try {
+        const fallback = await postMessengerChat(text, history)
+        if (msg) {
+          msg.text = xiaoENormalizeReply(fallback.reply) || '小E 这次没组织好语言，点「重试」再来一次。'
+          msg.streaming = false
+          msg.stageLabel = undefined
+          msg.retry = retry
+        }
+      } catch (fallbackError) {
+        const err = assistantErrorText(fallbackError ?? error, retry)
+        if (msg) {
+          msg.text = err.text
+          msg.streaming = false
+          msg.stageLabel = undefined
+          msg.thinking = []
+          msg.retry = err.retry
+        } else {
+          chatMessages.value.push(err)
+        }
+      }
+    }
+    scrollThreadToBottom()
   } finally {
     chatLoading.value = false
   }
@@ -161,13 +248,30 @@ async function sendChat() {
           <header>
             <h2>小E 对话反馈 <span aria-hidden="true">▮▮</span></h2>
           </header>
-          <div class="chat-thread" aria-label="与小E对话">
+          <div ref="chatThreadEl" class="chat-thread" aria-label="与小E对话">
             <div v-if="!chatMessages.length" class="chat-thread__empty">
               <strong>向小E提一个 Python 或学习问题</strong>
               <p>探索之路固然艰难，有什么疑惑我帮你解决！</p>
             </div>
             <article v-for="(msg, idx) in chatMessages" :key="idx" :class="`chat-thread__item chat-thread__item--${msg.role}`">
-              <p>{{ msg.text }}</p>
+              <template v-if="msg.role === 'assistant'">
+                <PlexAgentTracePanel
+                  v-if="msg.thinking?.length || msg.streaming"
+                  mode="freeform"
+                  :trace="msg.thinking"
+                  :loading="Boolean(msg.streaming)"
+                />
+                <p v-if="msg.streaming && !msg.text" class="chat-thread__stage">
+                  {{ msg.stageLabel || '小E 正在组织回答' }}…
+                </p>
+                <MarkdownRenderer v-if="msg.text" :content="msg.text" :streaming="msg.streaming" />
+                <span v-if="msg.streaming" class="chat-thread__cursor" aria-hidden="true" />
+                <figure v-if="msg.illustration?.url" class="chat-thread__illustration">
+                  <img :src="msg.illustration.url" :alt="msg.illustration.caption || '图解说明'" loading="lazy" />
+                  <figcaption>{{ msg.illustration.caption || '图解说明' }}</figcaption>
+                </figure>
+              </template>
+              <p v-else>{{ msg.text }}</p>
               <button
                 v-if="msg.questionPick"
                 type="button"
@@ -180,13 +284,18 @@ async function sendChat() {
                 v-if="msg.retry"
                 type="button"
                 class="chat-thread__retry"
-                :disabled="chatLoading || agentLoading"
+                :disabled="chatLoading"
                 @click="msg.retry?.()"
               >
                 重试
               </button>
             </article>
-            <p v-if="chatLoading || agentLoading" class="chat-thread__loading">{{ xiaoEThinkingMessage('chat') }}</p>
+            <p
+              v-if="chatLoading && !chatMessages[chatMessages.length - 1]?.streaming"
+              class="chat-thread__loading"
+            >
+              {{ xiaoEThinkingMessage('chat') }}
+            </p>
           </div>
         </aside>
 
@@ -200,12 +309,12 @@ async function sendChat() {
               :bordered="false"
               @keydown.enter.prevent="sendChat"
             />
-            <button type="button" class="prompt-send" aria-label="发送" :disabled="chatLoading || agentLoading" @click="sendChat">
+            <button type="button" class="prompt-send" aria-label="发送" :disabled="chatLoading" @click="sendChat">
               <n-icon :component="PaperPlaneOutline" />
             </button>
           </div>
           <div class="prompt-actions">
-            <button v-for="item in actions" :key="item.label" type="button" :disabled="chatLoading || agentLoading" @click="item.handler">
+            <button v-for="item in actions" :key="item.label" type="button" :disabled="chatLoading" @click="item.handler">
               <n-icon :component="item.icon" />
               {{ item.label }}
             </button>
@@ -1219,6 +1328,53 @@ async function sendChat() {
   margin: 0;
   color: rgba(237, 247, 255, 0.55);
   font-size: 0.82rem;
+}
+
+.chat-thread__stage {
+  margin: 0 0 0.35rem;
+  color: rgba(125, 211, 252, 0.88);
+  font-size: 0.8rem;
+}
+
+.chat-thread__cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: #25f5ee;
+  border-radius: 1px;
+  animation: chat-cursor-blink 0.9s steps(2, start) infinite;
+}
+
+@keyframes chat-cursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.chat-thread__illustration {
+  margin: 0.65rem 0 0;
+  padding: 0.55rem;
+  border-radius: 12px;
+  background: rgba(4, 20, 30, 0.72);
+  border: 1px solid rgba(110, 228, 255, 0.18);
+}
+
+.chat-thread__illustration img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.chat-thread__illustration figcaption {
+  margin-top: 0.4rem;
+  color: rgba(200, 230, 240, 0.7);
+  font-size: 0.75rem;
+  text-align: center;
 }
 
 .prompt-dock {

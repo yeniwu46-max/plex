@@ -9,6 +9,7 @@ import time
 from typing import Any
 
 import requests
+from agents.http_client import direct_post
 from flask import current_app, has_app_context
 
 logger = logging.getLogger(__name__)
@@ -97,7 +98,7 @@ class IflytekSparkService:
         started = time.monotonic()
         request_id = None
         try:
-            response = requests.post(
+            response = direct_post(
                 url,
                 headers={
                     'Authorization': f'Bearer {password}',
@@ -112,7 +113,7 @@ class IflytekSparkService:
                     'temperature': 0.3,
                     'stream': False,
                 },
-                timeout=(5, timeout),
+                timeout=(3, timeout),
             )
             request_id = (
                 response.headers.get('x-request-id')
@@ -195,7 +196,7 @@ class IflytekSparkService:
         started = time.monotonic()
         request_id = None
         try:
-            response = requests.post(
+            response = direct_post(
                 url,
                 headers={
                     'Authorization': f'Bearer {password}',
@@ -210,7 +211,7 @@ class IflytekSparkService:
                     'temperature': 0.3,
                     'stream': False,
                 },
-                timeout=(5, timeout),
+                timeout=(3, timeout),
             )
             request_id = (
                 response.headers.get('x-request-id')

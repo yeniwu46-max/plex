@@ -144,7 +144,8 @@ class AiQuestionGenerator:
                     ],
                     'max_tokens': 2400,
                 },
-                timeout=45,
+                # 例外：批量出题无法在 5s 内完成，失败时回退本地题库
+                timeout=30,
             )
             resp.raise_for_status()
             text = resp.json()['choices'][0]['message']['content']

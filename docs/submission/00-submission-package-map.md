@@ -15,7 +15,7 @@
 | 演示视频 | `docs/submission/10-demo-script.md`、`docs/submission/13-recording-runbook.md`；目标产物 `docs/submission/artifacts/PLEX-A3-demo.mp4` | 时长控制 7 分钟内，主备路线都要保留真实状态标识 | 脚本已完成，视频待录制 |
 | 智能体开发类型 | `docs/submission/02-system-design.md`、`03-multi-agent-design.md` | Web 应用；多智能体流程作为学习资源生产、路径推荐和质量审核链路嵌入系统 | 已整理 |
 | 配套文档 | `docs/submission/A3-PLEX-配套文档总册.md`、`docs/submission/01-14` 分册、`docs/submission/artifacts/PLEX-A3-supporting-documentation.docx` | 覆盖需求、设计、智能体、评测、测试、部署、手册、AI 工具说明、创新价值、演示材料 | 已补 Markdown 与 Word 总册 |
-| AI Coding 工具说明 | `docs/submission/08-open-source-and-ai-tools.md`、总册第 10 节 | 说明 AI 辅助范围、人工复核责任、密钥与隐私边界 | 已整理 |
+| AI Coding 工具说明 | `docs/submission/AI-coding-tools-statement.md`、`docs/submission/artifacts/PLEX-A3-ai-coding-tools-statement.docx` | 说明 AI 辅助范围、人工复核责任、密钥与隐私边界；`08-open-source-and-ai-tools.md` 保留开源和许可证说明 | 已拆成独立文档 |
 
 ## 二、建议提交包目录
 

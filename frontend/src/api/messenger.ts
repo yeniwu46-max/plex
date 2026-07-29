@@ -1,8 +1,11 @@
 import { http, type ApiEnvelope } from './http'
+import { postSseStream, type SseStreamEvent } from './sse'
 import type { LearningRecommendation } from './learningReport'
+import type { AgentTraceStep } from './agentService'
 
-/** 驿站对话 8 秒超时，超时后显示重试 */
-const MESSENGER_CHAT_TIMEOUT_MS = 8_000
+/** 驿站对话超时（LLM 生成通常 2–8 秒） */
+const MESSENGER_CHAT_TIMEOUT_MS = 25_000
+const MESSENGER_STREAM_TIMEOUT_MS = 35_000
 
 export interface MessengerChatResult {
   reply: string
@@ -25,4 +28,118 @@ export async function postMessengerChat(message: string, history: MessengerChatH
   )
   if (data.code !== 0) throw new Error(data.message || '对话失败')
   return data.data
+}
+
+export interface MessengerStreamResult {
+  reply: string
+  source: string
+  recommendations?: LearningRecommendation[]
+  rag_used?: boolean
+  illustration?: { url: string; caption?: string }
+  thinking?: AgentTraceStep[]
+}
+
+export interface MessengerStreamHandlers {
+  onDelta?: (text: string) => void
+  onStage?: (stage: string, label: string) => void
+  onDone?: (result: MessengerStreamResult) => void
+  onIllustration?: (illustration: { url: string; caption?: string }) => void
+  signal?: AbortSignal
+}
+
+function mapThinking(raw: unknown): AgentTraceStep[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  return raw
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null
+      const row = item as Record<string, unknown>
+      const id = String(row.id ?? row.agentId ?? `step-${index}`)
+      return {
+        agentId: id,
+        name: String(row.label ?? row.name ?? id),
+        status: 'success' as const,
+        latencyMs: Number(row.latencyMs ?? row.latency_ms ?? 0),
+        summary: String(row.summary ?? ''),
+      }
+    })
+    .filter((item): item is AgentTraceStep => Boolean(item))
+}
+
+/** SSE 流式驿站对话：收到 done 立即返回，图解可稍后到达。 */
+export async function streamMessengerChat(
+  message: string,
+  history: MessengerChatHistoryItem[] = [],
+  onDeltaOrHandlers: ((text: string) => void) | MessengerStreamHandlers = {},
+  signal?: AbortSignal,
+): Promise<MessengerStreamResult> {
+  const handlers: MessengerStreamHandlers =
+    typeof onDeltaOrHandlers === 'function'
+      ? { onDelta: onDeltaOrHandlers, signal }
+      : { ...onDeltaOrHandlers, signal: onDeltaOrHandlers.signal ?? signal }
+
+  const controller = new AbortController()
+  const external = handlers.signal
+  const onExternalAbort = () => controller.abort()
+  external?.addEventListener('abort', onExternalAbort)
+  const timer = window.setTimeout(() => controller.abort(), MESSENGER_STREAM_TIMEOUT_MS)
+
+  let illustration: { url: string; caption?: string } | undefined
+  let thinking: AgentTraceStep[] | undefined
+  let earlyResult: MessengerStreamResult | null = null
+
+  try {
+    const doneEvent = await postSseStream(
+      '/v1/student/messenger/chat/stream',
+      { message, history: history.slice(-18) },
+      {
+        onDelta: handlers.onDelta,
+        onStage: handlers.onStage,
+        onIllustration: (payload) => {
+          illustration = payload
+          handlers.onIllustration?.(payload)
+        },
+        onDone: (event) => {
+          thinking = mapThinking(event.thinking)
+          if (event.illustration && typeof event.illustration === 'object') {
+            illustration = event.illustration as { url: string; caption?: string }
+          }
+          earlyResult = {
+            reply: String(event.reply ?? ''),
+            source: String(event.source ?? 'llm_stream'),
+            recommendations: (event.recommendations as LearningRecommendation[] | undefined) ?? [],
+            rag_used: Boolean(event.rag_used),
+            illustration,
+            thinking,
+          }
+          // 文字先落地，不等待后续 illustration 帧
+          handlers.onDone?.(earlyResult)
+        },
+        signal: controller.signal,
+      },
+    )
+    const result = earlyResult ?? (doneEvent
+      ? {
+          reply: String(doneEvent.reply ?? ''),
+          source: String(doneEvent.source ?? 'llm_stream'),
+          recommendations: (doneEvent.recommendations as LearningRecommendation[] | undefined) ?? [],
+          rag_used: Boolean(doneEvent.rag_used),
+          illustration:
+            illustration
+            ?? (doneEvent.illustration as { url: string; caption?: string } | undefined),
+          thinking: thinking ?? mapThinking(doneEvent.thinking),
+        }
+      : null)
+    if (!result) throw new Error('对话流意外结束，请重试')
+    if (illustration) result.illustration = illustration
+    return result
+  } catch (error) {
+    if (earlyResult?.reply) return { ...earlyResult, illustration }
+    if (controller.signal.aborted && !external?.aborted) {
+      throw new Error('对话超时，请重试')
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timer)
+    external?.removeEventListener('abort', onExternalAbort)
+  }
 }

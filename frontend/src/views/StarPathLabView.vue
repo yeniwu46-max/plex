@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NIcon, useMessage } from 'naive-ui'
+import { NButton, useMessage } from 'naive-ui'
 import { fetchLearningPath, type LearningDomain, type LearningPathOrderedNode, type NextBestAction, type RemediationPath } from '../api/studentProgress'
 import { planLearningPath } from '../api/agentService'
 import { getPythonTrialQuestion, type PythonTrialQuestion } from '../data/pythonTrialQuestions'
@@ -21,12 +21,10 @@ import {
   getPrimaryQuestionId,
   type StarPathNode,
 } from '../data/starPathTrail'
-import { LockClosedOutline } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StarPathTrackCanvas from '../components/starpath/StarPathTrackCanvas.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
 import PlexLearningPathPanel from '../components/agent/PlexLearningPathPanel.vue'
-import PythonTrialWorkspace from '../components/trial/PythonTrialWorkspace.vue'
 import { useAuthStore } from '../stores/auth'
 import { fetchServerMistakeRecords } from '../utils/trialMistakeLog'
 import { mergeAcceptedQuestionIds } from '../utils/starPathProgress'
@@ -460,6 +458,10 @@ function selectDomainCard(domain: Domain) {
   if (domain.locked) return
   selectTab(domain.key)
 }
+
+// 内联试炼相关处理器暂未挂载到当前模板；显式引用以通过 noUnusedLocals，
+// 后续恢复内联练习 UI 时直接使用。
+void [openInlinePractice, closeInlinePractice, launchFullscreenPractice, onInlinePassed, selectInlineSlot, selectDomainCard]
 
 async function runQuestionSearch(query: string) {
   pageSearch.value = query

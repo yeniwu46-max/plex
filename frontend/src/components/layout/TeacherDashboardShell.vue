@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { inject, onMounted, provide, ref } from 'vue'
+import { inject, onMounted, provide, ref, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
 import { MapOutline } from '@vicons/ionicons5'
 import TeacherSidebar, { type TeacherNavKey } from './TeacherSidebar.vue'
 import PlexTopbar from './PlexTopbar.vue'
 import TeacherToolbar from '../teacher/TeacherToolbar.vue'
-import { TEACHER_OVERVIEW_KEY, TEACHER_SHELL_SEARCH_KEY, useTeacherOverview } from '../../composables/useTeacherOverview'
+import {
+  TEACHER_OVERVIEW_KEY,
+  TEACHER_SHELL_SEARCH_KEY,
+  useTeacherOverview,
+} from '../../composables/useTeacherOverview'
+import { applyTeacherShellChrome } from '../../composables/useTeacherShellChrome'
 
-withDefaults(
+const TEACHER_SHELL_NESTED = 'plex-teacher-shell-nested'
+const TOOLBAR_FILTERS_ID = 'plex-teacher-shell-toolbar-filters'
+const TOOLBAR_TRAILING_ID = 'plex-teacher-shell-toolbar-trailing'
+
+const props = withDefaults(
   defineProps<{
     activeNav: TeacherNavKey
     pageTitle: string
@@ -21,6 +30,7 @@ withDefaults(
     showPeriod?: boolean
     showActivity?: boolean
     showRefresh?: boolean
+    layoutHost?: boolean
   }>(),
   {
     pageSubtitle: '观察整个知识宇宙的成长轨迹',
@@ -32,14 +42,23 @@ withDefaults(
     showPeriod: false,
     showActivity: true,
     showRefresh: true,
+    layoutHost: false,
   },
 )
 
-const emit = defineEmits<{
+defineEmits<{
   viewSwitch: [key: string]
 }>()
 
 const router = useRouter()
+const nested = inject(TEACHER_SHELL_NESTED, false)
+const isHost = props.layoutHost || !nested
+const contentOnly = !isHost
+
+if (isHost) {
+  provide(TEACHER_SHELL_NESTED, true)
+}
+
 const parentOverview = inject(TEACHER_OVERVIEW_KEY, null)
 const overview = parentOverview ?? useTeacherOverview()
 if (!parentOverview) {
@@ -50,20 +69,37 @@ const sidebarCollapsed = ref(false)
 const searchText = ref('')
 provide(TEACHER_SHELL_SEARCH_KEY, searchText)
 
+watchEffect(() => {
+  if (contentOnly) {
+    applyTeacherShellChrome({
+      activeNav: props.activeNav,
+      pageTitle: props.pageTitle,
+      pageSubtitle: props.pageSubtitle || '观察整个知识宇宙的成长轨迹',
+      searchPlaceholder: props.searchPlaceholder || '搜索班级、学生…',
+      hideSearch: props.hideSearch,
+      hideToolbar: props.hideToolbar,
+      showViewSwitcher: props.showViewSwitcher,
+      toolbarLabel: props.toolbarLabel || '教师端筛选与状态',
+      showPeriod: props.showPeriod,
+      showActivity: props.showActivity,
+      showRefresh: props.showRefresh,
+    })
+  }
+})
+
 function goStarMap() {
-  emit('viewSwitch', 'star-map')
   void router.push('/teacher/starfield')
 }
 
 onMounted(() => {
-  if (!parentOverview) {
+  if (isHost && !parentOverview) {
     void overview.loadOverview()
   }
 })
 </script>
 
 <template>
-  <div class="shell teacher-shell" :class="{ 'shell--collapsed': sidebarCollapsed }">
+  <div v-if="isHost" class="shell teacher-shell" :class="{ 'shell--collapsed': sidebarCollapsed }">
     <TeacherSidebar v-model:collapsed="sidebarCollapsed" :active-key="activeNav" />
 
     <div class="main teacher-main">
@@ -90,14 +126,21 @@ onMounted(() => {
             :show-activity="showActivity"
             :show-refresh="showRefresh"
           >
-            <template v-if="$slots['toolbar-filters']" #filters>
+            <template #filters>
+              <div :id="TOOLBAR_FILTERS_ID" />
               <slot name="toolbar-filters" />
             </template>
-            <template v-if="$slots['toolbar-trailing']" #trailing>
+            <template #trailing>
+              <div :id="TOOLBAR_TRAILING_ID" />
               <slot name="toolbar-trailing" />
             </template>
           </TeacherToolbar>
         </div>
+        <!-- 即使隐藏工具栏也保留传送目标，避免子页 Teleport 报错 -->
+        <template v-else>
+          <div :id="TOOLBAR_FILTERS_ID" class="toolbar-teleport-anchor" />
+          <div :id="TOOLBAR_TRAILING_ID" class="toolbar-teleport-anchor" />
+        </template>
       </header>
 
       <div class="main-body">
@@ -105,6 +148,16 @@ onMounted(() => {
       </div>
     </div>
   </div>
+
+  <template v-else>
+    <Teleport defer :to="`#${TOOLBAR_FILTERS_ID}`">
+      <slot name="toolbar-filters" />
+    </Teleport>
+    <Teleport defer :to="`#${TOOLBAR_TRAILING_ID}`">
+      <slot name="toolbar-trailing" />
+    </Teleport>
+    <slot />
+  </template>
 </template>
 
 <style scoped>
@@ -162,6 +215,10 @@ onMounted(() => {
   width: 100%;
   padding-inline: var(--plex-page-gutter-x);
   box-sizing: border-box;
+}
+
+.toolbar-teleport-anchor {
+  display: none;
 }
 
 .main-body {

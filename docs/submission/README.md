@@ -11,7 +11,7 @@
 | 7 分钟内演示视频 | `10-demo-script.md`、`13-recording-runbook.md`；最终文件目标为 `artifacts/PLEX-A3-demo.mp4` | 脚本与录制手册已整理；视频待录制 |
 | 智能体开发类型 | `00-submission-package-map.md`、`02-system-design.md`、`03-multi-agent-design.md` | Web 应用，Vue 3 + Flask 前后端分离 |
 | 配套文档 | `A3-PLEX-配套文档总册.md`、`01-14` 分册、`artifacts/PLEX-A3-supporting-documentation.docx` | 已补总册入口与 Word 版 |
-| AI Coding 工具说明 | `08-open-source-and-ai-tools.md`、总册第 10 节 | 已整理责任边界 |
+| AI Coding 工具说明 | `AI-coding-tools-statement.md`、`artifacts/PLEX-A3-ai-coding-tools-statement.docx`；`08-open-source-and-ai-tools.md` 保留开源与许可证说明 | 已拆成独立说明 |
 
 ## 文档结构
 
@@ -26,6 +26,7 @@
 | `06-deployment.md` | 部署与运行说明 |
 | `07-user-manual.md` | 用户操作手册 |
 | `08-open-source-and-ai-tools.md` | 开源软件、许可证与 AI 工具说明 |
+| `AI-coding-tools-statement.md` | 独立 AI Coding 工具使用说明 |
 | `09-innovation-and-value.md` | 创新点与应用价值说明 |
 | `10-demo-script.md` | 七分钟演示脚本 |
 | `11-external-acceptance-checklist.md` | 外部验收清单 |
@@ -34,6 +35,7 @@
 | `14-freeze-file-groups.md` | 最终冻结文件分组 |
 | `A3-PLEX-配套文档总册.md` | 可转 Word 的提交说明总册 |
 | `artifacts/PLEX-A3-supporting-documentation.docx` | Word 版配套文档总册 |
+| `artifacts/PLEX-A3-ai-coding-tools-statement.docx` | Word 版 AI Coding 工具使用说明 |
 
 ## 状态口径
 

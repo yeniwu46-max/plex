@@ -3,6 +3,7 @@
 **整理日期**：2026-07-19  
 **文档用途**：初赛配套文档、评审说明、PPT 和演示视频口径来源  
 **Word 版**：`docs/submission/artifacts/PLEX-A3-supporting-documentation.docx`  
+**AI Coding 独立说明**：`docs/submission/AI-coding-tools-statement.md`；Word 版见 `docs/submission/artifacts/PLEX-A3-ai-coding-tools-statement.docx`  
 **项目类型**：Web 应用，多智能体能力嵌入个性化学习闭环  
 **整理边界**：本次只整理文档，不修改源文件代码  
 
@@ -33,7 +34,7 @@ A3 / PLEX 是面向 Python 程序设计初学者的个性化学习系统。系�
 | 7 分钟内演示视频 | `10-demo-script.md`、`13-recording-runbook.md` | 演示脚本和录制手册已整理；MP4 待录制 |
 | 智能体开发类型 | Web 应用，Vue + Flask 前后端分离 | 已在系统设计与本总册中说明 |
 | 配套文档 | 本总册、`01-14` 分册和最终 DOCX | 已补充统一入口 |
-| AI Coding 工具说明 | `08-open-source-and-ai-tools.md` 和本总册第 10 节 | 已写明辅助范围、人工复核与密钥边界 |
+| AI Coding 工具说明 | `AI-coding-tools-statement.md` 和 `artifacts/PLEX-A3-ai-coding-tools-statement.docx` | 已拆成独立说明；`08-open-source-and-ai-tools.md` 保留开源与许可证口径 |
 
 ## 3. 核心需求
 
@@ -171,7 +172,7 @@ CrewAI 是独立可选智能体运行时，不应在默认生产依赖和正式�
 - 源码与运行文件：按 `14-freeze-file-groups.md` 纳入，不包含虚拟环境、依赖缓存、数据库、日志、上传目录和真实凭证。
 - 数据与知识库：纳入公开课程知识库、演示数据说明和可重复报告。
 - 配置：只提交 `.env.example` 等样例，不提交真实密钥。
-- 文档：提交本总册、`01-14` 分册、README、`artifacts/PLEX-A3-supporting-documentation.docx` 和必要的运行说明。
+- 文档：提交本总册、`01-14` 分册、README、`AI-coding-tools-statement.md`、`artifacts/PLEX-A3-supporting-documentation.docx`、`artifacts/PLEX-A3-ai-coding-tools-statement.docx` 和必要的运行说明。
 - PPT：提交 `PLEX-A3-defense.pptx`。
 - 视频：提交 `PLEX-A3-demo.mp4`，时长控制在 7 分钟内。
 - 报告：提交最终 `release-manifest.json`、`release-readiness.json`、依赖清单、测试报告、安全报告、性能报告和前端 bundle 报告。

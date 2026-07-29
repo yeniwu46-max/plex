@@ -26,6 +26,7 @@ from .student_profile import student_profile_bp
 from .personalized_resources import personalized_resources_bp
 from .trial_comments import trial_comments_bp
 from .health import health_bp
+from .media import media_bp
 
 def register_routes(app):
     """注册所有路由"""
@@ -55,3 +56,4 @@ def register_routes(app):
     app.register_blueprint(personalized_resources_bp)
     app.register_blueprint(trial_comments_bp)
     app.register_blueprint(health_bp)
+    app.register_blueprint(media_bp)

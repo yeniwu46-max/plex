@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
-import { stripMarkdownAsterisks } from '../../utils/questionStemSanitizer'
+import MarkdownRenderer from '../common/MarkdownRenderer.vue'
 
 export interface PedagogicalBundleContent {
   format?: string
@@ -35,7 +35,15 @@ export interface PedagogicalBundleContent {
 const props = defineProps<{ content: PedagogicalBundleContent }>()
 
 function clean(value?: string) {
-  return stripMarkdownAsterisks(value ?? '')
+  return (value ?? '').trim()
+}
+
+function fenced(code?: string, lang = 'python') {
+  return '```' + lang + '\n' + (code ?? '').trim() + '\n```'
+}
+
+function mermaidBlock(source?: string) {
+  return '```mermaid\n' + (source ?? '').trim() + '\n```'
 }
 
 const sections = computed(() => {
@@ -80,7 +88,7 @@ const exerciseTypeLabel: Record<string, string> = {
 
     <n-collapse class="bundle-viewer__accordion" :default-expanded-names="sections[0]?.name ? [sections[0].name] : []">
       <n-collapse-item v-if="content.explain" name="explain" title="讲解文档">
-        <pre class="bundle-section__text">{{ clean(content.explain) }}</pre>
+        <MarkdownRenderer :content="clean(content.explain)" />
       </n-collapse-item>
 
       <n-collapse-item
@@ -90,9 +98,9 @@ const exerciseTypeLabel: Record<string, string> = {
       >
         <article v-for="(diagram, index) in content.diagrams" :key="index" class="bundle-section">
           <h4>{{ clean(diagram.caption) }}</h4>
-          <p>{{ clean(diagram.sketch) }}</p>
+          <MarkdownRenderer v-if="diagram.mermaid" :content="mermaidBlock(diagram.mermaid)" />
+          <p v-if="diagram.sketch">{{ clean(diagram.sketch) }}</p>
           <p class="bundle-section__hint">{{ clean(diagram.flow_hint) }}</p>
-          <pre v-if="diagram.mermaid" class="bundle-section__code">{{ clean(diagram.mermaid) }}</pre>
         </article>
       </n-collapse-item>
 
@@ -117,7 +125,7 @@ const exerciseTypeLabel: Record<string, string> = {
         <article v-for="block in content.code" :key="block.title" class="bundle-section">
           <h4>{{ clean(block.title) }}（{{ clean(block.complexity) }}）</h4>
           <p class="bundle-section__hint">{{ clean(block.pep8_note) }}</p>
-          <pre class="bundle-section__code">{{ clean(block.source) }}</pre>
+          <MarkdownRenderer :content="fenced(block.source)" />
         </article>
       </n-collapse-item>
 
@@ -128,14 +136,14 @@ const exerciseTypeLabel: Record<string, string> = {
       >
         <article v-for="(ex, index) in content.exercises" :key="index" class="bundle-section">
           <h4>第 {{ index + 1 }} 题 · {{ exerciseTypeLabel[ex.type ?? ''] ?? ex.type }}</h4>
-          <p>{{ clean(ex.stem) }}</p>
+          <MarkdownRenderer :content="clean(ex.stem)" />
           <ul v-if="ex.options?.length">
             <li v-for="opt in ex.options" :key="String(opt)">{{ clean(String(opt)) }}</li>
           </ul>
           <n-collapse>
             <n-collapse-item title="参考答案与解析" :name="`ex-${index}`">
-              <pre v-if="ex.answer" class="bundle-section__answer">{{ clean(ex.answer) }}</pre>
-              <p>{{ clean(ex.explanation) }}</p>
+              <MarkdownRenderer v-if="ex.answer" :content="fenced(ex.answer)" />
+              <MarkdownRenderer :content="clean(ex.explanation)" />
             </n-collapse-item>
           </n-collapse>
         </article>
@@ -144,7 +152,7 @@ const exerciseTypeLabel: Record<string, string> = {
       <n-collapse-item v-if="content.summary" name="summary" title="总结">
         <p>{{ clean(content.summary?.one_liner) }}</p>
         <p>关键词：{{ (content.summary?.keywords ?? []).join(' · ') }}</p>
-        <pre class="bundle-section__text">{{ clean(content.summary?.mindmap_markdown) }}</pre>
+        <MarkdownRenderer :content="clean(content.summary?.mindmap_markdown)" />
       </n-collapse-item>
     </n-collapse>
   </div>

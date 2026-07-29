@@ -11,6 +11,7 @@ const groups = {
     { label: '个性化资源', to: '/student/star-path/resources', exact: false },
   ],
   me: [
+    { label: '学习画像', to: '/student/me/profile', exact: false },
     { label: '成长档案', to: '/student/me/growth', exact: false },
     { label: '账号设置', to: '/student/me/settings', exact: false },
   ],

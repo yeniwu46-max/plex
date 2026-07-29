@@ -100,7 +100,8 @@ class LearningCycleService:
         prompt = (
             '只输出 JSON 对象，键为 tutorQuestion 和 diagramCaption。'
             '针对 Python while 循环变量未更新，不能给出完整修复代码；'
-            'tutorQuestion 必须是一个启发式问题，diagramCaption 不超过40字。'
+            'tutorQuestion 必须是一个启发式问题，用温和学习伙伴小E的口吻提问，'
+            'diagramCaption 不超过40字。'
             f'学习画像：{profile}'
         )
         try:

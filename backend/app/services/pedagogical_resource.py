@@ -223,7 +223,48 @@ def _format_example(raw: str) -> str:
     text = str(raw or '').replace('\\n', '\n').strip()
     if text.endswith('。'):
         text = text[:-1]
-    return text.strip().strip('`').strip()
+    text = text.strip().strip('`').strip()
+    return text
+
+
+_FALLBACK_CODE = {
+    'loop': 'total = 0\nfor value in [1, 2, 3]:\n    total += value\nprint(total)\n',
+    'range': 'for i in range(3):\n    print(i)\n',
+    'cond': 'score = 80\nif score >= 60:\n    print("pass")\nelse:\n    print("retry")\n',
+    'list': 'nums = [1, 2, 3]\nnums.append(4)\nprint(nums)\n',
+    'dict': 'student = {"name": "PLEX", "score": 90}\nprint(student["name"])\n',
+    'func': 'def add(a, b):\n    return a + b\n\nprint(add(1, 2))\n',
+    'var': 'name = "PLEX"\nage = 18\nprint(name, age)\n',
+    'io': 'name = input("name: ")\nprint("hello", name)\n',
+    'str': 'text = "Python"\nprint(text.lower())\nprint(len(text))\n',
+    'ops': 'a = 7\nb = 3\nprint(a // b, a % b)\n',
+    'intro': 'print("hello, PLEX")\n',
+    'comment': '# 这是注释\nprint(1)  # 行尾注释\n',
+    'file': 'with open("demo.txt", "w", encoding="utf-8") as f:\n    f.write("hi")\n',
+    'except': 'try:\n    print(1 / 0)\nexcept ZeroDivisionError:\n    print("cannot divide by zero")\n',
+    'algo-sum': 'def sum_list(items):\n    total = 0\n    for x in items:\n        total += x\n    return total\n\nprint(sum_list([1, 2, 3]))\n',
+    'algo-search': 'def find_first(items, target):\n    for i, x in enumerate(items):\n        if x == target:\n            return i\n    return -1\n\nprint(find_first([3, 5, 7], 5))\n',
+}
+
+
+def _looks_like_python(code: str) -> bool:
+    """扩充后的知识库正例字段偶发写成散文，需过滤后才能作为可编译示例。"""
+    text = (code or '').strip()
+    if not text or len(text) < 8:
+        return False
+    # 含大量中文叙述且缺少典型语句结构 → 非代码
+    chinese = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
+    if chinese > max(8, len(text) // 4):
+        return False
+    markers = ('=', 'print', 'def ', 'for ', 'while ', 'if ', 'return', 'import ', 'class ', 'with ')
+    return any(token in text for token in markers)
+
+
+def _safe_code_example(knowledge_key: str, raw: str) -> str:
+    formatted = _format_example(raw)
+    if _looks_like_python(formatted):
+        return formatted
+    return _FALLBACK_CODE.get(knowledge_key, f'# {knowledge_key} example\npass\n')
 
 
 def _truncate_explain(text: str, limit: int = 800) -> str:
@@ -361,7 +402,7 @@ def build_local_bundle(
     preference = str(profile.get('explanation_preference') or '分步骤讲解')
     interest = str(profile.get('interest_direction') or '校园学习')
     concept = kb.get('concept') or f'{label}的核心语法与适用场景。'
-    good = _format_example(kb.get('good_example') or '')
+    good = _safe_code_example(knowledge_key, kb.get('good_example') or '')
     mistakes = kb.get('common_mistakes') or '注意缩进、边界与类型。'
     code_first = '先看代码' in preference
 
@@ -370,12 +411,13 @@ def build_local_bundle(
             f'## 先看代码\n```python\n{good}\n```\n\n'
             f'## 原理\n{concept}\n\n'
             f'## 易错点\n{mistakes}\n\n'
-            f'结合你的兴趣「{interest}」，尝试把示例改写成自己的小任务。'
+            f'讲解偏好：{preference}。结合你的兴趣「{interest}」，尝试把示例改写成自己的小任务。'
         )
     else:
         explain_body = (
             f'{concept}\n\n'
             f'## 分步理解\n1. 明确输入与输出；2. 写出最小正例；3. 对照易错点自查。\n\n'
+            f'## 讲解偏好\n按「{preference}」组织内容。\n\n'
             f'## 生活化场景\n用「{interest}」相关的小需求来练习 {label}。\n\n'
             f'## 易错点\n{mistakes}'
         )
@@ -383,10 +425,15 @@ def build_local_bundle(
         explain_body += f'\n\n## 参考代码\n```python\n{good}\n```'
 
     code_block = good or f'# {label} 示例\npass\n'
+    coding_rows = _coding_exercises(knowledge_key)
+    for row in coding_rows:
+        stem = str(row.get('stem') or '').strip()
+        if interest and interest not in stem:
+            row['stem'] = f'结合「{interest}」场景：{stem}'
     exercises = (
         _choice_exercises(knowledge_key)
         + _fill_exercises(knowledge_key, kb)
-        + _coding_exercises(knowledge_key)
+        + coding_rows
     )
     cases = cases_for_knowledge(knowledge_key, 2)
     keywords = [label, node['chapter'], analysis.get('bloom_level', '应用').split('/')[0]]
@@ -444,6 +491,8 @@ def render_markdown(bundle: dict) -> str:
         ])
     lines.extend(['', '## 知识讲解', '', str(bundle.get('explain') or '')])
     for diagram in bundle.get('diagrams') or []:
+        if not isinstance(diagram, dict):
+            continue
         lines.extend([
             '',
             f'### {diagram.get("caption", "图示")}',
@@ -455,6 +504,8 @@ def render_markdown(bundle: dict) -> str:
         ])
     lines.append('\n## 真实案例')
     for case in bundle.get('cases') or []:
+        if not isinstance(case, dict):
+            continue
         lines.extend([
             f'### {case.get("title", "案例")}',
             case.get('scenario') or '',
@@ -462,6 +513,8 @@ def render_markdown(bundle: dict) -> str:
         ])
     lines.append('\n## 代码示例')
     for block in bundle.get('code') or []:
+        if not isinstance(block, dict):
+            continue
         lines.extend([
             f'### {block.get("title", "示例")}（{block.get("complexity", "")}）',
             '```python',
@@ -470,12 +523,14 @@ def render_markdown(bundle: dict) -> str:
         ])
     lines.append('\n## 练习')
     for idx, ex in enumerate(bundle.get('exercises') or [], 1):
+        if not isinstance(ex, dict):
+            continue
         lines.append(f'### 第{idx}题 [{ex.get("type", "")}]')
         lines.append(ex.get('stem') or '')
         if ex.get('options'):
             for opt in ex['options']:
                 lines.append(f'- {opt}')
-    summary = bundle.get('summary') or {}
+    summary = bundle.get('summary') if isinstance(bundle.get('summary'), dict) else {}
     lines.extend([
         '',
         '## 总结',
@@ -488,14 +543,14 @@ def render_markdown(bundle: dict) -> str:
     return '\n'.join(lines)
 
 
-def spark_bundle(
+def _bundle_generation_prompt(
     knowledge_key: str,
     *,
     node: dict,
     analysis: dict,
     profile: dict,
     case_candidates: list[dict],
-) -> dict:
+) -> tuple[str, str]:
     kb = knowledge_section(knowledge_key)
     system = (
         '你是Python程序设计基础课程的教学资源生成器。只输出JSON对象，包含单个bundle字段。'
@@ -519,15 +574,103 @@ def spark_bundle(
         },
         'case_candidates': case_candidates,
     }
-    result = IflytekSparkService.chat_json(system, str(payload), timeout=60)
-    bundle = result.get('bundle')
+    return system, str(payload)
+
+
+def _as_dict_list(items, *, default_key: str = 'text') -> list[dict]:
+    rows: list[dict] = []
+    for item in items or []:
+        if isinstance(item, dict):
+            rows.append(item)
+        elif isinstance(item, str) and item.strip():
+            rows.append({default_key: item.strip()})
+    return rows
+
+
+def _normalize_bundle_shape(bundle: dict) -> dict:
+    """容错：LLM 偶发把 code/diagrams 等字段写成字符串，归一成 dict 列表。"""
+    out = dict(bundle)
+    code_rows = []
+    for block in _as_dict_list(out.get('code'), default_key='source'):
+        if 'source' not in block and 'code' in block:
+            block = {**block, 'source': block.get('code')}
+        if not str(block.get('complexity') or '').strip():
+            block = {**block, 'complexity': 'O(1)'}
+        if not str(block.get('title') or '').strip():
+            block = {**block, 'title': '示例'}
+        code_rows.append(block)
+    out['code'] = code_rows
+    out['diagrams'] = _as_dict_list(out.get('diagrams'), default_key='caption')
+    out['cases'] = _as_dict_list(out.get('cases'), default_key='scenario')
+    out['exercises'] = _as_dict_list(out.get('exercises'), default_key='stem')
+    if not isinstance(out.get('summary'), dict):
+        out['summary'] = {'one_liner': str(out.get('summary') or ''), 'keywords': [], 'mindmap_markdown': ''}
+    if not isinstance(out.get('analysis'), dict):
+        out['analysis'] = {}
+    out['explain'] = str(out.get('explain') or '')
+    out['title'] = str(out.get('title') or '')
+    return out
+
+
+def _finalize_bundle(bundle: dict, analysis: dict) -> dict:
     if not isinstance(bundle, dict):
-        raise ValueError('spark_bundle_invalid')
+        raise ValueError('bundle_invalid')
+    bundle = _normalize_bundle_shape(bundle)
     bundle['format'] = 'pedagogical_v2'
     bundle['analysis'] = bundle.get('analysis') or analysis
     bundle['explain'] = _truncate_explain(bundle.get('explain') or '')
     bundle['markdown'] = render_markdown(bundle)
     return bundle
+
+
+def llm_bundle(
+    knowledge_key: str,
+    *,
+    node: dict,
+    analysis: dict,
+    profile: dict,
+    case_candidates: list[dict],
+    timeout: float = 25.0,
+) -> dict:
+    """用 DeepSeek / OpenAI 兼容通道生成 pedagogical_v2 资源包（异步任务，超时可高于对话）。"""
+    from agents.llm_client import chat_json, llm_provider
+
+    if not llm_provider():
+        raise RuntimeError('llm_not_available')
+    system, user = _bundle_generation_prompt(
+        knowledge_key,
+        node=node,
+        analysis=analysis,
+        profile=profile,
+        case_candidates=case_candidates,
+    )
+    result = chat_json(system=system, user=user, timeout=timeout, max_tokens=3500)
+    if not result or not isinstance(result.get('bundle'), dict):
+        raise ValueError('llm_bundle_invalid')
+    return _finalize_bundle(result['bundle'], analysis)
+
+
+def spark_bundle(
+    knowledge_key: str,
+    *,
+    node: dict,
+    analysis: dict,
+    profile: dict,
+    case_candidates: list[dict],
+) -> dict:
+    system, user = _bundle_generation_prompt(
+        knowledge_key,
+        node=node,
+        analysis=analysis,
+        profile=profile,
+        case_candidates=case_candidates,
+    )
+    # 资源包 JSON 体积大，异步任务允许更长读超时；连接仍受 http_client 约束
+    result = IflytekSparkService.chat_json(system, user, timeout=25)
+    bundle = result.get('bundle')
+    if not isinstance(bundle, dict):
+        raise ValueError('spark_bundle_invalid')
+    return _finalize_bundle(bundle, analysis)
 
 
 def validate_bundle_risks(bundle: dict) -> list[str]:

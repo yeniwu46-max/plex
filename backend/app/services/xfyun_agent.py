@@ -8,6 +8,7 @@ import time
 from typing import Any
 
 import requests
+from agents.http_client import direct_post
 from flask import current_app, has_app_context
 
 logger = logging.getLogger(__name__)
@@ -105,7 +106,7 @@ class XfyunAgentService:
         user_input = f'{context}\n\nStudent question: {message}'.strip()
         started = time.monotonic()
         try:
-            response = requests.post(
+            response = direct_post(
                 os.getenv('XFYUN_AGENT_URL', cls.DEFAULT_URL).strip() or cls.DEFAULT_URL,
                 headers={
                     'Authorization': f'Bearer {api_key}:{api_secret}',
@@ -122,7 +123,7 @@ class XfyunAgentService:
                     },
                 },
                 proxies={'http': '', 'https': ''},
-                timeout=(5, timeout),
+                timeout=(3, timeout),
             )
             latency_ms = round((time.monotonic() - started) * 1000)
             if response.status_code in (401, 403):

@@ -16,6 +16,8 @@ import {
 } from 'naive-ui'
 import { ArrowBackOutline, SparklesOutline } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
+
+defineOptions({ name: 'TeacherTrialCreateView' })
 import KnowledgePointPicker from '../components/teacher/KnowledgePointPicker.vue'
 import TrialQuestionComposer from '../components/teacher/TrialQuestionComposer.vue'
 import {

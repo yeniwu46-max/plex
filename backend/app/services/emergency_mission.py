@@ -224,7 +224,54 @@ class EmergencyMissionService:
         return picked[:EMERGENCY_QUESTION_COUNT]
 
     @staticmethod
+    def _build_deepseek_question_set(user_id: int, focus_key: str, focus_label: str) -> list[dict] | None:
+        """补给站出题优先 DeepSeek；失败返回 None 由调用方回退。"""
+        from agents.llm_client import chat_json, emergency_provider
+
+        provider = emergency_provider()
+        if not provider:
+            return None
+        profile = EmergencyMissionService._profile_snapshot(user_id)
+        recent = EmergencyMissionService._recent_practice_summary(user_id)
+        system_prompt = (
+            '你是 Python 编程教学出题助手，为「边界条件补给站」紧急任务生成选择题。'
+            '必须输出 JSON 对象，格式：'
+            '{"questions":[{"stem":"...","options":["A选项","B选项","C选项","D选项"],'
+            '"correct_index":0,"knowledge_key":"intro"}]}。'
+            f'正好 {EMERGENCY_QUESTION_COUNT} 道题；每题 4 个选项；correct_index 为 0-3。'
+            '题目应围绕边界条件、易错点与薄弱知识点，难度适中，题干简洁中文，不要 Markdown。'
+            'options 里不要再带 A/B/C/D 前缀。'
+        )
+        user_prompt = (
+            f'聚焦知识点：{focus_label}（key={focus_key}）\n'
+            f'学习者画像：{profile or "暂无"}\n'
+            f'最近练习与薄弱记录：\n' + ('\n'.join(f'- {line}' for line in recent) or '- 暂无记录') + '\n'
+            '请生成 3 道不重复的选择题，其中至少 2 道紧扣聚焦知识点，1 道可综合相关边界条件。'
+        )
+        try:
+            result = chat_json(
+                system=system_prompt,
+                user=user_prompt,
+                timeout=18.0,
+                max_tokens=900,
+                provider=provider,
+            )
+            questions = EmergencyMissionService._normalize_spark_questions(result, focus_key)
+            if questions:
+                logger.info('emergency_mission deepseek questions ready focus=%s count=%s', focus_key, len(questions))
+                return questions
+            return None
+        except Exception:
+            logger.exception('emergency_mission deepseek unexpected error, fallback next provider')
+            return None
+
+    @staticmethod
     def _resolve_question_set(user_id: int, focus_key: str, focus_label: str) -> list[dict]:
+        deepseek_questions = EmergencyMissionService._build_deepseek_question_set(
+            user_id, focus_key, focus_label,
+        )
+        if deepseek_questions:
+            return deepseek_questions
         spark_questions = EmergencyMissionService._build_spark_question_set(user_id, focus_key, focus_label)
         if spark_questions:
             return spark_questions

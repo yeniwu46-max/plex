@@ -10,7 +10,7 @@ class Neo4jClientTests(unittest.TestCase):
         topo = store.get_topology()
         self.assertGreater(len(topo['nodes']), 10)
         self.assertGreater(len(topo['edges']), 5)
-        prereq = store.get_prerequisites('loop')
+        prereq = store.get_prerequisites('loop-for')
         self.assertTrue(len(prereq) >= 1)
 
     def test_get_graph_store_fallback(self):

@@ -9,6 +9,8 @@ import {
   type ClassEnrollmentRequest,
   type ClassLookupResult,
 } from '../../api/classEnrollments'
+import TeacherPersonalProfileModal from '../teacher/TeacherPersonalProfileModal.vue'
+import type { TeacherPersonalProfile } from '../../api/teacherPresence'
 
 const props = defineProps<{
   hasClass?: boolean
@@ -26,6 +28,8 @@ const requests = ref<ClassEnrollmentRequest[]>([])
 const loading = ref(false)
 const lookingUp = ref(false)
 const submitting = ref(false)
+const teacherModalShow = ref(false)
+const teacherProfile = ref<TeacherPersonalProfile | null>(null)
 
 const pendingRequest = computed(() => requests.value.find((r) => r.status === 'pending'))
 
@@ -69,6 +73,31 @@ async function lookupClass() {
   }
 }
 
+function openTeacherInfo() {
+  const teacher = preview.value?.teacher
+  if (!teacher) return
+  teacherProfile.value = {
+    id: teacher.id,
+    username: teacher.username,
+    real_name: teacher.real_name,
+    gender: teacher.gender,
+    email: teacher.email,
+    phone: teacher.phone,
+    avatar_url: teacher.avatar_url,
+    status: teacher.status,
+    online: teacher.online,
+    classes: preview.value
+      ? [{
+          id: preview.value.class_id,
+          name: preview.value.class_name,
+          student_count: preview.value.student_count,
+          join_code: preview.value.join_code,
+        }]
+      : [],
+  }
+  teacherModalShow.value = true
+}
+
 async function submitApply() {
   const code = joinCode.value.trim()
   if (!code) {
@@ -106,7 +135,7 @@ onMounted(() => {
     <div v-if="pendingRequest" class="join-class__pending">
       <strong>待审核申请</strong>
       <p>
-        {{ pendingRequest.class_name }}（编号 {{ pendingRequest.join_code }}）
+        {{ pendingRequest.class_name }} · 编号 {{ pendingRequest.join_code }}
         <n-tag size="small" type="warning">待审核</n-tag>
       </p>
       <small>{{ pendingRequest.created_at?.slice(0, 16).replace('T', ' ') }}</small>
@@ -117,7 +146,7 @@ onMounted(() => {
       <div class="join-class__code-row">
         <n-input
           v-model:value="joinCode"
-          placeholder="例如：ABC123"
+          placeholder="请输入班级编号"
           maxlength="8"
           :disabled="!!pendingRequest"
           @keyup.enter="lookupClass"
@@ -130,10 +159,19 @@ onMounted(() => {
       <strong>{{ preview.class_name }}</strong>
       <p>负责教师：{{ preview.teacher_name || '—' }}</p>
       <p>当前成员：{{ preview.student_count }} 人</p>
+      <n-button
+        v-if="preview.teacher"
+        size="tiny"
+        secondary
+        class="join-class__teacher-btn"
+        @click="openTeacherInfo"
+      >
+        查看教师信息
+      </n-button>
     </div>
 
     <label class="join-class__field">
-      <span>申请留言（可选）</span>
+      <span>申请留言，可选</span>
       <n-input
         v-model:value="applyMessage"
         type="textarea"
@@ -171,6 +209,7 @@ onMounted(() => {
       </ul>
     </section>
     <p v-else-if="!loading" class="join-class__empty">暂无申请记录</p>
+    <TeacherPersonalProfileModal v-model:show="teacherModalShow" :profile="teacherProfile" />
   </article>
 </template>
 

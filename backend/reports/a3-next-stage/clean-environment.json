@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-07-29T01:22:38+00:00",
+  "run_at": "2026-07-31T05:39:37+00:00",
   "passed": true,
   "checks": {
     "python": {
@@ -16,7 +16,7 @@
     },
     "database": {
       "passed": true,
-      "backend": "sqlite"
+      "backend": "mysql"
     },
     "health": {
       "passed": true,

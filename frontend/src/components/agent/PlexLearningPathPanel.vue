@@ -12,11 +12,17 @@ const props = withDefaults(
     agentTrace?: { backend?: string; steps?: AgentTraceStep[] } | null
     graphBackend?: string
     loading?: boolean
+    aiAdvice?: string | null
+    aiAdviceLoading?: boolean
+    aiAdviceBackend?: string | null
   }>(),
   {
     orderedNodes: () => [],
     remediationPaths: () => [],
     loading: false,
+    aiAdvice: null,
+    aiAdviceLoading: false,
+    aiAdviceBackend: null,
   },
 )
 
@@ -46,6 +52,13 @@ function difficultyLabel(node: LearningPathOrderedNode) {
     </header>
 
     <p v-if="loading" class="plex-learning-path__hint">小E 正在为你规划学习顺序…</p>
+
+    <div v-if="aiAdviceLoading" class="plex-learning-path__ai">小E 正在生成学习路径建议…</div>
+    <div v-else-if="aiAdvice" class="plex-learning-path__ai">
+      <strong>小E 建议</strong>
+      <p>{{ aiAdvice }}</p>
+      <small v-if="aiAdviceBackend">来源：{{ aiAdviceBackend === 'deepseek' ? 'DeepSeek' : '本地规则' }}</small>
+    </div>
 
     <button
       v-if="nextBestAction"
@@ -147,6 +160,34 @@ function difficultyLabel(node: LearningPathOrderedNode) {
   line-height: 1.5;
   text-align: left;
   cursor: pointer;
+}
+
+.plex-learning-path__ai {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  background: rgba(15, 23, 42, 0.45);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.plex-learning-path__ai strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #7dd3fc;
+}
+
+.plex-learning-path__ai p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.88);
+}
+
+.plex-learning-path__ai small {
+  display: block;
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: 11px;
 }
 
 .plex-learning-path__nba p {

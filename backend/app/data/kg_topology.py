@@ -1,48 +1,86 @@
 # -*- coding: utf-8 -*-
-"""Python 初学者知识图谱静态拓扑（与 Neo4j / KnowledgeGraphService 共享）。"""
+"""Python 初学者知识图谱静态拓扑（与 Neo4j / KnowledgeGraphService 共享）。
 
-KG_NODES = [
-    {'id': 'intro', 'label': 'Python 入门', 'domain': '入门', 'level': 'basic', 'description': '认识 Python 与 print 输出', 'x': 80, 'y': 180},
-    {'id': 'comment', 'label': '注释', 'domain': '入门', 'level': 'basic', 'description': '单行与多行注释', 'x': 80, 'y': 320},
-    {'id': 'var', 'label': '变量与类型', 'domain': '基础', 'level': 'basic', 'description': '变量、数字、字符串、布尔与类型转换', 'x': 240, 'y': 180},
-    {'id': 'io', 'label': '输入 input', 'domain': '基础', 'level': 'basic', 'description': '使用 input 读取用户输入', 'x': 240, 'y': 320},
-    {'id': 'ops', 'label': '运算与表达式', 'domain': '基础', 'level': 'basic', 'description': '算术、比较、逻辑运算与格式化输出', 'x': 400, 'y': 180},
-    {'id': 'cond', 'label': '条件分支', 'domain': '控制流', 'level': 'basic', 'description': 'if / elif / else', 'x': 400, 'y': 320},
-    {'id': 'loop', 'label': '循环结构', 'domain': '控制流', 'level': 'basic', 'description': 'while 与 for 循环', 'x': 560, 'y': 180},
-    {'id': 'range', 'label': 'range 与控制', 'domain': '控制流', 'level': 'basic', 'description': 'range、break、continue', 'x': 560, 'y': 320},
-    {'id': 'list', 'label': '列表 list', 'domain': '容器', 'level': 'basic', 'description': '列表创建、索引、切片与遍历', 'x': 720, 'y': 180},
-    {'id': 'tuple', 'label': '元组与集合', 'domain': '容器', 'level': 'basic', 'description': 'tuple 与 set 基础', 'x': 720, 'y': 320},
-    {'id': 'dict', 'label': '字典 dict', 'domain': '容器', 'level': 'intermediate', 'description': '键值对与常见操作', 'x': 880, 'y': 180},
-    {'id': 'str', 'label': '字符串处理', 'domain': '容器', 'level': 'basic', 'description': '索引、切片、常用方法与简单统计', 'x': 880, 'y': 320},
-    {'id': 'func', 'label': '函数基础', 'domain': '函数', 'level': 'intermediate', 'description': '定义函数、参数与返回值', 'x': 1040, 'y': 250},
-    {'id': 'file', 'label': '文件读写', 'domain': '工程', 'level': 'intermediate', 'description': '读取与写入文本文件', 'x': 1200, 'y': 180},
-    {'id': 'except', 'label': '异常处理', 'domain': '工程', 'level': 'intermediate', 'description': 'try / except 与常见错误', 'x': 1200, 'y': 320},
-    {'id': 'algo-sum', 'label': '求和与统计', 'domain': '算法入门', 'level': 'basic', 'description': '累加、计数、最大值最小值', 'x': 1360, 'y': 180},
-    {'id': 'algo-search', 'label': '线性查找', 'domain': '算法入门', 'level': 'basic', 'description': '在列表中查找目标元素', 'x': 1360, 'y': 320},
-    {'id': 'algo-sort', 'label': '简单排序思想', 'domain': '算法入门', 'level': 'intermediate', 'description': '理解冒泡排序的基本过程', 'x': 1520, 'y': 180},
-    {'id': 'algo-dedup', 'label': '去重与频率', 'domain': '算法入门', 'level': 'intermediate', 'description': '集合去重与简单频率统计', 'x': 1520, 'y': 320},
-    {'id': 'nested', 'label': '嵌套循环', 'domain': '算法入门', 'level': 'intermediate', 'description': '双重循环解决简单组合问题', 'x': 1680, 'y': 250},
-]
+节点由 `knowledge_node_registry.KNOWLEDGE_NODE_REGISTRY` 派生，8 大类各占一列，
+类内节点自上而下排布，因此图谱的横向就是教学推进方向。
 
-KG_EDGES = [
-    {'id': 'e1', 'source': 'intro', 'target': 'comment', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e2', 'source': 'intro', 'target': 'var', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e3', 'source': 'var', 'target': 'io', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e4', 'source': 'var', 'target': 'ops', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e5', 'source': 'ops', 'target': 'cond', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e6', 'source': 'cond', 'target': 'loop', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e7', 'source': 'loop', 'target': 'range', 'type': 'related', 'label': '相关'},
-    {'id': 'e8', 'source': 'loop', 'target': 'list', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e9', 'source': 'list', 'target': 'tuple', 'type': 'related', 'label': '相关'},
-    {'id': 'e10', 'source': 'list', 'target': 'dict', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e11', 'source': 'var', 'target': 'str', 'type': 'related', 'label': '相关'},
-    {'id': 'e12', 'source': 'str', 'target': 'func', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e13', 'source': 'loop', 'target': 'func', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e14', 'source': 'func', 'target': 'file', 'type': 'path', 'label': '推荐路径'},
-    {'id': 'e15', 'source': 'file', 'target': 'except', 'type': 'related', 'label': '相关'},
-    {'id': 'e16', 'source': 'loop', 'target': 'algo-sum', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e17', 'source': 'list', 'target': 'algo-search', 'type': 'prerequisite', 'label': '前置'},
-    {'id': 'e18', 'source': 'algo-sum', 'target': 'algo-sort', 'type': 'path', 'label': '推荐路径'},
-    {'id': 'e19', 'source': 'list', 'target': 'algo-dedup', 'type': 'path', 'label': '推荐路径'},
-    {'id': 'e20', 'source': 'loop', 'target': 'nested', 'type': 'prerequisite', 'label': '前置'},
-]
+边的语义：
+- `prerequisite` 前置：类内相邻节点、以及跨类的主线推进。**注意** 2026-07-30 重排
+  后前置边仅用于图谱上展示学习顺序建议，不再参与解锁判定（任意节点均可直接答题），
+  见 app/constants/star_path_unlock.py 的 UNLOCK_ALL。
+- `related` 相关：并列或互为补充的知识点。
+- `path` 推荐路径：进阶延伸方向。
+"""
+from .knowledge_node_registry import (
+    KNOWLEDGE_DOMAINS,
+    KNOWLEDGE_NODE_REGISTRY,
+    nodes_for_domain,
+)
+
+_COLUMN_X_START = 90
+_COLUMN_X_STEP = 200
+_ROW_Y_START = 120
+_ROW_Y_STEP = 130
+
+
+def _build_nodes() -> list[dict]:
+    nodes: list[dict] = []
+    for domain in KNOWLEDGE_DOMAINS:
+        x = _COLUMN_X_START + (domain.order - 1) * _COLUMN_X_STEP
+        for row, entry in enumerate(nodes_for_domain(domain.key)):
+            nodes.append({
+                'id': entry.kg_id,
+                'label': entry.label,
+                'domain': domain.title,
+                'domain_key': domain.key,
+                'level': entry.level,
+                'description': entry.summary,
+                'x': x,
+                'y': _ROW_Y_START + row * _ROW_Y_STEP,
+            })
+    return nodes
+
+
+KG_NODES = _build_nodes()
+
+
+def _build_edges() -> list[dict]:
+    edges: list[dict] = []
+    seq = 0
+
+    def add(source: str, target: str, edge_type: str, label: str) -> None:
+        nonlocal seq
+        seq += 1
+        edges.append({'id': f'e{seq}', 'source': source, 'target': target, 'type': edge_type, 'label': label})
+
+    # 类内串行：同一大类里前一个节点是后一个的前置
+    for domain in KNOWLEDGE_DOMAINS:
+        entries = nodes_for_domain(domain.key)
+        for prev, current in zip(entries, entries[1:]):
+            add(prev.kg_id, current.kg_id, 'prerequisite', '前置')
+
+    # 跨类主线：每个大类的首个节点由上一大类的首个节点引出
+    domain_heads = [nodes_for_domain(d.key)[0].kg_id for d in KNOWLEDGE_DOMAINS]
+    for prev, current in zip(domain_heads, domain_heads[1:]):
+        add(prev, current, 'prerequisite', '前置')
+
+    # 跨类相关/推荐：把实际教学中互相依赖的点连起来
+    add('loop-for', 'array-traverse', 'related', '相关')
+    add('loop-nested', 'array-2d', 'related', '相关')
+    add('loop-for', 'string-scan', 'related', '相关')
+    add('array-basic', 'search-linear', 'prerequisite', '前置')
+    add('array-traverse', 'search-stat', 'prerequisite', '前置')
+    add('func-define', 'func-recursion', 'related', '相关')
+    add('search-linear', 'search-binary', 'path', '推荐路径')
+    add('search-sort', 'search-binary', 'path', '推荐路径')
+    add('string-method', 'array-basic', 'related', '相关')
+    add('branch-if', 'loop-while', 'related', '相关')
+    return edges
+
+
+KG_EDGES = _build_edges()
+
+# 供外部快速判断某 id 是否为合法节点
+KG_NODE_IDS = frozenset(node['id'] for node in KG_NODES)
+
+assert len(KG_NODES) == len(KNOWLEDGE_NODE_REGISTRY)

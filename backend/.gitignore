@@ -46,6 +46,8 @@ logs/
 *.sqlite
 *.sqlite3
 *.sql
+# 题库导入建表 DDL 需要入库审阅，从上面的 *.sql 通配规则中排除
+!scripts/problem_bank_import/schema.sql
 
 # ============ 缓存 ============
 .cache/

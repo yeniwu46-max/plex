@@ -546,15 +546,15 @@ onMounted(async () => {
       <div class="member-manage__form">
         <label>
           <span>姓名</span>
-          <n-input v-model:value="form.real_name" placeholder="例如：张三" />
+          <n-input v-model:value="form.real_name" placeholder="请输入姓名" />
         </label>
         <label>
           <span>用户名</span>
-          <n-input v-model:value="form.username" placeholder="例如：student006" />
+          <n-input v-model:value="form.username" placeholder="请输入登录账号" />
         </label>
         <label>
           <span>邮箱</span>
-          <n-input v-model:value="form.email" placeholder="student@example.com" />
+          <n-input v-model:value="form.email" placeholder="请输入邮箱" />
         </label>
         <label v-if="formMode === 'create'">
           <span>初始密码</span>

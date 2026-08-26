@@ -224,7 +224,8 @@ class EvaluationService:
         }
 
     @staticmethod
-    def _build_phase_report(user_id: int, period: str, report: dict) -> dict:
+    def _build_phase_report(user_id: int, period: str, report: dict, profile: StudentProfile | None = None) -> dict:
+        """结构化薄弱点报告：证据 + 画像维度 + 下一步（借鉴学习诊断/反馈报告思路）。"""
         summary = report.get('summary') or {}
         trend = report.get('trend') or {}
         weak = report.get('weak_knowledge') or []
@@ -247,13 +248,36 @@ class EvaluationService:
         )[:3]
         top_weak = weak[:3]
 
+        profile_dims = dict((profile.dimensions if profile else None) or {})
+        identity = profile_dims.get('learning_identity') or profile_dims.get('identity') or {}
+        stage_hint = (
+            identity.get('stage')
+            or profile_dims.get('current_stage')
+            or profile_dims.get('stage')
+            or summary.get('level_label')
+            or '起步探索'
+        )
+        style_hint = (
+            identity.get('mode')
+            or profile_dims.get('learning_style')
+            or profile_dims.get('preferred_style')
+        )
+        if isinstance(style_hint, list):
+            style_hint = '、'.join(str(x) for x in style_hint[:3])
+
         highlights = [
             f"阶段指数 {summary.get('index', 0)}，状态为「{summary.get('level_label', '起步探索')}」。",
             f"近 {EvaluationService._parse_period(period)} 天完成 {total_practice} 次练习，活跃 {active_days} 天。",
             f"最近正确率约 {summary.get('correct_rate', avg_recent_accuracy)}%，累计完成试炼 {summary.get('completed_trials', 0)} 个。",
         ]
+        if style_hint:
+            highlights.append(f"结合当前画像，你更适合「{style_hint}」节奏下的短时巩固。")
         if top_weak:
-            highlights.append('主要薄弱点集中在：' + '、'.join(item['knowledge_label'] for item in top_weak) + '。')
+            highlights.append(
+                '主要薄弱点集中在：'
+                + '、'.join(item['knowledge_label'] for item in top_weak)
+                + '（有错题证据支撑）。'
+            )
         elif mistakes:
             highlights.append('已有错题记录，但知识点集中度不高，建议先修复最近失败题。')
         else:
@@ -261,31 +285,55 @@ class EvaluationService:
 
         focus_items = []
         for item in top_weak:
+            evidence = item.get('fail_count', item.get('mistake_count', 1))
             focus_items.append({
                 'label': item['knowledge_label'],
-                'reason': f"累计失败 {item.get('fail_count', item.get('mistake_count', 1))} 次，优先修复关联错题。",
+                'reason': f"证据：累计失败 {evidence} 次；建议优先修复关联错题后再做进阶题。",
                 'knowledge_key': item.get('knowledge_key'),
             })
         for item in weakest_domains:
-            if len(focus_items) >= 3:
+            if len(focus_items) >= 4:
                 break
             focus_items.append({
                 'label': item['label'],
-                'reason': f"本阶段答题 {item.get('answered', 0)} 次，掌握率 {item.get('mastery_rate', 0)}%。",
+                'reason': (
+                    f"证据：本阶段答题 {item.get('answered', 0)} 次，"
+                    f"掌握率 {item.get('mastery_rate', 0)}%，属于优先补强域。"
+                ),
                 'knowledge_key': item.get('key'),
+            })
+        if not focus_items:
+            focus_items.append({
+                'label': str(stage_hint),
+                'reason': '证据不足：暂以画像阶段为锚点，先完成基础试炼收集信号。',
+                'knowledge_key': None,
             })
 
         next_actions = [
             rec.get('detail') or rec.get('title')
-            for rec in recommendations[:3]
+            for rec in recommendations[:4]
             if rec.get('detail') or rec.get('title')
         ]
+        if top_weak:
+            next_actions.insert(
+                0,
+                f"打开「{top_weak[0]['knowledge_label']}」相关资源或分层题库，完成 2 道针对性练习。",
+            )
         if not next_actions:
             next_actions = [
                 '先完成一次星轨代码试炼，收集新的运行结果。',
                 '把未通过用例对应的输入输出差异记录到错题本。',
-                '完成今日委托后再刷新薄弱点报告。',
+                '完成今日委托后再点「更新报告」刷新薄弱点诊断。',
             ]
+        # 去重保序
+        seen = set()
+        deduped = []
+        for action in next_actions:
+            text = str(action).strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            deduped.append(text)
 
         return {
             'user_id': user_id,
@@ -294,19 +342,20 @@ class EvaluationService:
             'cooldown_hours': EvaluationService.PHASE_REPORT_COOLDOWN_HOURS,
             'headline': '阶段性薄弱点报告',
             'summary': highlights,
-            'focus_items': focus_items[:3],
+            'focus_items': focus_items[:4],
             'recent_evidence': {
                 'practice_count': total_practice,
                 'active_days': active_days,
                 'correct_rate': summary.get('correct_rate', avg_recent_accuracy),
                 'mistake_count': len(mistakes),
                 'risk_tags': report.get('risk_tags') or [],
+                'profile_stage': str(stage_hint),
             },
-            'next_actions': next_actions[:3],
+            'next_actions': deduped[:4],
         }
 
     @staticmethod
-    def generate_phase_report(user_id: int, period: str = '7d') -> dict:
+    def generate_phase_report(user_id: int, period: str = '7d', force: bool = False) -> dict:
         user = db.session.get(User, user_id)
         if not user:
             raise ValueError('用户不存在')
@@ -321,7 +370,7 @@ class EvaluationService:
         dimensions = dict(profile.dimensions or {})
         previous = dimensions.get('phase_report') or {}
         generated_raw = previous.get('generated_at')
-        if generated_raw:
+        if generated_raw and not force:
             try:
                 last_generated = datetime.fromisoformat(str(generated_raw).replace('Z', ''))
                 elapsed = now - last_generated
@@ -338,7 +387,9 @@ class EvaluationService:
                 pass
 
         base_report = EvaluationService.get_student_learning_report(user_id, period)
-        phase_report = EvaluationService._build_phase_report(user_id, period, base_report)
+        phase_report = EvaluationService._build_phase_report(
+            user_id, period, base_report, profile=profile
+        )
         dimensions['phase_report'] = {
             'generated_at': phase_report['generated_at'],
             'period': period,

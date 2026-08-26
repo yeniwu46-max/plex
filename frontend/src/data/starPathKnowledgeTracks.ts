@@ -1,18 +1,11 @@
 import { STAR_PATH_MASTERY_THRESHOLD } from '../utils/starPathProgress'
-import { NODE_UNLOCK_MIN_AC } from '../constants/starPathUnlock'
+import { NODE_UNLOCK_MIN_AC, UNLOCK_ALL } from '../constants/starPathUnlock'
 import { getKnowledgePointsForDomain, STAR_PATH_DOMAINS, type StarPathKnowledgePoint } from './starPathDomains'
 import type { StarPathGem, StarPathNode, StarPathNodeStatus } from './starPathTrail'
 import type { LearningPathOrderedNode } from '../api/studentProgress'
 
-export const ALL_STAGE_KEYS = [
-  'data-vars',
-  'operators',
-  'flow-control',
-  'strings',
-  'lists-dicts',
-  'functions',
-  'recursion-iter',
-] as const
+/** 八大学域顺序，直接取自 starPathDomains（生成自后端 registry），避免两处手抄。 */
+export const ALL_STAGE_KEYS = STAR_PATH_DOMAINS.map((domain) => domain.key)
 
 /** 每个知识点至少 5 道试炼题 */
 export const MIN_QUESTIONS_PER_KP = 5
@@ -30,44 +23,25 @@ export const KP_QUESTION_IDS: Record<string, string[]> = Object.fromEntries(
 
 type NodeLayout = Pick<StarPathNode, 'position' | 'anchor'>
 
-/** 各星域串联轨道布局：节点按学习顺序依次连接（dagre 会覆盖坐标，此处保留 position 兼容） */
-const DOMAIN_NODE_LAYOUTS: Record<string, NodeLayout[]> = {
-  'data-vars': [
-    { position: 'n6', anchor: 'left' },
-    { position: 'n2', anchor: 'left' },
-    { position: 'center' },
-    { position: 'n4', anchor: 'right' },
-  ],
-  operators: [{ position: 'center' }],
-  'flow-control': [
-    { position: 'n6', anchor: 'left' },
-    { position: 'center' },
-    { position: 'n4', anchor: 'right' },
-  ],
-  strings: [{ position: 'center' }],
-  'lists-dicts': [
-    { position: 'n2', anchor: 'left' },
-    { position: 'center' },
-    { position: 'n4', anchor: 'right' },
-  ],
-  functions: [{ position: 'center' }],
-  'recursion-iter': [
-    { position: 'n6', anchor: 'left' },
-    { position: 'n2', anchor: 'left' },
-    { position: 'center' },
-    { position: 'n4', anchor: 'right' },
-  ],
-}
-
-const DEFAULT_LAYOUT: NodeLayout[] = [
-  { position: 'center' },
+/**
+ * 各星域串联轨道布局：节点按学习顺序左右交错排布。
+ * dagre 最终会覆盖坐标，这里只保证节点数变化时槽位仍然够用。
+ */
+const LAYOUT_SLOTS: NodeLayout[] = [
+  { position: 'n6', anchor: 'left' },
   { position: 'n2', anchor: 'left' },
+  { position: 'center' },
   { position: 'n4', anchor: 'right' },
   { position: 'n5', anchor: 'right' },
 ]
 
 export function getDomainTrackLayout(domainKey: string): NodeLayout[] {
-  return DOMAIN_NODE_LAYOUTS[domainKey] ?? DEFAULT_LAYOUT
+  const count = getKnowledgePointsForDomain(domainKey).length
+  if (count <= 0) return [{ position: 'center' }]
+  if (count >= LAYOUT_SLOTS.length) return LAYOUT_SLOTS
+  // 节点少于槽位时居中取一段，避免全挤在一侧
+  const start = Math.floor((LAYOUT_SLOTS.length - count) / 2)
+  return LAYOUT_SLOTS.slice(start, start + count)
 }
 
 function gemsFromAcStatus(
@@ -100,7 +74,7 @@ function statusFromPlan(
   activeNodeId: string | null,
   masteryPct: number,
 ): StarPathNodeStatus {
-  if (plan?.locked) return 'locked'
+  if (!UNLOCK_ALL && plan?.locked) return 'locked'
   if (plan?.id === activeNodeId) return 'current'
   if (masteryPct >= 100 || (plan?.mastery_score ?? 0) >= STAR_PATH_MASTERY_THRESHOLD || plan?.status === 'mastered') {
     return 'done'
@@ -116,6 +90,7 @@ function resolveNodeLocked(
   plan: LearningPathOrderedNode | undefined,
   previousAcCount: number,
 ): boolean {
+  if (UNLOCK_ALL) return false
   if (index === 0) return false
   if (previousAcCount >= NODE_UNLOCK_MIN_AC) return false
   if (plan?.locked) return true

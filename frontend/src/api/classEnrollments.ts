@@ -8,6 +8,17 @@ export interface ClassLookupResult {
   teacher_name: string | null
   student_count: number
   join_code: string
+  teacher?: {
+    id: number
+    real_name: string | null
+    username: string
+    gender: string
+    email: string | null
+    phone: string | null
+    avatar_url: string | null
+    status: string
+    online: boolean
+  } | null
 }
 
 export interface ClassEnrollmentRequest {

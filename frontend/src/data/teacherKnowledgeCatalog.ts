@@ -1,3 +1,4 @@
+/** 本文件由 backend/scripts/knowledge_rebuild/gen_frontend.py 生成，请勿手改。 */
 /** 与 backend/app/data/knowledge_catalog.py 对齐 */
 
 export interface KnowledgePointDef {
@@ -13,43 +14,77 @@ export interface KnowledgeDomainDef {
 
 export const TEACHER_KNOWLEDGE_UNIVERSE: KnowledgeDomainDef[] = [
   {
-    key: 'stage1',
-    label: '会写第一段 Python',
+    key: "lang-basics",
+    label: "语言入门",
     points: [
-      { key: 'intro', label: 'Python 与 print' },
-      { key: 'comment', label: '注释' },
-      { key: 'var', label: '变量与类型' },
-      { key: 'io', label: '输入 input' },
+      { key: "lang-print", label: "print 输出与注释" },
+      { key: "lang-var", label: "变量与类型" },
+      { key: "lang-input", label: "输入 input" },
     ],
   },
   {
-    key: 'stage2',
-    label: '条件与循环',
+    key: "sequence",
+    label: "顺序结构",
     points: [
-      { key: 'ops', label: '运算与表达式' },
-      { key: 'cond', label: 'if 分支' },
-      { key: 'loop', label: '循环结构' },
-      { key: 'range', label: 'range / break / continue' },
+      { key: "seq-arith", label: "算术运算" },
+      { key: "seq-expr", label: "表达式与优先级" },
+      { key: "seq-type", label: "数据类型与转换" },
     ],
   },
   {
-    key: 'stage3',
-    label: '容器、字符串与函数',
+    key: "branch",
+    label: "分支结构",
     points: [
-      { key: 'list', label: '列表 list' },
-      { key: 'dict', label: '字典 dict' },
-      { key: 'str', label: '字符串处理' },
-      { key: 'func', label: '函数基础' },
+      { key: "branch-if", label: "单分支与双分支" },
+      { key: "branch-elif", label: "多分支 elif" },
+      { key: "branch-nested", label: "嵌套与复合条件" },
     ],
   },
   {
-    key: 'stage4',
-    label: '简单算法小任务',
+    key: "loop",
+    label: "循环结构",
     points: [
-      { key: 'file', label: '文件读写' },
-      { key: 'except', label: '异常处理' },
-      { key: 'algo-sum', label: '求和与统计' },
-      { key: 'algo-search', label: '线性查找' },
+      { key: "loop-for", label: "for 与 range" },
+      { key: "loop-while", label: "while 循环" },
+      { key: "loop-nested", label: "嵌套循环" },
+      { key: "loop-control", label: "break 与 continue" },
+    ],
+  },
+  {
+    key: "array",
+    label: "数组",
+    points: [
+      { key: "array-basic", label: "列表基础" },
+      { key: "array-traverse", label: "遍历与统计" },
+      { key: "array-2d", label: "二维列表" },
+    ],
+  },
+  {
+    key: "string",
+    label: "字符串",
+    points: [
+      { key: "string-index", label: "索引与切片" },
+      { key: "string-method", label: "常用方法" },
+      { key: "string-scan", label: "遍历与统计" },
+    ],
+  },
+  {
+    key: "function",
+    label: "函数与递归",
+    points: [
+      { key: "func-define", label: "定义与调用" },
+      { key: "func-param", label: "参数与返回值" },
+      { key: "func-recursion", label: "递归" },
+    ],
+  },
+  {
+    key: "search",
+    label: "查找与搜索",
+    points: [
+      { key: "search-linear", label: "顺序查找" },
+      { key: "search-binary", label: "二分查找" },
+      { key: "search-sort", label: "排序思想" },
+      { key: "search-stat", label: "统计与去重" },
     ],
   },
 ]

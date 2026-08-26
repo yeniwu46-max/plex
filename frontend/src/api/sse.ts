@@ -17,6 +17,11 @@ export interface SseStreamHandlers {
   onDone?: (event: SseStreamEvent) => void
   onIllustration?: (illustration: { url: string; caption?: string }) => void
   signal?: AbortSignal
+  /**
+   * 收到 done 后立刻结束 await（后台继续读 illustration）。
+   * 避免生图等尾帧阻塞前端「对话完成」状态。
+   */
+  settleOnDone?: boolean
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api'
@@ -61,6 +66,13 @@ export async function postSseStream(
   const decoder = new TextDecoder('utf-8')
   let buffer = ''
   let doneEvent: SseStreamEvent | null = null
+  const settleRef: { current: ((event: SseStreamEvent | null) => void) | null } = { current: null }
+  const earlyPromise =
+    handlers.settleOnDone
+      ? new Promise<SseStreamEvent | null>((resolve) => {
+          settleRef.current = resolve
+        })
+      : null
 
   const dispatch = (frame: string) => {
     const data = frame
@@ -82,6 +94,8 @@ export async function postSseStream(
     } else if (event.type === 'done') {
       doneEvent = event
       handlers.onDone?.(event)
+      settleRef.current?.(event)
+      settleRef.current = null
     } else if (event.type === 'illustration' && event.illustration?.url) {
       handlers.onIllustration?.(event.illustration)
     } else if (event.type === 'error') {
@@ -89,17 +103,31 @@ export async function postSseStream(
     }
   }
 
-  for (;;) {
-    const { value, done } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    let boundary = buffer.indexOf('\n\n')
-    while (boundary >= 0) {
-      dispatch(buffer.slice(0, boundary))
-      buffer = buffer.slice(boundary + 2)
-      boundary = buffer.indexOf('\n\n')
+  const pump = (async () => {
+    try {
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        let boundary = buffer.indexOf('\n\n')
+        while (boundary >= 0) {
+          dispatch(buffer.slice(0, boundary))
+          buffer = buffer.slice(boundary + 2)
+          boundary = buffer.indexOf('\n\n')
+        }
+      }
+      if (buffer.trim()) dispatch(buffer)
+    } finally {
+      settleRef.current?.(doneEvent)
+      settleRef.current = null
     }
+    return doneEvent
+  })()
+
+  if (earlyPromise) {
+    // 文字完成后立刻返回；illustration 回调仍会在后台触发
+    void pump.catch(() => undefined)
+    return earlyPromise
   }
-  if (buffer.trim()) dispatch(buffer)
-  return doneEvent
+  return pump
 }

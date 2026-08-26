@@ -226,8 +226,8 @@ onMounted(loadTodayQuests)
         </div>
 
         <div v-if="loading || errorMessage" class="quest-state" :class="{ 'quest-state--error': errorMessage }">
-          <span>{{ loading ? 'Loading daily quests...' : `${errorMessage}. Showing fallback only.` }}</span>
-          <button v-if="errorMessage" type="button" @click="loadTodayQuests">Retry</button>
+          <span>{{ loading ? '正在加载今日委托…' : errorMessage }}</span>
+          <button v-if="errorMessage" type="button" @click="loadTodayQuests">重新加载</button>
         </div>
 
         <div class="daily-content__main">

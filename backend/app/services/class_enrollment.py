@@ -16,12 +16,24 @@ class ClassEnrollmentService:
         class_obj = ClassService.get_class_by_join_code(join_code)
         if not class_obj:
             raise ValueError('班级编号无效，请核对后重试')
+        teacher = class_obj.teacher
         return {
             'class_id': class_obj.id,
             'class_name': class_obj.name,
-            'teacher_name': class_obj.teacher.real_name if class_obj.teacher else None,
+            'teacher_name': (teacher.real_name or teacher.username) if teacher else None,
             'student_count': class_obj.student_count,
             'join_code': class_obj.join_code,
+            'teacher': {
+                'id': teacher.id,
+                'real_name': teacher.real_name,
+                'username': teacher.username,
+                'gender': teacher.gender or 'other',
+                'email': teacher.email,
+                'phone': teacher.phone,
+                'avatar_url': teacher.avatar_url,
+                'status': teacher.status or 'active',
+                'online': True,
+            } if teacher else None,
         }
 
     @staticmethod

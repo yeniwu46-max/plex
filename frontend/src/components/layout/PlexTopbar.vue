@@ -19,6 +19,7 @@ import { useTeacherNotificationStore } from '../../stores/teacherNotifications'
 import PlexThemeSwitcher from '../shared/PlexThemeSwitcher.vue'
 import PlexLocalSearch from '../search/PlexLocalSearch.vue'
 import QuestionSearchPopover from '../search/QuestionSearchPopover.vue'
+import TeacherPersonalProfileModal from '../teacher/TeacherPersonalProfileModal.vue'
 import { useSearchScope } from '../../composables/useSearchScope'
 
 withDefaults(
@@ -47,6 +48,7 @@ const studentNotifications = useNotificationStore()
 const teacherNotifications = useTeacherNotificationStore()
 const router = useRouter()
 const showNotifications = ref(false)
+const teacherProfileShow = ref(false)
 
 const isStudent = computed(() => auth.profile?.role === 'student')
 const isTeacher = computed(() => {
@@ -75,6 +77,13 @@ async function restartTourFromMenu() {
 
 const userOptions = computed<DropdownOption[]>(() => {
   const items: DropdownOption[] = []
+  if (isTeacher.value) {
+    items.push({
+      label: '个人信息',
+      key: 'teacher-profile',
+    })
+    items.push({ type: 'divider', key: 'd0' })
+  }
   if (tourRoleForUser.value) {
     items.push({
       label: '重新查看功能导览',
@@ -130,6 +139,10 @@ function onNotificationClick(id: string) {
 }
 
 async function handleUserSelect(key: string) {
+  if (key === 'teacher-profile') {
+    teacherProfileShow.value = true
+    return
+  }
   if (key === 'restart-tour') {
     await restartTourFromMenu()
     return
@@ -232,6 +245,7 @@ async function handleUserSelect(key: string) {
       </n-dropdown>
     </div>
   </header>
+  <TeacherPersonalProfileModal v-if="isTeacher" v-model:show="teacherProfileShow" />
 </template>
 
 <style scoped>

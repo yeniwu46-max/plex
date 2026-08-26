@@ -27,12 +27,25 @@ class MessengerChatService:
         '不要在句子末尾添加“（讯飞星火）”“（LLM）”这类来源尾注。'
         '不要用“小E：”“助手：”这类自我署名开头，直接回答学生的问题。'
         '如果学生追问“这个/上面/刚才”，要根据最近对话判断指代，不要装作第一次听到。'
-        '采用苏格拉底式提问：不要急着给完整答案，先用 2-4 个循序渐进的小问题引导学生自己发现关键点。'
-        '每次最多只揭示一个必要提示；如果学生明显卡住，再给一个很短的示例或判断方向。'
-        '问题要具体，围绕学生当前代码、概念或上一轮对话，不要泛泛地问“你觉得呢”。'
+        '当学生明确要求解释概念、定义、写法、区别或示例时：先用 80-160 字讲清要点，'
+        '必要时给一个短 ```python 示例，再在结尾只留 1 个思考题；'
+        '禁止反问「你遇到了什么问题」「能否告诉我具体困惑」或装作没听懂。'
+        '仅当问题确实含糊（如只说「不会/报错了」且无上下文）时，才用 1 个具体澄清问题。'
+        '调试/卡住场景可用轻量苏格拉底式：先给关键提示，再问 1 个具体小问题，不要一次抛多个问题。'
         '语气像学习伙伴一样温和、聪明、具体，不要官腔，不要模板化，不要重复学生原话。'
         '可以使用 Markdown 排版：加粗关键概念、用短列表拆步骤、代码一律放进 ``` 代码块并注明语言。'
-        '一般控制在 120-200 字；结尾用一个最值得学生立刻思考的问题收束。'
+        '一般控制在 120-220 字。'
+    )
+    CLEAR_QUESTION_RE = re.compile(
+        r'(解释|什么是|是什么|怎么写|如何|举例|示例|区别|原理|用法|推导式|语法|含义|作用)',
+    )
+    EVASIVE_REPLY_RE = re.compile(
+        r'(能否告诉我|具体遇到了什么问题|似乎有些困惑|没有理解你的问题|'
+        r'你具体想问|可以更详细|请问你想了解|看起来你在学习.*但似乎)',
+    )
+    TOPIC_TOKEN_RE = re.compile(
+        r'(列表推导式|列表推导|推导式|装饰器|生成器|迭代器|递归|异常处理|'
+        r'字典|元组|切片|闭包|lambda|字符串格式化|循环嵌套|分支语句)',
     )
 
     @classmethod
@@ -48,6 +61,42 @@ class MessengerChatService:
             text = cls.PROVIDER_LABEL_RE.sub('', text).strip()
             text = cls.SELF_PREFIX_RE.sub('', text).strip()
         return text
+
+    @classmethod
+    def _is_evasive_reply(cls, reply: str, user_message: str) -> bool:
+        """Reject vague clarification when the student already asked a clear topic question."""
+        text = (reply or '').strip()
+        if not text:
+            return True
+        if not cls.CLEAR_QUESTION_RE.search(user_message or ''):
+            return False
+        if '```' in text or '列表推导' in text:
+            return False
+        if cls.EVASIVE_REPLY_RE.search(text):
+            return True
+        # Short reply that only asks back without teaching content
+        if len(text) < 90 and ('？' in text or '?' in text) and '例如' not in text:
+            return True
+        return False
+
+    @classmethod
+    def _is_off_topic_reply(cls, reply: str, user_message: str) -> bool:
+        """Reject replies that ignore an explicit course topic in the question."""
+        topic = cls.TOPIC_TOKEN_RE.search(user_message or '')
+        if not topic:
+            return False
+        token = topic.group(1)
+        text = reply or ''
+        if token in text:
+            return False
+        # 允许近义短写：列表推导式 ↔ 推导式
+        if '推导' in token and '推导' in text:
+            return False
+        return True
+
+    @classmethod
+    def _is_low_quality_reply(cls, reply: str, user_message: str) -> bool:
+        return cls._is_evasive_reply(reply, user_message) or cls._is_off_topic_reply(reply, user_message)
 
     @staticmethod
     def _normalize_history(history) -> list[dict]:
@@ -80,6 +129,42 @@ class MessengerChatService:
         )
 
     @staticmethod
+    def _student_context_light(user_id: int, message: str, history=None) -> tuple[dict, str, bool]:
+        """流式首字前的轻量上下文：跳过完整学情报告与重 RAG，避免阻塞 TTFT。"""
+        history_rows = MessengerChatService._normalize_history(history)
+        weak: list = []
+        try:
+            from app.services.mistake import MistakeService
+
+            weak = MistakeService.list_weak_knowledge(user_id, limit=3) or []
+        except Exception:
+            weak = []
+        weak_labels = '、'.join(
+            str(item.get('knowledge_label') or item.get('knowledge_key') or '')
+            for item in weak[:3]
+        ) or '暂无明显薄弱知识点'
+        rag_context = ''
+        try:
+            # mock/轻量检索即可；完整 LlamaIndex 查询会拖慢首 token
+            rag = RagService._mock_query(message) if hasattr(RagService, '_mock_query') else {}
+            snippets = [s.get('snippet', '') for s in (rag.get('sources') or []) if s.get('snippet')]
+            rag_context = '\n'.join(f'- {s}' for s in snippets)[:280]
+        except Exception:
+            rag_context = ''
+        context = (
+            f'{MessengerChatService.ASSISTANT_SYSTEM_PROMPT}\n\n'
+            f'最近对话（最多 18 条，越靠后越新）：\n{MessengerChatService._format_history(history_rows)}\n\n'
+            f'学生薄弱知识（轻量）：{weak_labels}。\n'
+            f'内部课程参考（只用于理解问题，不要说明来源）：{rag_context or "无"}'
+        )
+        report = {
+            'summary': {},
+            'weak_knowledge': weak,
+            'recommendations': [],
+        }
+        return report, context, bool(rag_context)
+
+    @staticmethod
     def _student_context(user_id: int, message: str, history=None) -> tuple[dict, str, bool]:
         report = EvaluationService.get_student_learning_report(user_id, '7d')
         summary = report.get('summary') or {}
@@ -101,15 +186,27 @@ class MessengerChatService:
 
     @staticmethod
     def _spark_messenger_enabled() -> bool:
-        if not IflytekSparkService.configured():
-            return False
-        error_code = (IflytekSparkService.status() or {}).get('error_code')
-        return error_code not in {'network_error', 'timeout', 'authentication_failed', 'not_configured'}
+        # 仅检查凭证是否配置；单次失败不应永久禁用（凭证轮换后可立刻恢复）
+        return bool(IflytekSparkService._resolve_api_password('messenger'))
+
+    @staticmethod
+    def _xfyun_recently_failed() -> bool:
+        """短时熔断：星辰 Agent 刚超时/鉴权失败时跳过，避免拖垮整条对话。"""
+        status = XfyunAgentService.status()
+        return status.get('error_code') in {
+            'timeout',
+            'authentication_failed',
+            'network_error',
+            'rate_limited',
+            'upstream_error',
+        }
 
     @staticmethod
     def _xfyun_agent_reply(user_id: int, message: str, history=None) -> dict | None:
         """Prefer the published iFlytek Xingchen Agent when API credentials are configured."""
         if not XfyunAgentService.configured():
+            return None
+        if MessengerChatService._xfyun_recently_failed():
             return None
         report, context, rag_used = MessengerChatService._student_context(user_id, message, history)
         try:
@@ -119,13 +216,18 @@ class MessengerChatService:
                 context=context,
                 timeout=5,
             )
+            cleaned = MessengerChatService._clean_reply(reply)
+            if not cleaned or MessengerChatService._is_low_quality_reply(cleaned, message):
+                return None
             return {
-                'reply': MessengerChatService._clean_reply(reply),
+                'reply': cleaned,
                 'source': 'xfyun_agent',
                 'recommendations': report.get('recommendations') or [],
                 'rag_used': rag_used,
             }
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning('xfyun_agent messenger failed: %s', exc)
             return None
 
     @staticmethod
@@ -133,20 +235,33 @@ class MessengerChatService:
         """Use the configured Spark provider for a real, per-request conversation reply."""
         if not MessengerChatService._spark_messenger_enabled():
             return None
-        report, context, rag_used = MessengerChatService._student_context(user_id, message, history)
+        report, context, rag_used = MessengerChatService._student_context_light(user_id, message, history)
         try:
+            # 问题置顶，避免冗长学情/RAG 上下文把模型带偏主题
+            spark_user = (
+                f'学生问题（必须围绕此问题回答，不要答成别的概念）：{message[:500]}\n\n'
+                f'补充上下文（仅供参考）：\n{context[:900]}'
+            )
             reply = IflytekSparkService.chat_text(
                 MessengerChatService.ASSISTANT_SYSTEM_PROMPT,
-                f'{context}\n\n学生问题：{message[:500]}',
-                timeout=8,
+                spark_user,
+                timeout=12,
+                purpose='messenger',
+                temperature=0.35,
+                max_tokens=480,
             )
+            cleaned = MessengerChatService._clean_reply(reply)
+            if not cleaned or MessengerChatService._is_low_quality_reply(cleaned, message):
+                return None
             return {
-                'reply': MessengerChatService._clean_reply(reply),
+                'reply': cleaned,
                 'source': 'spark',
                 'recommendations': report.get('recommendations') or [],
                 'rag_used': rag_used,
             }
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning('spark messenger failed: %s', exc)
             return None
 
     @staticmethod
@@ -171,9 +286,10 @@ class MessengerChatService:
         if not provider:
             return None
         api_key, endpoint, model = provider
-        report, context, rag_used = MessengerChatService._student_context(user_id, message, history)
+        # 概念讲解用轻量上下文，减少学情查询拖垮超时
+        report, context, rag_used = MessengerChatService._student_context_light(user_id, message, history)
         history_rows = MessengerChatService._normalize_history(history)
-        messages: list[dict] = [{'role': 'system', 'content': MessengerChatService.ASSISTANT_SYSTEM_PROMPT}]
+        messages: list[dict] = [{'role': 'system', 'content': context}]
         for row in history_rows:
             messages.append({'role': row['role'], 'content': row['content']})
         messages.append({'role': 'user', 'content': message[:500]})
@@ -187,21 +303,26 @@ class MessengerChatService:
                 json={
                     'model': model,
                     'messages': messages,
-                    'max_tokens': 256,
-                    'temperature': 0.55,
+                    'max_tokens': 320,
+                    'temperature': 0.4,
                 },
-                timeout=(2, 5),
+                timeout=(3, 12),
             )
             resp.raise_for_status()
             data = resp.json()
             text = data['choices'][0]['message']['content'].strip()
+            cleaned = MessengerChatService._clean_reply(text)
+            if not cleaned or MessengerChatService._is_low_quality_reply(cleaned, message):
+                return None
             return {
-                'reply': MessengerChatService._clean_reply(text),
+                'reply': cleaned,
                 'source': 'llm',
                 'recommendations': report.get('recommendations') or [],
                 'rag_used': rag_used,
             }
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning('deepseek messenger failed: %s', exc)
             return None
 
     @staticmethod
@@ -223,8 +344,8 @@ class MessengerChatService:
         base['reply'] = MessengerChatService._clean_reply(base['reply'])
         return base
 
-    # 供应商降级链的总等待预算（秒）：超过预算直接走规则兜底，避免串行累加。
-    CHAT_TOTAL_BUDGET_SECONDS = 5.0
+    # 供应商降级链的总等待预算（秒）：需覆盖「低质回复熔断后换下一家」。
+    CHAT_TOTAL_BUDGET_SECONDS = 14.0
     ILLUSTRATION_HINTS = (
         '图', '示意', '画', '图解', '流程图', '结构', '对比', '可视化',
         '怎么看', '画一下', '示意图',
@@ -236,8 +357,8 @@ class MessengerChatService:
         return any(token in text for token in cls.ILLUSTRATION_HINTS)
 
     @classmethod
-    def _build_illustration(cls, message: str) -> dict | None:
-        """按需生成答疑图解；未配置或失败返回 None，不阻塞文字回复。"""
+    def _build_illustration(cls, message: str, *, timeout: tuple[float, float] = (2, 10)) -> dict | None:
+        """按需生成答疑图解；短超时，失败返回 None，避免拖垮对话流。"""
         if not cls._wants_illustration(message):
             return None
         try:
@@ -249,7 +370,8 @@ class MessengerChatService:
                 'Educational illustration for university Python course, clean textbook style, '
                 f'Chinese labels, topic: {message[:180]}. White background, high contrast.'
             )
-            image_url = ArkMediaService.generate_image(prompt)
+            # 默认 2K 生图可达数十秒；流式路径强制用 1K + 短超时
+            image_url = ArkMediaService.generate_image(prompt, size='1K', timeout=timeout)
             if image_url:
                 return {
                     'url': image_url,
@@ -261,6 +383,7 @@ class MessengerChatService:
 
     @staticmethod
     def chat(user_id: int, message: str, history=None) -> dict:
+        import logging
         import time
 
         text = (message or '').strip()
@@ -268,23 +391,23 @@ class MessengerChatService:
             raise ValueError('消息不能为空')
         CourseSafetyService.ensure_safe(text, enforce_course_scope=True)
         started = time.monotonic()
+        logger = logging.getLogger(__name__)
 
         def within_budget() -> bool:
             return time.monotonic() - started < MessengerChatService.CHAT_TOTAL_BUDGET_SECONDS
 
-        # 优先星火 / 星辰 Agent，避免 DeepSeek 超时拖垮体感
-        if within_budget():
-            spark = MessengerChatService._spark_reply(user_id, text, history)
-            if spark:
-                return spark
-        if within_budget():
-            agent = MessengerChatService._xfyun_agent_reply(user_id, text, history)
-            if agent:
-                return agent
-        if within_budget():
-            deepseek = MessengerChatService._deepseek_reply(user_id, text, history)
-            if deepseek:
-                return deepseek
+        # 统一 DeepSeek 优先；讯飞星火/星辰仅作兜底（未配置时立刻跳过，不会卡住）
+        order = ('_deepseek_reply', '_spark_reply', '_xfyun_agent_reply')
+        for method_name in order:
+            if not within_budget():
+                break
+            method = getattr(MessengerChatService, method_name)
+            result = method(user_id, text, history)
+            if result:
+                if MessengerChatService._is_low_quality_reply(result.get('reply') or '', text):
+                    logger.info('messenger.chat reject low-quality from %s', method_name)
+                    continue
+                return result
         return MessengerChatService._rag_rule_reply(user_id, text, history)
 
     @staticmethod
@@ -305,21 +428,38 @@ class MessengerChatService:
 
         thinking: list[dict] = []
         t0 = time.monotonic()
+
+        def within_rewrite_budget() -> bool:
+            return time.monotonic() - t0 < 20.0
+
+        # 立刻推送阶段，让前端马上离开「正在思考」空白态
         yield {
             'type': 'stage',
             'stage': 'context',
             'label': '整理你的学习情况',
         }
-        # 轻量上下文：失败不阻塞首字输出
         try:
-            report, context, rag_used = MessengerChatService._student_context(user_id, text, history)
+            report, context, rag_used = MessengerChatService._student_context_light(
+                user_id, text, history,
+            )
         except Exception:
             report, context, rag_used = {}, MessengerChatService.ASSISTANT_SYSTEM_PROMPT, False
         thinking.append({
             'id': 'context',
             'label': '整理学情',
-            'summary': '已汇总近 7 天学习指数、正确率与薄弱知识点。',
+            'summary': '已快速汇总薄弱知识点与近期对话（轻量路径，优先首字速度）。',
             'latencyMs': int((time.monotonic() - t0) * 1000),
+        })
+        yield {
+            'type': 'stage',
+            'stage': 'reasoning',
+            'label': '梳理解题思路',
+        }
+        thinking.append({
+            'id': 'reasoning',
+            'label': '梳理思路',
+            'summary': '对照对话上下文与薄弱点，决定用提问引导还是给出关键提示。',
+            'latencyMs': max(1, int((time.monotonic() - t0) * 1000) - thinking[0]['latencyMs']),
         })
 
         history_rows = MessengerChatService._normalize_history(history)
@@ -339,7 +479,8 @@ class MessengerChatService:
             emitted = False
             collected: list[str] = []
             try:
-                for delta in iter_openai_stream(provider, messages, max_tokens=480, timeout=(2, 12)):
+                # 连接 3s / 读流 45s：星火流式按 token 推送，避免过短读超时造成卡顿重连
+                for delta in iter_openai_stream(provider, messages, max_tokens=480, timeout=(3, 45)):
                     emitted = True
                     collected.append(delta)
                     yield {'type': 'delta', 'text': delta}
@@ -348,6 +489,11 @@ class MessengerChatService:
                     continue
             if emitted:
                 reply = MessengerChatService._clean_reply(''.join(collected))
+                # 流式已吐字无法撤回：低质时用 DeepSeek 同步重写最终 reply（前端以 done.reply 为准）
+                if (not reply or MessengerChatService._is_low_quality_reply(reply, text)) and within_rewrite_budget():
+                    rewritten = MessengerChatService._deepseek_reply(user_id, text, history)
+                    if rewritten and rewritten.get('reply'):
+                        reply = rewritten['reply']
                 if not reply:
                     reply = MessengerChatService._clean_reply(
                         MessengerChatService._rag_rule_reply(user_id, text, history).get('reply') or ''
@@ -366,7 +512,14 @@ class MessengerChatService:
                     'reply': reply or '结合你的近况，建议先巩固薄弱知识点，再做一道对应试炼。',
                     'thinking': thinking,
                 }
-                illustration = MessengerChatService._build_illustration(text)
+                # 图解短超时尽力而为；失败不影响文字已完成
+                if MessengerChatService._wants_illustration(text):
+                    yield {
+                        'type': 'stage',
+                        'stage': 'illustration',
+                        'label': '绘制图解说明',
+                    }
+                illustration = MessengerChatService._build_illustration(text, timeout=(2, 8))
                 if illustration:
                     yield {'type': 'illustration', 'illustration': illustration}
                 return
@@ -392,6 +545,147 @@ class MessengerChatService:
             'reply': full,
             'thinking': thinking,
         }
-        illustration = MessengerChatService._build_illustration(text)
+        if MessengerChatService._wants_illustration(text):
+            yield {
+                'type': 'stage',
+                'stage': 'illustration',
+                'label': '绘制图解说明',
+            }
+        illustration = MessengerChatService._build_illustration(text, timeout=(2, 8))
         if illustration:
             yield {'type': 'illustration', 'illustration': illustration}
+
+    @staticmethod
+    def generate_knowledge_graph(user_id: int, topic: str) -> dict:
+        """生成知识图：DeepSeek 产出 Mermaid 结构，可选 Ark 配图。"""
+        text = (topic or '').strip()
+        if len(text) < 2:
+            raise ValueError('请描述要生成的知识主题')
+        CourseSafetyService.ensure_safe(text, enforce_course_scope=True)
+
+        from agents.http_client import direct_post
+        from agents.llm_client import messenger_provider
+
+        provider = messenger_provider()
+        mermaid = (
+            f'graph TD\n  A["{text[:24]}"] --> B["核心概念"]\n  B --> C["常见易错点"]\n  B --> D["练习建议"]'
+        )
+        backend = 'local_template'
+        if provider:
+            api_key, endpoint, model = provider
+            try:
+                response = direct_post(
+                    endpoint,
+                    headers={
+                        'Authorization': f'Bearer {api_key}',
+                        'Content-Type': 'application/json',
+                    },
+                    json={
+                        'model': model,
+                        'messages': [
+                            {
+                                'role': 'system',
+                                'content': (
+                                    '你是 Python 教学助手。根据主题输出简洁 Mermaid 思维导图，'
+                                    '使用 graph TD，节点标签用中文，6-10 个节点。只输出 mermaid 代码。'
+                                ),
+                            },
+                            {'role': 'user', 'content': f'主题：{text[:200]}'},
+                        ],
+                        'temperature': 0.35,
+                        'max_tokens': 480,
+                    },
+                    timeout=(3, 15),
+                )
+                response.raise_for_status()
+                content = (response.json()['choices'][0]['message']['content'] or '').strip()
+                if 'graph' in content:
+                    mermaid = content.replace('```mermaid', '').replace('```', '').strip()
+                    backend = 'deepseek'
+            except Exception:
+                pass
+
+        # 配图改为短超时尽力而为：同步等满 2K 生图会 ~40s，拖慢「生成知识图」主路径
+        illustration = None
+        try:
+            from app.services.ark_media import ArkMediaService
+
+            if ArkMediaService.image_configured():
+                prompt = (
+                    'Clean educational mind map infographic, Chinese labels, white background, '
+                    f'topic: {text[:120]}'
+                )
+                url = ArkMediaService.generate_image(prompt, size='1K', timeout=(3, 12))
+                if url:
+                    illustration = {'url': url, 'caption': '知识图预览'}
+        except Exception:
+            pass
+
+        return {
+            'topic': text,
+            'mermaid': mermaid,
+            'illustration': illustration,
+            'backend': backend,
+        }
+
+    @staticmethod
+    def generate_learning_document(user_id: int, topic: str) -> dict:
+        """生成学习文档：DeepSeek 产出 Markdown 提纲与正文摘要。"""
+        text = (topic or '').strip()
+        if len(text) < 2:
+            raise ValueError('请描述要生成的文档主题')
+        CourseSafetyService.ensure_safe(text, enforce_course_scope=True)
+
+        from agents.http_client import direct_post
+        from agents.llm_client import messenger_provider
+
+        title = f'{text[:40]} · 学习文档'
+        markdown = (
+            f'# {title}\n\n'
+            f'## 学习目标\n- 理解「{text}」的核心概念\n\n'
+            '## 建议步骤\n1. 阅读示例代码\n2. 完成 2 道配套练习\n3. 回顾易错点\n'
+        )
+        backend = 'local_template'
+        provider = messenger_provider()
+        if provider:
+            api_key, endpoint, model = provider
+            try:
+                response = direct_post(
+                    endpoint,
+                    headers={
+                        'Authorization': f'Bearer {api_key}',
+                        'Content-Type': 'application/json',
+                    },
+                    json={
+                        'model': model,
+                        'messages': [
+                            {
+                                'role': 'system',
+                                'content': (
+                                    '你是 Python 课程助教。根据主题写一份 Markdown 学习文档，'
+                                    '含标题、学习目标、分步讲解、小练习与易错提醒，400-600 字。'
+                                ),
+                            },
+                            {'role': 'user', 'content': f'主题：{text[:200]}'},
+                        ],
+                        'temperature': 0.5,
+                        'max_tokens': 900,
+                    },
+                    timeout=(3, 18),
+                )
+                response.raise_for_status()
+                content = (response.json()['choices'][0]['message']['content'] or '').strip()
+                if content:
+                    markdown = content.replace('```markdown', '').replace('```', '').strip()
+                    backend = 'deepseek'
+                    first_line = markdown.splitlines()[0].lstrip('# ').strip()
+                    if first_line:
+                        title = first_line
+            except Exception:
+                pass
+
+        return {
+            'title': title,
+            'markdown': markdown,
+            'backend': backend,
+        }

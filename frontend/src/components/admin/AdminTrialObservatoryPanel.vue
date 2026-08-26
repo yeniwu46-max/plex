@@ -161,7 +161,7 @@ onMounted(() => {
 
       <div class="admin-trials__charts">
         <div class="admin-trials__chart-card">
-          <h4>平台试炼活跃度（近 7 天）</h4>
+          <h4>平台试炼活跃度 · 近 7 天</h4>
           <div class="admin-trials__chart-wrap">
             <plex-line-chart
               :x-data="dashboardCharts?.x_data ?? ['周一', '周二', '周三', '周四', '周五', '周六', '周日']"

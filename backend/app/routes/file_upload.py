@@ -134,33 +134,33 @@ def set_class_file_score():
         return error_response(str(exc), 50001, None, 500)
 
 
-# ─── 后续处理 stub 路由 ────────────────────────────────────────
+# ─── 可选文件处理能力 ──────────────────────────────────────────
 
 @upload_bp.post('/graph/import')
 @jwt_required()
 @role_required('admin')
 def import_graph_data():
-    """stub：导入知识图谱数据（第一阶段 pending）。"""
+    """返回当前部署的知识图谱导入能力状态。"""
     body = request.get_json(silent=True) or {}
     file_id = body.get('fileId', '')
-    return success_response({'status': 'pending', 'fileId': file_id, 'message': '图谱导入队列已接收，功能即将开放'})
+    return error_response('当前部署未启用知识图谱导入服务，请联系平台管理员', 50101, {'fileId': file_id}, 501)
 
 
 @upload_bp.post('/config/validate')
 @jwt_required()
 @role_required('admin')
 def validate_config():
-    """stub：验证系统配置文件（第一阶段 pending）。"""
+    """返回当前部署的配置校验能力状态。"""
     body = request.get_json(silent=True) or {}
     file_id = body.get('fileId', '')
-    return success_response({'status': 'pending', 'fileId': file_id, 'message': '配置校验队列已接收，功能即将开放'})
+    return error_response('当前部署未启用配置校验服务，请联系平台管理员', 50101, {'fileId': file_id}, 501)
 
 
 @upload_bp.post('/questions/import')
 @jwt_required()
 @role_required('teacher', 'admin')
 def import_questions():
-    """stub：批量导入题库文件（第一阶段 pending）。"""
+    """返回当前部署的题库文件导入能力状态。"""
     body = request.get_json(silent=True) or {}
     file_id = body.get('fileId', '')
-    return success_response({'status': 'pending', 'fileId': file_id, 'message': '题库导入队列已接收，功能即将开放'})
+    return error_response('当前部署未启用题库文件导入服务，请联系平台管理员', 50101, {'fileId': file_id}, 501)

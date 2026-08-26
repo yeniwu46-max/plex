@@ -25,7 +25,7 @@ STATUS_TO_SCORE = {
 }
 
 from app.constants.test_accounts import is_test_sandbox_user
-from app.constants.star_path_unlock import MASTERY_THRESHOLD
+from app.constants.star_path_unlock import MASTERY_THRESHOLD, UNLOCK_ALL
 
 
 class LearningPathService:
@@ -56,6 +56,8 @@ class LearningPathService:
 
     @staticmethod
     def _prerequisites_met(node_id: str, mastery: dict[str, dict], prereq_map: dict[str, list[str]]) -> bool:
+        if UNLOCK_ALL:
+            return True
         for pre in prereq_map.get(node_id, []):
             if mastery.get(pre, {}).get('mastery_score', 0) < MASTERY_THRESHOLD:
                 return False
@@ -199,25 +201,21 @@ class LearningPathService:
 
         remediation_paths = cls._build_remediation_paths(user_id, mastery)
 
-        ordered_candidates: list[str] = []
-        for nid in cls._topological_order(node_ids, prereq_map):
-            if mastery.get(nid, {}).get('mastery_score', 0) < MASTERY_THRESHOLD:
-                ordered_candidates.append(nid)
+        # 星轨要把 26 个节点全部铺出来：既然已经取消解锁限制，学生可以任意跳转，
+        # 路径就不该只列"还没掌握的"那几个（全掌握时原来只会剩 5 个兜底节点）。
+        # 排序仍按推荐度来，_nba_score 以 1-掌握度 为主项，未掌握的自然排在前面；
+        # 分数相同的按拓扑顺序（即教学顺序）稳定排列。
+        ordered_candidates = cls._topological_order(node_ids, prereq_map)
+        if focus_id and focus_id in node_ids:
+            ordered_candidates = [focus_id] + [nid for nid in ordered_candidates if nid != focus_id]
 
-        if focus_id and focus_id not in ordered_candidates and focus_id in node_ids:
-            ordered_candidates.insert(0, focus_id)
-
+        position = {nid: index for index, nid in enumerate(ordered_candidates)}
         scored = []
         for nid in ordered_candidates:
             entry = get_entry(nid)
             scored.append((cls._nba_score(nid, mastery, focus_id, entry.level if entry else 'basic'), nid))
-        scored.sort(key=lambda x: (-x[0], ordered_candidates.index(x[1]) if x[1] in ordered_candidates else 99))
-        ordered_ids = [nid for _, nid in scored]
-
-        if not ordered_ids:
-            ordered_ids = [nid for nid in node_ids if mastery.get(nid, {}).get('mastery_score', 0) < MASTERY_THRESHOLD]
-            if not ordered_ids:
-                ordered_ids = node_ids[:5]
+        scored.sort(key=lambda item: (-item[0], position[item[1]]))
+        ordered_ids = [nid for _, nid in scored] or node_ids
 
         ordered_nodes: list[dict] = []
         for index, nid in enumerate(ordered_ids):
@@ -270,3 +268,84 @@ class LearningPathService:
             'graph_backend': graph_backend_name(),
             'topology_source': topology.get('source', 'memory'),
         }
+
+    @classmethod
+    def ai_advice(cls, user_id: int, focus_node_id: str | None = None) -> dict:
+        """调用 DeepSeek 生成小E 学习路径文字建议。"""
+        from agents.http_client import direct_post
+        from agents.llm_client import learning_path_provider
+
+        plan = cls.plan(user_id, focus_node_id=focus_node_id)
+        nodes = plan.get('ordered_nodes') or []
+        weak = [n for n in nodes if (n.get('mastery_score') or 0) < 0.75][:6]
+        strong = [n for n in nodes if (n.get('mastery_score') or 0) >= 0.75][:3]
+        nba = plan.get('next_best_action') or {}
+
+        def _fmt(items: list[dict]) -> str:
+            return '、'.join(
+                f"{item.get('label')}({int((item.get('mastery_score') or 0) * 100)}%)"
+                for item in items
+            ) or '暂无'
+
+        fallback = {
+            'advice': (
+                f"建议优先巩固：{_fmt(weak)}。"
+                f"当前下一步：{nba.get('reason') or '按星轨顺序推进'}。"
+            ),
+            'next_step': nba.get('reason') or '按推荐节点继续练习',
+            'backend': 'local_rules',
+            'fallback': True,
+        }
+
+        provider = learning_path_provider()
+        if not provider:
+            return fallback
+
+        api_key, endpoint, model = provider
+        system = (
+            '你是 A3 学习系统的小E，为学生制定 Python 星轨学习路径建议。'
+            '根据掌握度数据给出 2-3 句具体、可执行的建议，语气友好简洁。'
+            '不要提及模型或 API。输出 JSON：{"advice":"...","next_step":"..."}'
+        )
+        user_msg = (
+            f"薄弱节点：{_fmt(weak)}\n"
+            f"已掌握：{_fmt(strong)}\n"
+            f"系统推荐：{nba.get('reason') or '无'}"
+        )
+        try:
+            response = direct_post(
+                endpoint,
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'model': model,
+                    'messages': [
+                        {'role': 'system', 'content': system},
+                        {'role': 'user', 'content': user_msg},
+                    ],
+                    'temperature': 0.45,
+                    'max_tokens': 320,
+                },
+                timeout=(3, 12),
+            )
+            response.raise_for_status()
+            content = response.json()['choices'][0]['message']['content']
+            import json
+            import re
+
+            match = re.search(r'\{[\s\S]*\}', content)
+            parsed = json.loads(match.group(0)) if match else {}
+            advice = str(parsed.get('advice') or '').strip()
+            next_step = str(parsed.get('next_step') or nba.get('reason') or '').strip()
+            if not advice:
+                return fallback
+            return {
+                'advice': advice,
+                'next_step': next_step or advice[:80],
+                'backend': 'deepseek',
+                'fallback': False,
+            }
+        except Exception:
+            return fallback

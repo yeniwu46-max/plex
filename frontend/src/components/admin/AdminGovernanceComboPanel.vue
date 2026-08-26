@@ -21,6 +21,10 @@ const settingsDifficulty = ref(50)
 const settingsNotices = ref<{ key: string; label: string; enabled: boolean }[]>([])
 
 const NOTICE_LABELS: Record<string, string> = {
+  done: '试炼完成通知',
+  abyss: '深渊试炼通知',
+  ai: 'AI 智能体通知',
+  system: '系统运维通知',
   trial_publish: '试炼发布通知',
   resource_review: '资源审核通知',
   class_change: '班级变更通知',
@@ -44,10 +48,10 @@ async function loadSettings() {
       enabled: item.enabled,
     }))
     if (!settingsNotices.value.length) {
-      settingsNotices.value = Object.keys(NOTICE_LABELS).map((key) => ({
+      settingsNotices.value = (['done', 'abyss', 'ai', 'system'] as const).map((key) => ({
         key,
         label: NOTICE_LABELS[key],
-        enabled: true,
+        enabled: key !== 'system',
       }))
     }
   } catch (err) {
@@ -177,7 +181,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  min-height: 320px;
+  box-sizing: border-box;
+  min-height: calc(100dvh - 260px);
+  height: 100%;
+}
+
+.gov-combo__pane {
+  flex: 1;
+  min-height: 0;
 }
 
 .gov-combo__tabs {

@@ -381,12 +381,12 @@ function localCodeHint(payload: CodeHintPayload): CodeHintResult {
   for (const line of lines.length ? lines : ['']) {
     const stripped = line.trim()
     if (!inserted && stripped && !stripped.startsWith('#')) {
-      annotated.push('# TODO: 从这里开始检查变量、条件和输出是否符合题意')
+      annotated.push('# 请从这里检查变量、条件和输出是否符合题意')
       inserted = true
     }
     annotated.push(line)
   }
-  if (!inserted) annotated.push('# TODO: 在这里补充解题逻辑，再运行测试观察差异')
+  if (!inserted) annotated.push('# 请在这里补充解题逻辑，再运行测试观察差异')
   return {
     annotated_code: `${annotated.join('\n').trimEnd()}\n`,
     comments: comments.slice(0, 4),

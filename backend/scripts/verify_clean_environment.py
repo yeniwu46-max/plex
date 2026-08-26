@@ -36,7 +36,7 @@ def command_succeeds(command):
         return False
 
 
-def run(output: Path) -> dict:
+def run(output: Path, static_frontend: bool = False) -> dict:
     app = create_app('development')
     client = app.test_client()
     accounts = {}
@@ -53,10 +53,17 @@ def run(output: Path) -> dict:
         database_backend = app.extensions['sqlalchemy'].engine.dialect.name
     checks = {
         'python': {'passed': sys.version_info >= (3, 12), 'version': sys.version.split()[0]},
-        'node': {'passed': shutil.which('node') is not None, 'version': command_version(['node', '--version'])},
+        'node': {
+            'passed': static_frontend or shutil.which('node') is not None,
+            'version': 'not-required-prebuilt-static' if static_frontend else command_version(['node', '--version']),
+        },
         'npm': {
-            'passed': shutil.which('npm') is not None,
-            'version': command_version(['npm.cmd' if os.name == 'nt' else 'npm', '--version']),
+            'passed': static_frontend or shutil.which('npm') is not None,
+            'version': (
+                'not-required-prebuilt-static'
+                if static_frontend
+                else command_version(['npm.cmd' if os.name == 'nt' else 'npm', '--version'])
+            ),
         },
         'database': {
             'passed': health_response.status_code == 200,
@@ -97,7 +104,8 @@ if __name__ == '__main__':
         type=Path,
         default=ROOT / 'reports/a3-next-stage/clean-environment.json',
     )
+    parser.add_argument('--static-frontend', action='store_true')
     args = parser.parse_args()
-    result = run(args.output)
+    result = run(args.output, static_frontend=args.static_frontend)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     raise SystemExit(0 if result['passed'] else 1)

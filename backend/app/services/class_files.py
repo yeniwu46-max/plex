@@ -97,6 +97,7 @@ class ClassFileService:
                                 {
                                     **entry,
                                     'owner_name': (teacher.real_name or teacher.username) if teacher else '教师',
+                                    'owner_username': teacher.username if teacher else None,
                                     'owner_role': 'teacher',
                                 }
                             )
@@ -111,12 +112,18 @@ class ClassFileService:
                                 {
                                     **entry,
                                     'owner_name': student.real_name or student.username,
+                                    'owner_username': student.username,
                                     'owner_role': 'student',
                                 }
                             )
         elif role == 'admin':
             for entry in _scan_user_files(user_id):
-                items.append({**entry, 'owner_name': user.real_name or user.username, 'owner_role': role})
+                items.append({
+                    **entry,
+                    'owner_name': user.real_name or user.username,
+                    'owner_username': user.username,
+                    'owner_role': role,
+                })
 
         scores = _load_scores()
         for item in items:

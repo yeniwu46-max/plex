@@ -193,3 +193,35 @@ export async function fetchAdminClassTrialStats(classId: number) {
   if (data.code !== 0) throw new Error(data.message || '加载试炼统计失败')
   return data.data
 }
+
+export interface AdminClassStudentItem {
+  id: number
+  name: string
+  username: string
+  email: string
+  phone?: string | null
+  gender?: string | null
+  status: string
+  level: number
+  total_points: number
+  consecutive_days: number
+  last_learn_date?: string | null
+  created_at?: string | null
+}
+
+export interface AdminClassStudentsResult {
+  class_id: number
+  class_name: string
+  teacher_id?: number | null
+  teacher_name?: string | null
+  student_count: number
+  items: AdminClassStudentItem[]
+}
+
+export async function fetchAdminClassStudents(classId: number) {
+  const { data } = await http.get<ApiEnvelope<AdminClassStudentsResult>>(
+    `/v1/admin/trials/classes/${classId}/students`,
+  )
+  if (data.code !== 0) throw new Error(data.message || '加载学生列表失败')
+  return data.data
+}

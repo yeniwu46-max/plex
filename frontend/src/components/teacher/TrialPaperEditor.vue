@@ -128,7 +128,7 @@ watch(
 <template>
   <section class="paper-editor" aria-label="试卷编辑器">
     <header class="paper-editor__head">
-      <strong>试卷题目（{{ questions.length }} 题）</strong>
+      <strong>试卷题目 · {{ questions.length }} 题</strong>
       <div class="paper-editor__actions">
         <n-button size="small" secondary @click="addMcq">+ 选择题</n-button>
         <n-button size="small" secondary @click="addCoding">+ 编程题</n-button>
@@ -165,7 +165,7 @@ watch(
         </div>
       </header>
 
-      <p class="paper-editor__preview">{{ q.stem || '（未填写题干）' }}</p>
+      <p class="paper-editor__preview">{{ q.stem || '未填写题干' }}</p>
 
       <div v-if="editingIndex === index" class="paper-editor__form">
         <label>
@@ -238,7 +238,7 @@ watch(
               />
               <n-input
                 :value="tc.setup || ''"
-                placeholder="setup（可选）"
+                placeholder="初始化代码，可选"
                 @update:value="(v) => {
                   const test_cases = q.test_cases.map((c, i) => i === caseIdx ? { ...c, setup: v || undefined } : c)
                   updateQuestion(index, { test_cases })

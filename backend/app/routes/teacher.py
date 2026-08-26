@@ -66,6 +66,74 @@ def get_teacher_class_stats():
         return error_response(str(exc), 50001, None, 500)
 
 
+@teacher_bp.route('/online-students', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_online_students():
+    """班级实时在线学员名单（基于心跳 presence）。"""
+    try:
+        from app.services.presence import PresenceService
+        from app.services.trial import TrialService
+
+        current_user_id = int(get_jwt_identity())
+        class_id = request.args.get('class_id', type=int)
+        if not class_id:
+            overview = TeacherService.get_overview(current_user_id, None, 'week')
+            class_id = (overview.get('selected_class') or {}).get('id')
+        if class_id:
+            TrialService._get_teacher_class(class_id, current_user_id, _role_name(current_user_id))
+        return success_response(PresenceService.class_online_students(class_id))
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@teacher_bp.route('/profile', methods=['GET'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def get_teacher_profile():
+    """教师个人信息小页：头像、姓名、性别、管理班级、联系方式、在线状态。"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        user = db.session.get(User, current_user_id)
+        if not user:
+            return error_response('用户不存在', 40401, None, 404)
+        classes = TeacherService.list_classes(current_user_id) if hasattr(TeacherService, 'list_classes') else []
+        if not classes:
+            from app.models import Class
+            if user.role and user.role.name == 'admin':
+                class_rows = Class.query.order_by(Class.id.asc()).all()
+            else:
+                class_rows = Class.query.filter_by(teacher_id=current_user_id).order_by(Class.id.asc()).all()
+            classes = [
+                {
+                    'id': row.id,
+                    'name': row.name,
+                    'student_count': row.student_count or 0,
+                    'join_code': row.join_code,
+                }
+                for row in class_rows
+            ]
+        return success_response({
+            'id': user.id,
+            'username': user.username,
+            'real_name': user.real_name,
+            'gender': user.gender or 'other',
+            'email': user.email,
+            'phone': user.phone,
+            'avatar_url': user.avatar_url,
+            'bio': user.bio,
+            'status': user.status or 'active',
+            'online': True,
+            'classes': classes,
+        })
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @teacher_bp.route('/classes/<int:class_id>/trial-answers', methods=['GET'])
 @jwt_required()
 @role_required('teacher', 'admin')
@@ -215,8 +283,11 @@ def get_class_diagnosis():
         class_id = request.args.get('class_id', type=int)
         if not class_id:
             return error_response('class_id 必填', 40001, None, 400)
-        TrialService._get_teacher_class(class_id, current_user_id, _role_name(current_user_id))
-        return success_response(AgentOrchestrator.class_diagnosis(class_id))
+        cls = TrialService._get_teacher_class(class_id, current_user_id, _role_name(current_user_id))
+        result = AgentOrchestrator.class_diagnosis(cls.id)
+        if isinstance(result, dict):
+            result.setdefault('class_id', cls.id)
+        return success_response(result)
     except PermissionError as exc:
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:

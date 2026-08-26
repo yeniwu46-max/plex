@@ -7,8 +7,9 @@ set "ROOT=%CD%"
 set "BACKEND=%ROOT%\backend"
 set "FRONTEND=%ROOT%\frontend"
 set "VENV=%ROOT%\.venv"
-set "BUNDLED_PYTHON=C:\Users\BX\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+set "BUNDLED_PYTHON="
 set "PYTHON="
+set "PORTABLE_RUNTIME=0"
 set "BACKEND_PORT=5100"
 set "FRONTEND_PORT=5180"
 set "NPM_CACHE=%ROOT%\.npm-cache"
@@ -21,6 +22,10 @@ set "HELP_ONLY=0"
 set "PLEX_FRONTEND_MODE=dev"
 set "PLEX_FRONTEND_DIST="
 set "SKIP_DEMO_SEED=0"
+
+rem Prefer the relocatable Python shipped in the delivery package.
+if defined PLEX_PACKAGE_ROOT if exist "%PLEX_PACKAGE_ROOT%\runtime\python\python.exe" set "BUNDLED_PYTHON=%PLEX_PACKAGE_ROOT%\runtime\python\python.exe"
+if not defined BUNDLED_PYTHON if exist "%ROOT%\runtime\python\python.exe" set "BUNDLED_PYTHON=%ROOT%\runtime\python\python.exe"
 
 rem Local API must bypass system HTTP proxy (Clash/VPN breaks /api reverse proxy)
 set "NO_PROXY=127.0.0.1,localhost,::1"
@@ -37,9 +42,6 @@ echo ========================================
 
 if not exist "%BACKEND%\manage.py" goto :missing_backend
 if not exist "%FRONTEND%\package.json" goto :missing_frontend
-where py >nul 2>&1
-if errorlevel 1 where python >nul 2>&1
-if errorlevel 1 goto :missing_python
 if /I not "%PLEX_FRONTEND_MODE%"=="static" (
     where node >nul 2>&1
     if errorlevel 1 goto :missing_node
@@ -49,30 +51,24 @@ if /I not "%PLEX_FRONTEND_MODE%"=="static" (
 
 call :use_venv "%VENV%"
 
+if not defined PYTHON if defined BUNDLED_PYTHON (
+    "%BUNDLED_PYTHON%" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)" >nul 2>&1
+    if not errorlevel 1 (
+        set "PYTHON=%BUNDLED_PYTHON%"
+        set "PORTABLE_RUNTIME=1"
+        echo [1/6] Portable Python runtime found: %BUNDLED_PYTHON%
+    )
+)
+
 if not defined PYTHON (
     echo [1/6] Creating project virtual environment...
-    py -3.12 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)" >nul 2>&1
-    if not errorlevel 1 (
-        py -3.12 -m venv "%VENV%"
-    ) else (
-        if exist "%BUNDLED_PYTHON%" "%BUNDLED_PYTHON%" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)" >nul 2>&1
-        if not errorlevel 1 (
-            "%BUNDLED_PYTHON%" -m venv "%VENV%"
-        ) else (
-            python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)" >nul 2>&1
-            if errorlevel 1 (
-                echo [ERROR] Python 3.12 is required to create a virtual environment.
-                exit /b 1
-            )
-            python -m venv "%VENV%"
-        )
-    )
+    call :create_venv "%VENV%"
     if errorlevel 1 (
-        echo [ERROR] Failed to create the Python virtual environment.
+        echo [ERROR] Python 3.12 is required to create the virtual environment.
         exit /b 1
     )
     set "PYTHON=%VENV%\Scripts\python.exe"
-) else (
+) else if "%PORTABLE_RUNTIME%"=="0" (
     echo [1/6] Project virtual environment found: %VENV%
 )
 
@@ -87,17 +83,18 @@ if /I not "%PLEX_FRONTEND_MODE%"=="static" (
 )
 
 echo [3/6] Backend dependencies
-"%PYTHON%" -m pip install -r "%BACKEND%\requirements.txt" --disable-pip-version-check >nul
-if errorlevel 1 exit /b 1
-echo [3b/6] Multi-agent dependencies
-if defined PLEX_PACKAGE_ROOT (
-    dir /b "%PLEX_PACKAGE_ROOT%\runtime\python-wheels\*.whl" >nul 2>&1
-    if not errorlevel 1 (
-        echo Installing agent wheels from submission runtime cache...
-        "%PYTHON%" -m pip install --no-index --find-links "%PLEX_PACKAGE_ROOT%\runtime\python-wheels" -r "%BACKEND%\requirements-agents.txt" --disable-pip-version-check >nul 2>&1
+if "%PORTABLE_RUNTIME%"=="1" (
+    "%PYTHON%" -c "import alembic, crewai, edge_tts, flask, flask_cors, flask_jwt_extended, flask_sqlalchemy, jsonschema, neo4j, pydantic, pymysql, requests, sqlalchemy" >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] The bundled Python runtime is incomplete or damaged.
+        exit /b 1
     )
+) else (
+    "%PYTHON%" -m pip install -r "%BACKEND%\requirements.txt" --disable-pip-version-check >nul
+    if errorlevel 1 exit /b 1
+    echo [3b/6] Multi-agent dependencies
+    "%PYTHON%" -m pip install -r "%BACKEND%\requirements-agents.txt" --disable-pip-version-check >nul 2>&1
 )
-"%PYTHON%" -m pip install -r "%BACKEND%\requirements-agents.txt" --disable-pip-version-check >nul 2>&1
 
 if defined PLEX_PACKAGE_ROOT (
     echo [3c/6] Apply submission API env
@@ -119,9 +116,13 @@ echo [5/6] Database migration and demo data
 if defined PLEX_PACKAGE_ROOT (
     if exist "%PLEX_PACKAGE_ROOT%\data\database\learning_system.db" (
         if not exist "%BACKEND%\instance" mkdir "%BACKEND%\instance"
-        echo Using prebuilt submission database
-        copy /Y "%PLEX_PACKAGE_ROOT%\data\database\learning_system.db" "%BACKEND%\instance\learning_system.db" >nul
         set "SKIP_DEMO_SEED=1"
+        if not exist "%BACKEND%\instance\learning_system.db" (
+            echo First run: installing the packaged database snapshot
+            copy /Y "%PLEX_PACKAGE_ROOT%\data\database\learning_system.db" "%BACKEND%\instance\learning_system.db" >nul
+        ) else (
+            echo Reusing the existing packaged database; user data is preserved
+        )
     )
 )
 pushd "%BACKEND%"
@@ -144,7 +145,11 @@ if "%SKIP_DEMO_SEED%"=="0" (
 )
 
 echo [6/6] Health, database, and demo-account checks
-"%PYTHON%" scripts\verify_clean_environment.py
+if /I "%PLEX_FRONTEND_MODE%"=="static" (
+    "%PYTHON%" scripts\verify_clean_environment.py --static-frontend
+) else (
+    "%PYTHON%" scripts\verify_clean_environment.py
+)
 if errorlevel 1 (
     popd
     exit /b 1
@@ -246,6 +251,24 @@ set "VENV=%~1"
 set "PYTHON=%~1\Scripts\python.exe"
 exit /b 0
 
+:create_venv
+where py >nul 2>&1
+if not errorlevel 1 (
+    py -3.12 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)" >nul 2>&1
+    if not errorlevel 1 (
+        py -3.12 -m venv "%~1"
+        if errorlevel 1 exit /b 1
+        exit /b 0
+    )
+)
+where python >nul 2>&1
+if errorlevel 1 exit /b 1
+python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)" >nul 2>&1
+if errorlevel 1 exit /b 1
+python -m venv "%~1"
+if errorlevel 1 exit /b 1
+exit /b 0
+
 :check_backend
 netstat -ano | findstr /R /C:":%BACKEND_PORT% .*LISTENING" >nul 2>&1
 if errorlevel 1 exit /b 0
@@ -309,7 +332,7 @@ exit /b 1
 echo [ERROR] frontend\package.json was not found.
 exit /b 1
 :missing_python
-echo [ERROR] Python was not found.
+echo [ERROR] Python 3.12 was not found and the portable runtime is unavailable.
 exit /b 1
 :missing_node
 echo [ERROR] Node.js was not found.

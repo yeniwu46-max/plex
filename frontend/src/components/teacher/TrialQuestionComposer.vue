@@ -175,7 +175,7 @@ function importFromBank(item: CodingBankItem) {
 }
 
 function previewText(q: ComposerQuestion) {
-  return q.stem?.trim() || '（未填写题干）'
+  return q.stem?.trim() || '未填写题干'
 }
 
 onMounted(async () => {
@@ -190,7 +190,7 @@ onMounted(async () => {
 <template>
   <section class="composer" aria-label="题目编辑器">
     <header class="composer__head">
-      <strong>试卷题目（{{ questions.length }} 题）</strong>
+      <strong>试卷题目 · {{ questions.length }} 题</strong>
       <div class="composer__add">
         <n-button
           v-for="type in addTypes"
@@ -355,7 +355,7 @@ onMounted(async () => {
         <!-- 填空题 -->
         <template v-else-if="q.type === 'fill_blank'">
           <div class="composer__blanks">
-            <span class="composer__sub">空位答案（按顺序）</span>
+            <span class="composer__sub">空位答案 · 按顺序填写</span>
             <div v-for="(_, blankIdx) in q.blankAnswers" :key="blankIdx" class="composer__blank">
               <span class="composer__blank-no">空 {{ blankIdx + 1 }}</span>
               <n-input
@@ -432,7 +432,7 @@ onMounted(async () => {
               />
               <n-input
                 :value="tc.setup || ''"
-                placeholder="setup（可选）"
+                placeholder="初始化代码，可选"
                 @update:value="(v) => updateTestCase(index, caseIdx, { setup: v || undefined })"
               />
               <n-input
@@ -454,7 +454,7 @@ onMounted(async () => {
         </template>
 
         <label class="composer__field">
-          <span>解析（可选）</span>
+          <span>解析，可选</span>
           <n-input
             :value="q.analysis"
             type="textarea"

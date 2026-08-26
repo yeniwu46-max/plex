@@ -382,7 +382,7 @@ onMounted(() => {
             </header>
             <p class="trial-create__ai-lead">基于所选知识点与题型批量生成题目，生成后可在中间栏继续编辑与微调。</p>
             <div class="tc-field">
-              <span>题型（可多选）</span>
+              <span>题型，可多选</span>
               <n-checkbox-group v-model:value="aiQuestionTypes">
                 <n-checkbox v-for="opt in aiTypeOptions" :key="opt.value" :value="opt.value">
                   {{ opt.label }}
@@ -413,7 +413,7 @@ onMounted(() => {
           </section>
 
           <section class="trial-create__card">
-            <h3>知识点（知识宇宙）</h3>
+            <h3>知识宇宙选点</h3>
             <KnowledgePointPicker v-model="selectedKnowledgeKeys" :domains="knowledgeDomains" />
           </section>
 
@@ -454,7 +454,7 @@ onMounted(() => {
               <n-select v-model:value="scheduleDelay" :options="scheduleDelayOptions" />
             </label>
             <label class="tc-field">
-              <span>截止时间（可选）</span>
+              <span>截止时间，可选</span>
               <n-date-picker
                 v-model:value="deadline"
                 type="datetime"

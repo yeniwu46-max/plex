@@ -16,6 +16,7 @@ import ClassRankingBoard from '../components/teacher/ClassRankingBoard.vue'
 import AttentionStudentsModal, {
   type AttentionStudentListItem,
 } from '../components/teacher/AttentionStudentsModal.vue'
+import OnlineExplorersModal from '../components/teacher/OnlineExplorersModal.vue'
 import ExplorerProfileModal, {
   type ExplorerProfilePayload,
 } from '../components/teacher/ExplorerProfileModal.vue'
@@ -54,6 +55,7 @@ function goExplorer(studentId: number) {
 const profileVisible = ref(false)
 const profileStudent = ref<ExplorerProfilePayload | null>(null)
 const attentionModalVisible = ref(false)
+const onlineModalVisible = ref(false)
 
 function openStudentProfile(payload: {
   userId: number
@@ -286,6 +288,10 @@ function openAttentionModal() {
   attentionModalVisible.value = true
 }
 
+function openOnlineModal() {
+  onlineModalVisible.value = true
+}
+
 function onAttentionSelect(student: AttentionStudentListItem) {
   attentionModalVisible.value = false
   openStudentProfile({
@@ -333,11 +339,11 @@ function onAttentionSelect(student: AttentionStudentListItem) {
               v-for="item in explorationStats"
               :key="item.key"
               class="stat-card"
-              :class="{ 'stat-card--clickable': item.key === 'risk' }"
-              :role="item.key === 'risk' ? 'button' : undefined"
-              :tabindex="item.key === 'risk' ? 0 : undefined"
-              @click="item.key === 'risk' && openAttentionModal()"
-              @keydown.enter.prevent="item.key === 'risk' && openAttentionModal()"
+              :class="{ 'stat-card--clickable': item.key === 'risk' || item.key === 'active' }"
+              :role="item.key === 'risk' || item.key === 'active' ? 'button' : undefined"
+              :tabindex="item.key === 'risk' || item.key === 'active' ? 0 : undefined"
+              @click="item.key === 'risk' ? openAttentionModal() : item.key === 'active' ? openOnlineModal() : undefined"
+              @keydown.enter.prevent="item.key === 'risk' ? openAttentionModal() : item.key === 'active' ? openOnlineModal() : undefined"
             >
               <span class="stat-card__icon"><n-icon :component="item.icon" /></span>
               <div class="stat-card__body">
@@ -470,6 +476,11 @@ function onAttentionSelect(student: AttentionStudentListItem) {
       :students="attentionListItems"
       :class-name="overview?.selected_class?.name"
       @select="onAttentionSelect"
+    />
+    <online-explorers-modal
+      v-model:show="onlineModalVisible"
+      :class-id="selectedClassId"
+      :class-name="overview?.selected_class?.name"
     />
   </TeacherDashboardShell>
 </template>

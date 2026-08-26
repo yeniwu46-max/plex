@@ -43,15 +43,17 @@ class IflytekSparkService:
 
     @staticmethod
     def _resolve_api_password(purpose: str | None = None) -> str:
-        """Resolve Bearer token from env (supports appId:apiKey combined credentials).
+        """Resolve Bearer token from env (supports apiKey:apiSecret combined credentials).
 
-        purpose='trial_analysis' 时优先使用试炼分析专用密钥，避免覆盖驿站小E凭证。
-        purpose='supply_station' 时优先使用补给站专用密钥，与小E/试炼凭证隔离。
+        purpose='trial_analysis' / 'trial_coach'：试炼分析与编程辅导小E专用密钥。
+        purpose='supply_station'：补给站专用密钥。
+        purpose='messenger' 或默认：驿站/流式小E（IFLYTEK_SPARK_CREDENTIALS）。
         """
-        if purpose == 'trial_analysis':
+        if purpose in {'trial_analysis', 'trial_coach'}:
             trial_cred = (
                 os.getenv('IFLYTEK_SPARK_TRIAL_CREDENTIALS', '').strip()
                 or os.getenv('IFLYTEK_SPARK_TRIAL_API_PASSWORD', '').strip()
+                or os.getenv('IFLYTEK_SPARK_COACH_CREDENTIALS', '').strip()
             )
             if trial_cred:
                 return trial_cred
@@ -62,6 +64,14 @@ class IflytekSparkService:
             )
             if supply_cred:
                 return supply_cred
+        if purpose == 'messenger':
+            messenger_cred = (
+                os.getenv('IFLYTEK_SPARK_MESSENGER_CREDENTIALS', '').strip()
+                or os.getenv('IFLYTEK_SPARK_CREDENTIALS', '').strip()
+                or os.getenv('IFLYTEK_SPARK_API_PASSWORD', '').strip()
+            )
+            if messenger_cred:
+                return messenger_cred
         direct = os.getenv('IFLYTEK_SPARK_API_PASSWORD', '').strip()
         if direct:
             return direct
@@ -209,9 +219,18 @@ class IflytekSparkService:
             raise
 
     @classmethod
-    def chat_text(cls, system_prompt: str, user_prompt: str, timeout: int = 30) -> str:
+    def chat_text(
+        cls,
+        system_prompt: str,
+        user_prompt: str,
+        timeout: int = 30,
+        *,
+        purpose: str | None = None,
+        temperature: float = 0.3,
+        max_tokens: int = 900,
+    ) -> str:
         """Return the provider's natural-language response without a JSON contract."""
-        password = cls._resolve_api_password()
+        password = cls._resolve_api_password(purpose)
         if not password:
             cls._record(status='unavailable', error_code='not_configured')
             raise SparkServiceError('not_configured', 'iflytek_not_configured')
@@ -233,7 +252,8 @@ class IflytekSparkService:
                         {'role': 'system', 'content': system_prompt},
                         {'role': 'user', 'content': user_prompt},
                     ],
-                    'temperature': 0.3,
+                    'temperature': temperature,
+                    'max_tokens': max_tokens,
                     'stream': False,
                 },
                 timeout=(3, timeout),

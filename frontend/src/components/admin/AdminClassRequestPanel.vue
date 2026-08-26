@@ -97,8 +97,8 @@ onMounted(() => {
     </p>
 
     <label class="gov-field">
-      <span>审批备注（可选，将写入申请记录）</span>
-      <n-input v-model:value="reviewNote" placeholder="例如：已与教研组确认" />
+      <span>审批备注，可选</span>
+      <n-input v-model:value="reviewNote" placeholder="请输入审批备注" />
     </label>
 
     <div v-if="loading" class="governance-empty">加载中…</div>

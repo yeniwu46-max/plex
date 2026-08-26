@@ -157,13 +157,12 @@ async function rerunAudit(item: PersonalizedResource) {
 }
 
 async function review(item: PersonalizedResource, status: 'approved' | 'rejected') {
-  if (status === 'approved' && !reasons.value[item.id]?.trim()) {
-    message.warning('批准资源前必须填写审核说明')
-    return
-  }
   try {
-    await reviewPersonalizedResource(item.id, status, reasons.value[item.id] || '')
-    message.success(status === 'approved' ? '资源已批准' : '资源已驳回')
+    const reason =
+      reasons.value[item.id]?.trim()
+      || (status === 'approved' ? '教师审核通过，允许学生使用' : '教师销毁该资源')
+    await reviewPersonalizedResource(item.id, status, reason)
+    message.success(status === 'approved' ? '已通过，学生可见' : '资源已销毁')
     detailShow.value = false
     detailItem.value = null
     await load()
@@ -281,7 +280,7 @@ onMounted(() => void load())
           secondary
           @click="listFilter = 'anomaly'"
         >
-          异常内容（{{ anomalyCount }}）
+          异常内容 · {{ anomalyCount }}
         </n-button>
         <n-button
           size="small"
@@ -289,13 +288,13 @@ onMounted(() => void load())
           secondary
           @click="listFilter = 'all_pending'"
         >
-          全部待审（{{ items.length }}）
+          全部待审 · {{ items.length }}
         </n-button>
       </div>
 
       <n-empty
         v-if="!items.length"
-        description="当前没有待审核资源（正常内容已由 AI 自动批准）"
+        description="当前没有待审核资源，符合规则的内容已自动通过"
       />
       <n-empty
         v-else-if="!pendingCards.length"
@@ -423,7 +422,7 @@ onMounted(() => void load())
               <n-collapse-item
                 v-for="step in auditReports[detailItem.id].steps"
                 :key="step.step"
-                :title="`第${step.step}步 · ${step.name}（${step.score} 分）`"
+                :title="`第${step.step}步 · ${step.name} · ${step.score} 分`"
                 :name="String(step.step)"
               >
                 <p class="step-summary">{{ step.summary }}</p>
@@ -459,10 +458,10 @@ onMounted(() => void load())
             </li>
           </ul>
 
-          <n-input v-model:value="reasons[detailItem.id]" placeholder="审核说明（批准时必填）" />
+          <n-input v-model:value="reasons[detailItem.id]" placeholder="填写审核说明，可选" />
           <footer class="detail-actions">
-            <n-button type="error" secondary @click="review(detailItem, 'rejected')">驳回</n-button>
-            <n-button type="primary" @click="review(detailItem, 'approved')">批准发布</n-button>
+            <n-button type="error" secondary @click="review(detailItem, 'rejected')">销毁</n-button>
+            <n-button type="primary" @click="review(detailItem, 'approved')">通过</n-button>
           </footer>
         </template>
       </n-modal>

@@ -31,22 +31,24 @@ class AgentOrchestrator:
         return mastery
 
     @staticmethod
-    def student_diagnose(user_id: int | None, payload: dict) -> dict:
+    def student_diagnose(user_id: int | None, payload: dict, *, fast: bool = False) -> dict:
         enriched = dict(payload)
         if user_id:
             enriched['user_id'] = user_id
-            if not enriched.get('recentMistakes'):
+            # The trial button already sends the current execution evidence.
+            # Avoid remote graph/history enrichment on its latency-sensitive path.
+            if not fast and not enriched.get('recentMistakes'):
                 try:
                     enriched['recentMistakes'] = MistakeService.list_recent_with_meta(user_id, limit=8)
                 except Exception:
                     enriched['recentMistakes'] = []
-            if not enriched.get('knowledgeMastery'):
+            if not fast and not enriched.get('knowledgeMastery'):
                 enriched['knowledgeMastery'] = AgentOrchestrator._knowledge_mastery(user_id)
         if not enriched.get('questionRequirements'):
             enriched['questionRequirements'] = (
                 enriched.get('questionPrompt') or enriched.get('questionTitle') or ''
             )
-        return run_student_diagnose(enriched)
+        return run_student_diagnose(enriched, fast=fast)
 
     @staticmethod
     def diagnose_learning_overview(user_id: int) -> dict:
@@ -213,11 +215,11 @@ class AgentOrchestrator:
 
     @staticmethod
     def trial_feedback(user_id: int | None, payload: dict) -> dict:
-        """On-demand trial feedback — same pipeline as student diagnose, explicit endpoint."""
+        """On-demand trial feedback with a bounded, lightweight diagnosis pipeline."""
         code = str(payload.get('code') or '').strip()
         if not code:
             raise ValueError('code required')
-        return AgentOrchestrator.student_diagnose(user_id, payload)
+        return AgentOrchestrator.student_diagnose(user_id, payload, fast=True)
 
     @staticmethod
     def messenger_quick_action(user_id: int, action: str) -> dict:

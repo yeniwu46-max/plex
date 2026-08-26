@@ -8,7 +8,7 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
-def apply(package_root: Path) -> dict:
+def apply(package_root: Path, force: bool = False) -> dict:
     config_dir = package_root / "config-samples"
     main_src = config_dir / "backend.env.production-ready"
     spark_src = config_dir / "api-keys.spark.local"
@@ -18,7 +18,9 @@ def apply(package_root: Path) -> dict:
     spark_env = BACKEND_ROOT / ".env.spark.local"
 
     applied = {"backend_env": False, "spark_env": False, "source": None}
-    if main_src.exists():
+    if backend_env.exists() and not force:
+        applied["source"] = "existing-backend-env"
+    elif main_src.exists():
         shutil.copy2(main_src, backend_env)
         applied["backend_env"] = True
         applied["source"] = main_src.name
@@ -27,7 +29,9 @@ def apply(package_root: Path) -> dict:
         applied["backend_env"] = True
         applied["source"] = legacy_src.name
 
-    if spark_src.exists():
+    if spark_env.exists() and not force:
+        pass
+    elif spark_src.exists():
         shutil.copy2(spark_src, spark_env)
         applied["spark_env"] = True
 
@@ -42,6 +46,7 @@ def apply(package_root: Path) -> dict:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("package_root", type=Path)
+    parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     import json
-    print(json.dumps(apply(args.package_root.resolve()), ensure_ascii=False, indent=2))
+    print(json.dumps(apply(args.package_root.resolve(), force=args.force), ensure_ascii=False, indent=2))

@@ -33,6 +33,8 @@ export interface TrialAttemptRecord {
   passedCount?: number
   totalCount?: number
   verdict?: TrialAttemptVerdict
+  /** 当时提交/运行的代码快照，供答题记录回看 */
+  code?: string
 }
 
 const ATTEMPT_PREFIX = 'plex:trial-attempts:'
@@ -128,6 +130,7 @@ export function recordTrialAttempt(
   questionId: string,
   cases: TrialRunCaseSnapshot[],
   durationMs: number,
+  code?: string,
 ) {
   if (!cases.length) return
   const allPassed = cases.every((item) => item.passed)
@@ -143,6 +146,7 @@ export function recordTrialAttempt(
     passedCount,
     totalCount: cases.length,
     verdict: summarizeVerdict(cases),
+    code: code != null ? String(code).slice(0, 20000) : undefined,
   }
   const records = readAttempts(userId)
   records.unshift(attempt)
@@ -208,10 +212,11 @@ export function recordTrialRun(
   question: PythonTrialQuestion,
   cases: TrialRunCaseSnapshot[],
   durationMs = 0,
+  code?: string,
 ) {
   if (!cases.length) return
 
-  recordTrialAttempt(userId, question.id, cases, durationMs)
+  recordTrialAttempt(userId, question.id, cases, durationMs, code)
 
   const allPassed = cases.every((item) => item.passed)
   const failed = cases.filter((item) => !item.passed)

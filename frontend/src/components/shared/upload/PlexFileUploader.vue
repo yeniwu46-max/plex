@@ -3,7 +3,7 @@ import { useMessage } from 'naive-ui'
 import { computed } from 'vue'
 import type { UploadFileEntry, UploadPresetConfig, UploadResponse, UploadRole, UploadScene } from '../../../types/upload'
 import { usePlexUploader } from '../../../composables/usePlexUploader'
-import { getFollowUpActions, getSuccessMessage } from '../../../services/uploadService'
+import { getSuccessMessage } from '../../../services/uploadService'
 import PlexDropzone from './PlexDropzone.vue'
 import PlexUploadList from './PlexUploadList.vue'
 import PlexUploadPanel from './PlexUploadPanel.vue'
@@ -109,8 +109,6 @@ function onRetryFailed() {
     })
 }
 
-const followUps = computed(() => getFollowUpActions(props.scene))
-const successFiles = computed(() => files.value.filter((f) => f.status === 'success'))
 </script>
 
 <template>
@@ -149,18 +147,5 @@ const successFiles = computed(() => files.value.filter((f) => f.status === 'succ
       @retry-failed="onRetryFailed"
     />
 
-    <!-- 后续处理入口（第一阶段 disabled） -->
-    <div v-if="followUps.length && successFiles.length" class="plex-upload-followup">
-      <button
-        v-for="action in followUps"
-        :key="action.apiPath"
-        type="button"
-        class="plex-upload-followup__btn"
-        disabled
-        :title="`${action.label}（即将开放）`"
-      >
-        {{ action.label }}
-      </button>
-    </div>
   </div>
 </template>

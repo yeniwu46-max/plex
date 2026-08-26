@@ -129,7 +129,6 @@ onMounted(() => {
   >
     <section class="student-control" aria-label="学生账号设置">
       <div class="student-control__hero">
-        <span class="student-control__hero-scan" aria-hidden="true" />
         <span class="student-control__hero-corner student-control__hero-corner--tl" aria-hidden="true" />
         <span class="student-control__hero-corner student-control__hero-corner--tr" aria-hidden="true" />
         <span class="student-control__hero-corner student-control__hero-corner--bl" aria-hidden="true" />
@@ -165,7 +164,7 @@ onMounted(() => {
         <article class="panel">
           <header>
             <h3>个人资料</h3>
-            <p>设置昵称与个性签名，头像支持 png/jpg/gif/webp（≤2MB）</p>
+            <p>设置昵称与个性签名，头像支持 PNG、JPG、GIF、WEBP 格式，文件不超过 2 MB</p>
           </header>
           <label class="profile-field">
             <span>昵称</span>
@@ -252,15 +251,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.student-control__hero-scan {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(37, 245, 238, 0.04) 50%, transparent 100%);
-  background-size: 100% 220%;
-  animation: hero-scan 5s ease-in-out infinite;
-  pointer-events: none;
-}
-
 .student-control__hero-corner {
   position: absolute;
   width: 14px;
@@ -293,16 +283,6 @@ onMounted(() => {
   right: 10px;
   bottom: 10px;
   border-width: 0 2px 2px 0;
-}
-
-@keyframes hero-scan {
-  0%,
-  100% {
-    background-position: 0 -120%;
-  }
-  50% {
-    background-position: 0 120%;
-  }
 }
 
 .student-control__hero-main {

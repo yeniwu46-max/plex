@@ -26,8 +26,98 @@ JUDGE0_STATUS = {
     11: 'Runtime Error (NZEC)',
 }
 
+FULLWIDTH_PYTHON_SYMBOLS = {
+    '\u3000': ' ',
+    '（': '(', '）': ')',
+    '［': '[', '］': ']',
+    '｛': '{', '｝': '}',
+    '，': ',', '：': ':', '；': ';',
+    '＝': '=', '＋': '+', '－': '-', '＊': '*', '／': '/', '％': '%',
+    '＜': '<', '＞': '>', '！': '!',
+    '＂': '"', '＇': "'",
+}
+
 
 class CodeExecutionService:
+    @staticmethod
+    def normalize_python_source(source: str) -> str:
+        """Normalize IME full-width syntax while preserving strings/comments."""
+        result = []
+        quote = None
+        triple_quoted = False
+        escaped = False
+        in_comment = False
+        index = 0
+
+        def normalized_at(position: int) -> str:
+            if position >= len(source):
+                return ''
+            char = source[position]
+            return FULLWIDTH_PYTHON_SYMBOLS.get(char, char)
+
+        while index < len(source):
+            char = source[index]
+            normalized = FULLWIDTH_PYTHON_SYMBOLS.get(char, char)
+
+            if in_comment:
+                result.append(char)
+                if char == '\n':
+                    in_comment = False
+                index += 1
+                continue
+
+            if quote:
+                if triple_quoted:
+                    if (
+                        normalized == quote
+                        and normalized_at(index + 1) == quote
+                        and normalized_at(index + 2) == quote
+                    ):
+                        result.append(quote * 3)
+                        index += 3
+                        quote = None
+                        triple_quoted = False
+                    else:
+                        result.append(char)
+                        index += 1
+                    continue
+
+                if escaped:
+                    result.append(char)
+                    escaped = False
+                elif char == '\\':
+                    result.append(char)
+                    escaped = True
+                elif normalized == quote:
+                    result.append(quote)
+                    quote = None
+                else:
+                    result.append(char)
+                index += 1
+                continue
+
+            if char == '#':
+                in_comment = True
+                result.append(char)
+                index += 1
+                continue
+
+            if normalized in {"'", '"'}:
+                quote = normalized
+                triple_quoted = (
+                    normalized_at(index + 1) == quote
+                    and normalized_at(index + 2) == quote
+                )
+                count = 3 if triple_quoted else 1
+                result.append(quote * count)
+                index += count
+                continue
+
+            result.append(normalized)
+            index += 1
+
+        return ''.join(result)
+
     @staticmethod
     def backend_name() -> str:
         if os.getenv('JUDGE0_API_URL', '').strip():
@@ -219,6 +309,8 @@ class CodeExecutionService:
         lang = language.lower()
         if lang not in LANGUAGE_IDS:
             raise ValueError('unsupported language')
+        if lang in ('python', 'python3'):
+            code = cls.normalize_python_source(code)
         backend = cls.backend_name()
         if backend == 'judge0':
             try:

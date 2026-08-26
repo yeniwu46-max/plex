@@ -1,4 +1,4 @@
-import { http, type ApiEnvelope } from './http'
+import { formatHttpError, http, type ApiEnvelope } from './http'
 import { postSseStream } from './sse'
 
 export type ProfileDimensionKey =
@@ -86,15 +86,16 @@ export async function streamProfileChat(
   onDelta: (text: string) => void,
   onStage?: (stage: string, label: string) => void,
   signal?: AbortSignal,
+  history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
 ): Promise<ProfileChatResult> {
   const controller = new AbortController()
   const onExternalAbort = () => controller.abort()
   signal?.addEventListener('abort', onExternalAbort)
-  const timer = window.setTimeout(() => controller.abort(), 30_000)
+  const timer = window.setTimeout(() => controller.abort(), 18_000)
   try {
     const done = await postSseStream(
       '/v1/student/profile/chat/stream',
-      { message, confirm_changes: confirmChanges },
+      { message, confirm_changes: confirmChanges, history: history.slice(-12) },
       { onDelta, onStage, signal: controller.signal },
     )
     const result = done?.result as ProfileChatResult | undefined
@@ -118,6 +119,29 @@ export async function updateDynamicProfile(changes: Partial<Record<ProfileDimens
   })
   if (data.code !== 0) throw new Error(data.message || '画像更新失败')
   return data.data
+}
+
+export interface ProfileRecalibrationResult {
+  profile: DynamicStudentProfile
+  backend: 'llm' | 'spark'
+  applied_changes: Partial<Record<ProfileDimensionKey, ProfileDimension>>
+}
+
+/** 真实模型校准成功后才持久化画像；模型失败时服务端保证不写入。 */
+export async function recalibrateDynamicProfile(
+  changes: Partial<Record<ProfileDimensionKey, string>>,
+) {
+  try {
+    const { data } = await http.post<ApiEnvelope<ProfileRecalibrationResult>>(
+      '/v1/student/profile/recalibrate',
+      { changes },
+      { timeout: 18_000 },
+    )
+    if (data.code !== 0) throw new Error(data.message || '画像校准失败')
+    return data.data
+  } catch (error) {
+    throw new Error(formatHttpError(error, '真实模型画像校准失败'))
+  }
 }
 
 export async function fetchProfileSuggestions() {

@@ -18,4 +18,25 @@ docs/submission/config-samples/api-keys.spark.local
 docs/submission/data-samples/database/learning_system.db
 docs/submission/runtime-samples/frontend-dist/
 docs/submission/runtime-samples/python-wheels/
+docs/submission/runtime-samples/python/
 backend/media/
+
+# 题库导入：原始 mysqldump（约 52MB）及清洗脚本生成的大体积 SQL/JSON 输出
+# 不应进入 git 历史；schema.sql / manual_review.md / REPORT.md 仍需入库。
+_incoming_data/
+backend/scripts/problem_bank_import/output/
+
+# 本机调试与运行时，不入库
+.playwright-cli/
+runtime/
+.agents/
+SoftwareCopyright-Skill/
+软件著作权申请资料/
+_mysql_fix.ps1
+_mysql_status.txt
+backend/_debug_probe*.py
+backend/_smoke_test2.py
+backend/_home_vite.js
+backend/tmp-inv.json
+docs/test.py
+docs/test2.py

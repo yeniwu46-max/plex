@@ -612,13 +612,15 @@ onBeforeUnmount(() => {
 
 .cabin-trial-wrap {
   height: calc(100% - 2.5rem);
-  min-height: 520px;
-  overflow: hidden;
+  min-height: 720px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .cabin-trial-wrap--workspace {
-  min-height: calc(100dvh - 220px);
-  height: calc(100dvh - 220px);
+  min-height: calc(100dvh - 180px);
+  height: calc(100dvh - 180px);
+  overflow: hidden;
 }
 
 .cabin-trial-state {
@@ -642,14 +644,14 @@ onBeforeUnmount(() => {
 }
 
 .cabin-main--trial .cabin-map-wrap {
-  height: calc(100dvh - 168px);
-  min-height: 560px;
+  height: calc(100dvh - 140px);
+  min-height: 760px;
   margin-bottom: var(--plex-page-gutter-bottom);
 }
 
 .cabin-main--trial .cabin-trial-wrap--workspace {
-  min-height: calc(100dvh - 168px);
-  height: calc(100dvh - 168px);
+  min-height: calc(100dvh - 140px);
+  height: calc(100dvh - 140px);
 }
 
 .cabin-status {

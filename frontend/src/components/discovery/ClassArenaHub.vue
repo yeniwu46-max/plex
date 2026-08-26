@@ -2,12 +2,20 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { NButton, NIcon, NModal, NTag, useMessage } from 'naive-ui'
 import {
+  cancelDuelMatch,
+  fetchDuelMatchStatus,
+  fetchStatDetails,
+  joinDuelMatch,
+  recordDuelWin,
+  type ClassmateRankItem,
+  type DuelMatchDifficulty,
+} from '../../api/studentOverview'
+import {
   CheckmarkCircleOutline,
   DocumentTextOutline,
   FlashOutline,
   PeopleOutline,
   PulseOutline,
-  ShieldHalfOutline,
   TimerOutline,
   TrophyOutline,
 } from '@vicons/ionicons5'
@@ -25,8 +33,11 @@ import {
   MOCK_EXAM_SETS,
   DEFAULT_MOCK_EXAM_SET_ID,
   getMockExamQuestionsForSet,
+  STUDENT_DUEL_TIME_BY_DIFFICULTY,
   STUDENT_DUEL_TIME_SEC,
   pickRandomStudentDuelQuestions,
+  resolveStudentDuelQuestions,
+  type StudentDuelDifficulty,
 } from '../../data/classArenaQuestions'
 import type { PythonTrialQuestion } from '../../data/pythonTrialQuestions'
 import { ensurePracticeQuestionsLoaded } from '../../utils/practiceQuestionCache'
@@ -56,6 +67,7 @@ const message = useMessage()
 const activeModule = ref<ClassArenaModuleKey>('student_duel')
 const showDuelModal = ref(false)
 const showExamModal = ref(false)
+const showRankDetail = ref(false)
 const duelMatching = ref(false)
 const duelMatched = ref(false)
 const codeSession = ref<CodeSession | null>(null)
@@ -66,15 +78,28 @@ const duelQuestionIndex = ref(0)
 const duelCompletedCount = ref(0)
 const examQuestionIndex = ref(0)
 const examCompletedCount = ref(0)
+const duelDifficulty = ref<StudentDuelDifficulty>('entry')
+const duelTimeLimitSec = computed(
+  () => STUDENT_DUEL_TIME_BY_DIFFICULTY[duelDifficulty.value] ?? STUDENT_DUEL_TIME_SEC,
+)
 const duelRemainingSec = ref(STUDENT_DUEL_TIME_SEC)
 const examRemainingSec = ref(MOCK_EXAM_TIME_SEC)
 const duelTimerRunning = ref(false)
 const examTimerRunning = ref(false)
 let duelTimerId: ReturnType<typeof setInterval> | undefined
 let examTimerId: ReturnType<typeof setInterval> | undefined
+let matchPollId: ReturnType<typeof setInterval> | undefined
 
 const onlineCount = computed(() => Math.max(0, props.classOnlineCount || 0))
-const rivalName = computed(() => `探索者-${String((props.classRank ?? 2) + 1).padStart(2, '0')}`)
+const rivalId = ref<number | null>(null)
+const rivalName = ref('等待匹配')
+const topClassmates = ref<ClassmateRankItem[]>([])
+const winLeaderboard = ref<ClassmateRankItem[]>([])
+const matchWaitHint = ref('')
+
+function classmateName(mate: ClassmateRankItem) {
+  return (mate.real_name || mate.user_name || mate.username || '').trim() || '未命名学员'
+}
 
 const moduleIcon: Record<ClassArenaModuleKey, typeof TrophyOutline> = {
   student_duel: FlashOutline,
@@ -95,7 +120,7 @@ const statusType: Record<string, 'success' | 'warning' | 'default'> = {
 
 const duelTimerText = computed(() => formatTimer(duelRemainingSec.value))
 const examTimerText = computed(() => formatTimer(examRemainingSec.value))
-const duelTimerUrgent = computed(() => duelRemainingSec.value <= 300)
+const duelTimerUrgent = computed(() => duelRemainingSec.value <= Math.min(60, Math.floor(duelTimeLimitSec.value / 5)))
 const examTimerUrgent = computed(() => examRemainingSec.value <= 600)
 
 function formatTimer(totalSec: number) {
@@ -123,7 +148,7 @@ function stopExamTimer() {
 
 function startDuelTimer() {
   stopDuelTimer()
-  duelRemainingSec.value = STUDENT_DUEL_TIME_SEC
+  duelRemainingSec.value = duelTimeLimitSec.value
   duelTimerRunning.value = true
   duelTimerId = setInterval(() => {
     if (duelRemainingSec.value <= 0) {
@@ -153,7 +178,38 @@ function resetDuelRun() {
   stopDuelTimer()
   duelQuestionIndex.value = 0
   duelCompletedCount.value = 0
-  duelRemainingSec.value = STUDENT_DUEL_TIME_SEC
+  duelRemainingSec.value = duelTimeLimitSec.value
+}
+
+function stopMatchPoll() {
+  if (matchPollId !== undefined) {
+    clearInterval(matchPollId)
+    matchPollId = undefined
+  }
+}
+
+function applyMatchedResult(result: {
+  difficulty?: DuelMatchDifficulty
+  time_sec?: number
+  question_ids?: string[]
+  opponent?: { user_id: number; display_name: string }
+}) {
+  duelMatching.value = false
+  duelMatched.value = true
+  matchWaitHint.value = ''
+  if (result.difficulty === 'entry' || result.difficulty === 'advanced') {
+    duelDifficulty.value = result.difficulty
+  }
+  rivalId.value = result.opponent?.user_id ?? null
+  rivalName.value = result.opponent?.display_name || '同班对手'
+  const resolved = resolveStudentDuelQuestions(result.question_ids || [])
+  duelQuestions.value =
+    resolved.length >= STUDENT_DUEL_PROBLEM_COUNT
+      ? resolved.slice(0, STUDENT_DUEL_PROBLEM_COUNT)
+      : pickRandomStudentDuelQuestions(STUDENT_DUEL_PROBLEM_COUNT, duelDifficulty.value)
+  duelRemainingSec.value = result.time_sec || duelTimeLimitSec.value
+  stopMatchPoll()
+  message.success(`已匹配对手 ${rivalName.value}，双方同一套 ${duelQuestions.value.length} 题`)
 }
 
 const activeExamSet = computed(() => MOCK_EXAM_SETS.find((item) => item.id === selectedExamSetId.value) ?? MOCK_EXAM_SETS[0])
@@ -217,7 +273,7 @@ function closeCodeSession() {
   if (codeSession.value?.kind === 'student_duel') resetDuelRun()
   if (codeSession.value?.kind === 'mock_exam') resetExamRun()
   codeSession.value = null
-  duelMatched.value = false
+  resetDuelMatch()
   emit('sessionChange', false)
 }
 
@@ -225,18 +281,69 @@ function selectModule(key: ClassArenaModuleKey) {
   activeModule.value = key
 }
 
-function startDuelMatch() {
-  if (onlineCount.value < 2) {
-    message.info('当前同班在线人数不足，等待其他 Explorer 上线后再匹配')
+async function startDuelMatch(preferredOpponent?: ClassmateRankItem) {
+  if (duelMatching.value) return
+  duelMatching.value = true
+  matchWaitHint.value = ''
+  stopMatchPoll()
+  try {
+    const result = await joinDuelMatch({
+      difficulty: duelDifficulty.value,
+      opponentId: preferredOpponent?.user_id ?? null,
+    })
+    if (result.status === 'matched') {
+      applyMatchedResult(result)
+      return
+    }
+    matchWaitHint.value = result.message || '正在等待其他在线同学加入匹配…'
+    message.info(matchWaitHint.value)
+    matchPollId = setInterval(() => {
+      void fetchDuelMatchStatus()
+        .then((status) => {
+          if (status.status === 'matched') applyMatchedResult(status)
+          else if (status.status === 'waiting') {
+            matchWaitHint.value = status.message || matchWaitHint.value
+          }
+        })
+        .catch(() => undefined)
+    }, 1500)
+  } catch (error) {
+    duelMatching.value = false
+    matchWaitHint.value = ''
+    message.warning(error instanceof Error ? error.message : '匹配失败，请稍后重试')
+  }
+}
+
+function startPkWith(mate: ClassmateRankItem) {
+  if (!mate.online) {
+    message.info('该同学当前不在线，稍后再邀请 PK')
     return
   }
-  duelMatching.value = true
-  window.setTimeout(() => {
-    duelMatching.value = false
-    duelMatched.value = true
-    duelQuestions.value = pickRandomStudentDuelQuestions(STUDENT_DUEL_PROBLEM_COUNT)
-    message.success(`已匹配对手 ${rivalName.value}，随机 ${STUDENT_DUEL_PROBLEM_COUNT} 题`)
-  }, 1200)
+  showRankDetail.value = false
+  activeModule.value = 'student_duel'
+  void startDuelMatch(mate)
+}
+
+async function openRankDetail() {
+  showRankDetail.value = true
+  try {
+    const details = await fetchStatDetails()
+    topClassmates.value = (details.class_rank_detail.classmates || []).slice(0, 4)
+    winLeaderboard.value = (details.class_rank_detail.win_leaderboard || topClassmates.value).slice(0, 5)
+  } catch {
+    /* keep cached */
+  }
+}
+
+function resetDuelMatch() {
+  stopMatchPoll()
+  duelMatching.value = false
+  duelMatched.value = false
+  rivalId.value = null
+  rivalName.value = '等待匹配'
+  matchWaitHint.value = ''
+  duelQuestions.value = []
+  void cancelDuelMatch().catch(() => undefined)
 }
 
 function confirmDuelStart() {
@@ -266,7 +373,10 @@ function onWorkspacePassed() {
       return
     }
     stopDuelTimer()
-    message.success(`对战胜利！${STUDENT_DUEL_PROBLEM_COUNT} 题全部 AC，用时 ${formatTimer(STUDENT_DUEL_TIME_SEC - duelRemainingSec.value)}`)
+    message.success(
+      `对战胜利！${STUDENT_DUEL_PROBLEM_COUNT} 题全部 AC，用时 ${formatTimer(duelTimeLimitSec.value - duelRemainingSec.value)}`,
+    )
+    void recordDuelWin(rivalId.value).catch(() => undefined)
     return
   }
 
@@ -283,11 +393,22 @@ function onWorkspacePassed() {
 
 onMounted(() => {
   void ensurePracticeQuestionsLoaded()
+  void fetchStatDetails()
+    .then((details) => {
+      // 概览卡展示前 4 名，保证姓名/XP 行不被裁切
+      topClassmates.value = (details.class_rank_detail.classmates || []).slice(0, 4)
+      winLeaderboard.value = (details.class_rank_detail.win_leaderboard || topClassmates.value).slice(0, 5)
+    })
+    .catch(() => {
+      topClassmates.value = []
+      winLeaderboard.value = []
+    })
 })
 
 onUnmounted(() => {
   stopDuelTimer()
   stopExamTimer()
+  stopMatchPoll()
 })
 </script>
 
@@ -341,7 +462,7 @@ onUnmounted(() => {
     </template>
 
     <template v-else>
-      <header class="class-arena__overview" aria-label="试炼场总览">
+      <header class="class-arena__overview class-arena__overview--tech" aria-label="试炼场总览">
         <div class="class-arena__overview-main">
           <p class="class-arena__eyebrow">TRIAL ARENA · 试炼场</p>
           <h2>{{ className }}</h2>
@@ -358,13 +479,22 @@ onUnmounted(() => {
             <dt><n-icon :component="FlashOutline" /> 对战模式</dt>
             <dd>ACM · 3 题</dd>
           </div>
-          <div>
+          <div class="class-arena__rank-block">
             <dt><n-icon :component="PulseOutline" /> 我的班排</dt>
-            <dd>{{ classRank ? `第 ${classRank} 名` : '暂无' }}</dd>
-          </div>
-          <div>
-            <dt><n-icon :component="ShieldHalfOutline" /> 探索者</dt>
-            <dd>Lv.{{ userLevel }} · {{ userName }}</dd>
+            <dd class="class-arena__rank-dd">
+              <span>{{ classRank ? `第 ${classRank} 名` : '暂无' }}</span>
+              <n-button size="tiny" type="primary" secondary @click="openRankDetail">查看详情</n-button>
+            </dd>
+            <ol v-if="topClassmates.length" class="class-arena__top5">
+              <li v-for="mate in topClassmates" :key="`${mate.rank}-${mate.user_id || mate.user_name}`">
+                <span>#{{ mate.rank }}</span>
+                <div>
+                  <strong>{{ classmateName(mate) }}</strong>
+                  <small>{{ mate.title || `Lv.${mate.level || 1}` }}</small>
+                </div>
+                <em>{{ mate.total_points ?? mate.points }} XP</em>
+              </li>
+            </ol>
           </div>
         </dl>
       </header>
@@ -398,9 +528,35 @@ onUnmounted(() => {
         <template v-if="activeModule === 'student_duel'">
           <header class="panel-head">
             <h3>学生对战 · ACM 赛制</h3>
-            <p>匹配同班对手，随机 {{ STUDENT_DUEL_PROBLEM_COUNT }} 题，先全部 AC 者获胜</p>
+            <p>匹配同班在线对手，双方同一套题，先全部 AC 者获胜</p>
           </header>
           <div class="duel-preview">
+            <div class="duel-diff-tabs" role="tablist" aria-label="对战难度">
+              <button
+                type="button"
+                role="tab"
+                class="duel-diff-tab"
+                :class="{ 'duel-diff-tab--active': duelDifficulty === 'entry' }"
+                :aria-selected="duelDifficulty === 'entry'"
+                :disabled="duelMatched || duelMatching"
+                @click="duelDifficulty = 'entry'"
+              >
+                <strong>入门题</strong>
+                <span>总时限 05:00</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="duel-diff-tab"
+                :class="{ 'duel-diff-tab--active': duelDifficulty === 'advanced' }"
+                :aria-selected="duelDifficulty === 'advanced'"
+                :disabled="duelMatched || duelMatching"
+                @click="duelDifficulty = 'advanced'"
+              >
+                <strong>进阶题</strong>
+                <span>总时限 10:00</span>
+              </button>
+            </div>
             <div class="duel-preview__players">
               <article class="duel-player duel-player--self">
                 <span class="duel-player__avatar">{{ userName.slice(0, 1) }}</span>
@@ -411,28 +567,30 @@ onUnmounted(() => {
               <article class="duel-player duel-player--rival" :class="{ 'duel-player--matched': duelMatched }">
                 <span class="duel-player__avatar">{{ duelMatched ? rivalName.slice(0, 1) : '?' }}</span>
                 <strong>{{ duelMatched ? rivalName : '等待匹配' }}</strong>
-                <em>{{ duelMatched ? '已匹配 · 在线' : `同班在线 ${onlineCount} 人` }}</em>
+                <em>{{ duelMatched ? `已匹配 · ${rivalName}` : `同班在线 ${onlineCount} 人` }}</em>
               </article>
             </div>
             <article class="duel-problem">
-              <h4>随机 {{ STUDENT_DUEL_PROBLEM_COUNT }} 题 · ACM</h4>
-              <p>匹配成功后从题池随机抽题；双方题目一致，先通过全部测试用例者获胜。</p>
+              <h4>随机 {{ STUDENT_DUEL_PROBLEM_COUNT }} 题 · ACM · {{ duelDifficulty === 'entry' ? '入门' : '进阶' }}</h4>
+              <p>仅匹配真实在线同学；匹配成功后双方题目一致，先通过全部测试用例者获胜。</p>
               <p v-if="duelMatched && duelQuestions.length" class="duel-problem__limit">
                 本轮题目：{{ duelQuestions.map((q) => q.title).join(' → ') }}
               </p>
+              <p v-if="matchWaitHint && !duelMatched" class="duel-problem__limit">{{ matchWaitHint }}</p>
               <p class="duel-problem__limit">
                 <n-icon :component="TimerOutline" />
-                总时限 {{ formatTimer(STUDENT_DUEL_TIME_SEC) }}
+                总时限 {{ formatTimer(duelTimeLimitSec) }}
               </p>
             </article>
             <div class="duel-preview__actions">
-              <n-button v-if="!duelMatched" type="primary" :loading="duelMatching" @click="startDuelMatch">
-                寻找对手
+              <n-button v-if="!duelMatched" type="primary" :loading="duelMatching" @click="startDuelMatch()">
+                {{ duelMatching ? '匹配中…' : '寻找对手' }}
               </n-button>
               <template v-else>
                 <n-button type="primary" @click="confirmDuelStart">开始对战</n-button>
-                <n-button secondary @click="duelMatched = false">重新匹配</n-button>
+                <n-button secondary @click="resetDuelMatch">重新匹配</n-button>
               </template>
+              <n-button v-if="duelMatching && !duelMatched" secondary @click="resetDuelMatch">取消匹配</n-button>
               <n-button quaternary size="small" @click="showDuelModal = true">ACM 规则说明</n-button>
             </div>
           </div>
@@ -478,10 +636,45 @@ onUnmounted(() => {
         </template>
       </section>
 
+      <n-modal
+        v-model:show="showRankDetail"
+        preset="card"
+        title="班排详情 · 对局胜局 Top5"
+        style="max-width: 560px"
+        class="rank-detail-modal"
+      >
+        <p class="rank-detail-modal__hint">按对局胜局数从高到低；在线同学可直接发起 PK。</p>
+        <ol v-if="winLeaderboard.length" class="rank-detail-modal__list">
+          <li v-for="mate in winLeaderboard" :key="`win-${mate.user_id || mate.win_rank || mate.rank}`">
+            <span class="rank-detail-modal__pos">#{{ mate.win_rank || mate.rank }}</span>
+            <div class="rank-detail-modal__meta">
+              <strong>{{ classmateName(mate) }}</strong>
+              <small>
+                {{ mate.title || `Lv.${mate.level || 1}` }} · {{ mate.total_points ?? mate.points }} XP ·
+                胜局 {{ mate.win_count ?? 0 }}
+                <em :class="{ 'is-online': mate.online }">{{ mate.online ? '在线' : '离线' }}</em>
+              </small>
+            </div>
+            <n-button
+              size="tiny"
+              type="primary"
+              :disabled="!mate.online"
+              @click="startPkWith(mate)"
+            >
+              与他PK
+            </n-button>
+          </li>
+        </ol>
+        <p v-else class="rank-detail-modal__empty">暂无对局榜数据，完成一场学生对战后会更新。</p>
+        <template #footer>
+          <n-button @click="showRankDetail = false">关闭</n-button>
+        </template>
+      </n-modal>
+
       <n-modal v-model:show="showDuelModal" preset="card" title="学生对战 · ACM 规则" style="max-width: 520px">
         <ol class="modal-steps">
-          <li>匹配一名同时在线的同班探索者。</li>
-          <li>系统随机抽取 {{ STUDENT_DUEL_PROBLEM_COUNT }} 道编程题，双方题目一致。</li>
+          <li>系统仅匹配当前在线的同班同学；无人在线时请稍后重试。</li>
+          <li>入门题总时限 5 分钟，进阶题总时限 10 分钟；双方题目一致。</li>
           <li>ACM 赛制：先通过某题全部用例即算该题 AC；先 AC 全部 {{ STUDENT_DUEL_PROBLEM_COUNT }} 题者获胜。</li>
         </ol>
         <template #footer>
@@ -523,27 +716,32 @@ onUnmounted(() => {
 .arena-hud {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: 0.35rem;
   flex-shrink: 0;
-  padding: 0.55rem 0.75rem 0;
+  padding: 0.35rem 0.55rem 0;
 }
 
 .arena-hud__item {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.75rem;
+  gap: 0.28rem;
+  padding: 0.22rem 0.5rem;
   border: 1px solid rgba(130, 212, 255, 0.14);
   border-radius: 999px;
   background: rgba(4, 17, 29, 0.88);
   color: #fff;
-  font-size: 0.86rem;
+  font-size: 0.72rem;
   font-weight: 650;
+  line-height: 1.2;
+}
+
+.arena-hud__item :deep(.n-icon) {
+  font-size: 0.85rem;
 }
 
 .arena-hud__item em {
   color: rgba(200, 220, 235, 0.58);
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   font-style: normal;
   font-weight: 500;
 }
@@ -562,18 +760,176 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   height: auto;
-  padding-top: 0.35rem;
+  padding-top: 0.2rem;
+}
+
+.class-arena--workspace :deep(.py-workspace__body) {
+  /* 考试/对战态进一步拉高编程区 */
+  min-height: 0;
 }
 
 .class-arena__overview {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1.05fr);
   gap: 1rem;
-  padding: 1rem 1.15rem;
+  padding: 1.1rem 1.2rem 1.25rem;
   border: 1px solid rgba(130, 212, 255, 0.14);
   border-radius: 1rem;
   background: rgba(4, 17, 29, 0.82);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  min-height: 0;
+  animation: arena-banner-enter 0.45s ease both;
+}
+
+.class-arena__overview--tech {
+  border-color: rgba(46, 255, 241, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 18px rgba(46, 255, 241, 0.06);
+}
+
+.class-arena__overview-main,
+.class-arena__stats {
+  position: relative;
+  z-index: 1;
+}
+
+.class-arena__rank-block {
+  grid-column: 1 / -1;
+  min-height: 168px;
+  padding-bottom: 0.35rem !important;
+}
+
+.class-arena__rank-dd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.class-arena__top5 {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  max-height: none;
+  overflow: visible;
+}
+
+.class-arena__top5 li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 2.4rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.45rem;
+  background: rgba(46, 255, 241, 0.05);
+  border: 1px solid rgba(46, 255, 241, 0.1);
+  font-size: 0.74rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.class-arena__top5 li:hover {
+  border-color: rgba(46, 255, 241, 0.28);
+  background: rgba(46, 255, 241, 0.08);
+}
+
+.class-arena__top5 span {
+  color: #52fff1;
+  font-weight: 700;
+}
+
+.class-arena__top5 strong {
+  display: block;
+  color: #edf7ff;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.class-arena__top5 small {
+  color: rgba(148, 197, 220, 0.72);
+  font-size: 0.62rem;
+}
+
+.class-arena__top5 em {
+  color: rgba(190, 208, 224, 0.72);
+  font-style: normal;
+}
+
+@keyframes arena-banner-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rank-detail-modal__hint {
+  margin: 0 0 0.75rem;
+  color: rgba(200, 220, 235, 0.72);
+  font-size: 0.8rem;
+}
+
+.rank-detail-modal__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.rank-detail-modal__list li {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(46, 255, 241, 0.12);
+  background: rgba(8, 20, 34, 0.55);
+}
+
+.rank-detail-modal__pos {
+  color: #52fff1;
+  font-weight: 700;
+}
+
+.rank-detail-modal__meta strong {
+  display: block;
+  color: #fff;
+  font-size: 0.88rem;
+}
+
+.rank-detail-modal__meta small {
+  display: block;
+  margin-top: 0.15rem;
+  color: rgba(190, 208, 224, 0.72);
+  font-size: 0.72rem;
+}
+
+.rank-detail-modal__meta em {
+  margin-left: 0.35rem;
+  color: rgba(148, 163, 184, 0.9);
+  font-style: normal;
+}
+
+.rank-detail-modal__meta em.is-online {
+  color: #6ee7b7;
+}
+
+.rank-detail-modal__empty {
+  margin: 0;
+  color: rgba(190, 208, 224, 0.68);
+  font-size: 0.82rem;
 }
 
 .class-arena__eyebrow {
@@ -701,11 +1057,50 @@ onUnmounted(() => {
 
 .class-arena__panel {
   flex: 1;
-  min-height: 360px;
-  padding: 0.85rem 0.95rem 1rem;
+  min-height: 420px;
+  padding: 0.85rem 0.95rem 1.15rem;
   border: 1px solid rgba(130, 212, 255, 0.12);
   border-radius: 1rem;
   background: rgba(3, 12, 22, 0.62);
+}
+
+.duel-diff-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.duel-diff-tab {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(130, 212, 255, 0.12);
+  border-radius: 0.65rem;
+  background: rgba(6, 16, 28, 0.55);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.duel-diff-tab strong {
+  color: #fff;
+  font-size: 0.82rem;
+}
+
+.duel-diff-tab span {
+  color: rgba(200, 220, 235, 0.62);
+  font-size: 0.72rem;
+}
+
+.duel-diff-tab--active {
+  border-color: rgba(37, 245, 238, 0.45);
+  background: rgba(37, 245, 238, 0.1);
+}
+
+.duel-diff-tab:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .panel-head h3 {

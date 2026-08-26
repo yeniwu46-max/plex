@@ -28,6 +28,7 @@ import {
   updateAdminAnnouncement,
 } from '../api/adminAnnouncements'
 import AdminGovernanceComboPanel from '../components/admin/AdminGovernanceComboPanel.vue'
+import AdminPeopleDrilldown from '../components/admin/AdminPeopleDrilldown.vue'
 import AdminRunningTrialsDrilldown from '../components/admin/AdminRunningTrialsDrilldown.vue'
 import PlexThemeSwitcher from '../components/shared/PlexThemeSwitcher.vue'
 import PlexGuideTour from '../components/common/PlexGuideTour.vue'
@@ -42,6 +43,7 @@ const AdminTrialObservatoryPanel = defineAsyncComponent(
 import type { SystemAnnouncement } from '../api/teacherAnnouncements'
 import { fetchAdminDashboard, type AdminDashboardResult } from '../api/adminSettings'
 import { fetchAgentOrchestration, type AgentOrchestrationResult } from '../api/agentOrchestration'
+import { fetchAgentsStatus, type AgentStatusItem } from '../api/agentService'
 import { useThemeStore } from '../stores/theme'
 
 type NavKey = 'nexus' | 'agents' | 'observer' | 'governance'
@@ -114,12 +116,20 @@ const period = ref<'today' | 'week' | 'month'>('month')
 const trendRange = ref<'7' | '30' | '90'>('7')
 const showStorageDetail = ref(false)
 const showRunningTrialsDrill = ref(false)
+const showPeopleDrill = ref(false)
+const peopleDrillMode = ref<'students' | 'teachers'>('students')
+const showAgentsDetail = ref(false)
+const showFeedDetail = ref(false)
+const showAlertsDetail = ref(false)
+const agentsStatusLoading = ref(false)
+const agentsStatusRows = ref<AgentStatusItem[]>([])
+const agentsStatusMeta = ref<{ backend?: string; checked_at?: string; service?: string }>({})
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 
-const adminDisplayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Overseer')
+const adminDisplayName = computed(() => auth.profile?.real_name || auth.profile?.username || '平台管理员')
 
 const userMenuOptions = computed<DropdownOption[]>(() => [
   {
@@ -317,20 +327,198 @@ const progressMetrics: ProgressMetric[] = [
   { label: '学习活跃度', value: 83.7, delta: '↑ 7.1%', icon: SparklesOutline },
 ]
 
-const agentRows: AgentRow[] = [
-  { name: '学习诊断', status: '运行中' },
-  { name: '代码分析', status: '运行中' },
-  { name: '路径推荐', status: '运行中' },
-  { name: '反馈生成', status: '运行中' },
-  { name: '检查智能体', status: '运行中' },
-]
+function agentStatusLabel(status: string) {
+  if (status === 'running') return '运行中'
+  if (status === 'success') return '最近成功'
+  if (status === 'error') return '异常'
+  return '待命'
+}
 
-const feedItems: FeedItem[] = [
-  { title: '班级变更待审', desc: '有新的班级申请等待审批', time: '—', tone: 'purple', icon: BookOutline },
-  { title: '学习路径生成完成', desc: '为学生生成个性化学习路径', time: '—', tone: 'purple', icon: BookOutline },
-  { title: '智能体任务调度', desc: '路径推荐智能体已完成任务调度', time: '—', tone: 'purple', icon: SparklesOutline },
-  { title: '异常行为预警', desc: '检测到异常刷题行为', time: '—', tone: 'red', icon: AlertCircleOutline },
-]
+function formatAgentTime(value?: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function shortAgentName(name: string) {
+  return name.replace(/智能体$/u, '')
+}
+
+const liveAgentStatusSource = computed<AgentStatusItem[]>(() => {
+  if (agentsStatusRows.value.length) return agentsStatusRows.value
+  const runtime = agentOrchestrationData.value?.runtime_status
+  if (!runtime?.length) return []
+  return runtime.map((row) => ({
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    status: (row.status as AgentStatusItem['status']) || 'idle',
+    lastRunAt: row.lastRunAt ?? undefined,
+    avgLatency: row.avgLatency ?? undefined,
+  }))
+})
+
+const agentRows = computed<AgentRow[]>(() => {
+  const preferred = [
+    'learning_diagnosis',
+    'code_analysis',
+    'path_recommendation',
+    'feedback',
+    'teacher_assistant',
+  ]
+  const source = liveAgentStatusSource.value
+  if (!source.length) {
+    return [
+      { name: '学习诊断', status: '待命' },
+      { name: '代码分析', status: '待命' },
+      { name: '路径推荐', status: '待命' },
+      { name: '反馈生成', status: '待命' },
+      { name: '检查智能体', status: '待命' },
+    ]
+  }
+  const byId = new Map(source.map((row) => [row.id, row]))
+  const picked = preferred
+    .map((id) => byId.get(id))
+    .filter((row): row is AgentStatusItem => Boolean(row))
+  const rows = (picked.length ? picked : source).slice(0, 5)
+  return rows.map((row) => ({
+    name: shortAgentName(row.name),
+    status: agentStatusLabel(row.status),
+  }))
+})
+
+const feedItems = computed<FeedItem[]>(() => {
+  const items: FeedItem[] = []
+  const pendingCount = adminNotifications.value.length
+  if (pendingCount > 0) {
+    const first = adminNotifications.value[0]
+    items.push({
+      title: '班级变更待审',
+      desc: first?.body || `有 ${pendingCount} 条班级申请等待审批`,
+      time: formatAgentTime(first?.createdAt),
+      tone: 'purple',
+      icon: BookOutline,
+    })
+  }
+
+  const ops = dashboardData.value?.resource_operations
+  if (ops) {
+    items.push({
+      title: '资源任务运行',
+      desc: `完成 ${ops.completed_count}/${ops.task_count}，失败 ${ops.failed_count}，成功率 ${ops.success_rate}%`,
+      time: ops.average_latency_ms == null ? '实时' : `${ops.average_latency_ms}ms`,
+      tone: ops.failed_count > 0 ? 'amber' : 'purple',
+      icon: HardwareChipOutline,
+    })
+  }
+
+  const recentAgent = [...liveAgentStatusSource.value]
+    .filter((row) => row.lastRunAt)
+    .sort((a, b) => String(b.lastRunAt).localeCompare(String(a.lastRunAt)))[0]
+  if (recentAgent) {
+    items.push({
+      title: '智能体任务调度',
+      desc: `${recentAgent.name} ${agentStatusLabel(recentAgent.status)}${recentAgent.avgLatency != null ? ` · 平均 ${recentAgent.avgLatency}ms` : ''}`,
+      time: formatAgentTime(recentAgent.lastRunAt),
+      tone: recentAgent.status === 'error' ? 'red' : 'purple',
+      icon: SparklesOutline,
+    })
+  }
+
+  const weak = dashboardData.value?.weak_knowledge_top?.[0]
+  if (weak) {
+    items.push({
+      title: '薄弱知识点更新',
+      desc: `「${weak.knowledge_label}」累计错题 ${weak.fail_count} 次`,
+      time: '实时',
+      tone: 'amber',
+      icon: AnalyticsOutline,
+    })
+  }
+
+  const alert = dashboardData.value?.alerts?.[0]
+  if (alert) {
+    items.push({
+      title: alert.title,
+      desc: alert.desc,
+      time: alert.time || '实时',
+      tone: (alert.tone === 'red' || alert.tone === 'amber' || alert.tone === 'green' ? alert.tone : 'red') as Tone,
+      icon: AlertCircleOutline,
+    })
+  }
+
+  const metrics = dashboardData.value?.metrics
+  if (metrics && items.length < 4) {
+    items.push({
+      title: '平台运行摘要',
+      desc: `活跃学生 ${metrics.active_students} · 运行试炼 ${metrics.running_trials} · 健康度 ${metrics.health_score}%`,
+      time: '实时',
+      tone: 'green',
+      icon: ShieldCheckmarkOutline,
+    })
+  }
+
+  if (!items.length) {
+    return [
+      { title: '暂无新动态', desc: '系统运行平稳，等待新的业务事件', time: '—', tone: 'purple', icon: SparklesOutline },
+    ]
+  }
+  return items.slice(0, 6)
+})
+
+async function refreshAgentsStatus() {
+  agentsStatusLoading.value = true
+  try {
+    const [status, orch] = await Promise.all([
+      fetchAgentsStatus(),
+      agentOrchestrationData.value
+        ? Promise.resolve(agentOrchestrationData.value)
+        : fetchAgentOrchestration().catch(() => null),
+    ])
+    agentsStatusRows.value = status.agents ?? []
+    agentsStatusMeta.value = {
+      backend: status.backend,
+      checked_at: status.checked_at,
+      service: status.service,
+    }
+    if (orch && !agentOrchestrationData.value) {
+      agentOrchestrationData.value = orch
+    }
+  } catch {
+    if (!agentsStatusRows.value.length && agentOrchestrationData.value?.runtime_status?.length) {
+      agentsStatusRows.value = agentOrchestrationData.value.runtime_status.map((row) => ({
+        id: row.id,
+        name: row.name,
+        role: row.role,
+        status: (row.status as AgentStatusItem['status']) || 'idle',
+        lastRunAt: row.lastRunAt ?? undefined,
+        avgLatency: row.avgLatency ?? undefined,
+      }))
+    }
+  } finally {
+    agentsStatusLoading.value = false
+  }
+}
+
+async function openAgentsDetail() {
+  showAgentsDetail.value = true
+  await refreshAgentsStatus()
+}
+
+async function openFeedDetail() {
+  showFeedDetail.value = true
+  await Promise.all([
+    loadAdminNotifications(),
+    loadDashboard(),
+    refreshAgentsStatus(),
+  ])
+}
+
+function openAlertsDetail() {
+  showAlertsDetail.value = true
+}
 
 const alertItems = computed<AlertItem[]>(() => {
   const rows = dashboardData.value?.alerts
@@ -400,6 +588,30 @@ const moduleCards = [
 
 function openRunningTrials() {
   showRunningTrialsDrill.value = true
+}
+
+function openPeopleDrill(mode: 'students' | 'teachers') {
+  peopleDrillMode.value = mode
+  showPeopleDrill.value = true
+}
+
+function isNexusMetricClickable(label: string) {
+  return activeNav.value === 'nexus' && ['活跃学习者', '注册教师', '运行试炼'].includes(label)
+}
+
+function onMetricCardClick(label: string) {
+  if (activeNav.value !== 'nexus') return
+  if (label === '活跃学习者') {
+    openPeopleDrill('students')
+    return
+  }
+  if (label === '注册教师') {
+    openPeopleDrill('teachers')
+    return
+  }
+  if (label === '运行试炼') {
+    openRunningTrials()
+  }
 }
 
 const waveMetric = ref<'activity' | 'health'>('activity')
@@ -641,6 +853,8 @@ onMounted(() => {
   }, 1000)
   void loadDashboard()
   void loadAdminNotifications()
+  void refreshAgentsStatus()
+  void loadAgentOrchestrationMetrics()
 
   // Handle ?panel=xxx deep link navigation
   const valid: NavKey[] = ['nexus', 'agents', 'observer', 'governance']
@@ -692,10 +906,10 @@ onUnmounted(() => {
       <section class="overseer-card">
         <span class="overseer-orbit" aria-hidden="true"><n-icon :component="SparklesOutline" /></span>
         <div>
-          <strong>Overseer</strong>
-          <small>系统治理者</small>
+          <strong>平台管理员</strong>
+          <small>系统治理</small>
         </div>
-        <em>Lv.99</em>
+        <em>管理员</em>
       </section>
 
       <footer class="sidebar-actions">
@@ -778,8 +992,8 @@ onUnmounted(() => {
           v-for="item in visibleMetrics"
           :key="item.label"
           class="metric-card"
-          :class="[`tone-${item.tone}`, { 'metric-card--clickable': item.label === '运行试炼' && activeNav === 'nexus' }]"
-          @click="item.label === '运行试炼' && activeNav === 'nexus' ? openRunningTrials() : undefined"
+          :class="[`tone-${item.tone}`, { 'metric-card--clickable': isNexusMetricClickable(item.label) }]"
+          @click="onMetricCardClick(item.label)"
         >
           <span class="metric-icon"><n-icon :component="item.icon" /></span>
           <div>
@@ -813,7 +1027,7 @@ onUnmounted(() => {
             v-if="dashboardData?.weak_knowledge_top?.length"
             class="weak-knowledge-top"
           >
-            <h3>全校薄弱知识点 TOP</h3>
+            <h3>全校高频薄弱知识点</h3>
             <ul>
               <li v-for="item in dashboardData.weak_knowledge_top" :key="item.knowledge_key">
                 <span>{{ item.knowledge_label }}</span>
@@ -823,10 +1037,10 @@ onUnmounted(() => {
           </div>
         </article>
 
-        <article class="panel agents-panel">
+        <article class="panel agents-panel panel--clickable" role="button" tabindex="0" @click="openAgentsDetail" @keydown.enter="openAgentsDetail">
           <header class="panel-head">
             <h2>智能体运行状态</h2>
-            <button type="button">全部智能体 ›</button>
+            <button type="button" @click.stop="openAgentsDetail">全部智能体 ›</button>
           </header>
           <div class="agent-layout">
             <div class="nexus-orbit" aria-hidden="true">
@@ -839,15 +1053,15 @@ onUnmounted(() => {
                 <span>{{ agent.name }}</span>
                 <em>{{ agent.status }}</em>
               </div>
-              <button type="button">更多智能体 ›</button>
+              <button type="button" @click.stop="openAgentsDetail">更多智能体 ›</button>
             </div>
           </div>
         </article>
 
-        <article class="panel feed-panel">
+        <article class="panel feed-panel panel--clickable" role="button" tabindex="0" @click="openFeedDetail" @keydown.enter="openFeedDetail">
           <header class="panel-head">
             <h2>实时系统动态</h2>
-            <button type="button">全部动态 ›</button>
+            <button type="button" @click.stop="openFeedDetail">全部动态 ›</button>
           </header>
           <div class="feed-list">
             <article v-for="item in feedItems" :key="item.title" :class="`tone-${item.tone}`">
@@ -918,7 +1132,7 @@ onUnmounted(() => {
         <article class="panel alerts-panel">
           <header class="panel-head">
             <h2>系统告警</h2>
-            <button type="button">全部告警 ›</button>
+            <button type="button" @click="openAlertsDetail">全部告警 ›</button>
           </header>
           <div class="alert-list">
             <article v-for="item in alertItems" :key="item.title" :class="`tone-${item.tone}`">
@@ -993,7 +1207,7 @@ onUnmounted(() => {
           </label>
           <label class="gov-field">
             <span>公告标题</span>
-            <n-input v-model:value="announcementTitle" placeholder="例如：本周教研安排" />
+            <n-input v-model:value="announcementTitle" placeholder="请输入公告标题" />
           </label>
           <label class="gov-field">
             <span>公告内容</span>
@@ -1067,7 +1281,7 @@ onUnmounted(() => {
       >
         <dl class="storage-detail-list">
           <div><dt>总容量</dt><dd>{{ storageInfo.total_tb }} TB</dd></div>
-          <div><dt>已使用</dt><dd>{{ storageInfo.used_tb }} TB（{{ storageInfo.used_ratio }}%）</dd></div>
+          <div><dt>已使用</dt><dd>{{ storageInfo.used_tb }} TB · {{ storageInfo.used_ratio }}%</dd></div>
           <div><dt>可用</dt><dd>{{ storageInfo.free_tb }} TB</dd></div>
         </dl>
         <ul class="storage-detail-breakdown">
@@ -1083,7 +1297,73 @@ onUnmounted(() => {
         </div>
       </n-modal>
 
+      <n-modal
+        v-model:show="showAgentsDetail"
+        preset="card"
+        title="智能体运行详情"
+        style="width: min(720px, 94vw)"
+      >
+        <div class="detail-modal-meta">
+          <span>后端：{{ agentsStatusMeta.backend || agentOrchestrationData?.agent_backend || '—' }}</span>
+          <span>成功率：{{ agentOrchestrationData?.runtime?.success_rate ?? '—' }}%</span>
+          <span>平均延迟：{{ agentOrchestrationData?.runtime?.avg_latency_ms ?? '—' }} ms</span>
+          <n-button quaternary size="tiny" :loading="agentsStatusLoading" @click="refreshAgentsStatus">刷新</n-button>
+        </div>
+        <div v-if="agentsStatusLoading && !liveAgentStatusSource.length" class="detail-modal-empty">加载中…</div>
+        <ul v-else-if="liveAgentStatusSource.length" class="detail-agent-list">
+          <li v-for="agent in liveAgentStatusSource" :key="agent.id">
+            <div>
+              <strong>{{ agent.name }}</strong>
+              <small>{{ agent.role || agent.id }}</small>
+            </div>
+            <em :class="`status-${agent.status}`">{{ agentStatusLabel(agent.status) }}</em>
+            <span>{{ formatAgentTime(agent.lastRunAt) }}</span>
+            <span>{{ agent.avgLatency == null ? '—' : `${agent.avgLatency} ms` }}</span>
+          </li>
+        </ul>
+        <div v-else class="detail-modal-empty">暂无智能体运行态数据</div>
+      </n-modal>
+
+      <n-modal
+        v-model:show="showFeedDetail"
+        preset="card"
+        title="实时系统动态"
+        style="width: min(640px, 94vw)"
+      >
+        <ul v-if="feedItems.length" class="detail-feed-list">
+          <li v-for="item in feedItems" :key="`${item.title}-${item.time}`" :class="`tone-${item.tone}`">
+            <span><n-icon :component="item.icon" /></span>
+            <div>
+              <strong>{{ item.title }}</strong>
+              <small>{{ item.desc }}</small>
+            </div>
+            <time>{{ item.time }}</time>
+          </li>
+        </ul>
+        <div v-else class="detail-modal-empty">暂无系统动态</div>
+      </n-modal>
+
+      <n-modal
+        v-model:show="showAlertsDetail"
+        preset="card"
+        title="全部系统告警"
+        style="width: min(640px, 94vw)"
+      >
+        <ul v-if="alertItems.length" class="detail-alert-list">
+          <li v-for="item in alertItems" :key="`${item.title}-${item.time}`" :class="`tone-${item.tone}`">
+            <em>{{ item.level }}</em>
+            <div>
+              <strong>{{ item.title }}</strong>
+              <small>{{ item.desc }}</small>
+            </div>
+            <time>{{ item.time }}</time>
+          </li>
+        </ul>
+        <div v-else class="detail-modal-empty">暂无告警</div>
+      </n-modal>
+
       <AdminRunningTrialsDrilldown v-model:show="showRunningTrialsDrill" />
+      <AdminPeopleDrilldown v-model:show="showPeopleDrill" :mode="peopleDrillMode" />
 
       <footer class="admin-footer">© {{ currentYear }} PLEX Universe. All rights reserved.</footer>
     </main>
@@ -1571,6 +1851,111 @@ onUnmounted(() => {
   min-width: 0;
   overflow: hidden;
   padding: 1.15rem 1.25rem;
+}
+
+.panel--clickable {
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.panel--clickable:hover,
+.panel--clickable:focus-visible {
+  border-color: rgba(167, 139, 250, 0.42);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 18px 50px rgba(88, 60, 180, 0.22);
+  outline: none;
+}
+
+.detail-modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.9rem;
+  color: rgba(196, 181, 253, 0.78);
+  font-size: 0.84rem;
+}
+
+.detail-modal-empty {
+  padding: 1.4rem 0;
+  color: rgba(196, 181, 253, 0.7);
+  text-align: center;
+}
+
+.detail-agent-list,
+.detail-feed-list,
+.detail-alert-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(60vh, 520px);
+  overflow: auto;
+}
+
+.detail-agent-list > li,
+.detail-feed-list > li,
+.detail-alert-list > li {
+  display: grid;
+  gap: 0.45rem 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  border-radius: 10px;
+  background: rgba(12, 14, 32, 0.72);
+}
+
+.detail-agent-list > li {
+  grid-template-columns: minmax(0, 1.4fr) auto auto auto;
+}
+
+.detail-feed-list > li,
+.detail-alert-list > li {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.detail-agent-list strong,
+.detail-feed-list strong,
+.detail-alert-list strong {
+  display: block;
+  color: #f5f3ff;
+}
+
+.detail-agent-list small,
+.detail-feed-list small,
+.detail-alert-list small {
+  display: block;
+  margin-top: 0.2rem;
+  color: rgba(226, 214, 255, 0.68);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.detail-agent-list em,
+.detail-alert-list em {
+  font-style: normal;
+  color: #a78bfa;
+  font-size: 0.82rem;
+}
+
+.detail-agent-list .status-running { color: #34d399; }
+.detail-agent-list .status-success { color: #60a5fa; }
+.detail-agent-list .status-error { color: #f87171; }
+.detail-agent-list .status-idle { color: rgba(196, 181, 253, 0.72); }
+
+.detail-agent-list span,
+.detail-feed-list time,
+.detail-alert-list time {
+  color: rgba(196, 181, 253, 0.62);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.detail-feed-list span,
+.detail-alert-list em {
+  display: grid;
+  place-items: center;
+  min-width: 2rem;
 }
 
 .panel-head {
@@ -2349,14 +2734,16 @@ onUnmounted(() => {
 
 .governance-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
   grid-auto-rows: auto;
   gap: 1rem;
   align-items: stretch;
-  align-content: start;
+  align-content: stretch;
+  height: 100%;
+  min-height: 0;
 }
 
-.governance-grid .panel {
+.governance-grid .panel:not(.governance-combo-span) {
   overflow: visible;
   height: auto;
   max-height: none;
@@ -2397,14 +2784,20 @@ onUnmounted(() => {
 @media (max-width: 1100px) {
   .governance-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
   }
 
   .governance-announce-panel,
   .governance-list-panel,
   .governance-settings-panel,
-  .governance-grid :deep(.gov-class-panel) {
+  .governance-grid :deep(.gov-class-panel),
+  .governance-combo-span {
     grid-column: 1;
     grid-row: auto;
+  }
+
+  .governance-combo-span {
+    min-height: calc(100dvh - 360px);
   }
 }
 
@@ -2564,6 +2957,10 @@ onUnmounted(() => {
 
 .governance-combo-span {
   grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: stretch;
+  min-height: calc(100dvh - 280px);
+  height: 100%;
 }
 
 .storage-detail-list,

@@ -16,7 +16,7 @@ def merge_trace_summary(trace: list[dict], agent_id: str, summary: str, *, sourc
             return
 
 
-def enhance_student_pipeline(baseline: dict, payload: dict) -> dict:
+def enhance_student_pipeline(baseline: dict, payload: dict, *, fast: bool = False) -> dict:
     """规则 baseline 之上用 LLM 增强 diagnosis 与 feedback。"""
     if not api_key_configured():
         return baseline
@@ -39,7 +39,10 @@ def enhance_student_pipeline(baseline: dict, payload: dict) -> dict:
         'baselineFeedback': feedback.get('shortFeedback'),
     }
 
-    llm_diagnosis = chat_json(
+    # The trial workspace already has a deterministic diagnosis. Its on-demand
+    # feedback path only needs one model call, otherwise two serial calls can
+    # exceed the browser's request deadline.
+    llm_diagnosis = None if fast else chat_json(
         system=(
             '你是 Python 初学者学习诊断专家。根据练习上下文输出 JSON，字段：'
             'diagnosis(字符串,80字内)、weakPoints(字符串数组,最多3个)、confidence(0-1浮点数)。'
@@ -79,7 +82,7 @@ def enhance_student_pipeline(baseline: dict, payload: dict) -> dict:
             '不要给出完整代码答案。只输出 JSON。'
         ),
         user=json.dumps(feedback_context, ensure_ascii=False),
-        timeout=5.0,
+        timeout=4.0 if fast else 5.0,
     )
     if llm_feedback:
         merged_feedback = {**feedback}
@@ -112,6 +115,6 @@ def enhance_student_pipeline(baseline: dict, payload: dict) -> dict:
         'diagnosis': diagnosis,
         'feedback': feedback,
         'pipelineTrace': trace,
-        'backend': backend_name() if backend_name() == 'crewai' else 'llm',
+        'backend': 'llm' if fast else (backend_name() if backend_name() == 'crewai' else 'llm'),
         'llmEnhanced': True,
     }

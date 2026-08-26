@@ -63,10 +63,10 @@ def get_result(submission_id):
 @code_bp.post('/code/analyze-file')
 @jwt_required()
 def analyze_file():
-    """后续处理 stub：AI 代码文件分析（第一阶段 pending）。"""
+    """返回当前部署的代码文件分析能力状态。"""
     body = request.get_json(silent=True) or {}
     file_id = body.get('fileId', '')
-    return success_response({'status': 'pending', 'fileId': file_id, 'message': 'AI 代码分析队列已接收，功能即将开放'})
+    return error_response('当前部署未启用代码文件分析服务，请联系平台管理员', 50101, {'fileId': file_id}, 501)
 
 
 @code_bp.get('/code/languages')

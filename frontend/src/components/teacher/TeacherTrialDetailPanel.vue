@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { NButton, NIcon, NTag, NCollapse, NCollapseItem, useMessage } from 'naive-ui'
+import { NButton, NIcon, NTag, NCollapse, NCollapseItem, NModal, useMessage } from 'naive-ui'
 import { SparklesOutline } from '@vicons/ionicons5'
 import {
   analyzeTeacherTrial,
@@ -29,6 +29,7 @@ const detail = ref<TeacherTrialDetailResult | null>(null)
 const expandedStudentId = ref<number | null>(null)
 const aiAnalysis = ref<TrialAiAnalyzeResult | null>(null)
 const activeTab = ref<DetailTab>('stats')
+const fullReportShow = ref(false)
 
 const tabs: Array<{ key: DetailTab; label: string }> = [
   { key: 'stats', label: '题目统计' },
@@ -107,7 +108,15 @@ watch(
           · {{ detail.summary.question_count }} 题 · 数据已同步数据库
         </p>
       </div>
-      <div class="trial-detail__head-actions">
+        <div class="trial-detail__head-actions">
+        <n-button
+          size="small"
+          secondary
+          :disabled="loading || !detail"
+          @click="fullReportShow = true"
+        >
+          查看全部
+        </n-button>
         <n-button
           type="warning"
           size="small"
@@ -206,7 +215,7 @@ watch(
               <tr v-for="item in detail.summary.question_stats" :key="item.question_id">
                 <td>第 {{ item.sort_order + 1 }} 题</td>
                 <td>{{ item.knowledge_label }}</td>
-                <td>{{ item.correct_count }}/{{ item.answered_count }}（{{ item.correct_rate }}%）</td>
+                <td>{{ item.correct_count }}/{{ item.answered_count }} · {{ item.correct_rate }}%</td>
                 <td>{{ formatDurationSec(item.avg_time_spent_sec) }}</td>
               </tr>
             </tbody>
@@ -253,7 +262,7 @@ watch(
           <li v-for="student in detail.students" :key="student.user_id">
             <button type="button" class="trial-detail__student-head" @click="toggleStudent(student.user_id)">
               <div>
-                <strong>{{ student.real_name }}（{{ student.username }}）</strong>
+                <strong>{{ student.real_name }} · {{ student.username }}</strong>
                 <p>
                   <template v-if="student.participation_status">
                     {{ statusLabels[student.participation_status] ?? student.participation_status }}
@@ -334,6 +343,54 @@ watch(
         <p v-else class="trial-detail__empty">暂无学生数据</p>
       </section>
     </template>
+
+    <n-modal
+      v-model:show="fullReportShow"
+      preset="card"
+      :title="`${detail?.trial.title || '试炼'} · 完整报告`"
+      :bordered="false"
+      style="width: min(920px, calc(100vw - 32px))"
+      :z-index="5600"
+    >
+      <template v-if="detail">
+        <section class="trial-detail__section">
+          <h3>题目正确率</h3>
+          <div class="trial-detail__table-wrap">
+            <table class="trial-detail__table">
+              <thead>
+                <tr>
+                  <th>题号</th>
+                  <th>知识点</th>
+                  <th>正确率</th>
+                  <th>平均用时</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in detail.summary.question_stats" :key="`full-q-${item.question_id}`">
+                  <td>第 {{ item.sort_order + 1 }} 题</td>
+                  <td>{{ item.knowledge_label }}</td>
+                  <td>{{ item.correct_count }}/{{ item.answered_count }} · {{ item.correct_rate }}%</td>
+                  <td>{{ formatDurationSec(item.avg_time_spent_sec) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="trial-detail__section">
+          <h3>学生进度</h3>
+          <ul class="trial-detail__students">
+            <li v-for="student in detail.students" :key="`full-s-${student.user_id}`">
+              <strong>{{ student.real_name || student.username }}</strong>
+              <span>
+                {{ statusLabels[student.participation_status || ''] || student.participation_status || '进行中' }}
+                · {{ student.correct_count }}/{{ student.answered_count }} 题正确
+                · 得分 {{ student.score ?? '—' }}
+              </span>
+            </li>
+          </ul>
+        </section>
+      </template>
+    </n-modal>
   </aside>
 </template>
 

@@ -78,6 +78,13 @@ def _fallback(payload: dict) -> dict:
 def execute(payload: dict) -> dict:
     diagnosis = payload.get('diagnosis')
     if isinstance(diagnosis, dict):
+        if diagnosis.get('errorLayer') == 'none' or diagnosis.get('errorType') in {'none', 'correct'}:
+            return {
+                'codeIssueSummary': '代码运行结果符合预期，核心结构使用正确。',
+                'possibleCause': '本次没有发现影响结果的代码问题。',
+                'fixDirection': '保持当前写法，并尝试一道稍难的同类变式来巩固。',
+                'relatedConcepts': diagnosis.get('weakPoints') or ['输出格式', '代码规范'],
+            }
         from_diag = _from_diagnosis(diagnosis)
         if from_diag:
             return from_diag

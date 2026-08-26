@@ -98,7 +98,20 @@ def _graph_neighbors(knowledge_key: str) -> tuple[list[str], list[str]]:
     return prerequisites, successors
 
 
+def canonical_knowledge_key(knowledge_key: str) -> str:
+    """把历史 knowledge_key（loop / var / algo-sum…）折算成 26 个节点 id 之一。
+
+    知识点重构后 POINTS 只认新的节点 id，但库里的 mistakes、learning_resources、
+    resource_generation_tasks 以及旧接口调用仍在传老 key，直接查表会 KeyError。
+    所有对外入口都先过这里，内部再统一按节点 id 处理。
+    """
+    if knowledge_key in POINTS:
+        return knowledge_key
+    return kg_id_from_key(knowledge_key)
+
+
 def build_knowledge_node(knowledge_key: str) -> dict:
+    knowledge_key = canonical_knowledge_key(knowledge_key)
     kb = knowledge_section(knowledge_key)
     label = POINTS[knowledge_key]
     prerequisites, successors = _graph_neighbors(knowledge_key)
@@ -296,6 +309,71 @@ def _truncate_explain(text: str, limit: int = 800) -> str:
     return ''.join(result).rstrip() + '…'
 
 
+def format_explain_paragraphs(text: str, max_paragraph_chars: int = 150) -> str:
+    """把模型的一整段讲解整理为适合学生阅读的 Markdown 短段落。"""
+    text = _truncate_explain(text)
+    if not text:
+        return ''
+
+    def split_plain_paragraph(paragraph: str) -> list[str]:
+        compact = re.sub(r'\s+', ' ', paragraph).strip()
+        if not compact:
+            return []
+        sentences = [
+            item.strip()
+            for item in re.split(r'(?<=[。！？!?；;])\s*', compact)
+            if item.strip()
+        ] or [compact]
+        units: list[str] = []
+        for sentence in sentences:
+            if _char_len(sentence) <= max_paragraph_chars:
+                units.append(sentence)
+                continue
+            pieces = [
+                item.strip()
+                for item in re.split(r'(?<=[，、,：:])\s*', sentence)
+                if item.strip()
+            ]
+            units.extend(pieces or [sentence])
+
+        rows: list[str] = []
+        current = ''
+        sentence_count = 0
+        for unit in units:
+            candidate = current + unit
+            if current and (
+                _char_len(candidate) > max_paragraph_chars or sentence_count >= 2
+            ):
+                rows.append(current.strip())
+                current = unit
+                sentence_count = 1
+            else:
+                current = candidate
+                sentence_count += 1
+        if current.strip():
+            rows.append(current.strip())
+        return rows
+
+    output: list[str] = []
+    # 代码块保持原样，只整理代码块以外的自然语言。
+    for segment in re.split(r'(```[\s\S]*?```)', text):
+        if not segment or not segment.strip():
+            continue
+        if segment.lstrip().startswith('```'):
+            output.append(segment.strip())
+            continue
+        for paragraph in re.split(r'\n\s*\n', segment):
+            stripped = paragraph.strip()
+            if not stripped:
+                continue
+            lines = stripped.splitlines()
+            if any(line.lstrip().startswith(('#', '- ', '* ', '> ')) for line in lines):
+                output.append(stripped)
+            else:
+                output.extend(split_plain_paragraph(stripped))
+    return '\n\n'.join(output)
+
+
 def _diagram_for_key(knowledge_key: str, label: str) -> dict:
     templates = {
         'cond': (
@@ -421,6 +499,7 @@ def build_local_bundle(
     analysis: dict,
     profile: dict,
 ) -> dict:
+    knowledge_key = canonical_knowledge_key(knowledge_key)
     node = build_knowledge_node(knowledge_key)
     kb = knowledge_section(knowledge_key)
     label = node['name']
@@ -486,7 +565,7 @@ def build_local_bundle(
         'node': label,
         'objective': analysis.get('learning_objectives') or node['objectives'],
         'analysis': analysis,
-        'explain': _truncate_explain(explain_body),
+        'explain': format_explain_paragraphs(explain_body),
         'diagrams': [_diagram_for_key(knowledge_key, label)],
         'cases': cases,
         'code': [{
@@ -589,7 +668,8 @@ def _bundle_generation_prompt(
     system = (
         '你是Python程序设计基础课程的教学资源生成器。只输出JSON对象，包含单个bundle字段。'
         'bundle必须符合 pedagogical_v2 结构：title,node,objective,analysis,explain,diagrams,cases,code,exercises,summary。'
-        'explain不超过800字；cases至少2条且来自真实Python开发；exercises含choice/fill/coding各2题且含answer/explanation/tags。'
+        'explain不超过800字，必须写成3到6个短段落，每段2到3句并用空行分隔；'
+        'cases至少2条且来自真实Python开发；exercises含choice/fill/coding各2题且含answer/explanation/tags。'
         'diagrams至少1条含mermaid(flowchart或graph开头)。code必须Python3可compile。'
         '不得编造课程外API，仅使用Python标准库。严格基于knowledge_node与knowledge_base，不得幻想知识。'
     )
@@ -652,7 +732,7 @@ def _finalize_bundle(bundle: dict, analysis: dict) -> dict:
     bundle = _normalize_bundle_shape(bundle)
     bundle['format'] = 'pedagogical_v2'
     bundle['analysis'] = bundle.get('analysis') or analysis
-    bundle['explain'] = _truncate_explain(bundle.get('explain') or '')
+    bundle['explain'] = format_explain_paragraphs(bundle.get('explain') or '')
     bundle['markdown'] = render_markdown(bundle)
     return bundle
 
@@ -778,7 +858,20 @@ def _mindmap_to_tree(markdown: str, root: str) -> dict:
 
 
 def split_bundle_to_legacy_types(bundle: dict, knowledge_key: str) -> list[dict[str, Any]]:
-    label = bundle.get('node') or POINTS.get(knowledge_key, knowledge_key)
+    knowledge_key = canonical_knowledge_key(knowledge_key)
+    raw_node = bundle.get('node')
+    if isinstance(raw_node, dict):
+        label = (
+            raw_node.get('name')
+            or raw_node.get('label')
+            or raw_node.get('title')
+            or POINTS.get(knowledge_key, knowledge_key)
+        )
+    elif isinstance(raw_node, str) and raw_node.strip():
+        label = raw_node.strip()
+    else:
+        label = POINTS.get(knowledge_key, knowledge_key)
+    label = str(label)[:100]
     analysis = bundle.get('analysis') or {}
     summary = bundle.get('summary') or {}
     exercises = bundle.get('exercises') or []

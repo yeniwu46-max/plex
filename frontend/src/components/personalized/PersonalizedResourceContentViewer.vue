@@ -34,8 +34,13 @@ const bundleContent = computed((): PedagogicalBundleContent | null => {
 })
 
 const markdownText = computed(() => {
-  const content = props.item.content
-  if (typeof content.markdown === 'string') return content.markdown
+  const content = props.item.content as Record<string, unknown> | string | null | undefined
+  if (content && typeof content === 'object') {
+    if (typeof content.markdown === 'string' && content.markdown.trim()) return content.markdown
+    if (typeof content.body === 'string' && content.body.trim()) return content.body
+    if (typeof content.text === 'string' && content.text.trim()) return content.text
+  }
+  if (typeof content === 'string' && content.trim()) return content
   return ''
 })
 
@@ -81,6 +86,21 @@ const videoUrl = computed(() =>
   props.item.resource_type === 'video_lesson' ? props.item.content_url || '' : '',
 )
 
+const fallbackMarkdown = computed(() => {
+  if (markdownText.value || codingLab.value || mindMap.value || exerciseQuestions.value.length) return ''
+  if (audioTranscript.value || videoScript.value || isBundle.value) return ''
+  const reason = String(props.item.recommendation_reason || '').trim()
+  const title = String(props.item.title || '学习资料').trim()
+  return [
+    `# ${title}`,
+    '',
+    reason || '本资源正文暂未完整入库，可先阅读下方说明，或使用下载按钮获取文件。',
+    '',
+    `- 知识点：${props.item.knowledge_label || props.item.knowledge_key || '未标注'}`,
+    `- 类型：${props.item.resource_type}`,
+  ].join('\n')
+})
+
 const showBundleToggle = computed(
   () => !isBundle.value && bundleContent.value && props.bundleItem,
 )
@@ -117,7 +137,7 @@ function fencedCode(code?: string, lang = 'python') {
         :class="{ 'toggle-btn--active': viewMode === 'current' }"
         @click="viewMode = 'current'"
       >
-        当前资源（{{ item.resource_type }}）
+        当前资源 · {{ item.resource_type }}
       </button>
       <button
         type="button"
@@ -145,7 +165,7 @@ function fencedCode(code?: string, lang = 'python') {
         <n-collapse-item
           v-else-if="exerciseQuestions.length"
           name="main"
-          :title="`分层题库（${exerciseQuestions.length}）`"
+          :title="`分层题库 · ${exerciseQuestions.length} 题`"
         >
           <article v-for="(q, index) in exerciseQuestions" :key="index" class="exercise-row">
             <header>
@@ -214,6 +234,12 @@ function fencedCode(code?: string, lang = 'python') {
           <p v-else class="content-hint">视频仍在生成或暂不可用，先看分镜脚本：</p>
           <div class="content-rendered">
             <MarkdownRenderer :content="videoScript" />
+          </div>
+        </n-collapse-item>
+
+        <n-collapse-item v-else-if="fallbackMarkdown" name="main" title="资料概要">
+          <div class="content-rendered">
+            <MarkdownRenderer :content="fallbackMarkdown" />
           </div>
         </n-collapse-item>
 

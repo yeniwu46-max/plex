@@ -20,9 +20,9 @@ import { formatGrowthEvent } from '../utils/growthEventLabels'
 import { buildKnowledgeRadarFromGraph } from '../utils/knowledgeRadar'
 
 const ERROR_TYPE_LABELS: Record<string, string> = {
-  wrong_output: '????',
-  runtime_error: '????',
-  wrong_answer: '????',
+  wrong_output: '输出错误',
+  runtime_error: '运行错误',
+  wrong_answer: '答案错误',
 }
 
 const workspace = useStudentWorkspaceStore()
@@ -48,9 +48,9 @@ const explorerId = computed(() => {
 const classInfo = computed(() => overview.value?.profile.class)
 const classLabel = computed(() => {
   const cls = classInfo.value
-  if (!cls) return '??????'
-  const code = cls.join_code ? ` ? ?? ${cls.join_code}` : ''
-  return `${cls.name || `?? #${cls.id}`}${code}`
+  if (!cls) return '暂未加入班级'
+  const code = cls.join_code ? ` · 编号 ${cls.join_code}` : ''
+  return `${cls.name || `班级 #${cls.id}`}${code}`
 })
 
 const growthEvents = computed(() => {
@@ -62,7 +62,7 @@ const growthEvents = computed(() => {
       id: `points-${log.id}`,
       kind: 'points' as const,
       title: formatted.title,
-      date: log.created_at?.slice(0, 10) || '??',
+      date: log.created_at?.slice(0, 10) || '今日',
       description: formatted.description,
       tone: tones[index % tones.length],
     }
@@ -72,10 +72,10 @@ const growthEvents = computed(() => {
     id: `emergency-${record.id}`,
     kind: 'emergency' as const,
     record,
-    title: '????????? ?????,
-    date: record.date?.slice(0, 10) || '??',
-    description: `${record.focus_label} ? ?? ${record.correct_count}/${record.total_count}${
-      record.reward_points ? ` ? +${record.reward_points} XP` : ''
+    title: '边界条件补给站 · 紧急任务',
+    date: record.date?.slice(0, 10) || '今日',
+    description: `${record.focus_label} · 答对 ${record.correct_count}/${record.total_count}${
+      record.reward_points ? ` · +${record.reward_points} XP` : ''
     }`,
     tone: tones[(pointEvents.length + index) % tones.length],
   }))
@@ -113,9 +113,9 @@ const mistakePieData = computed(() => {
   const mistakes = learningReport.value?.mistake_highlights ?? []
 
   for (const item of mistakes) {
-    const types = item.error_types?.length ? item.error_types : [item.error_type || '??']
+    const types = item.error_types?.length ? item.error_types : [item.error_type || '其他']
     for (const rawType of types) {
-      const label = ERROR_TYPE_LABELS[rawType] || rawType || '??'
+      const label = ERROR_TYPE_LABELS[rawType] || rawType || '其他'
       counts.set(label, (counts.get(label) ?? 0) + (item.fail_count ?? 1))
     }
   }
@@ -162,7 +162,7 @@ async function loadArchive(force = false) {
     emergencyMissions.value = insights.emergency_missions ?? []
   } catch (error) {
     if (!overview.value) {
-      errorMessage.value = error instanceof Error ? error.message : '????????'
+      errorMessage.value = error instanceof Error ? error.message : '成长档案加载失败'
     }
   } finally {
     loading.value = false
@@ -174,7 +174,7 @@ onMounted(() => {
 })
 
 onActivated(() => {
-  // ????????????????????
+  // 切回本页时用缓存先渲染，后台再静默刷新，避免闪烁
   void loadArchive(false)
 })
 </script>
@@ -182,20 +182,20 @@ onActivated(() => {
 <template>
   <DashboardShell
     active-nav="me"
-    page-title="????"
-    page-subtitle="???????????????"
+    page-title="成长档案"
+    page-subtitle="你的成长，被记录在每一段星轨里"
     search-placeholder=""
     hide-search
   >
     <main class="growth-page">
       <PlexSyncState
         v-if="loading && !overview"
-        label="??????????
-        hint="????????????????"
+        label="正在整理你的探索档案"
+        hint="档案会随练习、试炼与委托实时更新"
       />
       <div v-else-if="errorMessage" class="growth-state growth-state--error">
         <span>{{ errorMessage }}</span>
-        <n-button size="small" @click="loadArchive(true)">??</n-button>
+        <n-button size="small" @click="loadArchive(true)">重试</n-button>
       </div>
       <template v-else>
         <section class="growth-hero">
@@ -213,19 +213,19 @@ onActivated(() => {
             <div class="tech-stat-card">
               <span class="tech-stat-card__corner tech-stat-card__corner--tl" aria-hidden="true" />
               <span class="tech-stat-card__corner tech-stat-card__corner--br" aria-hidden="true" />
-              <small>????</small>
-              <strong>{{ overview?.profile.consecutive_days ?? 0 }} ??/strong>
+              <small>连续探索</small>
+              <strong>{{ overview?.profile.consecutive_days ?? 0 }} 天</strong>
             </div>
             <div class="tech-stat-card tech-stat-card--rank">
               <span class="tech-stat-card__corner tech-stat-card__corner--tl" aria-hidden="true" />
               <span class="tech-stat-card__corner tech-stat-card__corner--br" aria-hidden="true" />
-              <small>????</small>
-              <strong>{{ overview?.profile.class_rank ? `??${overview.profile.class_rank} ?` : '??' }}</strong>
+              <small>班级排名</small>
+              <strong>{{ overview?.profile.class_rank ? `第 ${overview.profile.class_rank} 名` : '暂无' }}</strong>
             </div>
             <div class="tech-stat-card tech-stat-card--rate">
               <span class="tech-stat-card__corner tech-stat-card__corner--tl" aria-hidden="true" />
               <span class="tech-stat-card__corner tech-stat-card__corner--br" aria-hidden="true" />
-              <small>??7 ????</small>
+              <small>近 7 日正确率</small>
               <strong>{{ learningReport?.summary.correct_rate ?? 0 }}%</strong>
             </div>
           </div>
@@ -233,7 +233,7 @@ onActivated(() => {
 
         <section class="growth-grid" data-tour="student-learning-report">
           <article class="growth-card skill-card">
-            <header><span>????</span><h3>?????</h3></header>
+            <header><span>能力分布</span><h3>技能掌握度</h3></header>
             <div class="skill-hud">
               <span class="skill-hud__corner skill-hud__corner--tl" aria-hidden="true" />
               <span class="skill-hud__corner skill-hud__corner--br" aria-hidden="true" />
@@ -247,13 +247,13 @@ onActivated(() => {
                     <span class="skill-grid__fill" :style="{ width: `${skill.percent}%` }" />
                   </div>
                 </li>
-                <li v-if="!skillItems.length" class="empty">?????????????????????/li>
+                <li v-if="!skillItems.length" class="empty">完成练习后，系统会生成八大学域技能分布。</li>
               </ul>
             </div>
           </article>
 
           <article class="growth-card timeline-card">
-            <header><span>????</span><h3>????</h3></header>
+            <header><span>成长轨迹</span><h3>近期记录</h3></header>
             <ul class="timeline">
               <li v-for="event in growthEvents" :key="event.id" class="timeline__item">
                 <time>{{ event.date }}</time>
@@ -265,7 +265,7 @@ onActivated(() => {
                     @click="toggleEmergencyEntry(event.record)"
                   >
                     <strong>{{ event.title }}</strong>
-                    <span>{{ expandedEmergencyIds.has(event.record.id) ? '??' : '??' }}</span>
+                    <span>{{ expandedEmergencyIds.has(event.record.id) ? '收起' : '展开' }}</span>
                   </button>
                   <strong v-else>{{ event.title }}</strong>
                   <p v-if="event.kind !== 'emergency' || (event.record && expandedEmergencyIds.has(event.record.id))">
@@ -277,31 +277,31 @@ onActivated(() => {
                     class="timeline__detail"
                     @click="openEmergencyDetail(event.record)"
                   >
-                    ????
+                    查看详情
                   </button>
                 </div>
               </li>
-              <li v-if="!growthEvents.length" class="empty">?????????????????????/li>
+              <li v-if="!growthEvents.length" class="empty">完成委托或试炼后，成长轨迹会出现在这里。</li>
             </ul>
           </article>
 
           <article v-if="learningReport" class="growth-card radar-card" data-tour="student-knowledge-graph">
-            <header><span>????</span><h3>????</h3></header>
-            <plex-radar-chart :dimensions="radarLabels" :values="radarValues" title="??????" color="#34e6c5" />
+            <header><span>学习报告</span><h3>知识雷达</h3></header>
+            <plex-radar-chart :dimensions="radarLabels" :values="radarValues" title="知识点掌握度" color="#34e6c5" />
             <p class="report-summary">
-              {{ learningReport.summary.level_label }} ? ???? {{ learningReport.summary.index }}
-              ? ??7 ???? {{ learningReport.summary.correct_rate }}%
+              {{ learningReport.summary.level_label }} · 探索指数 {{ learningReport.summary.index }}
+              · 近 7 日正确率 {{ learningReport.summary.correct_rate }}%
             </p>
           </article>
 
           <article v-if="learningReport" class="growth-card chart-card mistake-card">
-            <header><span>????</span><h3>????</h3></header>
+            <header><span>学习报告</span><h3>错题分析</h3></header>
             <div v-if="mistakePieData.length" class="chart-wrap chart-wrap--hud">
               <span class="chart-wrap__ring chart-wrap__ring--outer" aria-hidden="true" />
               <span class="chart-wrap__ring chart-wrap__ring--inner" aria-hidden="true" />
               <plex-pie-chart :data="mistakePieData" sci-fi />
             </div>
-            <p v-else class="empty">????????????????????????/p>
+            <p v-else class="empty">完成试炼并产生错题后，这里会展示错题类型分布。</p>
           </article>
 
           <div
@@ -309,24 +309,24 @@ onActivated(() => {
             class="growth-charts-row"
           >
             <article v-if="trendDays.length" class="growth-card chart-card">
-              <header><span>????</span><h3>??7 ????/h3></header>
+              <header><span>学习趋势</span><h3>近 7 天练习</h3></header>
               <div class="chart-wrap">
                 <plex-line-chart
                   :x-data="trendDays"
                   :series="[
-                    { name: '????%)', data: trendCorrect, color: '#34e6c5' },
-                    { name: '????', data: trendCount, color: '#38bdf8' },
+                    { name: '正确率(%)', data: trendCorrect, color: '#34e6c5' },
+                    { name: '练习次数', data: trendCount, color: '#38bdf8' },
                   ]"
                 />
               </div>
             </article>
 
             <article v-if="domainBarLabels.length" class="growth-card chart-card">
-              <header><span>????</span><h3>??????/h3></header>
+              <header><span>星域掌握</span><h3>知识域进度</h3></header>
               <div class="chart-wrap">
                 <plex-bar-chart
                   :x-data="domainBarLabels"
-                  :series="[{ name: '????, data: domainBarValues, color: '#34e6c5' }]"
+                  :series="[{ name: '掌握度', data: domainBarValues, color: '#34e6c5' }]"
                 />
               </div>
             </article>

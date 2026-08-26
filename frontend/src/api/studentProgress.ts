@@ -103,6 +103,21 @@ export async function fetchLearningPath() {
   return data.data
 }
 
+export interface LearningPathAdviceResult {
+  advice: string
+  next_step: string
+  backend: string
+  fallback?: boolean
+}
+
+export async function fetchLearningPathAdvice(focusNodeId?: string | null) {
+  const { data } = await http.post<ApiEnvelope<LearningPathAdviceResult>>('/v1/student/learning-path/advice', {
+    focus_node_id: focusNodeId ?? undefined,
+  })
+  if (data.code !== 0) throw new Error(data.message || '学习路径建议生成失败')
+  return data.data
+}
+
 export async function fetchArchiveInsights() {
   const { data } = await http.get<ApiEnvelope<ArchiveInsightsResult>>('/v1/student/archive-insights')
   if (data.code !== 0) throw new Error(data.message || '加载档案洞察失败')

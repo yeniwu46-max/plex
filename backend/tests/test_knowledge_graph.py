@@ -2,6 +2,7 @@
 import unittest
 
 from app import create_app
+from app.data.knowledge_node_registry import KNOWLEDGE_NODE_REGISTRY
 from app.services.knowledge_graph import KnowledgeGraphService
 
 
@@ -17,7 +18,7 @@ class KnowledgeGraphServiceTests(unittest.TestCase):
 
     def test_admin_graph_has_nodes_and_edges(self):
         payload = KnowledgeGraphService.get_admin_graph()
-        self.assertEqual(len(payload['nodes']), 20)
+        self.assertEqual(len(payload['nodes']), len(KNOWLEDGE_NODE_REGISTRY))
         self.assertGreaterEqual(len(payload['edges']), 10)
         self.assertEqual(payload['scope'], 'admin')
 

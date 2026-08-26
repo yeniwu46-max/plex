@@ -2,6 +2,7 @@ import { getPythonTrialQuestion, type PythonTrialQuestion } from './pythonTrialQ
 import { getAllStageTrackNodes } from './starPathKnowledgeTracks'
 import { getStarPathKnowledgePoint } from './starPathDomains'
 import { resolveQuestionById } from '../utils/starPathQuestionGenerator'
+import { getCachedPracticeQuestionsForKey } from '../utils/practiceQuestionCache'
 
 export type StarPathNodeStatus = 'current' | 'done' | 'progress' | 'locked'
 export type StarPathGem = 'done' | 'active' | 'locked' | 'pending'
@@ -26,15 +27,31 @@ export interface StarPathNode {
   kgId?: string
 }
 
-/** 旧星轨 01–07 深链映射到四阶段节点 */
+/** 历史深链兼容：旧星轨 01–07 编号，以及重构前的 stageN-* 节点 id */
 const LEGACY_NODE_MAP: Record<string, string> = {
-  '01': 'stage1-intro',
-  '02': 'stage1-var',
-  '03': 'stage2-cond',
-  '04': 'stage2-loop',
-  '05': 'stage3-list',
-  '06': 'stage3-func',
-  '07': 'stage4-binary',
+  '01': 'lang-print',
+  '02': 'lang-var',
+  '03': 'branch-if',
+  '04': 'loop-for',
+  '05': 'array-basic',
+  '06': 'func-define',
+  '07': 'search-binary',
+  'stage1-intro': 'lang-print',
+  'stage1-comment': 'lang-print',
+  'stage1-var': 'lang-var',
+  'stage1-io': 'lang-input',
+  'stage2-ops': 'seq-arith',
+  'stage2-cond': 'branch-if',
+  'stage2-loop': 'loop-for',
+  'stage2-range': 'loop-for',
+  'stage3-str': 'string-index',
+  'stage3-list': 'array-basic',
+  'stage3-dict': 'array-traverse',
+  'stage3-func': 'func-define',
+  'stage4-algo-sum': 'search-stat',
+  'stage4-bubble': 'search-sort',
+  'stage4-selection': 'search-sort',
+  'stage4-binary': 'search-binary',
 }
 
 export function resolveStarPathNodeId(id: string): string {
@@ -60,10 +77,20 @@ export function getStarPathQuestionsForNode(nodeId: string): PythonTrialQuestion
   return resolveQuestionsForNode(nodeId)
 }
 
+/**
+ * 优先返回接口下发的真题（practiceQuestionCache 已按 kg_node_id 建好索引），
+ * 只有缓存尚未加载或该节点确实没有真题时，才回落到静态题与离线生成题。
+ * 调用方应先 await ensurePracticeQuestionsLoaded()，否则本函数只能给到兜底题。
+ */
 export function resolveQuestionsForNode(nodeId: string): PythonTrialQuestion[] {
   const node = getStarPathNode(nodeId)
   if (!node) return []
-  const kp = getStarPathKnowledgePoint(nodeId)?.point
+
+  const resolvedId = resolveStarPathNodeId(nodeId)
+  const fromApi = getCachedPracticeQuestionsForKey(resolvedId)
+  if (fromApi.length) return fromApi
+
+  const kp = getStarPathKnowledgePoint(resolvedId)?.point
   return node.questionIds
     .map((id) => {
       const staticQuestion = getPythonTrialQuestion(id)

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { NButton, NTag, useMessage } from 'naive-ui'
+import { NButton, NIcon, NTag, useMessage } from 'naive-ui'
+import { ChevronDownOutline, ChevronUpOutline } from '@vicons/ionicons5'
 import {
   submitAssignmentAnswer,
   type TeacherAssignmentItem,
@@ -25,6 +26,7 @@ const selections = ref<Record<number, number | null>>({})
 const submittingId = ref<number | null>(null)
 const feedback = ref<Record<number, { correct: boolean; correctIndex: number }>>({})
 const questionStartedAt = ref<Record<number, number>>({})
+const collapsed = ref(false)
 
 function markQuestionStart(questionId: number) {
   if (!questionStartedAt.value[questionId]) {
@@ -88,11 +90,20 @@ watch(
         <h2>教师布置 · 知识碎片</h2>
         <p>完成试炼配套题目，同步推进「修复知识碎片」委托</p>
       </div>
-      <n-tag v-if="assignments.pending_count" type="warning" round :bordered="false">
-        待完成 {{ assignments.pending_count }}
-      </n-tag>
+      <div class="teacher-assign__actions">
+        <n-tag v-if="assignments.pending_count" type="warning" round :bordered="false">
+          待完成 {{ assignments.pending_count }}
+        </n-tag>
+        <n-button quaternary size="tiny" @click="collapsed = !collapsed">
+          <template #icon>
+            <n-icon :component="collapsed ? ChevronDownOutline : ChevronUpOutline" />
+          </template>
+          {{ collapsed ? '展开' : '折叠' }}
+        </n-button>
+      </div>
     </header>
 
+    <template v-if="!collapsed">
     <p v-if="loading" class="teacher-assign__empty">加载题目中…</p>
     <p v-else-if="!assignments.items.length" class="teacher-assign__empty">
       暂无待完成题目。教师发布试炼后，题目会出现在这里。
@@ -144,6 +155,7 @@ watch(
         </n-button>
       </footer>
     </article>
+    </template>
   </section>
 </template>
 
@@ -162,6 +174,13 @@ watch(
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.85rem;
+}
+
+.teacher-assign__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .teacher-assign__head h2 {

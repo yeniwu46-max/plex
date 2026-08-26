@@ -23,7 +23,11 @@ const PIPELINE = [
 
 const FREEFORM_ICONS: Record<string, string> = {
   context: '📊',
+  reasoning: '🧠',
   llm: '💬',
+  illustration: '🎨',
+  document: '📄',
+  graph: '🌐',
   extracting: '🧠',
   merging: '🔗',
   fallback: '⚡',
@@ -96,7 +100,8 @@ const visible = computed(() => props.loading || (props.trace?.length ?? 0) > 0)
             <div class="plex-trace__body">
               <p class="plex-trace__name">
                 {{ step.name }}
-                <span v-if="step.latencyMs != null" class="plex-trace__ms">{{ Math.round(step.latencyMs) }}ms</span>
+                <span v-if="step.latencyMs != null && step.latencyMs > 0" class="plex-trace__ms">{{ Math.round(step.latencyMs) }}ms</span>
+                <span v-else-if="step.status === 'running'" class="plex-trace__ms">…</span>
                 <span v-if="step.status === 'running'" class="plex-trace__dot" aria-label="处理中" />
               </p>
               <p v-if="step.summary" class="plex-trace__summary">{{ step.summary }}</p>

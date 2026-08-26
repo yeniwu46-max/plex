@@ -19,6 +19,9 @@ export type TeacherNavKey =
   | 'classes'
   | 'resources'
   | 'admin'
+  // 'problem-bank' 暂无对应侧边栏入口（题库预览为独立预览页面，见
+  // ProblemBankPreviewView.vue），仅用于 activeNav 类型占位，不渲染导航按钮。
+  | 'problem-bank'
 
 const props = withDefaults(
   defineProps<{
@@ -89,8 +92,8 @@ function toggleCollapsed() {
       <div v-if="!collapsed" class="teacher-sidebar__footer">
         <span class="teacher-sidebar__keeper-avatar" aria-hidden="true"><span /></span>
         <div class="teacher-sidebar__keeper-copy">
-          <strong>Waystation Keeper</strong>
-          <small>AI Observation · 在线</small>
+          <strong>小E 教学助手</strong>
+          <small>智能学情观测 · 在线</small>
         </div>
       </div>
 

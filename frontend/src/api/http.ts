@@ -77,7 +77,8 @@ export function formatHttpError(error: unknown, fallback = '请求失败'): stri
     if (apiMessage) return apiMessage
     const status = error.response?.status
     if (status === 404) {
-      return '服务接口未找到，请重启后端服务后再试'
+      // 业务 404（如班级不存在）优先展示后端 message；真正缺路由时才提示重启
+      return apiMessage || '服务接口未找到，请确认班级选择或重启后端后再试'
     }
     if (status === 401 || status === 403) {
       return apiMessage || '鉴权失败，请重新登录后再试'

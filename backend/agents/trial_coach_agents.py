@@ -8,6 +8,12 @@ from typing import Any
 
 from agents.llm_client import api_key_configured, chat_json, chat_text, llm_provider, strip_asterisks
 
+try:
+    from app.services.iflytek_spark import IflytekSparkService, SparkServiceError
+except Exception:  # pragma: no cover - 单元测试直接 import agents 时可能无 app 包上下文
+    IflytekSparkService = None  # type: ignore
+    SparkServiceError = RuntimeError  # type: ignore
+
 INTENT_ERROR = 'error_diagnosis'
 INTENT_QUALITY = 'code_quality'
 INTENT_OPTIMIZE = 'optimization'
@@ -342,8 +348,14 @@ def execute(intent: str, payload: dict) -> dict:
         'userQuestion': user_question,
     }
 
+    # 优先 DeepSeek；讯飞星火仅作兜底（未配置时跳过，避免超时卡住）
+    spark_ok = bool(
+        IflytekSparkService
+        and IflytekSparkService._resolve_api_password('trial_coach')
+    )
+
     provider = llm_provider()
-    if provider and user_question:
+    if backend == 'rules' and provider and user_question:
         prompt_user = (
             f'【练习上下文】\n{_build_context_block(payload)}\n\n'
             f'【学生问题】\n{user_question}'
@@ -352,23 +364,58 @@ def execute(intent: str, payload: dict) -> dict:
             system=_chat_system(intent),
             user=prompt_user,
             history=history if isinstance(history, list) else None,
-            timeout=5.0,
+            timeout=12.0,
             max_tokens=360,
         )
         if text:
             body = {'response': text[:1200]}
-            backend = provider[2].split('/')[-1] if 'deepseek' in provider[1] else 'llm'
-            if 'deepseek' in provider[1]:
-                backend = 'deepseek'
-    elif api_key_configured():
+            backend = 'deepseek' if 'deepseek' in provider[1] else 'llm'
+    elif backend == 'rules' and api_key_configured():
         llm_out = chat_json(
             system=_llm_prompt(intent),
             user=json.dumps(llm_context, ensure_ascii=False),
-            timeout=5.0,
+            timeout=12.0,
         )
         if llm_out and llm_out.get('response'):
             body = {**body, **{k: v for k, v in llm_out.items() if v}}
             backend = 'deepseek' if llm_provider() and 'deepseek' in (llm_provider() or ('', '', ''))[1] else 'llm'
+
+    if backend == 'rules' and spark_ok and user_question:
+        prompt_user = (
+            f'【练习上下文】\n{_build_context_block(payload)}\n\n'
+            f'【学生问题】\n{user_question}'
+        )
+        try:
+            text = IflytekSparkService.chat_text(
+                _chat_system(intent),
+                prompt_user,
+                timeout=12,
+                purpose='trial_coach',
+                temperature=0.45,
+                max_tokens=360,
+            )
+            if text:
+                body = {'response': text[:1200]}
+                backend = 'spark'
+        except SparkServiceError as exc:
+            import logging
+            logging.getLogger(__name__).warning('trial_coach spark failed: %s', exc)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning('trial_coach spark unexpected: %s', exc)
+    if backend == 'rules' and spark_ok and not user_question:
+        try:
+            spark_json = IflytekSparkService.chat_json(
+                _llm_prompt(intent),
+                json.dumps(llm_context, ensure_ascii=False),
+                timeout=12,
+                purpose='trial_coach',
+            )
+            if spark_json and spark_json.get('response'):
+                body = {**body, **{k: v for k, v in spark_json.items() if v}}
+                backend = 'spark'
+        except Exception:
+            pass
 
     response_text = _format_chat_response(body) if not user_question else str(body.get('response') or '')
 

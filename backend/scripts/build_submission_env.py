@@ -101,7 +101,15 @@ def build(output_dir: Path | None = None) -> dict:
     merged.setdefault("CORS_ORIGINS", "http://localhost:5180")
     merged.setdefault("FRONTEND_BASE_URL", "http://localhost:5180")
 
-    main_overrides = {k: v for k, v in merged.items() if k in API_KEY_NAMES or k.startswith("DEEPSEEK_") or k.startswith("OPENAI_")}
+    # Preserve every configured provider/API field so the extracted package has
+    # the same integrations as the local demo. Spark/XFYUN fields stay in their
+    # dedicated override file because app.config loads it with override=True.
+    main_overrides = {
+        key: value
+        for key, value in merged.items()
+        if not any(key.startswith(prefix) for prefix in SPARK_KEY_PREFIXES)
+        and key != "RESOURCE_TASK_SYNC"
+    }
     main_overrides.update({
         "DATABASE_URL": merged["DATABASE_URL"],
         "AGENT_BACKEND": "auto",

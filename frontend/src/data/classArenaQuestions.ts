@@ -33,7 +33,7 @@ export const CLASS_HARD_QUESTIONS: PythonTrialQuestion[] = [
       { id: 't3', label: '隐藏 1', setup: 'a = 100000\nb = 234567', expected: '334567' },
       { id: 't4', label: '隐藏 2', setup: 'a = 0\nb = 0', expected: '0' },
     ],
-    starterCode: `# a、b 已由测试数据提供\n# 输出两数之和\n`,
+    starterCode: `# a、b 已由判题环境提供\n# 输出两数之和\n`,
     runMode: 'stdout',
     hint: 'print(a + b)',
   },
@@ -85,21 +85,32 @@ export const CLASS_HARD_QUESTIONS: PythonTrialQuestion[] = [
   },
 ]
 
-export const STUDENT_DUEL_TIME_SEC = 3600
+/** 入门对战总时限 5 分钟；进阶对战总时限 10 分钟 */
+export const STUDENT_DUEL_ENTRY_TIME_SEC = 300
+export const STUDENT_DUEL_ADVANCED_TIME_SEC = 600
+export type StudentDuelDifficulty = 'entry' | 'advanced'
+
+export const STUDENT_DUEL_TIME_BY_DIFFICULTY: Record<StudentDuelDifficulty, number> = {
+  entry: STUDENT_DUEL_ENTRY_TIME_SEC,
+  advanced: STUDENT_DUEL_ADVANCED_TIME_SEC,
+}
+
+/** @deprecated 默认展示入门时限；实际以所选难度为准 */
+export const STUDENT_DUEL_TIME_SEC = STUDENT_DUEL_ENTRY_TIME_SEC
 
 /** @deprecated 使用 STUDENT_DUEL_TIME_SEC */
 export const GLADIATOR_DUEL_TIME_SEC = STUDENT_DUEL_TIME_SEC
 
-/** 学生对战 · 随机题池（ACM 赛制，从中抽 3 题） */
-export const STUDENT_DUEL_QUESTION_POOL: PythonTrialQuestion[] = [
+/** 学生对战 · 入门题池（ACM 赛制，从中抽 3 题） */
+export const STUDENT_DUEL_ENTRY_POOL: PythonTrialQuestion[] = [
   {
     id: 'arena-gladiator-sum',
     title: '两数之和',
-    topic: '竞速对决 · 同题 PK',
-    difficulty: '挑战',
+    topic: '竞速对决 · 入门',
+    difficulty: '入门',
     rewardXp: 40,
     durationMin: 5,
-    tags: ['角斗士', '竞速'],
+    tags: ['入门', '竞速'],
     description: '给定 a、b，输出 a + b。',
     constraints: ['仅 print 结果', '不要多余输出'],
     examples: [
@@ -118,11 +129,11 @@ export const STUDENT_DUEL_QUESTION_POOL: PythonTrialQuestion[] = [
   {
     id: 'arena-gladiator-max',
     title: '两数较大值',
-    topic: '竞速对决 · 同题 PK',
-    difficulty: '挑战',
+    topic: '竞速对决 · 入门',
+    difficulty: '入门',
     rewardXp: 45,
     durationMin: 5,
-    tags: ['角斗士', '竞速'],
+    tags: ['入门', '竞速'],
     description: '给定 a、b，输出两者中的较大值。',
     constraints: ['仅 print 结果', '不要多余输出'],
     examples: [
@@ -141,11 +152,11 @@ export const STUDENT_DUEL_QUESTION_POOL: PythonTrialQuestion[] = [
   {
     id: 'arena-gladiator-product',
     title: '两数之积',
-    topic: '竞速对决 · 同题 PK',
-    difficulty: '挑战',
+    topic: '竞速对决 · 入门',
+    difficulty: '入门',
     rewardXp: 50,
     durationMin: 5,
-    tags: ['角斗士', '竞速'],
+    tags: ['入门', '竞速'],
     description: '给定 a、b，输出 a × b 的结果。',
     constraints: ['仅 print 结果', '不要多余输出'],
     examples: [
@@ -163,6 +174,16 @@ export const STUDENT_DUEL_QUESTION_POOL: PythonTrialQuestion[] = [
   },
 ]
 
+/** 进阶题池：班级硬题，限时 10 分钟 */
+export const STUDENT_DUEL_ADVANCED_POOL: PythonTrialQuestion[] = CLASS_HARD_QUESTIONS.map((item) => ({
+  ...item,
+  difficulty: '进阶',
+  durationMin: 10,
+  tags: [...new Set([...item.tags, '进阶', '竞速'])],
+}))
+
+export const STUDENT_DUEL_QUESTION_POOL = STUDENT_DUEL_ENTRY_POOL
+
 /** @deprecated 使用 STUDENT_DUEL_QUESTION_POOL */
 export const GLADIATOR_DUEL_QUESTIONS = STUDENT_DUEL_QUESTION_POOL
 
@@ -176,14 +197,28 @@ export {
   getDefaultMockExamQuestions,
 }
 
-export function pickRandomStudentDuelQuestions(count = 3): PythonTrialQuestion[] {
-  const pool = [...STUDENT_DUEL_QUESTION_POOL]
+function pickFromPool(pool: PythonTrialQuestion[], count: number): PythonTrialQuestion[] {
+  const copy = [...pool]
   const picked: PythonTrialQuestion[] = []
-  while (pool.length && picked.length < count) {
-    const index = Math.floor(Math.random() * pool.length)
-    picked.push(pool.splice(index, 1)[0])
+  while (copy.length && picked.length < count) {
+    const index = Math.floor(Math.random() * copy.length)
+    picked.push(copy.splice(index, 1)[0])
   }
   return picked
+}
+
+export function pickRandomStudentDuelQuestions(
+  count = 3,
+  difficulty: StudentDuelDifficulty = 'entry',
+): PythonTrialQuestion[] {
+  const pool = difficulty === 'advanced' ? STUDENT_DUEL_ADVANCED_POOL : STUDENT_DUEL_ENTRY_POOL
+  return pickFromPool(pool, count)
+}
+
+export function resolveStudentDuelQuestions(ids: string[]): PythonTrialQuestion[] {
+  const all = [...STUDENT_DUEL_ENTRY_POOL, ...STUDENT_DUEL_ADVANCED_POOL]
+  const byId = new Map(all.map((item) => [item.id, item]))
+  return ids.map((id) => byId.get(id)).filter((item): item is PythonTrialQuestion => Boolean(item))
 }
 
 export const RPS_STRATEGY_QUESTION: PythonTrialQuestion = {

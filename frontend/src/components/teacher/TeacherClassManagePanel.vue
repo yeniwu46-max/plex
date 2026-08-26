@@ -38,6 +38,7 @@ const createForm = reactive({
 
 const deleteClassId = ref<number | null>(null)
 const deleteReason = ref('')
+const requestsExpanded = ref(true)
 
 const isAdmin = computed(() => auth.profile?.role === 'admin')
 
@@ -204,7 +205,7 @@ onMounted(() => {
     <template v-else>
       <div class="class-manage__actions-row">
       <article class="class-manage__card">
-        <h3>编辑班级（即时生效）</h3>
+        <h3>编辑班级</h3>
         <label class="class-manage__field">
           <span>选择班级</span>
           <n-select
@@ -237,10 +238,10 @@ onMounted(() => {
         <h3>申请新建班级</h3>
         <label class="class-manage__field">
           <span>班级名称</span>
-          <n-input v-model:value="createForm.name" placeholder="例如：2024 级 Python 探索班" />
+          <n-input v-model:value="createForm.name" placeholder="请输入班级名称" />
         </label>
         <label class="class-manage__field">
-          <span>说明（可选）</span>
+          <span>说明，可选</span>
           <n-input v-model:value="createForm.description" placeholder="班级简介" />
         </label>
         <n-button type="primary" class="class-manage__primary" :loading="submitting" @click="requestCreateClass">提交新建申请</n-button>
@@ -261,22 +262,29 @@ onMounted(() => {
       </div>
 
       <article class="class-manage__card">
-        <h3>我的班级变更申请</h3>
-        <div v-if="!myRequests.length" class="teacher-state-panel">暂无申请记录</div>
-        <ul v-else class="class-manage__requests">
-          <li v-for="row in myRequests" :key="row.id">
-            <div>
-              <strong>{{ row.action === 'create' ? '新建' : row.action === 'delete' ? '删除' : '修改' }}班级</strong>
-              <span v-if="row.class_name"> · {{ row.class_name }}</span>
-              <p v-if="row.reason">{{ row.reason }}</p>
-              <small>{{ row.created_at?.slice(0, 16).replace('T', ' ') }}</small>
-            </div>
-            <n-tag size="small" :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</n-tag>
-          </li>
-        </ul>
-        <p v-if="pendingRequests.length" class="class-manage__pending">
-          当前有 {{ pendingRequests.length }} 条待审申请，请等待管理员在控制中枢处理。
-        </p>
+        <header class="class-manage__card-head">
+          <h3>我的班级变更申请</h3>
+          <n-button size="tiny" quaternary @click="requestsExpanded = !requestsExpanded">
+            {{ requestsExpanded ? '折叠' : '展开' }}
+          </n-button>
+        </header>
+        <template v-if="requestsExpanded">
+          <div v-if="!myRequests.length" class="teacher-state-panel">暂无申请记录</div>
+          <ul v-else class="class-manage__requests">
+            <li v-for="row in myRequests" :key="row.id">
+              <div>
+                <strong>{{ row.action === 'create' ? '新建' : row.action === 'delete' ? '删除' : '修改' }}班级</strong>
+                <span v-if="row.class_name"> · {{ row.class_name }}</span>
+                <p v-if="row.reason">{{ row.reason }}</p>
+                <small>{{ row.created_at?.slice(0, 16).replace('T', ' ') }}</small>
+              </div>
+              <n-tag size="small" :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</n-tag>
+            </li>
+          </ul>
+          <p v-if="pendingRequests.length" class="class-manage__pending">
+            当前有 {{ pendingRequests.length }} 条待审申请，请等待管理员在控制中枢处理。
+          </p>
+        </template>
       </article>
     </template>
   </div>
@@ -328,6 +336,18 @@ onMounted(() => {
   margin: 0 0 0.85rem;
   color: #eef8ff;
   font-size: 1rem;
+}
+
+.class-manage__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.class-manage__card-head h3 {
+  margin: 0;
 }
 
 .class-manage__field {

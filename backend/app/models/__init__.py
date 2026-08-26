@@ -28,6 +28,14 @@ from .student_profile import (
 )
 from .personalized_resource import PersonalizedLearningResource, ResourceGenerationTask
 from .trial_comment import TrialComment, TrialCommentLike
+from .problem_bank import (
+    KnowledgeNode,
+    Problem,
+    ProblemLegacyQuestMap,
+    ProblemSubmission,
+    ProblemTag,
+    ProblemTagMap,
+)
 
 __all__ = [
     'db',
@@ -66,4 +74,10 @@ __all__ = [
     'ResourceGenerationTask',
     'TrialComment',
     'TrialCommentLike',
+    'KnowledgeNode',
+    'Problem',
+    'ProblemLegacyQuestMap',
+    'ProblemSubmission',
+    'ProblemTag',
+    'ProblemTagMap',
 ]

@@ -223,7 +223,42 @@ def crewai_venv_available() -> bool:
     return _crewai_subprocess_ok()
 
 
-def _run_mock_student_pipeline(payload: dict) -> dict:
+def _compact_learning_recommendation(payload: dict) -> dict:
+    """Build the fields feedback needs without querying the full learning path."""
+    diagnosis = payload.get('diagnosis') or {}
+    graph = payload.get('graphInsight') or {}
+    weak_points = diagnosis.get('weakPoints') or payload.get('weakPoints') or []
+    prerequisites = graph.get('prerequisiteNodes') or payload.get('prerequisiteNodes') or []
+    related = graph.get('relatedNodes') or []
+    candidates = [*weak_points, *prerequisites, *related]
+    next_point = str(next((item for item in candidates if item), '当前知识点'))
+
+    strategy = diagnosis.get('remediationStrategy') or {}
+    micro_exercise = str(strategy.get('microExercise') or '').strip()
+    exercise = micro_exercise or f'完成 1 道「{next_point}」微练习'
+    review_nodes = list(dict.fromkeys(str(item) for item in candidates if item))[:3]
+
+    return {
+        'ordered_nodes': [],
+        'active_node_id': None,
+        'next_best_action': {
+            'node_id': None,
+            'reason': f'先巩固「{next_point}」，再回到当前题复测。',
+            'action': 'review',
+        },
+        'remediation_paths': [],
+        'graph_backend': 'diagnosis_context',
+        'topology_source': 'current_attempt',
+        'rationale': f'根据当前代码与运行结果，优先处理「{next_point}」。',
+        'agent_trace': {'backend': 'compact', 'steps': []},
+        'nextKnowledgePoint': next_point,
+        'recommendedExercises': [exercise],
+        'reviewPlan': [f'复习 {item}' for item in review_nodes] or ['对照题目要求检查当前代码'],
+        'estimatedDifficulty': 'easy',
+    }
+
+
+def _run_mock_student_pipeline(payload: dict, *, compact_path: bool = False) -> dict:
     trace: list[dict] = []
 
     diagnosis = _track(
@@ -278,7 +313,11 @@ def _run_mock_student_pipeline(payload: dict) -> dict:
     }
     recommendation = _track(
         'learning_path',
-        lambda: learning_path_agent.execute(path_payload),
+        lambda: (
+            _compact_learning_recommendation(path_payload)
+            if compact_path
+            else learning_path_agent.execute(path_payload)
+        ),
         trace=trace,
         summarize=lambda r: '下一步：{}'.format(r.get('nextKnowledgePoint', '')),
     )
@@ -302,7 +341,8 @@ def _run_mock_student_pipeline(payload: dict) -> dict:
         'recommendation': recommendation,
         'feedback': feedback,
         'pipelineTrace': trace,
-        'backend': backend_name(),
+        # Fast trial feedback must not probe the optional CrewAI environment.
+        'backend': 'mock' if compact_path else backend_name(),
         'completedAt': _now(),
     }
 
@@ -367,20 +407,21 @@ def _try_crewai_student_pipeline(payload: dict) -> dict | None:
     return _run_mock_student_pipeline(payload)
 
 
-def run_student_diagnose(payload: dict) -> dict:
-    try:
-        crew_result = _try_crewai_student_pipeline(payload)
-        if crew_result is not None:
-            return crew_result
-    except Exception:
-        pass
-    baseline = _run_mock_student_pipeline(payload)
+def run_student_diagnose(payload: dict, *, fast: bool = False) -> dict:
+    if not fast:
+        try:
+            crew_result = _try_crewai_student_pipeline(payload)
+            if crew_result is not None:
+                return crew_result
+        except Exception:
+            pass
+    baseline = _run_mock_student_pipeline(payload, compact_path=fast)
     try:
         from agents.llm_client import api_key_configured
         from agents.pipeline_llm import enhance_student_pipeline
 
         if api_key_configured():
-            enhanced = enhance_student_pipeline(baseline, payload)
+            enhanced = enhance_student_pipeline(baseline, payload, fast=fast)
             if enhanced.get('llmEnhanced'):
                 return enhanced
     except Exception:

@@ -257,6 +257,71 @@ export async function fetchStudentOverview(): Promise<StudentOverview> {
   return data.data
 }
 
+export interface StatDetailsLevelHistoryItem {
+  level: number
+  title: string
+  total_points: number
+  reached_at: string | null
+}
+
+export interface StatDetailsHeatmapCell {
+  date: string
+  count: number
+  level: number
+  in_current_month: boolean
+  month?: string
+  weekday?: number
+  weekday_label?: string
+  day?: number
+}
+
+export interface ClassmateRankItem {
+  user_id?: number
+  user_name?: string | null
+  real_name?: string | null
+  username?: string | null
+  rank: number
+  points: number
+  week_points?: number
+  level?: number
+  title?: string | null
+  total_points?: number
+  win_count?: number
+  win_rank?: number
+  online?: boolean
+}
+
+export interface StatDetailsResult {
+  level_profile: LevelProfile
+  level_history: StatDetailsLevelHistoryItem[]
+  practice_heatmap: {
+    month: string
+    months?: string[]
+    cells: StatDetailsHeatmapCell[]
+    weekday_headers?: string[]
+    legend: Array<{ level: number; label: string; min: number; max: number | null }>
+  }
+  class_rank_detail: {
+    rank: number | null
+    level: number
+    title: string | null
+    total_solved: number
+    total_points: number
+    consecutive_days: number
+    class_name: string | null
+    classmates: ClassmateRankItem[]
+    win_leaderboard?: ClassmateRankItem[]
+  }
+}
+
+export async function fetchStatDetails() {
+  const { data } = await http.get<ApiEnvelope<StatDetailsResult>>('/v1/student/stat-details')
+  if (data.code !== 0) {
+    throw new Error(data.message || '获取统计详情失败')
+  }
+  return data.data
+}
+
 export interface StudentPresenceResult {
   class_id: number | null
   online_count: number
@@ -269,5 +334,89 @@ export async function heartbeatStudentPresence() {
   if (data.code !== 0) {
     throw new Error(data.message || '在线状态更新失败')
   }
+  return data.data
+}
+
+export interface DuelWinResult {
+  user_id: number
+  opponent_id: number | null
+  win_count: number
+  total_points: number
+  level: number
+}
+
+export async function recordDuelWin(opponentId?: number | null) {
+  const { data } = await http.post<ApiEnvelope<DuelWinResult>>('/v1/student/duel/win', {
+    opponent_id: opponentId ?? null,
+  })
+  if (data.code !== 0) {
+    throw new Error(data.message || '对战胜局记录失败')
+  }
+  return data.data
+}
+
+export interface OnlineClassmateItem {
+  id: number
+  username: string | null
+  real_name: string | null
+  avatar_url?: string | null
+  last_seen_at?: string | null
+}
+
+export interface OnlineClassmatesResult {
+  class_id: number | null
+  online_count: number
+  ttl_seconds: number
+  updated_at: string
+  students: OnlineClassmateItem[]
+}
+
+export async function fetchOnlineClassmates() {
+  const { data } = await http.get<ApiEnvelope<OnlineClassmatesResult>>('/v1/student/online-classmates')
+  if (data.code !== 0) throw new Error(data.message || '在线同学加载失败')
+  return data.data
+}
+
+export type DuelMatchDifficulty = 'entry' | 'advanced'
+
+export interface DuelMatchResult {
+  status: 'idle' | 'waiting' | 'matched'
+  match_id?: string
+  difficulty?: DuelMatchDifficulty
+  difficulty_label?: string
+  time_sec?: number
+  question_ids?: string[]
+  opponent?: {
+    user_id: number
+    display_name: string
+    username?: string | null
+    real_name?: string | null
+  }
+  online_rivals?: number
+  message?: string
+  created_at?: string
+}
+
+export async function joinDuelMatch(options?: {
+  difficulty?: DuelMatchDifficulty
+  opponentId?: number | null
+}) {
+  const { data } = await http.post<ApiEnvelope<DuelMatchResult>>('/v1/student/duel/match', {
+    difficulty: options?.difficulty ?? 'entry',
+    opponent_id: options?.opponentId ?? null,
+  })
+  if (data.code !== 0) throw new Error(data.message || '匹配失败')
+  return data.data
+}
+
+export async function fetchDuelMatchStatus() {
+  const { data } = await http.get<ApiEnvelope<DuelMatchResult>>('/v1/student/duel/match')
+  if (data.code !== 0) throw new Error(data.message || '匹配状态加载失败')
+  return data.data
+}
+
+export async function cancelDuelMatch() {
+  const { data } = await http.post<ApiEnvelope<DuelMatchResult>>('/v1/student/duel/match/cancel')
+  if (data.code !== 0) throw new Error(data.message || '取消匹配失败')
   return data.data
 }

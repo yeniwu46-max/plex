@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build && node scripts/verify-bundle.mjs",
+    "build": "node scripts/verify-production-copy.mjs && vue-tsc -b && vite build && node scripts/verify-bundle.mjs",
+    "verify:copy": "node scripts/verify-production-copy.mjs",
     "verify:bundle": "node scripts/verify-bundle.mjs",
     "preview": "vite preview"
   },

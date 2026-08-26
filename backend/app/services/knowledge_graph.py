@@ -3,48 +3,19 @@
 from collections import Counter, defaultdict
 
 from app.data.kg_topology import KG_EDGES, KG_NODES
-from app.data.knowledge_node_registry import kg_id_from_key
+from app.data.knowledge_node_registry import (
+    DEFAULT_NODE_ID,
+    LEGACY_KEY_TO_NODE,
+    resolve_node_id,
+)
 from app.models import StudentMistake, TrialQuestion, TrialQuestionProgress, User, db
 from app.services.mistake import MistakeService
 from app.services.neo4j_client import get_graph_store, graph_backend_name
 
-KNOWLEDGE_KEY_TO_NODE = {
-    'intro': 'intro',
-    'comment': 'comment',
-    'python': 'intro',
-    'lang': 'intro',
-    'syntax': 'var',
-    'basic': 'var',
-    'var': 'var',
-    'io': 'io',
-    'input': 'io',
-    'ops': 'ops',
-    'cond': 'cond',
-    'condition': 'cond',
-    'loop': 'loop',
-    'range': 'range',
-    'list': 'list',
-    'tuple': 'tuple',
-    'set': 'tuple',
-    'dict': 'dict',
-    'str': 'str',
-    'string': 'str',
-    'func': 'func',
-    'function': 'func',
-    'file': 'file',
-    'except': 'except',
-    'exception': 'except',
-    'algo': 'algo-sum',
-    'algo-sum': 'algo-sum',
-    'algo-search': 'algo-search',
-    'algo-sort': 'algo-sort',
-    'algo-dedup': 'algo-dedup',
-    'nested': 'nested',
-    'stage1': 'intro',
-    'stage2': 'cond',
-    'stage3': 'list',
-    'stage4': 'algo-sum',
-}
+# 历史作答记录（trial_question_progress 约 9.7k 行、student_mistakes 约 0.7k 行）里存的
+# 是旧 knowledge_key，这张表把它们映射到重排后的节点，保证历史进度不失效。映射关系由
+# knowledge_node_registry 统一维护，这里只做别名导出，避免两处各写一份而漂移。
+KNOWLEDGE_KEY_TO_NODE = LEGACY_KEY_TO_NODE
 
 
 def _topology() -> tuple[list[dict], list[dict]]:
@@ -57,7 +28,7 @@ def _topology() -> tuple[list[dict], list[dict]]:
 class KnowledgeGraphService:
     @staticmethod
     def _default_node_id() -> str:
-        return 'var'
+        return DEFAULT_NODE_ID
 
     @staticmethod
     def _empty_stats() -> dict:
@@ -70,9 +41,13 @@ class KnowledgeGraphService:
         }
 
     @staticmethod
-    def _node_id_for_key(knowledge_key: str | None) -> str:
-        key = (knowledge_key or '').lower()
-        return KNOWLEDGE_KEY_TO_NODE.get(key, kg_id_from_key(key) if key else KnowledgeGraphService._default_node_id())
+    def _node_id_for_key(knowledge_key: str | None) -> str | None:
+        """解析到新节点 id；旧的进阶专题 key（REST、动态规划等）返回 None。
+
+        返回 None 表示"这条作答不归属任何入门节点"，调用方应当直接跳过：把它计入
+        某个入门节点会让该节点的掌握度失真。
+        """
+        return resolve_node_id(knowledge_key)
 
     @staticmethod
     def _node_stats(user_id: int) -> dict[str, dict]:
@@ -83,8 +58,10 @@ class KnowledgeGraphService:
         ).all()
         for row in rows:
             question = db.session.get(TrialQuestion, row.question_id)
-            key = (question.knowledge_key if question else None) or 'var'
+            key = (question.knowledge_key if question else None) or DEFAULT_NODE_ID
             node_id = KnowledgeGraphService._node_id_for_key(key)
+            if node_id is None:
+                continue
             bucket = stats[node_id]
             bucket['answered'] += 1
             if row.is_correct:
@@ -93,6 +70,8 @@ class KnowledgeGraphService:
                 bucket['wrong'] += 1
         for item in MistakeService.list_weak_knowledge(user_id, limit=20):
             node_id = KnowledgeGraphService._node_id_for_key(item['knowledge_key'])
+            if node_id is None:
+                continue
             stats[node_id]['fail_count'] = max(stats[node_id]['fail_count'], item.get('fail_count', 0))
 
         active_mistakes = [
@@ -101,6 +80,8 @@ class KnowledgeGraphService:
         ]
         for row in active_mistakes:
             node_id = KnowledgeGraphService._node_id_for_key(row.knowledge_key)
+            if node_id is None:
+                continue
             bucket = stats[node_id]
             bucket['fail_count'] = max(bucket['fail_count'], row.fail_count or 1)
             if row.error_type:
@@ -186,7 +167,8 @@ class KnowledgeGraphService:
             rec = RecommendationService.get_student_recommendations(user_id, '7d')
             for weak in rec.get('weak_knowledge') or []:
                 node_id = KnowledgeGraphService._node_id_for_key(weak['knowledge_key'])
-                recommended_ids.add(node_id)
+                if node_id is not None:
+                    recommended_ids.add(node_id)
         nodes = []
         base_nodes, base_edges = _topology()
         for base in base_nodes:

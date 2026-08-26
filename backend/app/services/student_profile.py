@@ -41,6 +41,10 @@ DIMENSION_LABELS = {
 }
 
 
+class ProfileRecalibrationUnavailable(RuntimeError):
+    """No real model provider returned a complete recalibration result."""
+
+
 class StudentProfileService:
     @staticmethod
     def _empty_dimension():
@@ -404,6 +408,67 @@ class StudentProfileService:
         ))
         db.session.commit()
         return row.to_dict()
+
+    @staticmethod
+    def recalibrate(user_id: int, changes: dict) -> dict:
+        """Call a real model first, then persist its validated profile changes."""
+        if not isinstance(changes, dict):
+            raise ValueError('changes 必须是对象')
+
+        selected: dict[str, str] = {}
+        for key, raw in changes.items():
+            if key not in PROFILE_DIMENSIONS:
+                continue
+            value = str(raw or '').strip()
+            if not value:
+                continue
+            selected[key] = value[:300]
+        if not selected:
+            raise ValueError('没有有效画像字段')
+
+        CourseSafetyService.ensure_safe('\n'.join(selected.values()))
+        current = StudentProfileService.get_or_create(user_id)
+        current_values = {
+            key: (value or {}).get('value')
+            for key, value in (current.dimensions or {}).items()
+            if (value or {}).get('value')
+        }
+        try:
+            weak_knowledge = MistakeService.list_weak_knowledge(user_id, 3)
+        except Exception:
+            weak_knowledge = []
+        practice_count = TrialQuestionProgress.query.filter_by(
+            user_id=user_id, status='completed'
+        ).count()
+
+        from agents.learning_profile_agent import LearningProfileAgent
+
+        analyzed, backend = LearningProfileAgent.recalibrate(
+            {
+                'selected_changes': selected,
+                'current_profile': current_values,
+                'practice_count': practice_count,
+                'weak_knowledge': weak_knowledge,
+            },
+            set(selected),
+            timeout_seconds=12.0,
+        )
+        if backend not in {'llm', 'spark'} or not set(selected).issubset(analyzed):
+            raise ProfileRecalibrationUnavailable(
+                '真实模型 API 未返回完整画像，未保存任何修改，请稍后重试'
+            )
+
+        profile = StudentProfileService.apply_changes(
+            user_id,
+            analyzed,
+            'ai_recalibration',
+            f'{backend}_api',
+        )
+        return {
+            'profile': profile,
+            'backend': backend,
+            'applied_changes': analyzed,
+        }
 
     @staticmethod
     def history(user_id: int, page: int = 1, page_size: int = 20) -> dict:

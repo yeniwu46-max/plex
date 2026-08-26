@@ -31,9 +31,9 @@ class ResourceAuditTestCase(unittest.TestCase):
                 {'knowledge_foundation': '有基础'},
                 confidence=0.9,
                 citations=[{
-                    'document_id': 'python-stage2-loop',
-                    'title': '循环',
-                    'section': 'loop',
+                    'document_id': 'python-loop-for',
+                    'title': 'for 与 range',
+                    'section': 'loop-for',
                     'snippet': '循环',
                 }],
             )

@@ -69,12 +69,17 @@ def _resolve_proxy() -> str | None:
 
 _PROXY = _resolve_proxy()
 _LOCAL_HOSTS = {'localhost', '127.0.0.1', '::1'}
+# 国内方舟等域名走代理常触发 TLS 中断，强制直连
+_DIRECT_HOSTS = {
+    'ark.cn-beijing.volces.com',
+    'open.volcengineapi.com',
+}
 
 
 def _with_proxy(url: str, kwargs: dict) -> dict:
     if _PROXY and 'proxies' not in kwargs:
         host = urlparse(url).hostname
-        if host not in _LOCAL_HOSTS:
+        if host not in _LOCAL_HOSTS and host not in _DIRECT_HOSTS:
             kwargs['proxies'] = {'http': _PROXY, 'https': _PROXY}
     return kwargs
 

@@ -31,6 +31,16 @@ class CodeExecutionServiceTests(unittest.TestCase):
         self.assertEqual(result['status']['id'], 3)
         self.assertIn('Hello, PLEX!', result['stdout'])
 
+    def test_fullwidth_python_syntax_is_normalized(self):
+        result = CodeExecutionService.run('python', 'print（＂Hello, PLEX!＂）')
+        self.assertEqual(result['status']['id'], 3)
+        self.assertEqual(result['stdout'].strip(), 'Hello, PLEX!')
+
+    def test_fullwidth_punctuation_inside_strings_is_preserved(self):
+        result = CodeExecutionService.run('python', 'print("（中文标点）")')
+        self.assertEqual(result['status']['id'], 3)
+        self.assertEqual(result['stdout'].strip(), '（中文标点）')
+
     def test_unsupported_language_rejected(self):
         with self.assertRaises(ValueError):
             CodeExecutionService.run('cpp', 'int main(){}')

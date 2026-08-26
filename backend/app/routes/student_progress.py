@@ -44,6 +44,36 @@ def get_learning_path():
         return error_response(str(exc), 50001, None, 500)
 
 
+@student_progress_bp.route('/learning-path/advice', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def post_learning_path_advice():
+    try:
+        from app.services.learning_path import LearningPathService
+
+        user_id = int(get_jwt_identity())
+        payload = request.get_json(silent=True) or {}
+        focus = payload.get('focus_node_id') or payload.get('focusNodeId')
+        return success_response(LearningPathService.ai_advice(user_id, focus_node_id=focus))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/stat-details', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_stat_details():
+    try:
+        user_id = int(get_jwt_identity())
+        return success_response(StudentProgressService.get_stat_details(user_id))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @student_progress_bp.route('/archive-insights', methods=['GET'])
 @jwt_required()
 @role_required('student')
@@ -137,6 +167,91 @@ def heartbeat_presence():
         return success_response(PresenceService.heartbeat(user_id), '在线状态已更新')
     except ValueError as exc:
         return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/duel/win', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def record_duel_win():
+    """学生对战胜利记账，供班排「胜局」排行使用。"""
+    try:
+        from app.services.class_service import ClassService
+
+        user_id = int(get_jwt_identity())
+        payload = request.get_json(silent=True) or {}
+        opponent_id = payload.get('opponent_id') or payload.get('opponentId')
+        if opponent_id is not None:
+            opponent_id = int(opponent_id)
+        return success_response(ClassService.record_duel_win(user_id, opponent_id), '对战胜局已记录')
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/online-classmates', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def list_online_classmates():
+    """同班当前在线同学（Presence 心跳，不含自己）。"""
+    try:
+        from app.services.duel_match import DuelMatchService
+
+        user_id = int(get_jwt_identity())
+        return success_response(DuelMatchService.online_classmates(user_id))
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/duel/match', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def join_duel_match():
+    """加入真实匹配队列 / 邀请指定在线同学，双方共享同一套题。"""
+    try:
+        from app.services.duel_match import DuelMatchService
+
+        user_id = int(get_jwt_identity())
+        payload = request.get_json(silent=True) or {}
+        difficulty = payload.get('difficulty') or 'entry'
+        opponent_id = payload.get('opponent_id') or payload.get('opponentId')
+        if opponent_id is not None:
+            opponent_id = int(opponent_id)
+        result = DuelMatchService.join(user_id, difficulty=difficulty, opponent_id=opponent_id)
+        msg = '匹配成功' if result.get('status') == 'matched' else '已进入匹配队列'
+        return success_response(result, msg)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/duel/match', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_duel_match_status():
+    try:
+        from app.services.duel_match import DuelMatchService
+
+        user_id = int(get_jwt_identity())
+        return success_response(DuelMatchService.status(user_id))
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/duel/match/cancel', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def cancel_duel_match():
+    try:
+        from app.services.duel_match import DuelMatchService
+
+        user_id = int(get_jwt_identity())
+        return success_response(DuelMatchService.cancel(user_id), '已取消匹配')
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 
@@ -250,6 +365,8 @@ def messenger_chat_stream():
 
     def generate():
         try:
+            # 立刻推送注释心跳，冲刷反向代理 / 浏览器缓冲
+            yield ': connected\n\n'
             for event in MessengerChatService.chat_stream(user_id, message, history):
                 yield sse_event(event)
         except Exception as exc:  # 流中异常只能通过 SSE 帧告知前端
@@ -259,7 +376,42 @@ def messenger_chat_stream():
         stream_with_context(generate()),
         mimetype='text/event-stream',
         headers=sse_headers(),
+        direct_passthrough=False,
     )
+
+
+@student_progress_bp.route('/messenger/tools/knowledge-graph', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def messenger_knowledge_graph():
+    try:
+        user_id = int(get_jwt_identity())
+        payload = request.get_json() or {}
+        topic = payload.get('topic') or payload.get('message') or ''
+        return success_response(MessengerChatService.generate_knowledge_graph(user_id, topic))
+    except SafetyViolation as exc:
+        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/messenger/tools/learning-document', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def messenger_learning_document():
+    try:
+        user_id = int(get_jwt_identity())
+        payload = request.get_json() or {}
+        topic = payload.get('topic') or payload.get('message') or ''
+        return success_response(MessengerChatService.generate_learning_document(user_id, topic))
+    except SafetyViolation as exc:
+        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
 
 
 @student_progress_bp.route('/learning-report', methods=['GET'])
@@ -284,7 +436,10 @@ def generate_learning_report():
         user_id = int(get_jwt_identity())
         payload = request.get_json(silent=True) or {}
         period = payload.get('period') or request.args.get('period', '7d')
-        return success_response(EvaluationService.generate_phase_report(user_id, period))
+        force = bool(payload.get('force') or payload.get('force_refresh'))
+        return success_response(
+            EvaluationService.generate_phase_report(user_id, period, force=force)
+        )
     except ValueError as exc:
         return error_response(str(exc), 40401, None, 404)
     except Exception as exc:

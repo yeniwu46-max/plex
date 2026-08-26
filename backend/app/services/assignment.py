@@ -690,18 +690,32 @@ class AssignmentService:
 
         spark_result = None
         backend = 'local_fallback'
+        # 优先 DeepSeek；讯飞星火仅兜底（未配置时 chat_json 会立刻 not_configured）
         try:
-            from app.services.iflytek_spark import IflytekSparkService
+            from agents.llm_client import chat_json as llm_chat_json, llm_provider
 
-            # 前端默认 axios 超时约 20–45s；星火超时需留足本地回退时间
-            spark_result = IflytekSparkService.chat_json(
-                system, user, timeout=12, purpose='trial_analysis'
-            )
-            backend = 'iflytek_spark'
-        except Exception as exc:  # noqa: BLE001 — 回退本地规则分析
+            if llm_provider():
+                spark_result = llm_chat_json(system=system, user=user, timeout=12.0, max_tokens=800)
+                if isinstance(spark_result, dict) and spark_result:
+                    backend = 'deepseek'
+        except Exception as exc:  # noqa: BLE001
             spark_result = None
             err_code = getattr(exc, 'code', None) or type(exc).__name__
             backend = f'local_fallback:{err_code}'
+
+        if not (isinstance(spark_result, dict) and spark_result):
+            try:
+                from app.services.iflytek_spark import IflytekSparkService
+
+                if IflytekSparkService.configured():
+                    spark_result = IflytekSparkService.chat_json(
+                        system, user, timeout=12, purpose='trial_analysis'
+                    )
+                    backend = 'iflytek_spark'
+            except Exception as exc:  # noqa: BLE001 — 回退本地规则分析
+                spark_result = None
+                err_code = getattr(exc, 'code', None) or type(exc).__name__
+                backend = f'local_fallback:{err_code}'
 
         if isinstance(spark_result, dict) and spark_result:
             overview = str(spark_result.get('overview') or '').strip()

@@ -1,150 +1,110 @@
 {
-  "passed": true,
+  "passed": false,
   "checks": {
     "initial_gzip": {
-      "actual_bytes": 122739,
+      "actual_bytes": 527083,
       "budget_bytes": 153600,
-      "passed": true
+      "passed": false
     },
     "largest_lazy_gzip": {
-      "actual_bytes": 439952,
+      "actual_bytes": 441186,
       "budget_bytes": 460800,
       "passed": true,
-      "file": "assets/MarkdownRenderer-kYiazUF1.js"
+      "file": "assets/MarkdownRenderer-CiVp9mYf.js"
     }
   },
   "initial_assets": [
     {
       "key": "index.html",
-      "file": "assets/index-g4wGZxe3.js",
-      "gzip_bytes": 41012
+      "file": "assets/index-ByjvJYgz.js",
+      "gzip_bytes": 16231
     },
     {
-      "key": "_light-AVOhWNQJ.js",
-      "file": "assets/light-AVOhWNQJ.js",
-      "gzip_bytes": 15429
+      "key": "_ui-Cb54hxrS.js",
+      "file": "assets/ui-Cb54hxrS.js",
+      "gzip_bytes": 205751
     },
     {
-      "key": "_runtime-core.esm-bundler-DHwWx_Hl.js",
-      "file": "assets/runtime-core.esm-bundler-DHwWx_Hl.js",
-      "gzip_bytes": 25780
+      "key": "_charts-PFMJC6PG.js",
+      "file": "assets/charts-PFMJC6PG.js",
+      "gzip_bytes": 223748
     },
     {
-      "key": "_merge-B4ZdVUkM.js",
-      "file": "assets/merge-B4ZdVUkM.js",
-      "gzip_bytes": 923
-    },
-    {
-      "key": "_isArrayLikeObject-CWvlh1M7.js",
-      "file": "assets/isArrayLikeObject-CWvlh1M7.js",
-      "gzip_bytes": 3066
-    },
-    {
-      "key": "__initCloneObject-BfDKQqTX.js",
-      "file": "assets/_initCloneObject-BfDKQqTX.js",
-      "gzip_bytes": 819
-    },
-    {
-      "key": "_theme-DQrChGj2.js",
-      "file": "assets/theme-DQrChGj2.js",
-      "gzip_bytes": 3806
-    },
-    {
-      "key": "_light-B_0QtL7D.js",
-      "file": "assets/light-B_0QtL7D.js",
-      "gzip_bytes": 1304
-    },
-    {
-      "key": "_toString-BHFybOig.js",
-      "file": "assets/toString-BHFybOig.js",
-      "gzip_bytes": 341
-    },
-    {
-      "key": "__hasUnicode-CIoN4jo-.js",
-      "file": "assets/_hasUnicode-CIoN4jo-.js",
-      "gzip_bytes": 129
-    },
-    {
-      "key": "_pinia-kqiZPAHo.js",
-      "file": "assets/pinia-kqiZPAHo.js",
-      "gzip_bytes": 2821
-    },
-    {
-      "key": "_auth-BlUqPUz6.js",
-      "file": "assets/auth-BlUqPUz6.js",
-      "gzip_bytes": 10458
-    },
-    {
-      "key": "_http-DlhuzCFv.js",
-      "file": "assets/http-DlhuzCFv.js",
-      "gzip_bytes": 16429
-    },
-    {
-      "key": "_chunk-CilyBKbf.js",
-      "file": "assets/chunk-CilyBKbf.js",
+      "key": "_rolldown-runtime-S-ySWqyJ.js",
+      "file": "assets/rolldown-runtime-S-ySWqyJ.js",
       "gzip_bytes": 422
+    },
+    {
+      "key": "_vue-vendor-CJ6aDuwF.js",
+      "file": "assets/vue-vendor-CJ6aDuwF.js",
+      "gzip_bytes": 64294
+    },
+    {
+      "key": "_http-rGeCd9Jy.js",
+      "file": "assets/http-rGeCd9Jy.js",
+      "gzip_bytes": 16637
     }
   ],
   "largest_lazy_assets": [
     {
-      "key": "_MarkdownRenderer-kYiazUF1.js",
-      "file": "assets/MarkdownRenderer-kYiazUF1.js",
-      "gzip_bytes": 439952,
+      "key": "_MarkdownRenderer-CiVp9mYf.js",
+      "file": "assets/MarkdownRenderer-CiVp9mYf.js",
+      "gzip_bytes": 441186,
       "dynamic_entry": false
     },
     {
-      "key": "node_modules/@antv/g6/esm/index.js",
-      "file": "assets/esm-BNcM8Q9H.js",
-      "gzip_bytes": 399872,
-      "dynamic_entry": true
-    },
-    {
-      "key": "_echartsTheme-Cs1LEI6f.js",
-      "file": "assets/echartsTheme-Cs1LEI6f.js",
-      "gzip_bytes": 160551,
+      "key": "_g6-BVxmQOqN.js",
+      "file": "assets/g6-BVxmQOqN.js",
+      "gzip_bytes": 399904,
       "dynamic_entry": false
     },
     {
-      "key": "_chunk-KEIR6QF5-BXwOgEjm.js",
-      "file": "assets/chunk-KEIR6QF5-BXwOgEjm.js",
+      "key": "_chunk-KEIR6QF5-Bb2fTAVK.js",
+      "file": "assets/chunk-KEIR6QF5-Bb2fTAVK.js",
       "gzip_bytes": 142273,
       "dynamic_entry": false
     },
     {
-      "key": "_cytoscape.esm-QWSm5srU.js",
-      "file": "assets/cytoscape.esm-QWSm5srU.js",
+      "key": "_cytoscape.esm-Dy-DufVY.js",
+      "file": "assets/cytoscape.esm-Dy-DufVY.js",
       "gzip_bytes": 136966,
       "dynamic_entry": false
     },
     {
       "key": "node_modules/mermaid/node_modules/katex/dist/katex.mjs",
-      "file": "assets/katex-DhvHW1wQ.js",
+      "file": "assets/katex-ngkRBNdw.js",
       "gzip_bytes": 76743,
       "dynamic_entry": true
     },
     {
-      "key": "src/components/admin/AdminAgentOrchestrationPanel.vue",
-      "file": "assets/AdminAgentOrchestrationPanel-AP8NZkvG.js",
-      "gzip_bytes": 58924,
-      "dynamic_entry": true
-    },
-    {
-      "key": "src/views/TeacherTrialCreateView.vue",
-      "file": "assets/TeacherTrialCreateView-6Reldpd3.js",
-      "gzip_bytes": 46126,
-      "dynamic_entry": true
-    },
-    {
       "key": "node_modules/mermaid/dist/chunks/mermaid.core/architectureDiagram-ZJ3FMSHR.mjs",
-      "file": "assets/architectureDiagram-ZJ3FMSHR-CyqInGog.js",
-      "gzip_bytes": 40848,
+      "file": "assets/architectureDiagram-ZJ3FMSHR-CWw7Hxuo.js",
+      "gzip_bytes": 40860,
       "dynamic_entry": true
     },
     {
       "key": "node_modules/mermaid/dist/chunks/mermaid.core/swimlanes-5IMT3BWC.mjs",
-      "file": "assets/swimlanes-5IMT3BWC-srynRMIN.js",
-      "gzip_bytes": 38694,
+      "file": "assets/swimlanes-5IMT3BWC-C8eF2_XG.js",
+      "gzip_bytes": 38697,
       "dynamic_entry": true
+    },
+    {
+      "key": "_chunk-WYO6CB5R-Bqwsjo3k.js",
+      "file": "assets/chunk-WYO6CB5R-Bqwsjo3k.js",
+      "gzip_bytes": 35040,
+      "dynamic_entry": false
+    },
+    {
+      "key": "node_modules/mermaid/dist/chunks/mermaid.core/sequenceDiagram-DBY2YBRQ.mjs",
+      "file": "assets/sequenceDiagram-DBY2YBRQ-DodxNzPR.js",
+      "gzip_bytes": 30425,
+      "dynamic_entry": true
+    },
+    {
+      "key": "_chunk-ZGVPDNZ5-Bh0xH1DG.js",
+      "file": "assets/chunk-ZGVPDNZ5-Bh0xH1DG.js",
+      "gzip_bytes": 24702,
+      "dynamic_entry": false
     }
   ]
 }

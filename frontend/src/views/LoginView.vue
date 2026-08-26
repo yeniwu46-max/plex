@@ -210,7 +210,7 @@ function goRegister() {
               v-model:value="username"
               size="large"
               round
-              placeholder="邮箱 / 用户名"
+              placeholder="邮箱或用户名"
               :input-props="{ autocomplete: 'username', role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': visibleAccountSuggestions.length > 0 }"
               class="form__field"
               @focus="openAccountSuggest"

@@ -1,9 +1,10 @@
 import unittest
+from unittest.mock import patch
 
 from flask_jwt_extended import create_access_token
 
 from app import create_app
-from app.models import StudentProfile, User, db
+from app.models import StudentProfile, StudentProfileHistory, User, db
 
 
 class StudentProfileApiTestCase(unittest.TestCase):
@@ -68,6 +69,55 @@ class StudentProfileApiTestCase(unittest.TestCase):
         completed = self.client.post('/api/v1/student/profile/diagnostic', headers=self.auth(), json={'answers': answers})
         self.assertEqual(completed.status_code, 200)
         self.assertEqual(completed.get_json()['data']['diagnostic']['status'], 'completed')
+
+    def test_recalibration_requires_real_api_before_profile_update(self):
+        model_changes = {
+            'explanation_preference': {
+                'value': '代码示例优先并配合分步讲解',
+                'confidence': 0.94,
+                'evidence': ['学生明确选择代码示例优先'],
+                'source': 'mixed',
+            },
+        }
+        with patch(
+            'agents.learning_profile_agent.LearningProfileAgent.recalibrate',
+            return_value=(model_changes, 'llm'),
+        ) as recalibrate:
+            response = self.client.post(
+                '/api/v1/student/profile/recalibrate',
+                headers=self.auth(),
+                json={'changes': {'explanation_preference': '代码示例优先'}},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['backend'], 'llm')
+        self.assertEqual(
+            data['profile']['dimensions']['explanation_preference']['value'],
+            '代码示例优先并配合分步讲解',
+        )
+        recalibrate.assert_called_once()
+        with self.app.app_context():
+            history = StudentProfileHistory.query.order_by(StudentProfileHistory.id.desc()).first()
+            self.assertEqual(history.reason, 'ai_recalibration')
+            self.assertEqual(history.backend, 'llm_api')
+
+    def test_recalibration_api_failure_does_not_write_profile(self):
+        with patch(
+            'agents.learning_profile_agent.LearningProfileAgent.recalibrate',
+            return_value=({}, 'local_rules'),
+        ):
+            response = self.client.post(
+                '/api/v1/student/profile/recalibrate',
+                headers=self.auth(),
+                json={'changes': {'learning_pace': '每天 25 分钟专注练习'}},
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('未保存任何修改', response.get_json()['message'])
+        with self.app.app_context():
+            self.assertEqual(StudentProfile.query.count(), 0)
+            self.assertEqual(StudentProfileHistory.query.count(), 0)
 
 
 if __name__ == '__main__':

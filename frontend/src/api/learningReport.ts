@@ -214,15 +214,27 @@ async function generateLocalPhaseReport(period: '7d' | '30d'): Promise<Generated
   }
 }
 
-export async function generateStudentPhaseReport(period: '7d' | '30d' = '7d') {
+export async function generateStudentPhaseReport(
+  period: '7d' | '30d' = '7d',
+  options?: { force?: boolean },
+) {
   try {
-    const { data } = await http.post<ApiEnvelope<GeneratedPhaseReportResult>>('/v1/student/learning-report/generate', {
-      period,
-    })
+    const { data } = await http.post<ApiEnvelope<GeneratedPhaseReportResult>>(
+      '/v1/student/learning-report/generate',
+      {
+        period,
+        force: Boolean(options?.force),
+      },
+    )
     if (data.code !== 0) throw new Error(data.message || '阶段报告生成失败')
     return data.data
   } catch (error) {
-    if (isNotFound(error)) return generateLocalPhaseReport(period)
+    if (isNotFound(error)) {
+      if (options?.force) {
+        localStorage.removeItem(phaseReportStorageKey(period))
+      }
+      return generateLocalPhaseReport(period)
+    }
     throw error
   }
 }

@@ -131,6 +131,13 @@ const router = createRouter({
           component: () => import('../views/TeacherTrialCreateView.vue'),
         },
         {
+          // 新增独立预览页：题库更新任务的标准化题目与提交记录展示，
+          // 尚未挂接到正式侧边栏导航，见交付说明。
+          path: 'problem-bank',
+          name: 'teacher-problem-bank',
+          component: () => import('../views/ProblemBankPreviewView.vue'),
+        },
+        {
           path: 'resources',
           name: 'teacher-resource-review',
           component: () => import('../views/TeacherResourceReviewView.vue'),
@@ -205,6 +212,36 @@ router.beforeEach((to) => {
   }
 
   return true
+})
+
+const routeTitles: Record<string, string> = {
+  login: '登录',
+  register: '注册',
+  'oauth-callback': '登录授权',
+  'student-home': '学生首页',
+  'student-discovery': '探索舱',
+  'student-star-path-lab': '星轨学习',
+  'student-star-path-resources': '学习资源',
+  'student-trials': '试炼中心',
+  'student-trial-practice': '试炼练习',
+  'student-messenger': '驿站助手',
+  'student-growth': '成长档案',
+  'student-profile': '学习画像',
+  'student-settings': '账号设置',
+  'teacher-home': '教师首页',
+  'teacher-starfield': '星域观测',
+  'teacher-classes': '班级管理',
+  'teacher-trials': '试炼管理',
+  'teacher-trial-create': '创建试炼',
+  'teacher-problem-bank': '题库管理',
+  'teacher-resource-review': '资源审核',
+  'admin-home': '平台管理',
+}
+
+router.afterEach((to) => {
+  const routeName = typeof to.name === 'string' ? to.name : ''
+  const pageTitle = routeTitles[routeName] ?? '个性化学习平台'
+  document.title = `${pageTitle} — PLEX Universe`
 })
 
 export default router

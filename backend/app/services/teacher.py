@@ -60,11 +60,14 @@ class TeacherService(BaseService):
     def _select_class(classes, class_id, role_name, teacher_id):
         if class_id:
             selected = db.session.get(Class, class_id)
+            if selected and (role_name != 'teacher' or selected.teacher_id == teacher_id):
+                return selected
+            # 库重建 / 前端 localStorage 残留旧 class_id 时，回落到本人可用班级
+            if classes:
+                return classes[0]
             if not selected:
                 raise ValueError('班级不存在')
-            if role_name == 'teacher' and selected.teacher_id != teacher_id:
-                raise PermissionError('不能访问非本人负责的班级')
-            return selected
+            raise PermissionError('不能访问非本人负责的班级')
 
         return classes[0] if classes else None
 

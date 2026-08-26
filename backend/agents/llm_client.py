@@ -121,6 +121,17 @@ def emergency_provider() -> tuple[str, str, str] | None:
     return _deepseek_tuple(key) if key else None
 
 
+def learning_path_provider() -> tuple[str, str, str] | None:
+    """小E 学习路径建议专用 DeepSeek 密钥。"""
+    if _blocked_in_tests():
+        return None
+    key = (
+        os.getenv('DEEPSEEK_LEARNING_PATH_API_KEY', '').strip()
+        or os.getenv('DEEPSEEK_API_KEY', '').strip()
+    )
+    return _deepseek_tuple(key) if key else None
+
+
 def api_key_configured() -> bool:
     return llm_provider() is not None
 

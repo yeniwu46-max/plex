@@ -1,6 +1,12 @@
 import { http, type ApiEnvelope } from './http'
 
 export interface AiHealth {
+  deepseek?: {
+    configured: boolean
+    backend?: string
+    model?: string | null
+    status?: 'available' | 'unavailable'
+  }
   spark: {
     configured: boolean
     status: 'available' | 'unavailable'
@@ -9,8 +15,13 @@ export interface AiHealth {
     model?: string | null
     error_code?: string | null
   }
+  xfyun_agent?: {
+    configured: boolean
+    status?: 'available' | 'unavailable'
+    error_code?: string | null
+  }
   fallback: { backend: 'local_rules'; available: boolean }
-  effective_backend: 'iflytek_spark' | 'local_rules'
+  effective_backend: 'deepseek' | 'llm' | 'iflytek_spark' | 'xfyun_agent' | 'local_rules'
 }
 
 export async function fetchAiHealth() {

@@ -33,6 +33,8 @@ def create_resource_task():
             else 'invalid_request'
         )
         return error_response(str(exc), code, {'reason_code': reason_code}, 400)
+    except Exception as exc:
+        return error_response(f'生成任务创建失败：{exc}', 50001, None, 500)
 
 
 @personalized_resources_bp.route('/student/resource-generation/tasks', methods=['GET'])
@@ -72,9 +74,12 @@ def retry_resource_task(task_id):
 @jwt_required()
 @role_required('student')
 def list_personalized_resources():
-    return success_response(PersonalizedResourceService.list_student(
-        int(get_jwt_identity()), request.args
-    ))
+    try:
+        return success_response(PersonalizedResourceService.list_student(
+            int(get_jwt_identity()), request.args
+        ))
+    except Exception as exc:
+        return error_response(f'资源列表加载失败：{exc}', 50001, None, 500)
 
 
 @personalized_resources_bp.route('/teacher/personalized-resources/review', methods=['GET'])
@@ -101,6 +106,24 @@ def smart_review_resources():
         PersonalizedResourceService.smart_review(int(get_jwt_identity())),
         '智能审核完成',
     )
+
+
+@personalized_resources_bp.route('/teacher/personalized-resources/release-pending', methods=['POST'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def release_pending_resources():
+    """放行待审资源：默认软放行；body.release_all=true 时全部批准（演示/开发）。"""
+    try:
+        payload = request.get_json(silent=True) or {}
+        release_all = bool(payload.get('release_all') or payload.get('all'))
+        reviewer_id = int(get_jwt_identity())
+        if release_all:
+            result = PersonalizedResourceService.release_all_pending(reviewer_id)
+            return success_response(result, '已全部放行待审资源')
+        result = PersonalizedResourceService.release_soft_pending(reviewer_id)
+        return success_response(result, '已放行无硬风险待审资源')
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
 
 
 @personalized_resources_bp.route('/teacher/personalized-resources/metrics', methods=['GET'])

@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from app.data.knowledge_catalog import KNOWLEDGE_UNIVERSE
+from app.data.knowledge_node_registry import KNOWLEDGE_DOMAINS, nodes_for_domain
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -19,23 +20,24 @@ REQUIRED_SECTION_FIELDS = (
     '来源',
 )
 
+# 每个大类一个 md 文件，文件名前缀即大类顺序，方便人工按教学顺序翻阅。
+DOMAIN_SOURCE_FILES = {
+    'lang-basics': '01-lang-basics.md',
+    'sequence': '02-sequence.md',
+    'branch': '03-branch.md',
+    'loop': '04-loop.md',
+    'array': '05-array.md',
+    'string': '06-string.md',
+    'function': '07-function.md',
+    'search': '08-search.md',
+}
+
+# knowledge_key → (document_id, 所在 md 文件)。document_id 取自注册表，保证
+# 知识库 md、knowledge_nodes 表、知识图谱三处引用同一个标识。
 COURSE_KNOWLEDGE_SOURCES = {
-    'intro': ('python-stage1-program-structure', '01-python-intro.md'),
-    'comment': ('python-stage1-comments', '01-python-intro.md'),
-    'var': ('python-stage1-variables-types', '01-python-intro.md'),
-    'io': ('python-stage1-input-output', '01-python-intro.md'),
-    'ops': ('python-stage2-operators', '02-control-flow.md'),
-    'cond': ('python-stage2-condition', '02-control-flow.md'),
-    'loop': ('python-stage2-loop', '02-control-flow.md'),
-    'range': ('python-stage2-range', '02-control-flow.md'),
-    'str': ('python-stage3-string', '03-data-structures.md'),
-    'list': ('python-stage3-list', '03-data-structures.md'),
-    'dict': ('python-stage3-dict', '03-data-structures.md'),
-    'func': ('python-stage3-function', '03-data-structures.md'),
-    'file': ('python-stage4-file', '04-functions-practice.md'),
-    'except': ('python-stage4-exception', '04-functions-practice.md'),
-    'algo-sum': ('python-stage4-sum-statistics', '04-functions-practice.md'),
-    'algo-search': ('python-stage4-linear-search', '04-functions-practice.md'),
+    entry.kg_id: (entry.document_id, DOMAIN_SOURCE_FILES[domain.key])
+    for domain in KNOWLEDGE_DOMAINS
+    for entry in nodes_for_domain(domain.key)
 }
 
 

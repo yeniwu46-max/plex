@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NIcon, NTag, useMessage } from 'naive-ui'
+import { NButton, NIcon, NModal, NTag, useMessage } from 'naive-ui'
+import type { TrialAttemptRecord } from '../../utils/trialMistakeLog'
 import PlexCodeEditor from './PlexCodeEditor.vue'
 import {
   ArrowBackOutline,
@@ -21,7 +22,9 @@ import { useNotificationStore } from '../../stores/notifications'
 import { getTrialAttemptHistory, recordTrialRun, resolveAttemptScore, resolveAttemptVerdict } from '../../utils/trialMistakeLog'
 import { submitTrialCodeAnswer } from '../../api/studentAssignments'
 import { advanceDailyQuest } from '../../api/studentOverview'
-import { runCodeLearningCycle, requestTrialFeedback, type StudentDiagnoseResult } from '../../api/agentService'
+import { requestTrialFeedback, type StudentDiagnoseResult } from '../../api/agentService'
+import { submitCode } from '../../api/codeRunner'
+import { concisePythonError, normalizePythonSource } from '../../utils/pythonSourceNormalization'
 import PlexDiagnosisPanel from '../agent/PlexDiagnosisPanel.vue'
 import TrialCommentPanel from './TrialCommentPanel.vue'
 import TrialAiFloatingBall from './TrialAiFloatingBall.vue'
@@ -99,6 +102,28 @@ const answerHistory = computed(() => {
   return getTrialAttemptHistory(userId, props.question.id)
 })
 
+const codeModalVisible = ref(false)
+const activeAttempt = ref<TrialAttemptRecord | null>(null)
+
+function openAttemptCode(record: TrialAttemptRecord) {
+  activeAttempt.value = record
+  codeModalVisible.value = true
+}
+
+async function copyAttemptCode() {
+  const text = activeAttempt.value?.code
+  if (!text) {
+    message.warning('该记录未保存代码，请重新运行后查看')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    message.success('代码已复制')
+  } catch {
+    message.error('复制失败，请手动选择')
+  }
+}
+
 const floatingBallContext = computed(() => ({
   exerciseId: props.question.id,
   questionTitle: props.question.title,
@@ -170,7 +195,7 @@ function normalizeOutput(value: unknown) {
     .trim()
 }
 
-async function runSingleCase(testCase: PythonTrialQuestion['testCases'][number]) {
+async function runSingleCase(testCase: PythonTrialQuestion['testCases'][number], source: string) {
   const py = await ensurePyodide()
   const setup = testCase.setup ? `${testCase.setup}\n` : ''
 
@@ -182,18 +207,18 @@ sys.stdout = StringIO()
 
   try {
     if (props.question.runMode === 'expression' && testCase.invoke) {
-      await py.runPythonAsync(`${setup}\n${code.value}`)
+      await py.runPythonAsync(`${setup}\n${source}`)
       const actual = normalizeOutput(await py.runPythonAsync(testCase.invoke))
       return { actual, error: undefined }
     }
 
-    await py.runPythonAsync(`${setup}\n${code.value}`)
+    await py.runPythonAsync(`${setup}\n${source}`)
     const actual = normalizeOutput(await py.runPythonAsync('sys.stdout.getvalue()'))
     return { actual, error: undefined }
   } catch (error) {
     return {
       actual: '',
-      error: error instanceof Error ? error.message : '运行出错',
+      error: concisePythonError(error instanceof Error ? error.message : '运行出错'),
     }
   }
 }
@@ -207,7 +232,7 @@ function applyRunResults(results: CaseResult[], backend: 'api' | 'pyodide') {
   const durationMs = runStartedAt > 0 ? Date.now() - runStartedAt : 0
   const snapshots = results.map((item) => ({ label: item.label, passed: item.passed, error: item.error }))
 
-  recordTrialRun(userId, props.question, snapshots, durationMs)
+  recordTrialRun(userId, props.question, snapshots, durationMs, code.value)
 
   if (props.trialQuestionId) {
     void submitTrialCodeAnswer(props.trialQuestionId, code.value)
@@ -244,10 +269,10 @@ function applyRunResults(results: CaseResult[], backend: 'api' | 'pyodide') {
   }
 }
 
-async function runViaApi(): Promise<CaseResult[]> {
-  const payload = await runCodeLearningCycle({
+async function runViaApi(source: string): Promise<CaseResult[]> {
+  const payload = await submitCode({
     language: 'python',
-    code: code.value,
+    code: source,
     run_mode: props.question.runMode,
     test_cases: props.question.testCases.map((tc) => ({
       id: tc.id,
@@ -257,29 +282,23 @@ async function runViaApi(): Promise<CaseResult[]> {
       setup: tc.setup,
       invoke: tc.invoke,
     })),
-    exerciseId: props.question.id,
-    questionTitle: props.question.title,
-    questionPrompt: props.question.description,
-    topic: props.question.topic,
-    knowledgePoints: [props.question.topic, ...props.question.tags],
-    attemptCount: answerHistory.value.length + 1,
   })
-  return payload.execution.results.map((item) => ({
+  return payload.results.map((item) => ({
     id: item.case_id || item.label,
     label: item.label,
     expected: item.expected,
     actual: item.actual,
     passed: item.passed,
-    error: item.error ?? undefined,
+    error: concisePythonError(item.error),
     time: item.time,
     memory: item.memory,
   }))
 }
 
-async function runViaPyodide(): Promise<CaseResult[]> {
+async function runViaPyodide(source: string): Promise<CaseResult[]> {
   const results: CaseResult[] = []
   for (const testCase of props.question.testCases) {
-    const { actual, error } = await runSingleCase(testCase)
+    const { actual, error } = await runSingleCase(testCase, source)
     results.push({
       id: testCase.id,
       label: testCase.label,
@@ -299,15 +318,21 @@ async function onRun() {
   caseResults.value = []
   executionBackend.value = null
   try {
+    const normalized = normalizePythonSource(code.value)
+    const source = normalized.code
+    if (normalized.replacements > 0) {
+      code.value = source
+      message.info(`已自动将 ${normalized.replacements} 个全角代码符号转换为英文半角符号`)
+    }
     try {
-      const results = await runViaApi()
+      const results = await runViaApi(source)
       if (aborted || !isMounted.value) return
       applyRunResults(results, 'api')
       return
     } catch {
       /* fall back to Pyodide */
     }
-    const results = await runViaPyodide()
+    const results = await runViaPyodide(source)
     if (aborted || !isMounted.value) return
     applyRunResults(results, 'pyodide')
   } catch {
@@ -366,7 +391,7 @@ function goBack() {
     void router.back()
     return
   }
-  void router.push('/student/trials')
+  void router.push('/student/star-path')
 }
 
 onBeforeUnmount(() => {
@@ -438,7 +463,7 @@ function formatDuration(ms: number) {
     <header class="py-workspace__bar">
       <button type="button" class="py-workspace__back" @click="goBack">
         <n-icon :component="ArrowBackOutline" />
-        {{ embedded ? backLabel : '返回题目列表' }}
+        {{ embedded ? backLabel : '返回星轨学习' }}
       </button>
       <div class="py-workspace__meta">
         <span class="py-workspace__topic">{{ question.topic }}</span>
@@ -518,7 +543,7 @@ function formatDuration(ms: number) {
 
             <section class="py-block">
               <h2>示例</h2>
-              <p v-if="!question.examples.length" class="py-block__empty">暂无示例，可直接查看下方测试数据。</p>
+              <p v-if="!question.examples.length" class="py-block__empty">暂无示例，可直接查看下方判题用例。</p>
               <article v-for="(ex, index) in question.examples" :key="index" class="py-example">
                 <div><small>输入</small><code>{{ ex.input }}</code></div>
                 <div><small>输出</small><code>{{ ex.output }}</code></div>
@@ -526,8 +551,8 @@ function formatDuration(ms: number) {
             </section>
 
             <section class="py-block">
-              <h2>测试数据</h2>
-              <p v-if="!question.testCases.length" class="py-block__empty">暂无结构化测试数据。</p>
+              <h2>判题用例</h2>
+              <p v-if="!question.testCases.length" class="py-block__empty">暂未提供结构化判题用例。</p>
               <div class="py-tests">
                 <article v-for="tc in question.testCases" :key="tc.id" class="py-test">
                   <strong>{{ tc.label }}</strong>
@@ -570,7 +595,7 @@ function formatDuration(ms: number) {
                   </div>
                   <div class="py-result-card__row">
                     <small>实际输出</small>
-                    <code>{{ item.error ? '（无输出）' : item.actual || '（空）' }}</code>
+                    <code>{{ item.error ? '无输出' : item.actual || '空' }}</code>
                   </div>
                   <p v-if="item.time || item.memory" class="py-result-card__meta">
                     <span v-if="item.time">耗时 {{ item.time }}s</span>
@@ -596,7 +621,7 @@ function formatDuration(ms: number) {
                 </n-button>
               </header>
               <p v-if="!agentResult && !agentLoading && !agentError" class="py-ai-block__tip">
-                运行测试后，可点击「请小E 看看」获取针对性反馈（不会自动弹出）。
+                运行测试后，可点击「请小E 看看」获取针对性反馈。
               </p>
               <p v-else-if="agentLoading && !agentResult" class="py-ai-block__tip">{{ xiaoEThinkingMessage('diagnosis') }}</p>
               <p v-else-if="agentError" class="py-ai-block__error">{{ agentError }}</p>
@@ -607,10 +632,10 @@ function formatDuration(ms: number) {
               />
             </section>
 
-            <p v-if="executionBackend === 'api'" class="py-workspace__ok">已通过 PLEX 沙箱服务运行（Judge0/Mock）</p>
+            <p v-if="executionBackend === 'api'" class="py-workspace__ok">代码已由 PLEX 在线判题服务执行</p>
             <p v-else-if="executionBackend === 'pyodide'" class="py-workspace__ok">已通过浏览器 Pyodide 离线运行</p>
             <p v-else-if="pyodideError" class="py-workspace__warn">{{ pyodideError }}</p>
-            <p v-else-if="pyodideReady" class="py-workspace__ok">Pyodide 离线环境已就绪（API 不可用时自动启用）</p>
+            <p v-else-if="pyodideReady" class="py-workspace__ok">浏览器离线运行环境已就绪</p>
           </template>
 
           <div v-else-if="leftPanel === 'history'" class="py-history__list">
@@ -619,7 +644,11 @@ function formatDuration(ms: number) {
               <article
                 v-for="(record, index) in answerHistory"
                 :key="`${record.submittedAt}-${index}`"
-                class="py-history__item"
+                class="py-history__item py-history__item--clickable"
+                role="button"
+                tabindex="0"
+                @click="openAttemptCode(record)"
+                @keydown.enter.prevent="openAttemptCode(record)"
               >
                 <div class="py-history__row">
                   <n-tag :type="record.passed ? 'success' : 'error'" size="small">
@@ -639,6 +668,7 @@ function formatDuration(ms: number) {
                 <div v-else-if="!record.passed && record.failedCaseLabels.length" class="py-history__cases">
                   未通过：{{ record.failedCaseLabels.join('、') }}
                 </div>
+                <p class="py-history__hint">点击查看当时代码</p>
               </article>
             </template>
           </div>
@@ -682,6 +712,31 @@ function formatDuration(ms: number) {
     </div>
 
     <trial-ai-floating-ball :context="floatingBallContext" />
+
+    <n-modal
+      v-model:show="codeModalVisible"
+      preset="card"
+      title="答题代码快照"
+      class="py-attempt-code-modal"
+      :style="{ width: 'min(720px, 94vw)' }"
+    >
+      <div v-if="activeAttempt" class="py-attempt-code">
+        <div class="py-attempt-code__meta">
+          <n-tag :type="activeAttempt.passed ? 'success' : 'error'" size="small">
+            {{ resolveAttemptVerdict(activeAttempt) }}
+          </n-tag>
+          <span>
+            {{ new Date(activeAttempt.submittedAt).toLocaleString('zh-CN') }}
+          </span>
+          <span>
+            {{ resolveAttemptScore(activeAttempt).passed }}/{{ resolveAttemptScore(activeAttempt).total }} 通过
+          </span>
+          <n-button size="small" type="primary" ghost @click="copyAttemptCode">复制代码</n-button>
+        </div>
+        <pre v-if="activeAttempt.code" class="py-attempt-code__body"><code>{{ activeAttempt.code }}</code></pre>
+        <p v-else class="py-attempt-code__empty">该记录未保存代码。重新运行后即可回看。</p>
+      </div>
+    </n-modal>
   </div>
 </template>
 
@@ -829,8 +884,9 @@ function formatDuration(ms: number) {
   display: grid;
   flex: 1;
   min-height: 0;
-  grid-template-columns: minmax(320px, 1.05fr) minmax(420px, 1.45fr);
-  gap: 0.65rem;
+  /* 缩小侧栏占比，放大题目区与编程区可用空间 */
+  grid-template-columns: minmax(300px, 0.92fr) minmax(480px, 1.65fr);
+  gap: 0.55rem;
 }
 
 .py-workspace__panel {
@@ -1278,6 +1334,53 @@ function formatDuration(ms: number) {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+.py-history__item--clickable {
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.py-history__item--clickable:hover {
+  border-color: rgba(46, 255, 241, 0.35);
+  background: rgba(46, 255, 241, 0.06);
+}
+
+.py-history__hint {
+  margin: 0;
+  color: rgba(82, 255, 241, 0.72);
+  font-size: 0.72rem;
+}
+
+.py-attempt-code__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.75rem;
+  color: rgba(210, 230, 240, 0.78);
+  font-size: 0.82rem;
+}
+
+.py-attempt-code__body {
+  margin: 0;
+  max-height: min(55vh, 480px);
+  overflow: auto;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(46, 255, 241, 0.18);
+  background: #020b15;
+  color: #9be8d6;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.py-attempt-code__empty {
+  margin: 0;
+  color: rgba(190, 208, 224, 0.7);
+  font-size: 0.86rem;
 }
 
 .py-history__row {

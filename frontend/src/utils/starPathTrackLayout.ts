@@ -7,58 +7,26 @@ export interface TrackNodePosition {
   anchor?: 'left' | 'right'
 }
 
-const DOMAIN_LAYOUT_PARAMS: Record<
-  string,
-  { rankdir: 'LR' | 'TB'; nodesep: number; ranksep: number; custom?: boolean }
-> = {
-  'data-vars': { rankdir: 'LR', nodesep: 88, ranksep: 58 },
-  operators: { rankdir: 'LR', nodesep: 72, ranksep: 48 },
-  'flow-control': { rankdir: 'LR', nodesep: 82, ranksep: 62 },
-  strings: { rankdir: 'LR', nodesep: 68, ranksep: 44 },
-  'lists-dicts': { rankdir: 'LR', nodesep: 78, ranksep: 56 },
-  functions: { rankdir: 'LR', nodesep: 68, ranksep: 44 },
-  'recursion-iter': { rankdir: 'TB', nodesep: 96, ranksep: 78, custom: true },
-}
-
-/** 递归与迭代域：宽松垂直阶梯，避免 S 形挤压 */
-function layoutRecursionIterVertical(
-  nodes: Pick<StarPathNode, 'id' | 'title'>[],
-): Record<string, TrackNodePosition> {
-  const count = nodes.length
-  if (count === 0) return {}
-  if (count === 1) return { [nodes[0]!.id]: { x: 50, y: 38 } }
-
-  const positions: Record<string, TrackNodePosition> = {}
-  const xStops = [22, 78, 22, 78, 50, 72]
-  const yStart = 10
-  const yStep = Math.min(16, 78 / Math.max(count - 1, 1))
-
-  nodes.forEach((node, index) => {
-    const x = xStops[index % xStops.length] ?? 50
-    const y = yStart + index * yStep
-    positions[node.id] = {
-      x,
-      y: Math.min(90, y),
-      anchor: x < 30 ? 'left' : x > 70 ? 'right' : undefined,
-    }
-  })
-  return positions
+/**
+ * 八大学域每域 3–4 个知识点，间距按节点数给就够了，不必逐域硬编码。
+ * 节点多的域放宽间距，免得连线挤在一起。
+ */
+function layoutParams(nodeCount: number): { rankdir: 'LR'; nodesep: number; ranksep: number } {
+  return nodeCount >= 4
+    ? { rankdir: 'LR', nodesep: 88, ranksep: 62 }
+    : { rankdir: 'LR', nodesep: 72, ranksep: 48 }
 }
 
 /** 用 dagre 计算星轨节点坐标（viewBox 0–100） */
 export function computeDagreLayout(
   nodes: Pick<StarPathNode, 'id' | 'title'>[],
-  domainKey: string,
 ): Record<string, TrackNodePosition> {
   if (nodes.length === 0) return {}
   if (nodes.length === 1) {
     return { [nodes[0]!.id]: { x: 50, y: 42 } }
   }
 
-  const params = DOMAIN_LAYOUT_PARAMS[domainKey] ?? { rankdir: 'LR' as const, nodesep: 64, ranksep: 52 }
-  if (params.custom && domainKey === 'recursion-iter') {
-    return layoutRecursionIterVertical(nodes)
-  }
+  const params = layoutParams(nodes.length)
 
   const g = new dagre.graphlib.Graph()
   g.setGraph({
@@ -71,8 +39,8 @@ export function computeDagreLayout(
   })
   g.setDefaultEdgeLabel(() => ({}))
 
-  const nodeWidth = domainKey === 'recursion-iter' ? 108 : 96
-  const nodeHeight = domainKey === 'recursion-iter' ? 80 : 72
+  const nodeWidth = 96
+  const nodeHeight = 72
 
   for (const node of nodes) {
     g.setNode(node.id, { width: nodeWidth, height: nodeHeight, label: node.title })

@@ -221,13 +221,13 @@ async function simulate() {
   const sampleCode = 'for i in range(1, n):\n    total += i'
 
   try {
-    addLog('system', `收到模拟样本提交 · 平台启用 ${enabledNodeCount.value}/${AGENT_DEFS.length} 个流水线节点`, 'info')
+    addLog('system', `收到流程校验请求 · 平台启用 ${enabledNodeCount.value}/${AGENT_DEFS.length} 个流水线节点`, 'info')
     addLog('system', '收到学生代码提交，启动多智能体协同推理…', 'info')
 
     setStatus('diagnose', 'running')
     addLog('diagnose', '调用 /api/v1/agents/student-diagnose', 'info')
     const pipeline = await studentDiagnose({
-      exerciseId: 'demo-range-sum',
+      exerciseId: 'range-sum-validation',
       code: sampleCode,
       stderr: '输出与预期不一致',
       expectedOutput: '15',
@@ -256,7 +256,7 @@ async function simulate() {
 
     setStatus('teacher', 'running')
     const teacher = await teacherAgentSuggestion({
-      classId: 'demo-class',
+      classId: 'current-class',
       weakPointStats: [{ knowledgePoint: 'range 边界', count: 6 }],
       commonErrorTypes: ['logic'],
       recentExercises: ['1 到 n 求和'],
@@ -265,7 +265,7 @@ async function simulate() {
     addLog('teacher', teacher.classSummary, 'success')
 
     const backendLabel = pipeline.backend === 'mock' || !pipeline.backend ? '规则引擎' : pipeline.backend
-    addLog('system', `✓ 多智能体协同推理完成（${backendLabel}）`, 'success')
+    addLog('system', `✓ 多智能体协同推理完成 · ${backendLabel}`, 'success')
     await refreshAgentStatus()
   } catch (error) {
     addLog('system', error instanceof Error ? error.message : '智能体链路失败', 'error')

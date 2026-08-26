@@ -32,12 +32,24 @@ export async function searchPracticeQuestions(query: string, limit = 20): Promis
   if (!q) return []
   await ensurePracticeQuestionsLoaded()
   const cached = searchCachedPracticeQuestions(q, limit)
-  if (cached.length) return cached
+  // 关键词（非纯题号）始终再打一枪后端，合并题目标题/知识点命中
+  const looksLikeCodeOnly = /^p?\d{1,5}$/i.test(q) || /^[a-z]{1,4}-?\d+$/i.test(q)
+  if (cached.length && looksLikeCodeOnly) return cached
   try {
     const result = await fetchPracticeQuestions(undefined, q)
-    return result.items.slice(0, limit).map(payloadToQuestion)
+    const remote = result.items.slice(0, limit).map(payloadToQuestion)
+    if (!remote.length) return cached
+    const seen = new Set<string>()
+    const merged: PythonTrialQuestion[] = []
+    for (const item of [...cached, ...remote]) {
+      if (seen.has(item.id)) continue
+      seen.add(item.id)
+      merged.push(item)
+      if (merged.length >= limit) break
+    }
+    return merged
   } catch {
-    return []
+    return cached
   }
 }
 

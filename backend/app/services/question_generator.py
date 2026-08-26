@@ -1,25 +1,25 @@
-"""按知识点随机生成试炼题目"""
+"""按知识点随机生成试炼题目。
+
+题目优先取自 `problems` 表（重排后每个知识点节点都有 4 道以上真题）；只有在库里
+查不到时才退回本文件内置的 `QUESTION_BANK`，用于测试环境和尚未导入题库的场景。
+"""
 import random
 
 from app.models import Trial, TrialQuestion, db
 
-from app.data.knowledge_catalog import DOMAIN_LABELS, KNOWLEDGE_UNIVERSE, POINT_TO_BANK
+from app.data.knowledge_catalog import DOMAIN_LABELS
+from app.data.knowledge_node_registry import (
+    DEFAULT_NODE_ID,
+    KNOWLEDGE_NODE_REGISTRY,
+    LEGACY_KEY_TO_NODE,
+    get_entry,
+    kg_id_from_key,
+)
 
-KNOWLEDGE_LABELS = {
-    'intro': 'Python 入门',
-    'var': '变量与类型',
-    'ops': '运算与表达式',
-    'cond': '条件分支',
-    'loop': '循环结构',
-    'list': '列表与容器',
-    'str': '字符串处理',
-    'func': '函数基础',
-    'file': '文件与异常',
-    'algo': '算法入门',
-    **DOMAIN_LABELS,
-}
+KNOWLEDGE_LABELS = {entry.kg_id: entry.label for entry in KNOWLEDGE_NODE_REGISTRY}
+KNOWLEDGE_LABELS.update(DOMAIN_LABELS)
 
-# 每知识点题库（stem, options, correct_index）
+# 每知识点题库（stem, options, correct_index）——内置兜底题库，键为旧 knowledge_key
 QUESTION_BANK: dict[str, list[dict]] = {
     'intro': [
         {
@@ -190,34 +190,57 @@ QUESTION_BANK: dict[str, list[dict]] = {
 
 DEFAULT_BANK = QUESTION_BANK['intro']
 
+# 把内置题库按新节点重新编排，供库中无题时兜底：旧 bank key 先经注册表映射到节点，
+# 同一节点下的题目合并。这样即使不走数据库，取到的题目也归属正确的知识点。
+_FALLBACK_BANK_BY_NODE: dict[str, list[dict]] = {}
+for _bank_key, _items in QUESTION_BANK.items():
+    _node_id = LEGACY_KEY_TO_NODE.get(_bank_key)
+    if _node_id:
+        _FALLBACK_BANK_BY_NODE.setdefault(_node_id, []).extend(_items)
+
 
 class QuestionGenerator:
     QUESTIONS_PER_TRIAL = 3
 
     @staticmethod
     def _normalize_key(knowledge_key: str | None) -> str:
-        key = (knowledge_key or 'intro').lower().strip()
-        if key in POINT_TO_BANK:
-            return POINT_TO_BANK[key]
-        if key in QUESTION_BANK:
-            return key
-        if key in ('python', 'lang', 'syntax', 'basic', 'comment', 'input', 'io'):
-            return 'var' if key in ('input', 'io') else 'intro'
-        if key in ('condition', 'range'):
-            return 'cond' if key == 'condition' else 'loop'
-        if key in ('tuple', 'set', 'dict'):
-            return 'list'
-        if key in ('string', 'function'):
-            return 'str' if key == 'string' else 'func'
-        if key in ('except', 'exception'):
-            return 'file'
-        if key.startswith('algo'):
-            return 'algo'
-        return 'intro'
+        """把任意历史 knowledge_key 归一成新的知识点节点 id。"""
+        return kg_id_from_key((knowledge_key or '').lower().strip() or None, DEFAULT_NODE_ID)
 
     @staticmethod
     def bank_for_key(knowledge_key: str | None) -> list[dict]:
-        return QUESTION_BANK.get(QuestionGenerator._normalize_key(knowledge_key), DEFAULT_BANK)
+        """取该知识点的选择题，优先读 problems 表，查不到再用内置题库兜底。"""
+        node_id = QuestionGenerator._normalize_key(knowledge_key)
+        rows = QuestionGenerator._mcq_rows_for_node(node_id)
+        if rows:
+            return rows
+        return _FALLBACK_BANK_BY_NODE.get(node_id) or DEFAULT_BANK
+
+    @staticmethod
+    def _mcq_rows_for_node(node_id: str) -> list[dict]:
+        from app.models import Problem
+
+        try:
+            rows = Problem.query.filter(
+                Problem.kg_node_id == node_id,
+                Problem.question_type == 'mcq',
+                Problem.is_active.is_(True),
+            ).all()
+        except Exception:
+            # 题库表尚未建好（例如全新测试库）时不该让试炼生成整个失败
+            db.session.rollback()
+            return []
+        bank = []
+        for row in rows:
+            options = row.options_json or []
+            if len(options) < 2 or row.correct_index is None:
+                continue
+            bank.append({
+                'stem': row.description_cn or row.title_cn,
+                'options': [str(option) for option in options],
+                'correct_index': int(row.correct_index),
+            })
+        return bank
 
     @staticmethod
     def ensure_from_custom(trial: Trial, custom_questions: list[dict]) -> list[TrialQuestion]:
@@ -352,10 +375,10 @@ class QuestionGenerator:
     def label_for_key(knowledge_key: str | None) -> str:
         if not knowledge_key:
             return '综合练习'
-        if knowledge_key in POINT_TO_BANK:
-            for domain in KNOWLEDGE_UNIVERSE:
-                for point in domain['points']:
-                    if point['key'] == knowledge_key:
-                        return point['label']
-        key = QuestionGenerator._normalize_key(knowledge_key)
-        return KNOWLEDGE_LABELS.get(key, KNOWLEDGE_LABELS.get(knowledge_key, '综合练习'))
+        entry = get_entry(knowledge_key)
+        if entry:
+            return entry.label
+        node_entry = get_entry(QuestionGenerator._normalize_key(knowledge_key))
+        if node_entry:
+            return node_entry.label
+        return KNOWLEDGE_LABELS.get(knowledge_key, '综合练习')

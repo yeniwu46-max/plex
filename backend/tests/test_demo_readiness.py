@@ -213,7 +213,7 @@ class DemoReadinessTestCase(unittest.TestCase):
             headers=self.auth(self.student_tokens['a']),
         ).get_json()['data']
         self.assertEqual(after_accept['profile_version'], accepted_data['profile']['version'])
-        self.assertIn('loop', after_accept['recommendation_context']['weak_knowledge'])
+        self.assertIn('loop-for', after_accept['recommendation_context']['weak_knowledge'])
         self.assertEqual(
             after_accept['recommendation_context']['preferred_resource_types'][:2],
             ['exercise_set', 'coding_lab'],
@@ -230,12 +230,12 @@ class DemoReadinessTestCase(unittest.TestCase):
             '/api/v1/student/learning-path',
             headers=self.auth(self.student_tokens['a']),
         ).get_json()['data']
-        # loop 落在 flow-control 域（原 stage2 条件与循环）
+        # loop 历史 key 会归一化到 loop-for，落在 loop 域
         flow_before = next(
-            item for item in path_before['domains'] if item['key'] == 'flow-control'
+            item for item in path_before['domains'] if item['key'] == 'loop'
         )
         flow_after = next(
-            item for item in path_after['domains'] if item['key'] == 'flow-control'
+            item for item in path_after['domains'] if item['key'] == 'loop'
         )
         self.assertNotEqual(
             flow_before['recommended_resource_ids'],

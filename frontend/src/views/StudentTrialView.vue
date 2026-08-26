@@ -13,19 +13,25 @@ import {
 } from '../api/studentTrials'
 import TrialExamPanel from '../components/trial/TrialExamPanel.vue'
 import {
-  formatStarPathNodeLabel,
   getStarPathNode,
   getUnlockedStarPathNodes,
   isStarPathNodeUnlocked,
   resolveQuestionsForNode,
   resolveStarPathNodeId,
 } from '../data/starPathTrail'
+import { STAR_PATH_DOMAINS } from '../data/starPathDomains'
+import {
+  MODULE_CATEGORY_OPTIONS,
+  resolveModuleCategory,
+  type ModuleCategoryValue,
+} from '../data/moduleCategories'
 import { useAuthStore } from '../stores/auth'
 import { buildTrialPageRecommendation } from '../utils/trialPageRecommendation'
 import { fetchServerMistakeRecords, getTrialMistakeRecords, type TrialMistakeRecord } from '../utils/trialMistakeLog'
 import { fetchLearningPath } from '../api/studentProgress'
 import { isQuestionAccepted, mergeAcceptedQuestionIds } from '../utils/starPathProgress'
 import { formatQuestionLabel } from '../utils/questionNaming'
+import { ensurePracticeQuestionsLoaded, practiceCacheVersion } from '../utils/practiceQuestionCache'
 
 const message = useMessage()
 const auth = useAuthStore()
@@ -55,22 +61,57 @@ const displayName = computed(() => auth.profile?.real_name || auth.profile?.user
 const userId = computed(() => auth.profile?.id ?? 'guest')
 
 const unlockedNodes = computed(() => getUnlockedStarPathNodes(acceptedQuestionIds.value))
-const selectedNodeId = ref('stage1-intro')
-
-const nodeSelectOptions = computed<SelectOption[]>(() =>
-  unlockedNodes.value.map((node) => ({
-    label: formatStarPathNodeLabel(node),
-    value: node.id,
-  })),
+/** 大类板块：语言入门 / 循环结构 …（细粒度知识点归并） */
+const selectedDomainKey = ref<ModuleCategoryValue>(
+  (STAR_PATH_DOMAINS[0]?.key as ModuleCategoryValue) || 'lang-basics',
 )
 
+const nodeSelectOptions = computed<SelectOption[]>(() => {
+  const unlockedDomains = new Set(
+    unlockedNodes.value.map((node) => resolveModuleCategory(node.id)),
+  )
+  return MODULE_CATEGORY_OPTIONS.filter(
+    (opt) => opt.value === 'other' || unlockedDomains.has(opt.value),
+  ).map((opt) => ({ label: opt.label, value: opt.value }))
+})
 
-const activeQuestions = computed(() => resolveQuestionsForNode(selectedNodeId.value))
+const activeQuestions = computed(() => {
+  // 读一下版本号，接口真题到货后重新解析，否则会一直停在离线兜底题上
+  void practiceCacheVersion.value
+  const domainNodes = unlockedNodes.value.filter(
+    (node) => resolveModuleCategory(node.id) === selectedDomainKey.value,
+  )
+  const seen = new Set<string>()
+  const questions = []
+  for (const node of domainNodes) {
+    for (const q of resolveQuestionsForNode(node.id)) {
+      if (seen.has(q.id)) continue
+      seen.add(q.id)
+      questions.push(q)
+    }
+  }
+  // 若该大类暂无已解锁节点题，兜底取代表节点题（含「其它」）
+  if (!questions.length) {
+    const fallbackNodes =
+      selectedDomainKey.value === 'other'
+        ? unlockedNodes.value.filter((n) => resolveModuleCategory(n.id) === 'other')
+        : STAR_PATH_DOMAINS.find((d) => d.key === selectedDomainKey.value)?.knowledgePoints ?? []
+    for (const node of fallbackNodes) {
+      const id = 'id' in node ? node.id : (node as { id: string }).id
+      for (const q of resolveQuestionsForNode(id)) {
+        if (seen.has(q.id)) continue
+        seen.add(q.id)
+        questions.push(q)
+      }
+    }
+  }
+  return questions
+})
 
 const pageRecommendation = computed(() =>
   buildTrialPageRecommendation(
     userId.value,
-    selectedNodeId.value,
+    selectedDomainKey.value,
     activeQuestions.value,
     serverMistakes.value,
   ),
@@ -132,8 +173,9 @@ watch(
     if (!nodes.length) return
     const current = nodes.find((node) => node.status === 'current')
     const preferred = current ?? nodes[0]
-    if (!nodes.some((node) => node.id === selectedNodeId.value)) {
-      selectedNodeId.value = preferred.id
+    const preferredDomain = resolveModuleCategory(preferred.id)
+    if (!nodeSelectOptions.value.some((opt) => opt.value === selectedDomainKey.value)) {
+      selectedDomainKey.value = preferredDomain
     }
   },
   { immediate: true },
@@ -233,10 +275,15 @@ onMounted(() => {
     const resolved = resolveStarPathNodeId(rawNode)
     const node = getStarPathNode(resolved, acceptedQuestionIds.value)
     if (isStarPathNodeUnlocked(node)) {
-      selectedNodeId.value = resolved
+      selectedDomainKey.value = resolveModuleCategory(resolved)
     }
   }
-  void Promise.all([loadTrials(), loadTrialStats(), refreshPracticeProgress()])
+  void Promise.all([
+    loadTrials(),
+    loadTrialStats(),
+    refreshPracticeProgress(),
+    ensurePracticeQuestionsLoaded(),
+  ])
 })
 
 onActivated(() => {
@@ -306,7 +353,7 @@ onActivated(() => {
             <label class="student-trial__picker-label" for="starpath-node-select">星轨板块</label>
             <n-select
               id="starpath-node-select"
-              v-model:value="selectedNodeId"
+              v-model:value="selectedDomainKey"
               :options="nodeSelectOptions"
               :disabled="!nodeSelectOptions.length"
               placeholder="选择板块"
@@ -388,7 +435,7 @@ onActivated(() => {
               难度 {{ trial.difficulty }} · 约 {{ trial.duration_minutes }} 分钟 ·
               {{ trial.participant_count ?? 0 }} 人已参与
             </p>
-            <p v-if="trial.my_status === 'completed'" class="student-trial__done">已完成（得分 {{ trial.my_score }}）</p>
+            <p v-if="trial.my_status === 'completed'" class="student-trial__done">已完成 · 得分 {{ trial.my_score }}</p>
             <div v-else class="student-trial__actions">
               <n-button
                 v-if="!trial.my_status"

@@ -6,6 +6,7 @@ into a standard directory layout, then creates a zip archive.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import subprocess
@@ -36,6 +37,8 @@ EXCLUDED_PARTS = {
     "outputs",
     "output",
     "test-results",
+    "runtime-samples",
+    "config-samples",
 }
 EXCLUDED_PREFIXES = (".venv",)
 EXCLUDED_SUFFIXES = {".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", ".log"}
@@ -58,9 +61,14 @@ SOURCE_ROOT_FILES = (
     "AGENTS.md",
     ".gitignore",
     ".github",
+    ".nvmrc",
+    ".python-version",
+    "package.json",
+    "package-lock.json",
+    "docker-compose.neo4j.yml",
 )
 
-SOURCE_DIRS = ("backend", "frontend", "picture", "ppplex")
+SOURCE_DIRS = ("backend", "frontend", "picture", "ppplex", "scripts", "request")
 
 DATA_PATHS = (
     "backend/data",
@@ -77,7 +85,7 @@ CONFIG_SAMPLES = (
     ("frontend/.env.example", "frontend.env.example"),
 )
 
-DOCS_PATH = "docs/submission"
+DOCS_PATH = "docs"
 
 REPORT_PATHS = (
     "backend/reports",
@@ -146,6 +154,34 @@ def _copy_tree(src: Path, dst: Path) -> tuple[int, int]:
     return count, total
 
 
+def _write_package_manifest(staging: Path) -> Path:
+    files = []
+    for path in sorted(staging.rglob("*")):
+        if not path.is_file() or path.name in {"release-manifest.json", "package-meta.json"}:
+            continue
+        files.append(
+            {
+                "path": path.relative_to(staging).as_posix(),
+                "bytes": path.stat().st_size,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+        )
+    manifest = staging / "release-manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "file_count": len(files),
+                "files": files,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return manifest
+
+
 def _write_launcher(dest: Path) -> None:
     bat = dest / "一键启动.bat"
     bat.write_bytes(
@@ -160,23 +196,30 @@ set "NO_PROXY=127.0.0.1,localhost,::1"
 set "no_proxy=127.0.0.1,localhost,::1"
 
 echo ========================================
-echo PLEX A3 提交包 - 一键启动
+echo PLEX A3 完整可运行包 - 一键启动
 echo ========================================
 
 if not exist "%SOURCE%\\start.bat" (
-    echo [ERROR] 未找到 source\\start.bat，请确认已完整解压提交包。
+    echo [ERROR] 未找到 source\\start.bat，请确认已完整解压文件包。
     pause
     exit /b 1
 )
 
-call :ensure_config
-if errorlevel 1 exit /b 1
+if not exist "%PACKAGE_ROOT%\\runtime\\python\\python.exe" (
+    echo [ERROR] 未找到便携 Python 运行时，请重新获取完整文件包。
+    pause
+    exit /b 1
+)
+if not exist "%PACKAGE_ROOT%\\runtime\\frontend-dist\\index.html" (
+    echo [ERROR] 未找到预构建前端，请重新获取完整文件包。
+    pause
+    exit /b 1
+)
 
 echo.
 echo 正在启动 PLEX Universe（后端 + 预构建前端）...
-if exist "%PACKAGE_ROOT%\\runtime\\frontend-dist\\index.html" (
-    echo [模式] 预构建前端 + Python /api 反代（无需 npm install）
-)
+echo [模式] 便携 Python + 预构建前端 + /api 反代
+echo [提示] 无需安装 Python、Node.js、MySQL，也无需联网安装依赖
 echo 启动完成后浏览器访问: http://localhost:5180
 echo 演示账号见 source\\README.md
 echo 仅检查环境不启动服务: 一键启动.bat --check
@@ -252,17 +295,22 @@ PACKAGE_ROOT="$(cd "$(dirname "$0")" && pwd)"
 SOURCE="$PACKAGE_ROOT/source"
 
 echo "========================================"
-echo "PLEX A3 提交包 - 一键启动"
+echo "PLEX A3 完整可运行包"
 echo "========================================"
 
 if [[ ! -f "$SOURCE/start.bat" && ! -f "$SOURCE/backend/run.py" ]]; then
-  echo "[ERROR] 未找到 source 目录，请确认已完整解压提交包。"
+  echo "[ERROR] 未找到 source 目录，请确认已完整解压文件包。"
   exit 1
 fi
 
-if [[ ! -f "$SOURCE/backend/.env" && -f "$PACKAGE_ROOT/config-samples/backend.env.example" ]]; then
-  echo "[配置] 首次运行：复制 backend.env.example -> source/backend/.env"
-  cp "$PACKAGE_ROOT/config-samples/backend.env.example" "$SOURCE/backend/.env"
+if [[ ! -f "$SOURCE/backend/.env" && -f "$PACKAGE_ROOT/config-samples/backend.env.production-ready" ]]; then
+  echo "[配置] 首次运行：复制完整 API 配置"
+  cp "$PACKAGE_ROOT/config-samples/backend.env.production-ready" "$SOURCE/backend/.env"
+fi
+if [[ ! -f "$SOURCE/backend/instance/learning_system.db" && -f "$PACKAGE_ROOT/data/database/learning_system.db" ]]; then
+  echo "[配置] 首次运行：复制数据库快照"
+  mkdir -p "$SOURCE/backend/instance"
+  cp "$PACKAGE_ROOT/data/database/learning_system.db" "$SOURCE/backend/instance/learning_system.db"
 fi
 if [[ ! -f "$SOURCE/frontend/.env.development" && -f "$PACKAGE_ROOT/config-samples/frontend.env.development" ]]; then
   echo "[配置] 首次运行：复制 frontend 开发环境配置"
@@ -270,7 +318,7 @@ if [[ ! -f "$SOURCE/frontend/.env.development" && -f "$PACKAGE_ROOT/config-sampl
 fi
 
 echo
-echo "Linux/macOS 请手动启动："
+echo "内置便携运行时仅适用于 Windows。Linux/macOS 请手动启动："
 echo "  终端1: cd source/backend && python3 -m venv .venv && source .venv/bin/activate"
 echo "         pip install -r requirements.txt -r requirements-agents.txt"
 echo "         python manage.py init && python run.py"
@@ -282,7 +330,7 @@ echo "浏览器访问: http://localhost:5180"
 
 
 def _write_readme(dest: Path, meta: dict) -> None:
-    content = f"""# PLEX A3 多智能体提交包
+    content = f"""# PLEX A3 完整可运行代码包
 
 **生成时间（UTC）**：{meta["generated_at"]}  
 **Git 提交**：{meta.get("git_commit") or "unknown"}  
@@ -295,10 +343,10 @@ def _write_readme(dest: Path, meta: dict) -> None:
 | `一键启动.bat` | **Windows 双击即可启动**（自动复制配置样例并启动前后端） |
 | `source/` | 可完整运行的项目源码（Flask 后端 + Vue 3 前端 + 多智能体模块） |
 | `data/` | 课程知识库、**预置 SQLite 演示库**、Learning Core SQL |
-| `runtime/` | 预构建前端 dist、CrewAI 离线 wheel、Neo4j compose |
-| `data/database/` | 预置 `learning_system.db`（用户/班级/试炼/画像，一键启动自动注入） |
-| `config-samples/` | 环境变量与模型部署配置样例（不含真实密钥） |
-| `docs/` | 初赛配套文档（需求、设计、多智能体、测试、部署等） |
+| `runtime/` | 便携 Python 3.12（含 Flask/CrewAI/数据库驱动）、最新前端 dist、Neo4j compose |
+| `data/database/` | 打包时本地数据库的 SQLite 快照（首次启动自动注入，后续不覆盖） |
+| `config-samples/` | API 与模型配置；为复现本地效果可能包含有效凭证，仅限内部交付 |
+| `docs/` | 项目文档（需求、设计、多智能体、测试、部署等） |
 | `reports/` | 本地评测、安全、性能与 bundle 报告 |
 | `release-manifest.json` | 候选文件 SHA-256 清单 |
 
@@ -317,6 +365,10 @@ def _write_readme(dest: Path, meta: dict) -> None:
 ```
 
 浏览器访问 `http://localhost:5180`。默认演示账号见 `source/README.md`。
+
+Windows 运行不要求预装 Python、Node.js 或 MySQL，也不需要联网下载依赖。首次启动安装数据库快照与 API 配置，后续启动会保留新增数据和本地配置。
+
+> 安全提示：本包为了保持与打包机一致的 API 效果，包含当前有效的 API 配置。请只通过可信渠道传递，不要公开上传。
 
 ## 手动运行
 
@@ -352,13 +404,13 @@ npm run dev
 
 ## 排除项
 
-已排除虚拟环境、`node_modules`、`.env` 真实密钥、数据库文件、日志与开发工具缓存。
+已排除 Git 历史、`node_modules`、重复虚拟环境、日志、浏览器记录与开发工具缓存；完整源码、迁移、数据库快照、API 配置和便携运行时已保留。
 """
     (dest / "README.md").write_text(content, encoding="utf-8")
 
 
 def build(output_zip: Path, staging_root: Path | None = None) -> dict:
-    package_name = "PLEX-A3-submission"
+    package_name = "PLEX-A3-complete-runnable"
     staging = staging_root or (output_zip.parent / package_name)
     if staging.exists():
         try:
@@ -435,18 +487,7 @@ def build(output_zip: Path, staging_root: Path | None = None) -> dict:
         assert spec.loader is not None
         spec.loader.exec_module(module)
         runtime_src = REPO_ROOT / "docs/submission/runtime-samples"
-        if not (runtime_src / "frontend-dist" / "index.html").exists():
-            runtime_meta = module.build(skip_wheels=True)
-        else:
-            runtime_meta = {
-                "frontend_dist": {"path": str((runtime_src / "frontend-dist").resolve()), "reused": True},
-                "neo4j": module.copy_neo4j_compose(),
-            }
-            if not (REPORTS_OUT := BACKEND_ROOT / "reports/a3-submission/api-smoke-iflytek.json").exists():
-                try:
-                    runtime_meta["api_smoke"] = module.run_api_smoke()
-                except Exception:
-                    pass
+        runtime_meta = module.build(skip_wheels=True, force_frontend=True)
         runtime_dst = staging / "runtime"
         if runtime_src.exists():
             if runtime_dst.exists():
@@ -469,7 +510,7 @@ def build(output_zip: Path, staging_root: Path | None = None) -> dict:
     config_dir = staging / "config-samples"
     for src_rel, dst_name in CONFIG_SAMPLES:
         src = REPO_ROOT / src_rel
-        if src.exists() and _include(src):
+        if src.exists() and src.is_file():
             config_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, config_dir / dst_name)
             stats["file_count"] += 1
@@ -481,17 +522,14 @@ def build(output_zip: Path, staging_root: Path | None = None) -> dict:
     for rel in REPORT_PATHS:
         add(REPO_ROOT / rel, reports / Path(rel).name)
 
-    manifest_src = BACKEND_ROOT / "reports/a3-submission/release-manifest.json"
-    if manifest_src.exists():
-        shutil.copy2(manifest_src, staging / "release-manifest.json")
-        stats["file_count"] += 1
-        stats["total_bytes"] += manifest_src.stat().st_size
-
     _write_launcher(staging)
     stats["file_count"] += 2
     stats["total_bytes"] += sum(
         p.stat().st_size for p in (staging / "一键启动.bat", staging / "start.sh") if p.exists()
     )
+    manifest = _write_package_manifest(staging)
+    stats["file_count"] += 1
+    stats["total_bytes"] += manifest.stat().st_size
 
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -542,8 +580,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output",
         type=Path,
-        default=REPO_ROOT.parent / "PLEX-A3-submission.zip",
-        help="Output zip path (default: ../PLEX-A3-submission.zip)",
+        default=REPO_ROOT.parent / "PLEX-A3-complete-runnable.zip",
+        help="Output zip path (default: ../PLEX-A3-complete-runnable.zip)",
     )
     parser.add_argument(
         "--keep-staging",

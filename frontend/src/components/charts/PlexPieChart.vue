@@ -3,12 +3,12 @@ import { computed } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { PieChart } from 'echarts/charts'
-import { TooltipComponent, LegendComponent } from 'echarts/components'
+import { TooltipComponent, LegendComponent, GraphicComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useThemeStore } from '../../stores/theme'
 import { getEchartsTokens, buildTooltip, buildLegend } from '../../theme/echartsTheme'
 
-use([CanvasRenderer, PieChart, TooltipComponent, LegendComponent])
+use([CanvasRenderer, PieChart, TooltipComponent, LegendComponent, GraphicComponent])
 
 const props = withDefaults(
   defineProps<{

@@ -5,7 +5,7 @@ from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
-from app.config import Config, DevelopmentConfig, ProductionConfig, TestingConfig
+from app.config import get_config
 from app.middleware.error_handler import register_error_handlers
 from app.models import db
 from app.routes import register_routes
@@ -157,12 +157,7 @@ def ensure_dev_login_users():
 
 def create_app(config_name='development'):
     """Create and configure a Flask application."""
-    config_map = {
-        'development': DevelopmentConfig,
-        'testing': TestingConfig,
-        'production': ProductionConfig,
-    }
-    config = config_map.get(config_name, DevelopmentConfig)
+    config = get_config(config_name)
 
     app = Flask(__name__)
     app.config.from_object(config)
@@ -194,22 +189,25 @@ def create_app(config_name='development'):
             ensure_practice_question_schema()
         init_seed_data()
         sync_teacher_role_permissions()
-        ensure_dev_login_users()
-        if not app.config.get('TESTING'):
+        is_testing = bool(app.config.get('TESTING'))
+        is_development = bool(app.config.get('DEBUG')) and not is_testing
+        if is_development or is_testing:
+            ensure_dev_login_users()
+        if is_development:
             from scripts.bootstrap_test_student import ensure_test_sandbox_accounts
 
             try:
                 ensure_test_sandbox_accounts()
             except Exception:
                 db.session.rollback()
-                app.logger.exception('Test sandbox bootstrap skipped.')
+                app.logger.exception('Development sandbox bootstrap skipped.')
             from scripts.ensure_demo_class_trial import ensure_demo_class_trial
 
             try:
                 ensure_demo_class_trial()
             except Exception:
                 db.session.rollback()
-                app.logger.exception('Demo class trial bootstrap skipped.')
+                app.logger.exception('Development class trial bootstrap skipped.')
         from app.services.daily_quest import DailyQuestService
 
         DailyQuestService.ensure_default_quests()

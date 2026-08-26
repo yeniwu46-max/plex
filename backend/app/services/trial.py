@@ -67,18 +67,28 @@ class TrialService(BaseService):
 
     @staticmethod
     def _get_teacher_class(class_id, teacher_id, role_name):
-        cls = db.session.get(Class, class_id)
+        cls = db.session.get(Class, class_id) if class_id else None
+        if cls and (role_name != 'teacher' or cls.teacher_id == teacher_id):
+            return cls
+        # 班级已被删或不存在（常见于本地库重建后前端仍带旧 class_id）时回落
         if not cls:
+            if role_name == 'teacher':
+                owned = Class.query.filter_by(teacher_id=teacher_id).order_by(Class.id.asc()).first()
+                if owned:
+                    return owned
+            if role_name == 'admin':
+                any_cls = Class.query.order_by(Class.id.asc()).first()
+                if any_cls:
+                    return any_cls
             raise ValueError('班级不存在')
-        if role_name == 'teacher' and cls.teacher_id != teacher_id:
-            raise PermissionError('不能操作非本人负责的班级')
-        return cls
+        raise PermissionError('不能操作非本人负责的班级')
 
     @staticmethod
     def list_teacher_trials(current_user_id, class_id, role_name):
-        TrialService._get_teacher_class(class_id, current_user_id, role_name)
+        cls = TrialService._get_teacher_class(class_id, current_user_id, role_name)
+        resolved_class_id = cls.id
         trials = (
-            Trial.query.filter_by(class_id=class_id)
+            Trial.query.filter_by(class_id=resolved_class_id)
             .order_by(Trial.created_at.desc())
             .all()
         )
@@ -89,8 +99,9 @@ class TrialService(BaseService):
         if dirty:
             db.session.commit()
 
-        summary = TrialService._build_summary(trials, class_id)
+        summary = TrialService._build_summary(trials, resolved_class_id)
         return {
+            'class_id': resolved_class_id,
             'trials': [
                 trial.to_dict(
                     include_stats=True,

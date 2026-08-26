@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue'
-import { NButton, NCollapse, NCollapseItem, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
+import { NButton, NCollapse, NCollapseItem, NModal, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
 import AgentStepsTimeline from '../components/personalized/AgentStepsTimeline.vue'
 import {
   createResourceTask,
+  downloadPersonalizedResource,
   fetchPersonalizedResources,
   fetchResourceTask,
   fetchResourceTasks,
@@ -14,12 +15,21 @@ import {
   type PersonalizedResource,
   type ResourceTask,
 } from '../api/personalizedResources'
+import {
+  MODULE_CATEGORY_OPTIONS,
+  knowledgeKeyForModuleCategory,
+  type ModuleCategoryValue,
+} from '../data/moduleCategories'
 import { xiaoEResourceProgressHint, xiaoEResourceBackendLabel } from '../utils/xiaoEPersona'
+import { formatHttpError } from '../api/http'
 
 const message = useMessage()
-const knowledgeKey = ref('loop')
-const learningStage = ref('学习')
+const knowledgeKey = ref<ModuleCategoryValue>('loop')
+/** 生成时默认学习阶段（UI 不再展示阶段选择） */
+const DEFAULT_LEARNING_STAGE = '学习'
 const learningStyles = ref(['案例', '代码实验', '图文'])
+/** 生成目标资源类型：all = 完整学习包（不含视频） */
+const generateResourceType = ref<'all' | PersonalizedResource['resource_type']>('all')
 const resourceFilter = ref('all')
 const task = ref<ResourceTask | null>(null)
 const taskHistory = ref<ResourceTask[]>([])
@@ -29,21 +39,16 @@ const loading = ref(true)
 const loadError = ref('')
 const pollingTimedOut = ref(false)
 const selected = ref<PersonalizedResource | null>(null)
+const materialViewerOpen = ref(false)
+const materialViewerItem = ref<PersonalizedResource | null>(null)
 const detailPanelRef = ref<HTMLElement | null>(null)
 const resourceListRef = ref<HTMLElement | null>(null)
 /** 任务完成后默认收起流水线，避免把「已生成资源」顶出首屏 */
 const showPipelineDetails = ref(false)
+type ResourceStatModal = 'knowledge' | 'resources' | 'anomaly' | null
+const resourceStatModal = ref<ResourceStatModal>(null)
 
-const knowledgeOptions = [
-  { label: '程序结构', value: 'intro' }, { label: '注释', value: 'comment' },
-  { label: '变量与类型', value: 'var' }, { label: '输入输出', value: 'io' },
-  { label: '表达式与运算符', value: 'ops' }, { label: '条件分支', value: 'cond' },
-  { label: '循环结构', value: 'loop' }, { label: 'range', value: 'range' },
-  { label: '字符串', value: 'str' }, { label: '列表', value: 'list' },
-  { label: '字典', value: 'dict' }, { label: '函数', value: 'func' },
-  { label: '异常处理', value: 'except' }, { label: '文件读写', value: 'file' },
-  { label: '累加算法', value: 'algo-sum' }, { label: '查找算法', value: 'algo-search' },
-]
+const knowledgeOptions = [...MODULE_CATEGORY_OPTIONS]
 
 const typeLabels: Record<string, string> = {
   learning_bundle: '完整资源包',
@@ -67,25 +72,35 @@ const typeOrder: Record<string, number> = {
   video_lesson: 7,
 }
 
-const stageOptions = [
-  { label: '预习', value: '预习' },
-  { label: '学习', value: '学习' },
-  { label: '练习', value: '练习' },
-  { label: '复习', value: '复习' },
-  { label: '考试', value: '考试' },
-]
-
-const styleOptions = [
-  { label: '图文', value: '图文' },
-  { label: '案例', value: '案例' },
-  { label: '代码实验', value: '代码实验' },
-  { label: '交互', value: '交互' },
+const generatableTypeKeys: PersonalizedResource['resource_type'][] = [
+  'learning_bundle',
+  'lesson_document',
+  'mind_map',
+  'exercise_set',
+  'extended_reading',
+  'coding_lab',
+  'audio_explanation',
 ]
 
 const typeOptions = computed(() => [
   { label: '全部类型', value: 'all' },
   ...Object.entries(typeLabels).map(([value, label]) => ({ value, label })),
 ])
+
+const generateTypeOptions = computed(() => [
+  { label: '完整学习包 · 含语音', value: 'all' },
+  ...generatableTypeKeys.map((value) => ({ value, label: typeLabels[value] })),
+])
+
+function resolveGenerateTypes(): PersonalizedResource['resource_type'][] {
+  if (generateResourceType.value === 'all') {
+    return [...generatableTypeKeys]
+  }
+  if (generateResourceType.value === 'learning_bundle') {
+    return ['learning_bundle']
+  }
+  return ['learning_bundle', generateResourceType.value]
+}
 
 const visibleTasks = computed(() => taskHistory.value.slice(0, 6))
 
@@ -168,6 +183,27 @@ const anomalyCount = computed(
   () => resources.value.filter((item) => Boolean(item.is_anomaly)).length,
 )
 
+const approvedResources = computed(() =>
+  overviewItems.value.filter((item) => item.review_status === 'approved'),
+)
+
+const anomalyResources = computed(() =>
+  resources.value.filter((item) => Boolean(item.is_anomaly) && item.review_status !== 'rejected'),
+)
+
+const knowledgeGroups = computed(() => groupByKnowledge(overviewItems.value))
+
+function openResourceStatModal(kind: ResourceStatModal) {
+  resourceStatModal.value = kind
+}
+
+const resourceStatModalVisible = computed({
+  get: () => resourceStatModal.value !== null,
+  set: (value: boolean) => {
+    if (!value) resourceStatModal.value = null
+  },
+})
+
 const pipelineExpanded = computed(() => {
   if (!task.value) return false
   if (task.value.status !== 'completed') return true
@@ -196,9 +232,95 @@ function pickDefaultSelection(force = false) {
 
 function selectResource(item: PersonalizedResource) {
   selected.value = item
+  resourceStatModal.value = null
   window.requestAnimationFrame(() => {
     detailPanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   })
+}
+
+function hasRenderableContent(item: PersonalizedResource | null | undefined) {
+  if (!item) return false
+  const content = item.content
+  if (!content || typeof content !== 'object') return false
+  if (typeof content.markdown === 'string' && content.markdown.trim()) return true
+  if (content.format === 'pedagogical_v2') return true
+  if (content.format === 'coding_lab' && (content.scenario || content.starter_code)) return true
+  if (content.format === 'tree' && (content.root || (Array.isArray(content.children) && content.children.length))) {
+    return true
+  }
+  if (Array.isArray(content.questions) && content.questions.length) return true
+  if (typeof content.transcript === 'string' && content.transcript.trim()) return true
+  if (typeof content.script === 'string' && content.script.trim()) return true
+  if (item.content_url) return true
+  return Object.keys(content).length > 0
+}
+
+function openMaterialViewer(item: PersonalizedResource) {
+  materialViewerItem.value = item
+  materialViewerOpen.value = true
+  selected.value = item
+  resourceStatModal.value = null
+}
+
+function viewResourceMaterial(item: PersonalizedResource) {
+  openMaterialViewer(item)
+  if (!hasRenderableContent(item)) {
+    message.warning(`「${item.title}」暂无正文，可尝试下载或重新生成`)
+    return
+  }
+  message.success(`已打开「${item.title}」资料`)
+}
+
+function downloadResourceMaterial(item: PersonalizedResource) {
+  try {
+    downloadPersonalizedResource(item)
+    message.success(`开始下载「${item.title}」`)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '下载失败')
+  }
+}
+
+async function generateQuizSet() {
+  generating.value = true
+  showPipelineDetails.value = true
+  resetTypeFilter()
+  try {
+    // 借鉴 QuickForm：围绕知识点生成可回收的结构化题目集（exercise_set）
+    task.value = await createResourceTask(
+      knowledgeKeyForModuleCategory(knowledgeKey.value),
+      ['exercise_set', 'learning_bundle'],
+      undefined,
+      {
+        target: '大学',
+        learning_stage: DEFAULT_LEARNING_STAGE,
+        learning_style: learningStyles.value.length ? learningStyles.value : ['案例', '代码实验'],
+        force_regenerate: true,
+        require_real_api: true,
+      },
+    )
+    if (task.value.status !== 'completed') await poll(task.value.task_id)
+    if (task.value.status === 'failed') throw new Error(task.value.error || '出题失败')
+    await load()
+    if (task.value.resources?.length) {
+      const merged = new Map<number, PersonalizedResource>()
+      for (const item of resources.value) merged.set(item.id, item)
+      for (const item of task.value.resources) merged.set(item.id, item)
+      resources.value = [...merged.values()].filter((item) => item.review_status !== 'rejected')
+    }
+    const quiz =
+      resources.value.find(
+        (item) =>
+          item.resource_type === 'exercise_set' &&
+          item.generation_task_id === task.value?.task_id,
+      ) || preferLearningBundle(task.value.resources || [])
+    if (quiz) selectResource(quiz)
+    message.success('分层题库已生成，可查看资料或下载')
+    await revealResourceList()
+  } catch (error) {
+    message.error(formatHttpError(error, '出题失败'))
+  } finally {
+    generating.value = false
+  }
 }
 
 function resetTypeFilter() {
@@ -231,7 +353,7 @@ async function load(options?: { silent?: boolean }) {
     pickDefaultSelection()
   } catch (error) {
     if (!silent) {
-      loadError.value = error instanceof Error ? error.message : '资源加载失败'
+      loadError.value = formatHttpError(error, '资源加载失败')
     }
   } finally {
     loading.value = false
@@ -255,23 +377,24 @@ async function generate() {
   showPipelineDetails.value = true
   resetTypeFilter()
   try {
-    const coreTypes: PersonalizedResource['resource_type'][] = [
-      'learning_bundle',
-      'lesson_document',
-      'mind_map',
-      'exercise_set',
-      'extended_reading',
-      'coding_lab',
-      'audio_explanation',
-      'video_lesson',
-    ]
-    task.value = await createResourceTask(knowledgeKey.value, coreTypes, undefined, {
+    const coreTypes = resolveGenerateTypes()
+    task.value = await createResourceTask(
+      knowledgeKeyForModuleCategory(knowledgeKey.value),
+      coreTypes,
+      undefined,
+      {
       target: '大学',
-      learning_stage: learningStage.value,
+      learning_stage: DEFAULT_LEARNING_STAGE,
       learning_style: learningStyles.value,
       force_regenerate: true,
-    })
+      require_real_api: true,
+    },
+    )
     if (task.value.status !== 'completed') await poll(task.value.task_id)
+    if (pollingTimedOut.value) {
+      message.info('真实模型仍在生成，任务会在后台继续；可从最近生成记录查看进度')
+      return
+    }
     if (task.value.status === 'failed') throw new Error(task.value.error || '生成任务失败')
     await load()
     // 任务内嵌资源优先合并，避免列表接口滞后导致「看不到」
@@ -295,20 +418,20 @@ async function generate() {
     } else if (pollingTimedOut.value) {
       message.info('任务仍在处理中，可稍后从任务历史继续查看')
     } else if (task.value.fallback_reason) {
-      message.warning('云端暂时不可用，已用本地课程模板生成；修好网络后可再点生成')
+      message.warning('云端生成服务暂时不可用，请稍后重新生成')
     } else {
       const pending = resources.value.filter((item) => item.review_status === 'pending_review').length
       const approved = resources.value.filter((item) => item.review_status === 'approved').length
       message.success(
         approved
-          ? `学习资源已就绪（${approved} 项可直接学习${pending ? `，另有 ${pending} 项待审可预览` : ''}）`
+          ? `学习资源已就绪 · ${approved} 项可直接学习${pending ? ` · 另有 ${pending} 项待审可预览` : ''}`
           : pending
-            ? `学习资源包已生成（${pending} 项待审，可先预览学习）`
+            ? `学习资源包已生成 · ${pending} 项待审，可先预览学习`
             : '学习资源包已生成，可在下方列表点开查看',
       )
     }
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '生成失败')
+    message.error(formatHttpError(error, '生成失败'))
   } finally {
     generating.value = false
   }
@@ -325,7 +448,7 @@ async function retry(item: ResourceTask) {
     pickDefaultSelection(true)
     await revealResourceList()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '重试失败')
+    message.error(formatHttpError(error, '重试失败'))
   }
 }
 
@@ -361,29 +484,28 @@ onActivated(() => {
     <main class="resource-page">
       <section class="generator">
         <div class="generator__copy">
-          <h2>生成多模态学习资源</h2>
-          <p>小E 会根据你的学习情况，生成讲解文档、思维导图、分层题库、代码实操与语音讲解。</p>
+          <h2>生成个性化学习资源</h2>
+          <p>选择知识点与资源类型，生成讲解、导图、练习、实操和语音资料。</p>
         </div>
         <div class="generator__controls">
-          <n-select v-model:value="knowledgeKey" :options="knowledgeOptions" class="knowledge-select" />
-          <n-select v-model:value="learningStage" :options="stageOptions" class="stage-select" />
+          <n-select v-model:value="knowledgeKey" :options="knowledgeOptions" class="knowledge-select" placeholder="知识点" />
           <n-select
-            v-model:value="learningStyles"
-            :options="styleOptions"
-            multiple
-            class="style-select"
-            placeholder="学习方式"
+            v-model:value="generateResourceType"
+            :options="generateTypeOptions"
+            class="type-select"
+            placeholder="资源类型"
           />
-          <n-button type="primary" :loading="generating" @click="generate">生成学习资源包</n-button>
+          <n-button type="primary" :loading="generating" @click="generate">生成学习资源</n-button>
+          <n-button secondary :loading="generating" @click="generateQuizSet">生成题目</n-button>
         </div>
       </section>
 
       <section class="resource-summary" aria-label="资源概览">
-        <article>
+        <article role="button" tabindex="0" @click="openResourceStatModal('knowledge')" @keydown.enter.prevent="openResourceStatModal('knowledge')">
           <span>知识点</span>
           <strong>{{ overviewGroupCount }}</strong>
         </article>
-        <article>
+        <article role="button" tabindex="0" @click="openResourceStatModal('resources')" @keydown.enter.prevent="openResourceStatModal('resources')">
           <span>可学习资源</span>
           <strong>{{ overviewResourceCount }}</strong>
         </article>
@@ -391,11 +513,123 @@ onActivated(() => {
           <span>最新任务</span>
           <strong>{{ latestTaskStatus }}</strong>
         </article>
-        <article>
+        <article role="button" tabindex="0" @click="openResourceStatModal('anomaly')" @keydown.enter.prevent="openResourceStatModal('anomaly')">
           <span>异常待关注</span>
           <strong>{{ anomalyCount }}</strong>
         </article>
       </section>
+
+      <n-modal
+        v-model:show="resourceStatModalVisible"
+        preset="card"
+        class="resource-stat-modal"
+        :style="{ width: 'min(480px, 92vw)', maxWidth: '92vw' }"
+        :title="resourceStatModal === 'knowledge' ? '按知识点分类' : resourceStatModal === 'resources' ? '可学习资源' : '异常待关注'"
+      >
+        <div v-if="resourceStatModal === 'knowledge'" class="resource-stat-modal__body">
+          <p v-if="!knowledgeGroups.length" class="resource-stat-modal__empty">暂无已生成资源</p>
+          <section v-for="group in knowledgeGroups" :key="group.label" class="resource-stat-group">
+            <h4>{{ group.label }}</h4>
+            <ul class="resource-stat-list">
+              <li v-for="item in group.items" :key="item.id">
+                <div class="resource-stat-list__main">
+                  <strong>{{ typeLabels[item.resource_type] || item.resource_type }} · {{ item.title }}</strong>
+                  <span>{{ item.knowledge_label }}</span>
+                </div>
+                <div class="resource-stat-list__actions">
+                  <n-button size="tiny" type="primary" secondary @click="viewResourceMaterial(item)">查看资料</n-button>
+                  <n-button size="tiny" quaternary @click="downloadResourceMaterial(item)">下载</n-button>
+                </div>
+              </li>
+            </ul>
+          </section>
+        </div>
+        <div v-else-if="resourceStatModal === 'resources'" class="resource-stat-modal__body">
+          <p v-if="!approvedResources.length" class="resource-stat-modal__empty">暂无审核通过的资源，可先预览待审内容</p>
+          <ul v-else class="resource-stat-list">
+            <li v-for="item in approvedResources" :key="item.id">
+              <div class="resource-stat-list__main">
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.knowledge_label }} · {{ typeLabels[item.resource_type] || item.resource_type }}</span>
+              </div>
+              <div class="resource-stat-list__actions">
+                <n-button size="tiny" type="primary" secondary @click="viewResourceMaterial(item)">查看资料</n-button>
+                <n-button size="tiny" quaternary @click="downloadResourceMaterial(item)">下载</n-button>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div v-else class="resource-stat-modal__body">
+          <p v-if="!anomalyResources.length" class="resource-stat-modal__empty">暂无异常待关注项</p>
+          <ul v-else class="resource-stat-list">
+            <li v-for="item in anomalyResources" :key="item.id">
+              <div class="resource-stat-list__main">
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.knowledge_label }} · 教师已放行，建议留意</span>
+              </div>
+              <div class="resource-stat-list__actions">
+                <n-button size="tiny" type="primary" secondary @click="viewResourceMaterial(item)">查看资料</n-button>
+                <n-button size="tiny" quaternary @click="downloadResourceMaterial(item)">下载</n-button>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </n-modal>
+
+      <n-modal
+        v-model:show="materialViewerOpen"
+        preset="card"
+        class="resource-material-modal"
+        :style="{ width: 'min(920px, 96vw)', maxWidth: '96vw' }"
+        :title="materialViewerItem ? `资料 · ${materialViewerItem.title}` : '资料详情'"
+      >
+        <template v-if="materialViewerItem">
+          <header class="resource-material-modal__header">
+            <div>
+              <p>
+                {{ materialViewerItem.knowledge_label }} ·
+                {{ typeLabels[materialViewerItem.resource_type] || materialViewerItem.resource_type }}
+              </p>
+              <n-tag
+                v-if="materialViewerItem.review_status === 'pending_review' || materialViewerItem.is_anomaly"
+                type="warning"
+                size="small"
+              >
+                {{
+                  materialViewerItem.is_anomaly
+                    ? '内容异常警示 · 可先预览'
+                    : '待教师审核 · 可先学习'
+                }}
+              </n-tag>
+            </div>
+            <n-button size="small" secondary @click="downloadResourceMaterial(materialViewerItem)">
+              下载
+            </n-button>
+          </header>
+          <aside
+            v-if="materialViewerItem.student_warning || materialViewerItem.is_anomaly"
+            class="resource-warning"
+            role="note"
+          >
+            <strong>学习提示</strong>
+            <p>
+              {{
+                materialViewerItem.student_warning
+                  || '本资源由 AI 生成且尚未通过教师最终确认，内容可能存在不准确之处，请以课堂讲解与教材为准。'
+              }}
+            </p>
+          </aside>
+          <div v-if="!hasRenderableContent(materialViewerItem)" class="resource-material-modal__empty">
+            暂无正文内容。可点击下载，或回到上方按知识点与资源类型重新生成。
+          </div>
+          <PersonalizedResourceContentViewer
+            v-else
+            :item="materialViewerItem"
+            :bundle-item="bundleForTask(materialViewerItem.generation_task_id)"
+            theme="student"
+          />
+        </template>
+      </n-modal>
 
       <p v-if="anomalyCount" class="pending-note">
         有 {{ anomalyCount }} 项异常内容待教师关注；其余资源已可直接学习。
@@ -408,7 +642,7 @@ onActivated(() => {
         <header>
           <strong>{{ task.status === 'completed' ? '资源已准备完成' : '小E 正在准备资源' }}</strong>
           <div class="task-panel__header-actions">
-            <span v-if="task.fallback_reason">云端模型暂时不可用，小E 先用本地课程模板生成（内容较通用，可稍后重试）</span>
+            <span v-if="task.fallback_reason">云端生成服务暂时不可用，请稍后重新生成</span>
             <span v-else-if="task.backend === 'deepseek' || task.backend === 'iflytek_spark'">本次为云端实时生成</span>
             <n-button
               v-if="task.status === 'completed'"
@@ -508,7 +742,10 @@ onActivated(() => {
                   <h2>{{ selected.title }}</h2>
                   <p>{{ selected.knowledge_label }} · {{ typeLabels[selected.resource_type] }}</p>
                 </div>
-                <n-button quaternary @click="selected = null">关闭</n-button>
+                <div class="resource-detail__actions">
+                  <n-button size="small" secondary @click="downloadResourceMaterial(selected)">下载</n-button>
+                  <n-button quaternary @click="selected = null">关闭</n-button>
+                </div>
               </header>
               <n-tag
                 v-if="selected.review_status === 'pending_review' || selected.is_anomaly"
@@ -630,19 +867,35 @@ onActivated(() => {
 
 .generator__controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
 }
 
 .knowledge-select,
-.type-select,
-.stage-select,
-.style-select {
-  width: 190px;
+.type-select {
+  width: 220px;
 }
 
-.style-select {
-  min-width: 220px;
+.resource-material-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.resource-material-modal__header p {
+  margin: 0 0 0.4rem;
+  color: rgba(180, 210, 225, 0.78);
+  font-size: 0.88rem;
+}
+
+.resource-material-modal__empty {
+  padding: 1.25rem 0.5rem;
+  color: rgba(255, 210, 138, 0.95);
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .resource-summary {
@@ -729,6 +982,92 @@ onActivated(() => {
   margin-top: 0.3rem;
   color: #effcff;
   font-size: 1.05rem;
+}
+
+.resource-summary article[role='button'] {
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.resource-summary article[role='button']:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 245, 238, 0.35);
+}
+
+.resource-stat-modal {
+  width: min(480px, 92vw);
+}
+
+.resource-stat-modal :deep(.n-card__content) {
+  max-height: min(68vh, 520px);
+  overflow-y: auto;
+}
+
+.resource-stat-modal__empty {
+  margin: 0;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.resource-stat-group + .resource-stat-group {
+  margin-top: 0.85rem;
+}
+
+.resource-stat-group h4 {
+  margin: 0 0 0.35rem;
+  color: #e2f7ff;
+}
+
+.resource-stat-group ul,
+.resource-stat-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 0.86rem;
+}
+
+.resource-stat-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.resource-stat-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(46, 255, 241, 0.1);
+  background: rgba(8, 20, 34, 0.45);
+}
+
+.resource-stat-list__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.resource-stat-list strong {
+  display: block;
+  color: #f8fafc;
+}
+
+.resource-stat-list span {
+  color: rgba(148, 163, 184, 0.95);
+  font-size: 0.78rem;
+}
+
+.resource-stat-list__actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.resource-detail__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .task-panel {

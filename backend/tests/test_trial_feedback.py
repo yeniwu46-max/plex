@@ -31,7 +31,11 @@ def test_trial_feedback_route_returns_diagnosis():
             'answerStatus': 'correct',
             'questionTitle': '星际问候',
         }
-        with patch('app.services.agent_orchestrator.IflytekSparkService.configured', return_value=False):
+        with (
+            patch('app.services.agent_orchestrator.IflytekSparkService.configured', return_value=False),
+            patch('app.services.learning_path.LearningPathService._bind_resources') as bind_resources,
+            patch('app.services.learning_path.LearningPathService._bind_trials') as bind_trials,
+        ):
             response = app.test_client().post(
                 '/api/v1/agents/trial-feedback',
                 json=payload,
@@ -42,6 +46,10 @@ def test_trial_feedback_route_returns_diagnosis():
     body = response.get_json()
     assert body['code'] == 0
     assert 'diagnosis' in body['data']
+    assert body['data']['feedback']['shortFeedback']
+    assert '符合预期' in body['data']['codeAnalysis']['codeIssueSummary']
+    bind_resources.assert_not_called()
+    bind_trials.assert_not_called()
 
 
 def test_trial_feedback_requires_code():

@@ -100,7 +100,7 @@ onMounted(() => {
     <div v-if="loading" class="teacher-state-panel">加载中…</div>
     <template v-else>
       <article class="enrollment-review__card">
-        <h3>待审核（{{ pendingRequests.length }}）</h3>
+        <h3>待审核 · {{ pendingRequests.length }}</h3>
         <div v-if="!pendingRequests.length" class="teacher-state-panel">暂无待审核的入班申请</div>
         <ul v-else class="enrollment-review__list">
           <li v-for="row in pendingRequests" :key="row.id">
@@ -113,7 +113,7 @@ onMounted(() => {
             <div class="enrollment-review__actions">
               <n-input
                 v-model:value="reviewNote"
-                placeholder="审核备注（可选）"
+                placeholder="填写审核备注，可选"
                 size="small"
                 style="margin-bottom: 0.5rem"
               />

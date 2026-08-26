@@ -1,32 +1,49 @@
-"""学生端编程练习题库：合并导入的 learning_core 题目与内置题库。"""
+"""学生端编程练习题库。
+
+题目主源是 `problems` 表：清洗去重后的 174 道题（原 problems、trial_questions、
+内置编程题库、前端静态题、AI 补题五路来源已在导入阶段合并），每道题都挂在某个知识点
+节点上。只有库里一道题都没有时（例如全新的测试库）才退回旧的
+`TrialQuestion` + `CODING_QUESTION_BANK` 组合——那条路径会把同一道题按不同来源重复
+列出，正是这次重建要消除的问题。
+"""
 from __future__ import annotations
 
 import re
 
 from app.data.coding_question_bank import CODING_QUESTION_BANK
-from app.models import Trial, TrialQuestion
+from app.data.knowledge_node_registry import DEFAULT_NODE_ID, get_entry, kg_id_from_key
+from app.models import Trial, TrialQuestion, db
 from app.services.question_generator import QuestionGenerator
 
-# 题号前缀：字母 + 数字（如 P0042、L0123）
+# 题号前缀：字母 + 数字（如 P0042、L0123）。仅用于旧的 TrialQuestion 兜底路径；
+# 主源题目直接用 problems.problem_no 作为题号。
 KNOWLEDGE_CODE_PREFIX: dict[str, str] = {
-    'intro': 'P',
-    'print': 'P',
-    'comment': 'P',
-    'var': 'V',
-    'io': 'I',
-    'input': 'I',
-    'ops': 'O',
-    'cond': 'C',
-    'loop': 'L',
-    'range': 'R',
-    'list': 'S',
-    'dict': 'D',
-    'str': 'T',
-    'func': 'F',
-    'file': 'A',
-    'except': 'E',
-    'algo-sum': 'G',
-    'algo-search': 'H',
+    'lang-print': 'P',
+    'lang-var': 'V',
+    'lang-input': 'I',
+    'seq-arith': 'O',
+    'seq-expr': 'X',
+    'seq-type': 'Y',
+    'branch-if': 'C',
+    'branch-elif': 'M',
+    'branch-nested': 'N',
+    'loop-for': 'L',
+    'loop-while': 'W',
+    'loop-nested': 'U',
+    'loop-control': 'K',
+    'array-basic': 'S',
+    'array-traverse': 'Z',
+    'array-2d': 'D',
+    'string-index': 'T',
+    'string-method': 'J',
+    'string-scan': 'Q',
+    'func-define': 'F',
+    'func-param': 'R',
+    'func-recursion': 'E',
+    'search-linear': 'H',
+    'search-binary': 'B',
+    'search-sort': 'G',
+    'search-stat': 'A',
 }
 
 BUILTIN_QUESTION_CODES: dict[str, str] = {
@@ -72,7 +89,8 @@ SEMANTIC_TITLE_RULES: list[tuple[re.Pattern[str], str]] = [
 class PracticeQuestionService:
     @staticmethod
     def _prefix_for_key(key: str) -> str:
-        return KNOWLEDGE_CODE_PREFIX.get((key or '').strip().lower(), 'Q')
+        node_id = kg_id_from_key((key or '').strip().lower() or None, DEFAULT_NODE_ID)
+        return KNOWLEDGE_CODE_PREFIX.get(node_id, 'Q')
 
     @staticmethod
     def _strip_verbose(stem: str) -> str:
@@ -91,13 +109,18 @@ class PracticeQuestionService:
 
     @staticmethod
     def _infer_semantic_title(stem: str, fallback: str) -> str:
+        # 优先保留库内中文短标题，避免多道不同题被规则压成同一个「问候语输出」
+        curated = (fallback or '').strip()
+        if curated and curated not in {'编程练习', '练习题'} and 2 <= len(curated) <= 24:
+            if not re.search(r'编写程序|设计一个程序|请实现|用户输入', curated):
+                return curated[:20]
         raw = (stem or '').strip()
         if not raw:
-            return fallback
+            return curated[:20] or '编程练习'
         for pattern, title in SEMANTIC_TITLE_RULES:
             if pattern.search(raw):
                 return title[:20]
-        return PracticeQuestionService._smart_title(stem, fallback)
+        return PracticeQuestionService._smart_title(stem, curated or '编程练习')
 
     @staticmethod
     def _smart_title(stem: str, fallback: str = '编程练习', max_len: int = 20) -> str:
@@ -291,8 +314,103 @@ class PracticeQuestionService:
         }
 
     @staticmethod
+    def _problem_to_payload(problem) -> dict:
+        """把统一题库的一行转成练习题结构。"""
+        entry = get_entry(problem.kg_node_id or '')
+        topic = entry.label if entry else QuestionGenerator.label_for_key(problem.kg_node_id)
+        code = problem.problem_no or f'BK{problem.id:04d}'
+        stem = PracticeQuestionService._clean_legacy_markup(
+            problem.description_cn or problem.title_cn or ''
+        )
+        examples = [
+            {'input': item.get('input', ''), 'output': item.get('output', '')}
+            for item in (problem.samples_json or [])
+            if isinstance(item, dict)
+        ]
+        test_cases = problem.test_cases_json or []
+        stem, examples, test_cases = PracticeQuestionService._normalize_question_payload(
+            stem, examples, test_cases
+        )
+        star = problem.star_difficulty or problem.difficulty or 1
+        diff_label = '挑战' if star >= 4 else '进阶' if star >= 3 else '基础'
+        title_fallback = (problem.title_cn or problem.title_en or topic or '编程练习').strip()
+        return {
+            'id': f'bank-{problem.id}',
+            'code': code,
+            'title': PracticeQuestionService._display_title(code, stem, title_fallback),
+            'topic': topic,
+            'difficulty': diff_label,
+            'reward_xp': 20 + 5 * min(star, 4),
+            'duration_min': 10 + 2 * min(star, 5),
+            'tags': [problem.kg_node_id] if problem.kg_node_id else [],
+            'description': stem,
+            'constraints': [str(note) for note in (problem.notes_json or [])],
+            'examples': examples,
+            'test_cases': test_cases,
+            'starter_code': problem.starter_code or problem.template or '# 在此编写代码\n',
+            'run_mode': problem.run_mode or 'stdout',
+            'hint': problem.hint or '',
+            'knowledge_key': problem.kg_node_id,
+            'question_type': problem.question_type,
+            'options': problem.options_json or [],
+            'correct_index': problem.correct_index,
+            'source': 'bank',
+            'problem_id': problem.id,
+            'needs_review': bool(problem.needs_review),
+        }
+
+    @staticmethod
     def list_for_student(knowledge_key: str | None = None, limit: int = 500) -> list[dict]:
-        """返回去重后的练习题目，导入题优先于同 knowledge_key 的内置题。"""
+        """返回练习题目；优先取统一题库，库为空时退回旧的导入题 + 内置题。"""
+        bank_items = PracticeQuestionService._list_from_bank(knowledge_key, limit)
+        if bank_items:
+            return bank_items
+        return PracticeQuestionService._list_legacy(knowledge_key, limit)
+
+    @staticmethod
+    def _list_from_bank(knowledge_key: str | None, limit: int) -> list[dict]:
+        from app.models import Problem
+        from app.data.knowledge_node_registry import get_domain, nodes_for_domain
+
+        try:
+            query = Problem.query.filter(
+                Problem.is_active.is_(True),
+                Problem.kg_node_id.isnot(None),
+            )
+            if knowledge_key:
+                # 支持大类 key（如 loop / lang-basics）以及细粒度节点
+                if get_domain(knowledge_key):
+                    node_ids = [entry.kg_id for entry in nodes_for_domain(knowledge_key)]
+                    query = query.filter(Problem.kg_node_id.in_(node_ids or ['__none__']))
+                else:
+                    node_id = kg_id_from_key(knowledge_key, DEFAULT_NODE_ID)
+                    query = query.filter(Problem.kg_node_id == node_id)
+            # 多取一些再按标题去重，避免同名题挤占额度
+            rows = query.order_by(Problem.id.asc()).limit(max(limit * 3, limit)).all()
+        except Exception:
+            # 题库表还没建（全新测试库）时不该让整个练习列表 500
+            db.session.rollback()
+            return []
+        items: list[dict] = []
+        seen_titles: set[str] = set()
+        seen_codes: set[str] = set()
+        for row in rows:
+            payload = PracticeQuestionService._problem_to_payload(row)
+            code = str(payload.get('code') or '')
+            short = str(payload.get('title') or '').split(' · ', 1)[-1].strip().lower()
+            if code in seen_codes or (short and short in seen_titles):
+                continue
+            seen_codes.add(code)
+            if short:
+                seen_titles.add(short)
+            items.append(payload)
+            if len(items) >= limit:
+                break
+        return items
+
+    @staticmethod
+    def _list_legacy(knowledge_key: str | None = None, limit: int = 500) -> list[dict]:
+        """旧路径：导入题优先于同 knowledge_key 的内置题。"""
         items: list[dict] = []
         seen_ids: set[str] = set()
         seen_codes: set[str] = set()
@@ -332,26 +450,81 @@ class PracticeQuestionService:
 
         return items
 
+    # 中文关键词 ↔ 题库常见英/拼音标签别名，支撑「列表」「索引」等搜索
+    SEARCH_ALIASES: dict[str, tuple[str, ...]] = {
+        '列表': ('list', '列表', '数组', 'array', '索引'),
+        '索引': ('index', '索引', '列表', 'list', '下标'),
+        '循环': ('loop', 'for', 'while', '循环', '迭代'),
+        '函数': ('function', 'def', '函数', '参数'),
+        '字典': ('dict', 'dictionary', '字典', '映射'),
+        '字符串': ('str', 'string', '字符串', '字符'),
+        '条件': ('if', 'elif', '条件', '分支', '判断'),
+        '异常': ('except', 'exception', 'try', '异常', '报错'),
+        '递归': ('recursion', '递归'),
+        '排序': ('sort', 'sorted', '排序', 'bubble'),
+        '查找': ('search', '查找', '二分', 'binary'),
+    }
+
+    @classmethod
+    def _search_needles(cls, query: str) -> list[str]:
+        raw = (query or '').strip().lower()
+        if not raw:
+            return []
+        needles = {raw}
+        for key, aliases in cls.SEARCH_ALIASES.items():
+            if key in raw or raw in key:
+                needles.update(a.lower() for a in aliases)
+            for alias in aliases:
+                if alias.lower() == raw or alias.lower() in raw:
+                    needles.update(a.lower() for a in aliases)
+                    needles.add(key.lower())
+        # 拆开多词查询：如「列表 索引」
+        for part in re.split(r'[\s,，、]+', raw):
+            part = part.strip()
+            if len(part) >= 2:
+                needles.add(part)
+                for key, aliases in cls.SEARCH_ALIASES.items():
+                    if part == key or part in aliases:
+                        needles.update(a.lower() for a in aliases)
+                        needles.add(key.lower())
+        return list(needles)
+
     @staticmethod
     def search_for_student(query: str, limit: int = 20) -> list[dict]:
-        needle = (query or '').strip().lower()
-        if not needle:
+        needles = PracticeQuestionService._search_needles(query)
+        if not needles:
             return []
-        results: list[dict] = []
-        for item in PracticeQuestionService.list_for_student(limit=500):
+        scored: list[tuple[int, dict]] = []
+        for item in PracticeQuestionService.list_for_student(limit=800):
+            tags = item.get('tags') or []
+            tag_text = ' '.join(str(t) for t in tags) if isinstance(tags, list) else str(tags)
             haystacks = [
-                str(item.get('code') or '').lower(),
-                str(item.get('id') or '').lower(),
-                str(item.get('title') or '').lower(),
-                str(item.get('topic') or '').lower(),
-                str(item.get('description') or '').lower(),
-                str(item.get('knowledge_key') or '').lower(),
+                str(item.get('code') or ''),
+                str(item.get('id') or ''),
+                str(item.get('title') or ''),
+                str(item.get('topic') or ''),
+                str(item.get('description') or ''),
+                str(item.get('knowledge_key') or ''),
+                str(item.get('hint') or ''),
+                tag_text,
             ]
-            if any(needle in text for text in haystacks):
-                results.append(item)
-            if len(results) >= limit:
-                break
-        return results
+            hay = ' '.join(haystacks).lower()
+            score = 0
+            for needle in needles:
+                if not needle:
+                    continue
+                if needle == str(item.get('code') or '').lower() or needle == str(item.get('id') or '').lower():
+                    score += 100
+                elif needle in str(item.get('title') or '').lower():
+                    score += 40
+                elif needle in str(item.get('topic') or '').lower() or needle in tag_text.lower():
+                    score += 30
+                elif needle in hay:
+                    score += 10
+            if score > 0:
+                scored.append((score, item))
+        scored.sort(key=lambda row: (-row[0], str(row[1].get('code') or row[1].get('id') or '')))
+        return [item for _, item in scored[:limit]]
 
     @staticmethod
     def get_by_ref(question_ref: str) -> dict | None:
@@ -359,6 +532,15 @@ class PracticeQuestionService:
         if not ref:
             return None
         ref_lower = ref.lower()
+        if ref.startswith('bank-'):
+            from app.models import Problem
+
+            try:
+                problem_id = int(ref[5:])
+            except ValueError:
+                return None
+            row = db.session.get(Problem, problem_id)
+            return PracticeQuestionService._problem_to_payload(row) if row else None
         if ref.startswith('lc-'):
             try:
                 db_id = int(ref[3:])

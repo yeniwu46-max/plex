@@ -137,7 +137,7 @@ const runtimeBannerMessage = computed(() => {
     return 'CrewAI 虚拟环境与 API Key 已就绪，学习流水线将使用 LLM 增强'
   }
   if (runtime.llm_available && !runtime.crewai_venv) {
-    return 'API Key 已配置：学习流水线将通过主进程 LLM 增强（CrewAI 环境未就绪时使用规则引擎）'
+    return 'API Key 已配置。学习流水线将通过主进程模型增强；智能体环境未就绪时使用规则引擎'
   }
   if (runtime.degraded_reason === 'missing_api_key') {
     return 'AI 环境已就绪，但未配置 API Key，当前使用规则引擎运行'
@@ -238,7 +238,7 @@ async function resetSelection() {
       learning_pipeline: [],
     })
     applyOrchestrationPayload(payload)
-    message.info('已恢复为空编排（提交时将跳过智能体检查）')
+    message.info('已清空智能体编排，后续提交将跳过智能体检查')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '重置失败')
   } finally {
@@ -355,7 +355,7 @@ onMounted(() => {
       <section class="learning-pipeline-section">
         <header class="grading-group-head">
           <n-icon :component="GitNetworkOutline" />
-          <strong>学习协同流水线（提交后 enrichment）</strong>
+          <strong>学习协同流水线 · 提交后增强</strong>
         </header>
         <div class="learning-agent-grid">
           <article

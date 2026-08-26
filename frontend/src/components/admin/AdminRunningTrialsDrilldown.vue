@@ -156,7 +156,7 @@ onMounted(() => {
             <ul>
               <li v-for="q in trial.question_stats" :key="q.question_id">
                 <span>{{ q.label }}</span>
-                <em>{{ q.correct_rate }}%（{{ q.correct }}/{{ q.total }}）</em>
+                <em>{{ q.correct_rate }}% · {{ q.correct }}/{{ q.total }}</em>
               </li>
               <li v-if="!trial.question_stats.length">暂无作答明细</li>
             </ul>

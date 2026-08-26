@@ -1,3 +1,4 @@
+import { ref } from 'vue'
 import type { PythonTrialQuestion } from '../data/pythonTrialQuestions'
 import {
   fetchPracticeQuestions,
@@ -68,6 +69,12 @@ const byId = new Map<string, PythonTrialQuestion>()
 const byCode = new Map<string, PythonTrialQuestion>()
 const byKnowledgeKey = new Map<string, PythonTrialQuestion[]>()
 
+/**
+ * 这些 Map 本身不是响应式的，computed 读它们不会在题目到货后重算。
+ * 每次批量写入后自增此计数，需要跟随刷新的 computed 读一下它即可建立依赖。
+ */
+export const practiceCacheVersion = ref(0)
+
 function indexQuestion(question: PythonTrialQuestion, knowledgeKey?: string) {
   byId.set(question.id, question)
   if (question.code) byCode.set(question.code.toLowerCase(), question)
@@ -84,23 +91,60 @@ export function getCachedPracticeQuestion(id: string): PythonTrialQuestion | nul
   return byId.get(id) ?? byCode.get(id.toLowerCase()) ?? null
 }
 
+const SEARCH_ALIASES: Record<string, string[]> = {
+  列表: ['list', '列表', '数组', 'array', '索引'],
+  索引: ['index', '索引', '列表', 'list', '下标'],
+  循环: ['loop', 'for', 'while', '循环', '迭代'],
+  函数: ['function', 'def', '函数', '参数'],
+  字典: ['dict', 'dictionary', '字典', '映射'],
+  字符串: ['str', 'string', '字符串', '字符'],
+  条件: ['if', 'elif', '条件', '分支', '判断'],
+  异常: ['except', 'exception', 'try', '异常', '报错'],
+  递归: ['recursion', '递归'],
+  排序: ['sort', 'sorted', '排序'],
+  查找: ['search', '查找', '二分', 'binary'],
+}
+
+function expandSearchNeedles(query: string): string[] {
+  const raw = query.trim().toLowerCase()
+  if (!raw) return []
+  const needles = new Set<string>([raw])
+  for (const part of raw.split(/[\s,，、]+/).filter((p) => p.length >= 1)) {
+    needles.add(part)
+    for (const [key, aliases] of Object.entries(SEARCH_ALIASES)) {
+      if (part.includes(key) || key.includes(part) || aliases.some((a) => a.toLowerCase() === part || part.includes(a.toLowerCase()))) {
+        needles.add(key.toLowerCase())
+        aliases.forEach((a) => needles.add(a.toLowerCase()))
+      }
+    }
+  }
+  return [...needles]
+}
+
 export function searchCachedPracticeQuestions(query: string, limit = 20): PythonTrialQuestion[] {
-  const needle = query.trim().toLowerCase()
-  if (!needle) return []
-  const results: PythonTrialQuestion[] = []
-  const seen = new Set<string>()
+  const needles = expandSearchNeedles(query)
+  if (!needles.length) return []
+  const scored: Array<{ score: number; q: PythonTrialQuestion }> = []
   for (const q of byId.values()) {
+    const title = (q.title || '').toLowerCase()
+    const topic = (q.topic || '').toLowerCase()
+    const tags = (q.tags ?? []).join(' ').toLowerCase()
     const hay = [q.code, q.id, q.title, q.topic, q.description, ...(q.tags ?? [])]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
-    if (hay.includes(needle) && !seen.has(q.id)) {
-      results.push(q)
-      seen.add(q.id)
+    let score = 0
+    for (const needle of needles) {
+      if (!needle) continue
+      if (needle === (q.code || '').toLowerCase() || needle === q.id.toLowerCase()) score += 100
+      else if (title.includes(needle)) score += 40
+      else if (topic.includes(needle) || tags.includes(needle)) score += 30
+      else if (hay.includes(needle)) score += 10
     }
-    if (results.length >= limit) break
+    if (score > 0) scored.push({ score, q })
   }
-  return results
+  scored.sort((a, b) => b.score - a.score || (a.q.code || a.q.id).localeCompare(b.q.code || b.q.id))
+  return scored.slice(0, limit).map((row) => row.q)
 }
 
 export function getCachedPracticeQuestionsForKey(knowledgeKey: string): PythonTrialQuestion[] {
@@ -123,6 +167,7 @@ export async function ensurePracticeQuestionsLoaded(knowledgeKey?: string) {
       for (const item of result.items) {
         indexQuestion(toTrialQuestion(item), item.knowledge_key)
       }
+      if (result.items.length) practiceCacheVersion.value += 1
       if (!knowledgeKey) cacheLoaded = true
     } catch {
       if (!knowledgeKey) cacheLoaded = true
@@ -138,4 +183,5 @@ export function resetPracticeQuestionCacheForTests() {
   byId.clear()
   byCode.clear()
   byKnowledgeKey.clear()
+  practiceCacheVersion.value = 0
 }

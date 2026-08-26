@@ -67,14 +67,7 @@ export function destroyActiveTour() {
 }
 
 function filterExistingSteps(steps: TourStepConfig[]): TourStepConfig[] {
-  return steps.filter((step) => {
-    const el = document.querySelector(step.element)
-    if (!el) {
-      console.warn(`[PlexTour] 导览目标元素不存在，已跳过：${step.element}`)
-      return false
-    }
-    return true
-  })
+  return steps.filter((step) => document.querySelector(step.element))
 }
 
 async function runStepPrepare(
@@ -156,7 +149,6 @@ export function usePlexTour() {
 
     const validSteps = filterExistingSteps(allSteps)
     if (!validSteps.length) {
-      console.warn('[PlexTour] 无可用导览步骤，已跳过')
       markTourSeen(role)
       return
     }
@@ -176,6 +168,10 @@ export function usePlexTour() {
         prevBtnText: '上一步',
         doneBtnText: '完成',
         showButtons: ['next', 'previous', 'close'],
+        onPopoverRender: (popover) => {
+          popover.closeButton.setAttribute('aria-label', '关闭导览')
+          popover.closeButton.setAttribute('title', '关闭导览')
+        },
         steps: validSteps.map((step, idx) => ({
           element: step.element,
           popover: {

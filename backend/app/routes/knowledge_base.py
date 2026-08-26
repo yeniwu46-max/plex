@@ -57,7 +57,7 @@ def kb_status():
 @jwt_required()
 @role_required('teacher', 'admin')
 def parse_document():
-    """后续处理 stub：触发知识库解析（第一阶段 pending）。"""
+    """返回当前部署的知识库文档解析能力状态。"""
     body = request.get_json(silent=True) or {}
     file_id = body.get('fileId', '')
-    return success_response({'status': 'pending', 'fileId': file_id, 'message': 'RAG 解析队列已接收，功能即将开放'})
+    return error_response('当前部署未启用知识库文档解析服务，请联系平台管理员', 50101, {'fileId': file_id}, 501)

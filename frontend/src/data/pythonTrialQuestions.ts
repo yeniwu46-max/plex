@@ -83,7 +83,7 @@ export const PYTHON_TRIAL_QUESTIONS: PythonTrialQuestion[] = [
       { id: 't2', label: '样例 2', setup: 'a = 12\nb = 30', expected: '42' },
       { id: 't3', label: '隐藏', setup: 'a = 100\nb = 234', expected: '334' },
     ],
-    starterCode: `# a、b 已由测试数据提供\n# 输出 a + b\n`,
+    starterCode: `# a、b 已由判题环境提供\n# 输出 a + b\n`,
     runMode: 'stdout',
     hint: 'print(a + b)',
   },

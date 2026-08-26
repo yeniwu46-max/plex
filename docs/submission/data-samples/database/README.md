@@ -1,17 +1,21 @@
-# 预置演示数据库
+# 预置可运行数据库快照
 
 **文件**：`learning_system.db`（SQLite）  
-**大小**：9.06 MB  
+**来源**：打包时本地正在使用的 `mysql+pymysql` 数据库  
+**大小**：10.19 MB  
+**完整性检查**：`ok`
 
 ## 数据概览（打包时快照）
 
 | 指标 | 数量 |
-|---|---|
-| 数据表 | 35 |
-| 用户 | 321 |
-| 班级 | 11 |
-| 试炼 | 28 |
-| 学生画像 | 311 |
+|---|---:|
+| 数据表 | 41 |
+| 用户 | 311 |
+| 班级 | 9 |
+| 试炼 | 17 |
+| 学生画像 | 309 |
+| 题目 | 0 |
+| 题目提交 | 0 |
 | 学习资源 | 4 |
 
 ## 演示账号
@@ -23,10 +27,4 @@
 | 学生 | student001 | student123 |
 | 学生演示 | explorer01 ~ explorer10 | student123 |
 
-## 运行时路径
-
-一键启动时会自动复制到：
-
-`source/backend/instance/learning_system.db`
-
-与 `backend.env.production-ready` 中的 `DATABASE_URL=sqlite:///instance/learning_system.db` 对应。
+首次一键启动时会复制到 `source/backend/instance/learning_system.db`；后续启动不会覆盖，使用过程中新增的数据会被保留。

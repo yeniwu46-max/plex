@@ -101,7 +101,7 @@ function onSelectStudent(userId: number, studentName: string) {
             type="button"
             class="class-heatmap__cell"
             :class="[`class-heatmap__cell--${cellTone(cell.rate)}`, { 'is-hovered': hoveredUserId === row.user_id }]"
-            :title="`${row.student_name} · ${days[idx]?.label ?? cell.date}：${cell.completed}/${cell.total}（${cell.rate}%）`"
+            :title="`${row.student_name} · ${days[idx]?.label ?? cell.date}：${cell.completed}/${cell.total} · ${cell.rate}%`"
             @mouseenter="hoveredUserId = row.user_id"
             @mouseleave="hoveredUserId = null"
           />

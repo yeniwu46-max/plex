@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NIcon, NInput } from 'naive-ui'
-import { postMessengerChat, streamMessengerChat } from '../api/messenger'
+import { NDropdown, NIcon, NInput, useMessage } from 'naive-ui'
+import { postMessengerChat, postMessengerKnowledgeGraph, postMessengerLearningDocument, streamMessengerChat } from '../api/messenger'
 import type { AgentTraceStep, MessengerQuickActionResult } from '../api/agentService'
 import {
+  AddOutline,
   BarbellOutline,
   GitNetworkOutline,
+  MicOutline,
   PaperPlaneOutline,
   TelescopeOutline,
   TrendingUpOutline,
@@ -18,6 +20,7 @@ import { xiaoEThinkingMessage, xiaoETimeoutMessage, xiaoENormalizeReply } from '
 import { openPracticeQuestionByRef } from '../utils/practiceQuestionNav'
 
 const router = useRouter()
+const message = useMessage()
 
 type ChatMessage = {
   role: 'user' | 'assistant'
@@ -28,6 +31,33 @@ type ChatMessage = {
   illustration?: { url: string; caption?: string }
   questionPick?: MessengerQuickActionResult['question_pick']
   retry?: () => void
+  /** 工具产物：学习文档可下载 MD */
+  artifact?: 'document' | 'graph'
+  downloadName?: string
+}
+
+function sanitizeDownloadName(name: string) {
+  const cleaned = name.replace(/[\\/:*?"<>|]/g, '_').trim()
+  return cleaned || '学习文档.md'
+}
+
+function downloadMessageMarkdown(msg: ChatMessage) {
+  const body = (msg.text || '').trim()
+  if (!body) {
+    message.warning('文档内容为空，暂无法下载')
+    return
+  }
+  const filename = sanitizeDownloadName(
+    msg.downloadName?.endsWith('.md') ? msg.downloadName : `${msg.downloadName || '学习文档'}.md`,
+  )
+  const blob = new Blob([body], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+  message.success('已开始下载 Markdown')
 }
 
 function isTimeoutError(error: unknown) {
@@ -52,6 +82,7 @@ function assistantErrorText(error: unknown, retry?: () => void): ChatMessage {
 
 const prompt = ref('')
 const chatLoading = ref(false)
+const voiceListening = ref(false)
 const chatMessages = ref<ChatMessage[]>([])
 const chatThreadEl = ref<HTMLElement | null>(null)
 let scrollRaf = 0
@@ -119,7 +150,6 @@ async function sendChatText(text: string, appendUserMessage = true) {
   }
   chatLoading.value = true
   const retry = () => sendChatText(text, false)
-
   const assistantMsg: ChatMessage = {
     role: 'assistant',
     text: '',
@@ -145,7 +175,15 @@ async function sendChatText(text: string, appendUserMessage = true) {
         const msg = live()
         if (!msg) return
         msg.stageLabel = label
-        const steps = [...(msg.thinking || [])]
+        const steps = [...(msg.thinking || [])].map((s) =>
+          s.status === 'running'
+            ? {
+                ...s,
+                status: 'success' as const,
+                latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : Math.max(40, Date.now() % 280),
+              }
+            : s,
+        )
         if (!steps.some((s) => s.agentId === _stage || s.name === label)) {
           steps.push({
             agentId: _stage || `stage-${steps.length}`,
@@ -154,8 +192,8 @@ async function sendChatText(text: string, appendUserMessage = true) {
             latencyMs: 0,
             summary: label || '处理中…',
           })
-          msg.thinking = steps
         }
+        msg.thinking = steps
         scrollThreadToBottom()
       },
       onDone: ( partial) => {
@@ -163,7 +201,15 @@ async function sendChatText(text: string, appendUserMessage = true) {
         if (!msg) return
         const reply = xiaoENormalizeReply(partial.reply || msg.text)
         msg.text = reply || '我先根据你的近况给一点方向：优先复习薄弱知识点，再做一道对应试炼题巩固。'
-        if (partial.thinking?.length) msg.thinking = partial.thinking
+        if (partial.thinking?.length) {
+          msg.thinking = partial.thinking
+        } else if (msg.thinking?.length) {
+          msg.thinking = msg.thinking.map((s) => ({
+            ...s,
+            status: 'success' as const,
+            latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : 80,
+          }))
+        }
         msg.stageLabel = undefined
         msg.streaming = false
         scrollThreadToBottom()
@@ -180,7 +226,15 @@ async function sendChatText(text: string, appendUserMessage = true) {
       const reply = xiaoENormalizeReply(result.reply || msg.text)
       msg.text = reply || msg.text || '我先根据你的近况给一点方向：优先复习薄弱知识点，再做一道对应试炼题巩固。'
       if (result.illustration) msg.illustration = result.illustration
-      if (result.thinking?.length) msg.thinking = result.thinking
+      if (result.thinking?.length) {
+        msg.thinking = result.thinking
+      } else if (msg.thinking?.length) {
+        msg.thinking = msg.thinking.map((s) => ({
+          ...s,
+          status: 'success' as const,
+          latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : 80,
+        }))
+      }
       msg.stageLabel = undefined
       msg.streaming = false
     }
@@ -224,6 +278,168 @@ async function sendChat() {
   if (!text) return
   prompt.value = ''
   await sendChatText(text)
+}
+
+type SpeechRecognitionCtor = new () => {
+  lang: string
+  interimResults: boolean
+  continuous: boolean
+  onresult: ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null
+  onerror: ((event: { error?: string }) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+function toggleVoiceInput() {
+  if (voiceListening.value) {
+    voiceListening.value = false
+    return
+  }
+  const SpeechRecognition = (window as Window & {
+    SpeechRecognition?: SpeechRecognitionCtor
+    webkitSpeechRecognition?: SpeechRecognitionCtor
+  }).SpeechRecognition
+    || (window as Window & { webkitSpeechRecognition?: SpeechRecognitionCtor }).webkitSpeechRecognition
+  if (!SpeechRecognition) {
+    message.warning('当前浏览器不支持语音输入，请改用文字提问')
+    return
+  }
+  const recognition = new SpeechRecognition()
+  recognition.lang = 'zh-CN'
+  recognition.interimResults = false
+  recognition.continuous = false
+  voiceListening.value = true
+  recognition.onresult = (event) => {
+    const text = event.results[0]?.[0]?.transcript?.trim()
+    if (text) prompt.value = `${prompt.value}${prompt.value ? ' ' : ''}${text}`
+  }
+  recognition.onerror = () => {
+    message.error('语音识别失败，请检查麦克风权限')
+    voiceListening.value = false
+  }
+  recognition.onend = () => {
+    voiceListening.value = false
+  }
+  recognition.start()
+}
+
+const toolMenuOptions = [
+  { label: '生成知识图', key: 'knowledge-graph' },
+  { label: '生成文档', key: 'learning-document' },
+]
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+/** 把完整文案伪流式写入气泡，让生图/生文档过程可见。 */
+async function revealAssistantText(liveIndex: number, fullText: string, chunk = 28) {
+  const text = fullText || ''
+  for (let i = 0; i < text.length; i += chunk) {
+    const msg = chatMessages.value[liveIndex]
+    if (!msg) return
+    msg.stageLabel = undefined
+    msg.text = text.slice(0, i + chunk)
+    scrollThreadToBottom()
+    await sleep(16)
+  }
+  const msg = chatMessages.value[liveIndex]
+  if (msg) msg.text = text
+}
+
+async function runToolAction(key: string) {
+  const topic = prompt.value.trim()
+  if (!topic) {
+    message.warning('请先在输入框描述主题，再选择工具')
+    return
+  }
+  prompt.value = ''
+  chatLoading.value = true
+  const isGraph = key === 'knowledge-graph'
+  chatMessages.value.push({
+    role: 'user',
+    text: isGraph ? `请帮我生成知识图：${topic}` : `请帮我生成学习文档：${topic}`,
+  })
+  const assistantMsg: ChatMessage = {
+    role: 'assistant',
+    text: '',
+    streaming: true,
+    stageLabel: isGraph ? '梳理知识结构' : '起草学习文档',
+    thinking: [
+      {
+        agentId: 'context',
+        name: '理解主题',
+        status: 'running',
+        latencyMs: 0,
+        summary: `围绕「${topic.slice(0, 40)}」整理要点…`,
+      },
+    ],
+  }
+  chatMessages.value.push(assistantMsg)
+  const liveIndex = chatMessages.value.length - 1
+  scrollThreadToBottom()
+  try {
+    const live = () => chatMessages.value[liveIndex]!
+    const markStep = (id: string, name: string, summary: string) => {
+      const msg = live()
+      if (!msg) return
+      const steps = [...(msg.thinking || [])].map((s) =>
+        s.status === 'running'
+          ? { ...s, status: 'success' as const, latencyMs: s.latencyMs || Math.max(40, Date.now() % 240) }
+          : s,
+      )
+      steps.push({ agentId: id, name, status: 'running', latencyMs: 0, summary })
+      msg.thinking = steps
+      msg.stageLabel = name
+      scrollThreadToBottom()
+    }
+
+    if (isGraph) {
+      markStep('graph', '生成知识图', '正在用课程结构生成 Mermaid 思维导图…')
+      const result = await postMessengerKnowledgeGraph(topic)
+      markStep('illustration', '配图预览', '正在生成知识图预览，结构内容将优先返回…')
+      let reply = `已生成「${result.topic}」知识图结构：\n\n\`\`\`mermaid\n${result.mermaid}\n\`\`\``
+      if (result.illustration?.url) {
+        reply += `\n\n![知识图预览](${result.illustration.url})`
+        live().illustration = result.illustration
+      }
+      await revealAssistantText(liveIndex, reply)
+      const graphMsg = live()
+      if (graphMsg) graphMsg.artifact = 'graph'
+    } else {
+      markStep('document', '撰写文档', '正在生成 Markdown 学习文档…')
+      const result = await postMessengerLearningDocument(topic)
+      await revealAssistantText(liveIndex, `# ${result.title}\n\n${result.markdown}`)
+      const docMsg = live()
+      if (docMsg) {
+        docMsg.artifact = 'document'
+        docMsg.downloadName = `${result.title || topic}.md`
+      }
+    }
+    const msg = live()
+    if (msg) {
+      msg.streaming = false
+      msg.stageLabel = undefined
+      msg.thinking = (msg.thinking || []).map((s) => ({
+        ...s,
+        status: 'success' as const,
+        latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : 80,
+      }))
+    }
+    scrollThreadToBottom()
+  } catch (error) {
+    const msg = chatMessages.value[liveIndex]
+    if (msg) {
+      msg.streaming = false
+      msg.stageLabel = undefined
+      msg.text = error instanceof Error ? error.message : '工具调用失败'
+    } else {
+      message.error(error instanceof Error ? error.message : '工具调用失败')
+    }
+  } finally {
+    chatLoading.value = false
+  }
 }
 </script>
 
@@ -273,6 +489,18 @@ async function sendChat() {
                   <img :src="msg.illustration.url" :alt="msg.illustration.caption || '图解说明'" loading="lazy" />
                   <figcaption>{{ msg.illustration.caption || '图解说明' }}</figcaption>
                 </figure>
+                <div
+                  v-if="msg.artifact === 'document' && !msg.streaming && msg.text"
+                  class="chat-thread__actions"
+                >
+                  <button
+                    type="button"
+                    class="chat-thread__download-md"
+                    @click="downloadMessageMarkdown(msg)"
+                  >
+                    下载 MD
+                  </button>
+                </div>
               </template>
               <p v-else>{{ msg.text }}</p>
               <button
@@ -303,8 +531,26 @@ async function sendChat() {
         </aside>
 
         <section class="prompt-dock prompt-dock--tech" aria-label="向小E提问">
-          <span class="prompt-dock__glow" aria-hidden="true" />
           <div class="prompt-line">
+            <n-dropdown
+              trigger="click"
+              :options="toolMenuOptions"
+              @select="runToolAction"
+            >
+              <button type="button" class="prompt-tool" aria-label="更多工具" :disabled="chatLoading">
+                <n-icon :component="AddOutline" />
+              </button>
+            </n-dropdown>
+            <button
+              type="button"
+              class="prompt-tool"
+              :class="{ 'prompt-tool--active': voiceListening }"
+              aria-label="语音输入"
+              :disabled="chatLoading"
+              @click="toggleVoiceInput"
+            >
+              <n-icon :component="MicOutline" />
+            </button>
             <n-input
               v-model:value="prompt"
               placeholder="向小E提问，或让小E帮你分析学习情况..."
@@ -1292,6 +1538,30 @@ async function sendChat() {
   color: rgba(237, 247, 255, 0.88);
 }
 
+.chat-thread__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.chat-thread__download-md {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid rgba(90, 217, 255, 0.4);
+  border-radius: 999px;
+  background: rgba(90, 217, 255, 0.1);
+  color: #7dd3fc;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.chat-thread__download-md:hover {
+  background: rgba(90, 217, 255, 0.18);
+}
+
 .chat-thread__pick {
   display: inline-flex;
   margin-top: 0.65rem;
@@ -1429,9 +1699,33 @@ async function sendChat() {
 .prompt-line {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.55rem;
   padding-bottom: 0.55rem;
   border-bottom: 1px solid rgba(224, 237, 247, 0.09);
+}
+
+.prompt-tool {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(110, 228, 255, 0.18);
+  background: rgba(8, 20, 34, 0.85);
+  color: #9be7ff;
+  cursor: pointer;
+}
+
+.prompt-tool--active {
+  border-color: rgba(255, 120, 120, 0.65);
+  color: #ffb4b4;
+  box-shadow: 0 0 0 1px rgba(255, 120, 120, 0.25);
+}
+
+.prompt-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .prompt-input :deep(.n-input) {

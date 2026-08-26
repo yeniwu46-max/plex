@@ -1,10 +1,16 @@
 import unittest
+from unittest.mock import patch
 
 from flask_jwt_extended import create_access_token
 
 from app import create_app
 from app.models import PersonalizedLearningResource, ResourceGenerationTask, User, db
-from app.services.pedagogical_resource import validate_bundle_risks
+from app.services.pedagogical_resource import (
+    build_local_bundle,
+    format_explain_paragraphs,
+    split_bundle_to_legacy_types,
+    validate_bundle_risks,
+)
 
 
 class PersonalizedResourceApiTestCase(unittest.TestCase):
@@ -88,7 +94,7 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
         })
         self.assertTrue(all(item['citations'] for item in task['resources']))
         self.assertTrue(all(
-            item['citations'][0]['document_id'] == 'python-stage2-loop'
+            item['citations'][0]['document_id'] == 'python-loop-for'
             for item in task['resources']
         ))
         bundle = next(item for item in task['resources'] if item['resource_type'] == 'learning_bundle')
@@ -159,6 +165,99 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
         )
         self.assertEqual(listing.status_code, 200)
         self.assertEqual(listing.get_json()['data']['total'], 6)
+
+    def test_real_api_required_does_not_publish_local_fallback(self):
+        response = self.client.post(
+            '/api/v1/student/resource-generation/tasks',
+            headers=self.auth(self.student_token),
+            json={
+                'knowledge_key': 'loop',
+                'resource_types': ['learning_bundle'],
+                'require_real_api': True,
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        task = response.get_json()['data']
+        self.assertEqual(task['status'], 'failed')
+        self.assertIn('真实模型 API 调用失败', task['error'])
+        self.assertEqual(task['resources'], [])
+
+    def test_real_api_required_persists_viewable_api_content(self):
+        def fake_api_bundle(knowledge_key, **kwargs):
+            return build_local_bundle(
+                knowledge_key,
+                analysis=kwargs['analysis'],
+                profile=kwargs['profile'],
+            )
+
+        provider = (
+            'test-key',
+            'https://api.deepseek.com/v1/chat/completions',
+            'deepseek-chat',
+        )
+        with patch('agents.llm_client.llm_provider', return_value=provider), patch(
+            'app.services.personalized_resource.llm_bundle',
+            side_effect=fake_api_bundle,
+        ) as api_call:
+            response = self.client.post(
+                '/api/v1/student/resource-generation/tasks',
+                headers=self.auth(self.student_token),
+                json={
+                    'knowledge_key': 'loop',
+                    'resource_types': ['learning_bundle'],
+                    'require_real_api': True,
+                },
+            )
+
+        self.assertEqual(response.status_code, 201)
+        task = response.get_json()['data']
+        self.assertEqual(task['status'], 'completed')
+        self.assertEqual(task['backend'], 'deepseek')
+        self.assertEqual(api_call.call_count, 1)
+        self.assertEqual(len(task['resources']), 1)
+        content = task['resources'][0]['content']
+        self.assertEqual(content['format'], 'pedagogical_v2')
+        self.assertTrue(content['markdown'].strip())
+
+        listing = self.client.get(
+            '/api/v1/student/personalized-resources',
+            headers=self.auth(self.student_token),
+        )
+        listed = listing.get_json()['data']['items'][0]
+        self.assertEqual(listed['id'], task['resources'][0]['id'])
+        self.assertEqual(listed['content']['markdown'], content['markdown'])
+
+    def test_api_bundle_object_node_produces_readable_resource_titles(self):
+        bundle = build_local_bundle('loop-for', analysis={}, profile={})
+        bundle['node'] = {
+            'knowledge_key': 'loop-for',
+            'name': 'for 与 range',
+            'chapter': '循环结构',
+        }
+        rows = split_bundle_to_legacy_types(bundle, 'loop-for')
+        legacy_titles = [row['title'] for row in rows if row['resource_type'] != 'learning_bundle']
+        self.assertTrue(all(title.startswith('for 与 range') for title in legacy_titles))
+        self.assertTrue(all('{' not in title for title in legacy_titles))
+
+    def test_generated_explanation_is_split_into_short_paragraphs(self):
+        source = (
+            '第一句说明循环的基本作用。第二句解释range的边界。第三句提醒停止值不包含在结果中。'
+            '第四句介绍累加器。第五句说明累加器必须在循环外初始化。第六句给出学习建议。'
+        )
+        formatted = format_explain_paragraphs(source, max_paragraph_chars=45)
+        paragraphs = formatted.split('\n\n')
+        self.assertGreaterEqual(len(paragraphs), 3)
+        self.assertTrue(all(len(item) <= 55 for item in paragraphs))
+
+    def test_default_generation_excludes_video(self):
+        response = self.client.post(
+            '/api/v1/student/resource-generation/tasks',
+            headers=self.auth(self.student_token),
+            json={'knowledge_key': 'loop'},
+        )
+        self.assertEqual(response.status_code, 201)
+        task = response.get_json()['data']
+        self.assertNotIn('video_lesson', {item['resource_type'] for item in task['resources']})
 
     def test_student_list_includes_pending_and_anomaly(self):
         """学生端必须能看到待审与异常资源（驳回除外）。"""
@@ -329,7 +428,9 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
             headers=self.auth(self.teacher_token),
             json={'review_status': 'approved', 'reason': ''},
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['code'], 0)
 
 
 if __name__ == '__main__':

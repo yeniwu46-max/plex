@@ -23,7 +23,7 @@ const pageKey = computed(() => {
 const sectionTabsArea = computed<'learning' | 'me' | null>(() => {
   const path = route.path
   if (path.startsWith('/student/star-path')) return 'learning'
-  if (path.startsWith('/student/me')) return 'me'
+  if (path === '/student/me' || path.startsWith('/student/me/')) return 'me'
   return null
 })
 

@@ -19,7 +19,7 @@ from agents.http_client import direct_get, direct_post
 from app.services.tts_service import MEDIA_ROOT
 
 DEFAULT_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
-DEFAULT_IMAGE_MODEL = 'doubao-seedream-5-0-pro-260628'
+DEFAULT_IMAGE_MODEL = 'doubao-seedream-5-0-260128'
 DEFAULT_IMAGE_SIZE = '2K'
 
 
@@ -81,13 +81,19 @@ class ArkMediaService:
     # ---------- 图像生成（答疑图解） ----------
 
     @classmethod
-    def generate_image(cls, prompt: str, *, size: str | None = None) -> str | None:
+    def generate_image(
+        cls,
+        prompt: str,
+        *,
+        size: str | None = None,
+        timeout: tuple[float, float] | None = None,
+    ) -> str | None:
         """文生图并落盘，返回本地媒体 URL；失败返回 None。
 
         对齐方舟 OpenAI 兼容接口::
 
             client.images.generate(
-                model="doubao-seedream-5-0-pro-260628",
+                model="doubao-seedream-5-0-260128",
                 prompt=...,
                 size="2K",
                 response_format="url",
@@ -106,12 +112,14 @@ class ArkMediaService:
                 json={
                     'model': cls._image_model(),
                     'prompt': text,
-                    'size': cls._image_size(size),
+                    'sequential_image_generation': 'disabled',
                     'response_format': 'url',
+                    'size': cls._image_size(size),
+                    'stream': False,
                     'watermark': cls._image_watermark(),
                 },
-                # 答疑图解：短超时，避免阻塞对话收尾
-                timeout=(3, 8),
+                # 默认可等较长；工具链路可传更短 timeout 避免拖慢主回复
+                timeout=timeout or (10, 90),
             )
             response.raise_for_status()
             data = response.json().get('data') or []

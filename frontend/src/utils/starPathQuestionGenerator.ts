@@ -746,34 +746,50 @@ const TEMPLATE_REGISTRY: Record<string, QuestionTemplate> = Object.fromEntries(
   ].map((t) => [t.key, enrichTemplate(t as QuestionTemplate)]),
 )
 
-/** 每个知识点 5 个槽位对应的题目模板（保证各不相同） */
+/**
+ * 26 个知识点各 5 个槽位对应的题目模板（离线兜底用）。
+ * 正常情况下题目来自 /api 的真实题库，只有接口不可用时才回落到这里。
+ */
 const KP_TEMPLATE_PLANS: Record<string, string[]> = {
-  'stage1-intro': ['hello-greet', 'dual-beacon', 'calc-power', 'name-greet', 'energy-sum'],
-  'stage1-comment': ['name-greet', 'hello-greet', 'dual-beacon', 'calc-power', 'energy-sum'],
-  'stage1-var': ['energy-sum', 'var-product', 'var-diff', 'var-quotient', 'ops-expr'],
-  'stage1-io': ['var-product', 'var-quotient', 'energy-sum', 'var-diff', 'calc-power'],
-  'stage2-ops': ['ops-expr', 'calc-power', 'var-quotient', 'var-diff', 'energy-sum'],
-  'stage2-cond': ['if-parity', 'if-max', 'if-pass', 'if-sign', 'if-parity'],
-  'stage2-loop': ['for-sum', 'for-evens', 'for-factorial', 'for-mult', 'for-evens'],
-  'stage2-range': ['for-mult', 'for-sum', 'for-evens', 'for-factorial', 'for-sum'],
-  'stage3-str': ['str-strip', 'dual-beacon', 'hello-greet', 'calc-power', 'name-greet'],
-  'stage3-list': ['list-max', 'list-min', 'list-sum-loop', 'list-ends', 'list-total'],
-  'stage3-dict': ['list-sum-loop', 'list-ends', 'count-positive', 'list-max', 'list-min'],
-  'stage3-func': ['rect-area', 'rect-perimeter', 'double', 'max-two-func', 'list-total'],
-  'stage4-algo-sum': ['list-sum-loop', 'count-positive', 'for-sum', 'list-total', 'sum-range'],
-  'stage4-bubble': ['bubble-sort', 'bubble-pass', 'bubble-swaps', 'bubble-pass', 'bubble-sort'],
-  'stage4-selection': ['selection-sort', 'selection-min-index', 'selection-step', 'selection-step', 'selection-sort'],
-  'stage4-binary': ['binary-search', 'binary-check', 'binary-first', 'binary-check', 'binary-search'],
+  'lang-print': ['hello-greet', 'dual-beacon', 'name-greet', 'calc-power', 'energy-sum'],
+  'lang-var': ['energy-sum', 'var-product', 'var-diff', 'ops-expr', 'var-quotient'],
+  'lang-input': ['var-product', 'var-quotient', 'energy-sum', 'var-diff', 'calc-power'],
+  'seq-arith': ['ops-expr', 'calc-power', 'var-quotient', 'var-diff', 'var-product'],
+  'seq-expr': ['calc-power', 'ops-expr', 'var-diff', 'var-quotient', 'energy-sum'],
+  'seq-type': ['var-product', 'energy-sum', 'calc-power', 'var-quotient', 'ops-expr'],
+  'branch-if': ['if-parity', 'if-max', 'if-pass', 'if-sign', 'if-parity'],
+  'branch-elif': ['if-sign', 'if-pass', 'if-max', 'if-parity', 'if-sign'],
+  'branch-nested': ['if-sign', 'if-max', 'if-pass', 'if-parity', 'if-sign'],
+  'loop-for': ['for-sum', 'for-evens', 'for-mult', 'for-factorial', 'for-sum'],
+  'loop-while': ['for-sum', 'for-factorial', 'for-evens', 'for-mult', 'for-sum'],
+  'loop-nested': ['for-mult', 'for-factorial', 'for-evens', 'for-sum', 'for-mult'],
+  'loop-control': ['for-evens', 'for-sum', 'for-mult', 'for-factorial', 'for-evens'],
+  'array-basic': ['list-max', 'list-min', 'list-ends', 'list-sum-loop', 'count-positive'],
+  'array-traverse': ['list-sum-loop', 'count-positive', 'list-max', 'list-min', 'list-total'],
+  'array-2d': ['list-sum-loop', 'list-total', 'count-positive', 'list-max', 'for-mult'],
+  'string-index': ['str-strip', 'dual-beacon', 'name-greet', 'hello-greet', 'calc-power'],
+  'string-method': ['str-strip', 'name-greet', 'dual-beacon', 'hello-greet', 'calc-power'],
+  'string-scan': ['str-strip', 'count-positive', 'list-sum-loop', 'dual-beacon', 'name-greet'],
+  'func-define': ['rect-area', 'double', 'rect-perimeter', 'max-two-func', 'list-total'],
+  'func-param': ['max-two-func', 'rect-perimeter', 'sum-range', 'double', 'rect-area'],
+  'func-recursion': ['sum-range', 'list-total', 'for-factorial', 'rect-area', 'max-two-func'],
+  'search-linear': ['list-max', 'list-min', 'count-positive', 'list-sum-loop', 'list-ends'],
+  'search-binary': ['binary-search', 'binary-check', 'binary-first', 'binary-check', 'binary-search'],
+  'search-sort': ['bubble-sort', 'bubble-pass', 'selection-sort', 'selection-min-index', 'bubble-swaps'],
+  'search-stat': ['list-sum-loop', 'count-positive', 'sum-range', 'list-total', 'list-max'],
 }
 
+const DEFAULT_DOMAIN_KEY = 'lang-basics'
+
 const DOMAIN_FALLBACK_PLANS: Record<string, string[]> = {
-  'data-vars': ['hello-greet', 'dual-beacon', 'calc-power', 'name-greet', 'energy-sum'],
-  operators: ['ops-expr', 'calc-power', 'var-quotient', 'var-diff', 'energy-sum'],
-  'flow-control': ['if-parity', 'if-max', 'for-sum', 'for-evens', 'for-mult'],
-  strings: ['str-strip', 'dual-beacon', 'hello-greet', 'calc-power', 'name-greet'],
-  'lists-dicts': ['list-max', 'list-min', 'list-sum-loop', 'list-ends', 'count-positive'],
-  functions: ['rect-area', 'rect-perimeter', 'double', 'max-two-func', 'list-total'],
-  'recursion-iter': ['list-sum-loop', 'bubble-sort', 'selection-sort', 'binary-search', 'count-positive'],
+  'lang-basics': ['hello-greet', 'dual-beacon', 'calc-power', 'name-greet', 'energy-sum'],
+  sequence: ['ops-expr', 'calc-power', 'var-quotient', 'var-diff', 'energy-sum'],
+  branch: ['if-parity', 'if-max', 'if-pass', 'if-sign', 'if-parity'],
+  loop: ['for-sum', 'for-evens', 'for-factorial', 'for-mult', 'for-sum'],
+  array: ['list-max', 'list-min', 'list-sum-loop', 'list-ends', 'count-positive'],
+  string: ['str-strip', 'dual-beacon', 'name-greet', 'hello-greet', 'calc-power'],
+  function: ['rect-area', 'rect-perimeter', 'double', 'max-two-func', 'list-total'],
+  search: ['binary-search', 'bubble-sort', 'selection-sort', 'count-positive', 'list-sum-loop'],
 }
 
 const GEN_SLOT_RE = /^gen-(.+)-s(\d+)$/
@@ -783,7 +799,7 @@ function planForKnowledgePoint(kp: StarPathKnowledgePoint): string[] {
   return (
     KP_TEMPLATE_PLANS[kp.id] ??
     DOMAIN_FALLBACK_PLANS[kp.domainKey] ??
-    DOMAIN_FALLBACK_PLANS['data-vars']!
+    DOMAIN_FALLBACK_PLANS[DEFAULT_DOMAIN_KEY]!
   )
 }
 
@@ -888,24 +904,14 @@ export function resolveStarPathQuestion(
     return generateQuestionForSlot(kp, options.slot)
   }
 
-  for (const tag of kp.tags) {
-    const imported = getCachedPracticeQuestionsForKey(tag)
-    if (imported.length >= MIN_QUESTIONS_PER_KP) {
-      if (options?.reroll) {
-        return imported[Math.floor(Math.random() * imported.length)] ?? imported[0]
-      }
-      return imported[0]
+  // 接口真题优先：缓存按 kg_node_id 建索引，命中一道就够，不必凑满 5 道
+  for (const key of [kp.id, ...kp.tags]) {
+    const imported = getCachedPracticeQuestionsForKey(key)
+    if (!imported.length) continue
+    if (options?.reroll) {
+      return imported[Math.floor(Math.random() * imported.length)] ?? imported[0]!
     }
-  }
-  const knowledgeKey = kp.tags[0]
-  if (knowledgeKey) {
-    const imported = getCachedPracticeQuestionsForKey(knowledgeKey)
-    if (imported.length >= MIN_QUESTIONS_PER_KP) {
-      if (options?.reroll) {
-        return imported[Math.floor(Math.random() * imported.length)] ?? imported[0]
-      }
-      return imported[0]
-    }
+    return imported[0]!
   }
   if (kp.questionId) {
     const staticQ = getPythonTrialQuestion(kp.questionId)

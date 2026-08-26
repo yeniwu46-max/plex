@@ -80,6 +80,20 @@ def list_class_trial_stats(class_id: int):
         return error_response(str(exc), 50001, None, 500)
 
 
+@admin_settings_bp.route('/classes/<int:class_id>/students', methods=['GET'])
+@admin_settings_bp.route('/trials/classes/<int:class_id>/students', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def list_class_students(class_id: int):
+    try:
+        payload = AdminDashboardService.list_class_students(class_id)
+        if not payload:
+            return error_response('班级不存在', 40401, None, 404)
+        return success_response(payload)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @admin_settings_bp.route('/settings', methods=['PUT'])
 @jwt_required()
 @role_required('admin', 'teacher')

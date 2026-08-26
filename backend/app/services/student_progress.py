@@ -5,50 +5,39 @@ from datetime import date, datetime, timedelta
 from app.constants.star_path_unlock import (
     DOMAIN_COMPLETE_PROGRESS,
     DOMAIN_UNLOCK_PROGRESS,
+    UNLOCK_ALL,
 )
 from app.constants.test_accounts import is_test_sandbox_user
+from app.data.knowledge_node_registry import (
+    KNOWLEDGE_DOMAINS,
+    KNOWLEDGE_NODE_REGISTRY,
+    nodes_for_domain,
+)
 from app.models import Trial, TrialParticipation, TrialQuestionProgress, User, UserDailyQuest, db
 from app.models import PersonalizedLearningResource, StudentProfile
 
+# 8 大类目录，直接由知识点注册表派生。每个大类的 knowledge_keys 是其下所有节点的
+# 旧 key 并集——历史 trial/resource 上存的仍是旧 key，靠它归域才不会丢进度。
 DOMAIN_CATALOG = [
-    {'key': 'data-vars', 'title': '数据与变量', 'knowledge_keys': ['intro', 'comment', 'python', 'lang', 'syntax', 'basic', 'var', 'io', 'input']},
-    {'key': 'operators', 'title': '运算符的使用', 'knowledge_keys': ['ops']},
-    {'key': 'flow-control', 'title': '流程控制', 'knowledge_keys': ['cond', 'condition', 'loop', 'range', 'break', 'continue', 'nested']},
-    {'key': 'strings', 'title': '字符串', 'knowledge_keys': ['str', 'string']},
-    {'key': 'lists-dicts', 'title': '列表与字典', 'knowledge_keys': ['list', 'tuple', 'set', 'dict']},
-    {'key': 'functions', 'title': '函数', 'knowledge_keys': ['func', 'function']},
-    {'key': 'recursion-iter', 'title': '递归与迭代', 'knowledge_keys': ['file', 'except', 'exception', 'algo', 'algo-sum', 'algo-search', 'algo-sort', 'algo-dedup', 'algo-bubble', 'algo-selection', 'algo-binary']},
+    {
+        'key': domain.key,
+        'title': domain.title,
+        'knowledge_keys': [key for node in nodes_for_domain(domain.key) for key in node.knowledge_keys],
+    }
+    for domain in KNOWLEDGE_DOMAINS
 ]
 
-KNOWLEDGE_LABELS = {
-    'data-vars': '数据与变量',
-    'operators': '运算符的使用',
-    'flow-control': '流程控制',
-    'strings': '字符串',
-    'lists-dicts': '列表与字典',
-    'functions': '函数',
-    'recursion-iter': '递归与迭代',
-    'intro': 'Python 入门',
-    'comment': '注释',
-    'var': '变量与类型',
-    'io': '输入输出',
-    'input': '输入',
-    'ops': '运算与表达式',
-    'cond': '条件分支',
-    'loop': '循环结构',
-    'range': 'range 与控制',
-    'list': '列表',
-    'dict': '字典',
-    'str': '字符串',
-    'func': '函数',
-    'file': '文件操作',
-    'except': '异常处理',
-    'algo': '算法入门',
-    'algo-sum': '求和统计',
-    'algo-search': '线性查找',
-    'python': 'Python',
-    'lang': 'Python 基础',
-}
+# 大类标题 + 节点标题 + 旧 key 别名，合成一张"key → 中文名"的查询表。
+KNOWLEDGE_LABELS = {domain.key: domain.title for domain in KNOWLEDGE_DOMAINS}
+for _entry in KNOWLEDGE_NODE_REGISTRY:
+    KNOWLEDGE_LABELS[_entry.kg_id] = _entry.label
+    for _key in _entry.knowledge_keys:
+        KNOWLEDGE_LABELS.setdefault(_key, _entry.label)
+
+DEFAULT_DOMAIN_KEY = KNOWLEDGE_DOMAINS[0].key
+# 试炼没写 knowledge_key 时的兜底：落到"变量与类型"，而不是原来的 'algo'
+# —— 把无标注的作答算进"算法思维"会凭空抬高最难的那一维。
+DEFAULT_KNOWLEDGE_KEY = 'lang-var'
 
 
 class StudentProgressService:
@@ -103,14 +92,14 @@ class StudentProgressService:
 
         for part in completed:
             trial = part.trial
-            key = (trial.knowledge_key or 'algo').lower()
+            key = (trial.knowledge_key or DEFAULT_KNOWLEDGE_KEY).lower()
             score = part.score or trial.difficulty or 60
             for domain in DOMAIN_CATALOG:
                 if key in domain['knowledge_keys']:
                     domain_scores[domain['key']].append(score)
                     break
             else:
-                domain_scores['data-vars'].append(score)
+                domain_scores[DEFAULT_DOMAIN_KEY].append(score)
             skill_scores[key].append(score)
 
         level_boost = min(30, (user.level or 1) * 4)
@@ -118,7 +107,11 @@ class StudentProgressService:
         for index, domain in enumerate(DOMAIN_CATALOG):
             scores = domain_scores.get(domain['key'], [])
             progress = min(100, round(sum(scores) / len(scores)) if scores else max(15, level_boost // (index + 1)))
-            locked = index > 0 and domains[index - 1]['progress'] < DOMAIN_UNLOCK_PROGRESS
+            locked = (
+                not UNLOCK_ALL
+                and index > 0
+                and domains[index - 1]['progress'] < DOMAIN_UNLOCK_PROGRESS
+            )
             state = '进行中' if progress < DOMAIN_COMPLETE_PROGRESS else '已点亮'
             domains.append(
                 {
@@ -183,7 +176,7 @@ class StudentProgressService:
 
         return {
             'domains': domains,
-            'active_domain_key': next((d['key'] for d in domains if d.get('active')), 'data-vars'),
+            'active_domain_key': next((d['key'] for d in domains if d.get('active')), DEFAULT_DOMAIN_KEY),
             'profile_version': profile.version if profile else 0,
             'ordered_nodes': path_plan.get('ordered_nodes', []),
             'active_node_id': path_plan.get('active_node_id'),
@@ -215,13 +208,13 @@ class StudentProgressService:
         completed = StudentProgressService._completed_trials(user_id)
         domain_scores = defaultdict(list)
         for part in completed:
-            key = (part.trial.knowledge_key or 'algo').lower()
+            key = (part.trial.knowledge_key or DEFAULT_KNOWLEDGE_KEY).lower()
             for domain in DOMAIN_CATALOG:
                 if key in domain['knowledge_keys']:
                     domain_scores[domain['key']].append(part.score or 60)
                     break
             else:
-                domain_scores['data-vars'].append(part.score or 60)
+                domain_scores[DEFAULT_DOMAIN_KEY].append(part.score or 60)
 
         skills = []
         for domain in DOMAIN_CATALOG:
@@ -285,12 +278,9 @@ class StudentProgressService:
             'class_online_count': PresenceService.class_presence(user_id)['online_count'],
         }
 
+    # 能力雷达一维对应一个大类，随注册表自动扩缩，不再单独维护一份 key 清单。
     RADAR_DIMENSIONS = [
-        ('语法基础', ['intro', 'comment', 'var', 'io', 'python', 'lang', 'syntax', 'basic']),
-        ('控制结构', ['ops', 'cond', 'condition', 'loop', 'range']),
-        ('数据组织', ['list', 'tuple', 'dict', 'str', 'string', 'func', 'function']),
-        ('调试能力', ['except', 'exception', 'file']),
-        ('算法思维', ['algo', 'algo-sum', 'algo-search', 'algo-sort', 'algo-dedup', 'nested']),
+        (domain['title'], domain['knowledge_keys']) for domain in DOMAIN_CATALOG
     ]
 
     @staticmethod
@@ -302,7 +292,7 @@ class StudentProgressService:
         completed = StudentProgressService._completed_trials(user_id)
         skill_scores: dict[str, list[int]] = defaultdict(list)
         for part in completed:
-            key = (part.trial.knowledge_key or 'algo').lower()
+            key = (part.trial.knowledge_key or DEFAULT_KNOWLEDGE_KEY).lower()
             skill_scores[key].append(part.score or 60)
 
         def avg_for_keys(keys: list[str]) -> int:
@@ -350,4 +340,168 @@ class StudentProgressService:
                 'correct_rate': correct_rates,
                 'practice_count': practice_counts,
             },
+        }
+
+    @staticmethod
+    def _practice_heatmap_level(count: int) -> int:
+        if count <= 0:
+            return 0
+        if count < 5:
+            return 1
+        if count < 15:
+            return 2
+        if count < 20:
+            return 3
+        return 4
+
+    @staticmethod
+    def get_stat_details(user_id: int) -> dict:
+        """首页统计卡弹窗：等级历史、练习热力图、班级排名详情。"""
+        from app.models import PointsLog
+        from app.services.incentive import IncentiveService, LEVEL_TITLES
+        from app.services.user import UserService
+        from app.services.class_service import ClassService
+
+        user = db.session.get(User, user_id)
+        if not user:
+            raise ValueError('用户不存在')
+
+        profile = UserService.get_current_user_info(user_id)
+        level_profile = IncentiveService.level_profile(user)
+
+        logs = (
+            PointsLog.query.filter_by(user_id=user_id)
+            .order_by(PointsLog.created_at.asc())
+            .all()
+        )
+        cumulative = 0
+        seen_levels = {1}
+        level_history = [{
+            'level': 1,
+            'title': LEVEL_TITLES.get(1, 'Lv1'),
+            'total_points': 0,
+            'reached_at': user.created_at.isoformat() if user.created_at else None,
+        }]
+        for row in logs:
+            cumulative += row.points or 0
+            new_level = IncentiveService.level_from_points(cumulative)
+            if new_level not in seen_levels:
+                seen_levels.add(new_level)
+                level_history.append({
+                    'level': new_level,
+                    'title': LEVEL_TITLES.get(new_level, f'Lv{new_level}'),
+                    'total_points': cumulative,
+                    'reached_at': row.created_at.isoformat() if row.created_at else None,
+                })
+        current_level = user.level or 1
+        if current_level not in seen_levels:
+            level_history.append({
+                'level': current_level,
+                'title': LEVEL_TITLES.get(current_level, f'Lv{current_level}'),
+                'total_points': user.total_points or 0,
+                'reached_at': None,
+            })
+
+        today = date.today()
+        month_start = today.replace(day=1)
+        # 近 6 个自然月（含当月）：用单次 GROUP BY 替代逐日 COUNT，避免 N+1
+        from sqlalchemy import func
+
+        months: list[str] = []
+        y, m = today.year, today.month
+        for _ in range(6):
+            months.append(f'{y:04d}-{m:02d}')
+            m -= 1
+            if m <= 0:
+                m = 12
+                y -= 1
+        months.reverse()
+
+        range_start = date(int(months[0][:4]), int(months[0][5:7]), 1)
+        range_end = today
+        day_count_rows = (
+            db.session.query(
+                func.date(TrialQuestionProgress.answered_at).label('day'),
+                func.count().label('cnt'),
+            )
+            .filter(
+                TrialQuestionProgress.user_id == user_id,
+                TrialQuestionProgress.status == 'completed',
+                TrialQuestionProgress.answered_at >= datetime.combine(range_start, datetime.min.time()),
+                TrialQuestionProgress.answered_at <= datetime.combine(range_end, datetime.max.time()),
+            )
+            .group_by(func.date(TrialQuestionProgress.answered_at))
+            .all()
+        )
+        count_by_day: dict[str, int] = {}
+        for row in day_count_rows:
+            day_key = row.day.isoformat() if hasattr(row.day, 'isoformat') else str(row.day)
+            count_by_day[day_key] = int(row.cnt or 0)
+
+        heatmap_cells = []
+        cursor = range_start
+        while cursor <= range_end:
+            key = cursor.isoformat()
+            count = count_by_day.get(key, 0)
+            heatmap_cells.append({
+                'date': key,
+                'count': count,
+                'level': StudentProgressService._practice_heatmap_level(count),
+                'in_current_month': cursor >= month_start,
+                'month': cursor.strftime('%Y-%m'),
+            })
+            cursor += timedelta(days=1)
+
+        total_solved = TrialQuestionProgress.query.filter_by(
+            user_id=user_id,
+            status='completed',
+        ).count()
+
+        rank_detail = {
+            'rank': profile.get('class_rank'),
+            'level': profile.get('level') or 1,
+            'title': profile.get('title') or level_profile.get('title'),
+            'total_solved': total_solved,
+            'total_points': profile.get('total_points') or 0,
+            'consecutive_days': profile.get('consecutive_days') or 0,
+            'class_name': (profile.get('class') or {}).get('name'),
+            'classmates': [],
+            'win_leaderboard': [],
+        }
+        cls = profile.get('class')
+        if cls and cls.get('id'):
+            ranking = ClassService.get_class_ranking(cls['id'])
+            # 首页「班级排名」：按综合班排前 5（含姓名/等级/XP）
+            rank_detail['classmates'] = (ranking.get('rankings') or [])[:5]
+            # 「我的班排」详情：按对局胜局数前 5
+            rank_detail['win_leaderboard'] = ClassService.get_win_leaderboard(cls['id'], limit=5)
+
+        # 热力图单元格补充星期（0=周一 … 6=周日），前端日历渲染用
+        weekday_labels = ['一', '二', '三', '四', '五', '六', '日']
+        for cell in heatmap_cells:
+            try:
+                day = date.fromisoformat(cell['date'])
+            except ValueError:
+                continue
+            cell['weekday'] = day.weekday()
+            cell['weekday_label'] = weekday_labels[day.weekday()]
+            cell['day'] = day.day
+
+        return {
+            'level_profile': level_profile,
+            'level_history': level_history,
+            'practice_heatmap': {
+                'month': month_start.strftime('%Y-%m'),
+                'months': months,
+                'cells': heatmap_cells,
+                'weekday_headers': weekday_labels,
+                'legend': [
+                    {'level': 0, 'label': '无练习', 'min': 0, 'max': 0},
+                    {'level': 1, 'label': '1–4 题', 'min': 1, 'max': 4},
+                    {'level': 2, 'label': '5–14 题', 'min': 5, 'max': 14},
+                    {'level': 3, 'label': '15–19 题', 'min': 15, 'max': 19},
+                    {'level': 4, 'label': '20 题及以上', 'min': 20, 'max': None},
+                ],
+            },
+            'class_rank_detail': rank_detail,
         }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { NButton, NModal, NSlider, NSpin, useMessage } from 'naive-ui'
+import { NButton, NInput, NModal, NSlider, NSpin, useMessage } from 'naive-ui'
 import PlexFileUploader from '../shared/upload/PlexFileUploader.vue'
 import {
   fetchClassFiles,
@@ -27,6 +27,7 @@ const props = withDefaults(
 const message = useMessage()
 const loading = ref(false)
 const files = ref<ClassSharedFile[]>([])
+const searchQuery = ref('')
 const previewVisible = ref(false)
 const previewLoading = ref(false)
 const previewFile = ref<ClassSharedFile | null>(null)
@@ -38,10 +39,45 @@ const savingScore = ref(false)
 const QUICK_SCORES = [60, 70, 80, 90] as const
 
 const visibleFiles = computed(() => {
-  if (props.role !== 'teacher' || !props.submissionsOnly) return files.value
-  return files.value.filter(
-    (file) => file.owner_role === 'student' || file.scene === 'learning-report' || file.scene === 'code-file',
-  )
+  let rows =
+    props.role !== 'teacher' || !props.submissionsOnly
+      ? files.value
+      : files.value.filter(
+          (file) =>
+            file.owner_role === 'student' || file.scene === 'learning-report' || file.scene === 'code-file',
+        )
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    rows = rows.filter((file) => {
+      const hay = [
+        file.fileName,
+        file.owner_name || '',
+        file.owner_username || '',
+        String(file.owner_id || ''),
+        file.scene || '',
+      ]
+        .join(' ')
+        .toLowerCase()
+      return hay.includes(q)
+    })
+  }
+  return rows
+})
+
+const filesByDate = computed(() => {
+  const groups = new Map<string, ClassSharedFile[]>()
+  for (const file of visibleFiles.value) {
+    const day = (file.createdAt || '').slice(0, 10) || '未知日期'
+    const list = groups.get(day) ?? []
+    list.push(file)
+    groups.set(day, list)
+  }
+  return Array.from(groups.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, items]) => ({
+      date,
+      items: [...items].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
+    }))
 })
 
 const canGrade = computed(
@@ -183,24 +219,40 @@ defineExpose({ reload: loadFiles })
       <n-button size="small" quaternary :loading="loading" @click="loadFiles">刷新</n-button>
     </header>
 
+    <div v-if="role === 'teacher'" class="file-exchange__search">
+      <n-input
+        v-model:value="searchQuery"
+        clearable
+        placeholder="搜索学生姓名、学号、账号或文件名称"
+      />
+    </div>
+
     <div v-if="loading && !files.length" class="file-exchange__empty">正在加载文件…</div>
     <div v-else-if="!visibleFiles.length" class="file-exchange__empty">
-      {{ role === 'student' ? (classId ? '教师尚未共享文件' : '加入班级后可接收教师资料') : '暂无学生提交' }}
+      {{ role === 'student' ? (classId ? '教师尚未共享文件' : '加入班级后可接收教师资料') : searchQuery.trim() ? '没有匹配的提交文件' : '暂无学生提交' }}
     </div>
-    <ul v-else class="file-exchange__list">
-      <li v-for="file in visibleFiles" :key="`${file.owner_id}-${file.url}`" class="file-exchange__item">
-        <div>
-          <strong>{{ file.fileName }}</strong>
-          <span>
-            {{ sceneLabels[file.scene] || file.scene }}
-            · {{ file.owner_name || '未知' }}
-            · {{ formatFileSize(file.fileSize) }}
-            <template v-if="typeof file.score === 'number'"> · 已评分 {{ file.score }}</template>
-          </span>
-        </div>
-        <n-button size="small" type="primary" ghost @click="openFile(file)">查看</n-button>
-      </li>
-    </ul>
+    <div v-else class="file-exchange__groups">
+      <section v-for="group in filesByDate" :key="group.date" class="file-exchange__group">
+        <h4>{{ group.date }}</h4>
+        <ul class="file-exchange__list">
+          <li v-for="file in group.items" :key="`${file.owner_id}-${file.url}`" class="file-exchange__item">
+            <div>
+              <strong>{{ file.fileName }}</strong>
+              <span>
+                {{ sceneLabels[file.scene] || file.scene }}
+                · {{ file.owner_name || '未知学生' }}
+                <template v-if="file.owner_username || file.owner_id">
+                  · 学号/账号 {{ file.owner_username || file.owner_id }}
+                </template>
+                · {{ formatFileSize(file.fileSize) }}
+                <template v-if="typeof file.score === 'number'"> · 已评分 {{ file.score }}</template>
+              </span>
+            </div>
+            <n-button size="small" type="primary" ghost @click="openFile(file)">查看</n-button>
+          </li>
+        </ul>
+      </section>
+    </div>
 
     <div v-if="!submissionsOnly" class="file-exchange__upload">
       <h4>{{ role === 'student' ? '提交给教师' : '共享给学生' }}</h4>
@@ -242,7 +294,7 @@ defineExpose({ reload: loadFiles })
           <p>该文件类型暂不支持在线预览，可下载后查看。</p>
           <n-button
             type="primary"
-            :disabled="!previewObjectUrl && !(previewKind === 'text' && previewText)"
+            :disabled="!previewObjectUrl && !previewText"
             @click="downloadPreview"
           >
             下载文件
@@ -299,6 +351,22 @@ defineExpose({ reload: loadFiles })
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.file-exchange__search {
+  margin-bottom: 0.85rem;
+}
+
+.file-exchange__groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.file-exchange__group h4 {
+  margin: 0 0 0.55rem;
+  color: #fdba74;
+  font-size: 0.88rem;
+  font-weight: 650;
 }
 
 .file-exchange__header h3 {

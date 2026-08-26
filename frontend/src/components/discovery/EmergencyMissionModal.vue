@@ -126,7 +126,7 @@ watch(
         <n-tag size="small" :bordered="false" type="info">薄弱强化 · {{ session.focus_label }}</n-tag>
       </header>
 
-      <p v-if="phase === 'quiz'" class="emergency-modal__hint">共 3 题，全部答对可获得补给奖励（+55 XP）</p>
+      <p v-if="phase === 'quiz'" class="emergency-modal__hint">共 3 题，全部答对可获得 55 XP 补给奖励</p>
       <p v-else class="emergency-modal__hint" :class="{ 'emergency-modal__hint--ok': session.all_correct }">
         {{
           session.all_correct

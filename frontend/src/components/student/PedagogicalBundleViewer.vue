@@ -94,7 +94,7 @@ const exerciseTypeLabel: Record<string, string> = {
       <n-collapse-item
         v-if="content.diagrams?.length"
         name="diagrams"
-        :title="`思维导图 / 图示（${content.diagrams.length}）`"
+        :title="`思维导图与图示 · ${content.diagrams.length} 项`"
       >
         <article v-for="(diagram, index) in content.diagrams" :key="index" class="bundle-section">
           <h4>{{ clean(diagram.caption) }}</h4>
@@ -107,7 +107,7 @@ const exerciseTypeLabel: Record<string, string> = {
       <n-collapse-item
         v-if="content.cases?.length"
         name="cases"
-        :title="`案例（${content.cases.length}）`"
+        :title="`案例 · ${content.cases.length} 项`"
       >
         <article v-for="item in content.cases" :key="item.title" class="bundle-section">
           <h4>{{ clean(item.title) }}</h4>
@@ -120,10 +120,10 @@ const exerciseTypeLabel: Record<string, string> = {
       <n-collapse-item
         v-if="content.code?.length"
         name="code"
-        :title="`代码实操（${content.code.length}）`"
+        :title="`代码实操 · ${content.code.length} 项`"
       >
         <article v-for="block in content.code" :key="block.title" class="bundle-section">
-          <h4>{{ clean(block.title) }}（{{ clean(block.complexity) }}）</h4>
+          <h4>{{ clean(block.title) }} · {{ clean(block.complexity) }}</h4>
           <p class="bundle-section__hint">{{ clean(block.pep8_note) }}</p>
           <MarkdownRenderer :content="fenced(block.source)" />
         </article>
@@ -132,7 +132,7 @@ const exerciseTypeLabel: Record<string, string> = {
       <n-collapse-item
         v-if="content.exercises?.length"
         name="exercises"
-        :title="`分层题库（${content.exercises.length}）`"
+        :title="`分层题库 · ${content.exercises.length} 题`"
       >
         <article v-for="(ex, index) in content.exercises" :key="index" class="bundle-section">
           <h4>第 {{ index + 1 }} 题 · {{ exerciseTypeLabel[ex.type ?? ''] ?? ex.type }}</h4>

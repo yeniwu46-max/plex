@@ -55,7 +55,7 @@ function openHit(question: PythonTrialQuestion) {
         </button>
       </li>
     </ul>
-    <p v-else-if="!loading" class="question-search-popover__empty">试试题号（如 P0042）或关键词</p>
+    <p v-else-if="!loading" class="question-search-popover__empty">请输入题号或知识关键词进行搜索</p>
   </div>
 </template>
 

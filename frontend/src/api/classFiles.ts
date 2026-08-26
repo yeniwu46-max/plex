@@ -9,6 +9,7 @@ export interface ClassSharedFile {
   scene: string
   owner_id: number
   owner_name?: string
+  owner_username?: string | null
   owner_role?: string
   createdAt: string
   score?: number | null

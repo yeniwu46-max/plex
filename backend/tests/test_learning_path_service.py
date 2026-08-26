@@ -2,6 +2,7 @@
 import unittest
 
 from app import create_app
+from app.data.knowledge_node_registry import all_node_ids
 from app.models import Role, User, db
 from app.services.learning_path import LearningPathService
 from werkzeug.security import generate_password_hash
@@ -35,13 +36,20 @@ class LearningPathServiceTests(unittest.TestCase):
         self.assertIn('next_best_action', plan)
         self.assertIn('graph_backend', plan)
 
-    def test_prerequisite_locking_for_advanced_without_basics(self):
-        plan = LearningPathService.plan(self.user.id, focus_node_id='nested')
-        nested = next((n for n in plan['ordered_nodes'] if n['id'] == 'nested'), None)
-        if nested:
-            self.assertTrue(nested['locked'] or nested['prerequisites_met'] is False)
+    def test_nothing_is_locked_when_unlock_all(self):
+        """UNLOCK_ALL 打开后，零基础学生也应当能进入任意节点。"""
+        plan = LearningPathService.plan(self.user.id, focus_node_id='func-recursion')
+        self.assertTrue(plan['ordered_nodes'])
+        for node in plan['ordered_nodes']:
+            self.assertFalse(node['locked'], f"{node['id']} 不应被锁定")
+            self.assertIsNot(node['prerequisites_met'], False)
 
     def test_focus_node_in_plan(self):
-        plan = LearningPathService.plan(self.user.id, focus_node_id='loop')
+        plan = LearningPathService.plan(self.user.id, focus_node_id='loop-for')
         ids = [n['id'] for n in plan['ordered_nodes']]
-        self.assertIn('loop', ids)
+        self.assertIn('loop-for', ids)
+
+    def test_plan_covers_all_registry_nodes(self):
+        plan = LearningPathService.plan(self.user.id)
+        ids = {n['id'] for n in plan['ordered_nodes']}
+        self.assertEqual(ids, set(all_node_ids()))

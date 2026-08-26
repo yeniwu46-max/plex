@@ -16,7 +16,21 @@ export interface OrbitNode {
   domainKey?: string
 }
 
+/** Python 八大学域：沿椭圆顺时针铺开，顺序与学习路径一致 */
+const PYTHON_DOMAIN_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
+  'lang-basics': { tone: 'teal', x: 14, y: 30 },
+  sequence: { tone: 'amber', x: 30, y: 12 },
+  branch: { tone: 'gold', x: 52, y: 8 },
+  loop: { tone: 'amber', x: 74, y: 18 },
+  array: { tone: 'gold', x: 87, y: 40 },
+  string: { tone: 'amber', x: 78, y: 64 },
+  function: { tone: 'gold', x: 52, y: 76 },
+  search: { tone: 'red', x: 24, y: 62 },
+}
+
+/** 其他学科沿用的历史星位，Python 之外的课程仍会用到 */
 const ORBIT_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
+  ...PYTHON_DOMAIN_LAYOUT,
   stage1: { tone: 'teal', x: 11, y: 30 },
   stage2: { tone: 'amber', x: 34, y: 10 },
   stage3: { tone: 'gold', x: 72, y: 18 },
@@ -27,40 +41,6 @@ const ORBIT_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
   cs: { tone: 'gold', x: 48, y: 72 },
   db: { tone: 'amber', x: 21, y: 66 },
   ds: { tone: 'red', x: 12, y: 39 },
-}
-
-/** 知识宇宙六大学域（与 knowledge_catalog / 全景图一致） */
-export const STARFIELD_DOMAINS: Omit<OrbitNode, 'score' | 'delta'>[] = TEACHER_KNOWLEDGE_UNIVERSE.map(
-  (domain) => {
-    const layout = ORBIT_LAYOUT[domain.key] ?? { tone: 'amber' as const, x: 50, y: 50 }
-    return {
-      label: domain.label,
-      domainKey: domain.key,
-      ...layout,
-    }
-  },
-)
-
-const DELTA_CYCLE: OrbitNode['delta'][] = ['上升', '稳定', '下降']
-
-const STUDENT_DOMAIN_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
-  stage1: { tone: 'gold', x: 16, y: 28 },
-  stage2: { tone: 'amber', x: 34, y: 12 },
-  stage3: { tone: 'gold', x: 68, y: 16 },
-  stage4: { tone: 'amber', x: 78, y: 58 },
-  lang: { tone: 'gold', x: 20, y: 26 },
-  algo: { tone: 'amber', x: 43, y: 16 },
-  dp: { tone: 'gold', x: 64, y: 24 },
-  geom: { tone: 'amber', x: 72, y: 50 },
-  graph: { tone: 'red', x: 56, y: 70 },
-  ds: { tone: 'amber', x: 26, y: 68 },
-  'data-vars': { tone: 'gold', x: 14, y: 24 },
-  operators: { tone: 'amber', x: 30, y: 10 },
-  'flow-control': { tone: 'gold', x: 50, y: 10 },
-  strings: { tone: 'amber', x: 68, y: 22 },
-  'lists-dicts': { tone: 'gold', x: 74, y: 42 },
-  functions: { tone: 'gold', x: 66, y: 68 },
-  'recursion-iter': { tone: 'red', x: 28, y: 72 },
 }
 
 const ORBIT_TONE_CYCLE: OrbitNodeTone[] = ['gold', 'amber', 'gold', 'amber', 'gold', 'red', 'amber']
@@ -74,6 +54,39 @@ export function layoutOrbitPosition(index: number, total: number): Pick<OrbitNod
     x: Math.round((50 + 36 * ring * Math.cos(angle)) * 10) / 10,
     y: Math.round((52 + 30 * ring * Math.sin(angle)) * 10) / 10,
   }
+}
+
+/** 知识宇宙八大学域（与 knowledge_catalog / 全景图一致） */
+export const STARFIELD_DOMAINS: Omit<OrbitNode, 'score' | 'delta'>[] = TEACHER_KNOWLEDGE_UNIVERSE.map(
+  (domain, index) => {
+    const layout =
+      ORBIT_LAYOUT[domain.key] ??
+      ({
+        ...layoutOrbitPosition(index, TEACHER_KNOWLEDGE_UNIVERSE.length),
+        tone: ORBIT_TONE_CYCLE[index % ORBIT_TONE_CYCLE.length] ?? 'amber',
+      } as Pick<OrbitNode, 'tone' | 'x' | 'y'>)
+    return {
+      label: domain.label,
+      domainKey: domain.key,
+      ...layout,
+    }
+  },
+)
+
+const DELTA_CYCLE: OrbitNode['delta'][] = ['上升', '稳定', '下降']
+
+const STUDENT_DOMAIN_LAYOUT: Record<string, Pick<OrbitNode, 'tone' | 'x' | 'y'>> = {
+  ...PYTHON_DOMAIN_LAYOUT,
+  stage1: { tone: 'gold', x: 16, y: 28 },
+  stage2: { tone: 'amber', x: 34, y: 12 },
+  stage3: { tone: 'gold', x: 68, y: 16 },
+  stage4: { tone: 'amber', x: 78, y: 58 },
+  lang: { tone: 'gold', x: 20, y: 26 },
+  algo: { tone: 'amber', x: 43, y: 16 },
+  dp: { tone: 'gold', x: 64, y: 24 },
+  geom: { tone: 'amber', x: 72, y: 50 },
+  graph: { tone: 'red', x: 56, y: 70 },
+  ds: { tone: 'amber', x: 26, y: 68 },
 }
 
 export function resolveOrbitLayout(

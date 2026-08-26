@@ -380,6 +380,44 @@ class AdminDashboardService:
         return rows
 
     @staticmethod
+    def list_class_students(class_id: int):
+        cls = Class.query.get(class_id)
+        if not cls:
+            return None
+        student_role = Role.query.filter_by(name='student').first()
+        query = User.query.filter_by(class_id=class_id)
+        if student_role:
+            query = query.filter_by(role_id=student_role.id)
+        students = query.order_by(User.id.asc()).all()
+        teacher = User.query.get(cls.teacher_id) if cls.teacher_id else None
+        return {
+            'class_id': class_id,
+            'class_name': cls.name or f'班级{class_id}',
+            'teacher_id': cls.teacher_id,
+            'teacher_name': (teacher.real_name or teacher.username) if teacher else None,
+            'student_count': len(students),
+            'items': [
+                {
+                    'id': user.id,
+                    'name': user.real_name or user.username,
+                    'username': user.username,
+                    'email': user.email,
+                    'phone': user.phone,
+                    'gender': user.gender,
+                    'status': user.status,
+                    'level': user.level,
+                    'total_points': user.total_points,
+                    'consecutive_days': user.consecutive_days,
+                    'last_learn_date': (
+                        user.last_learn_date.isoformat() if user.last_learn_date else None
+                    ),
+                    'created_at': user.created_at.isoformat() if user.created_at else None,
+                }
+                for user in students
+            ],
+        }
+
+    @staticmethod
     def list_class_trial_stats(class_id: int):
         cls = Class.query.get(class_id)
         if not cls:

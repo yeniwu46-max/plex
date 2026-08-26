@@ -62,15 +62,33 @@ export function useTeacherOverview() {
     { label: '本月', value: 'month' },
   ]
 
+  async function applyOverview(data: TeacherOverview) {
+    overview.value = data
+    selectedClassId.value = data.selected_class?.id ?? null
+    persistClassId(selectedClassId.value)
+  }
+
   async function loadOverview(classId = selectedClassId.value ?? readStoredClassId()) {
     loading.value = true
     errorMessage.value = ''
     try {
       const data = await fetchTeacherOverview({ classId, period: period.value })
-      overview.value = data
-      selectedClassId.value = data.selected_class?.id ?? null
-      persistClassId(selectedClassId.value)
+      await applyOverview(data)
     } catch (error) {
+      // 本地缓存的 class_id 在库重建后失效时，清缓存并回落到服务端默认班级
+      if (classId != null) {
+        persistClassId(null)
+        selectedClassId.value = null
+        try {
+          const data = await fetchTeacherOverview({ classId: null, period: period.value })
+          await applyOverview(data)
+          errorMessage.value = ''
+          return
+        } catch (retryError) {
+          errorMessage.value = retryError instanceof Error ? retryError.message : '教师端数据加载失败'
+          return
+        }
+      }
       errorMessage.value = error instanceof Error ? error.message : '教师端数据加载失败'
     } finally {
       loading.value = false

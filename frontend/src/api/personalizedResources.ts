@@ -79,6 +79,7 @@ export async function createResourceTask(
     learning_stage?: string
     learning_style?: string[]
     force_regenerate?: boolean
+    require_real_api?: boolean
   },
 ) {
   const { data } = await http.post<ApiEnvelope<ResourceTask>>('/v1/student/resource-generation/tasks', {
@@ -89,6 +90,7 @@ export async function createResourceTask(
     learning_stage: options?.learning_stage,
     learning_style: options?.learning_style,
     force_regenerate: options?.force_regenerate ?? true,
+    require_real_api: options?.require_real_api ?? true,
   })
   if (data.code !== 0) throw new Error(data.message || '创建生成任务失败')
   return data.data
@@ -259,4 +261,82 @@ export async function runTeacherSmartReview() {
   )
   if (data.code !== 0) throw new Error(data.message || '智能审核失败')
   return data.data
+}
+
+export async function releasePendingResources(releaseAll = true) {
+  const { data } = await http.post<ApiEnvelope<{
+    approved_count: number
+    kept_anomaly_count: number
+    total: number
+  }>>('/v1/teacher/personalized-resources/release-pending', {
+    release_all: releaseAll,
+  })
+  if (data.code !== 0) throw new Error(data.message || '资源放行失败')
+  return data.data
+}
+
+/** 下载已生成资源内容为 Markdown/JSON 文件（前端导出，不落密钥）。 */
+export function downloadPersonalizedResource(item: PersonalizedResource) {
+  const content = item.content || {}
+  const hasStructuredText =
+    typeof content === 'object' &&
+    (typeof (content as { markdown?: unknown }).markdown === 'string' ||
+      typeof (content as { body?: unknown }).body === 'string' ||
+      typeof (content as { summary?: unknown }).summary === 'string')
+  let blob: Blob
+  let filename: string
+  if (item.content_url && /\.(pdf|mp3|mp4|wav|png|jpg)$/i.test(item.content_url)) {
+    const anchor = document.createElement('a')
+    anchor.href = item.content_url
+    anchor.download = ''
+    anchor.target = '_blank'
+    anchor.rel = 'noopener'
+    anchor.click()
+    return
+  }
+  if (hasStructuredText) {
+    const parts = [
+      `# ${item.title}`,
+      '',
+      `知识点：${item.knowledge_label}`,
+      `类型：${item.resource_type}`,
+      '',
+      String(
+        (content as { markdown?: string }).markdown ||
+          (content as { body?: string }).body ||
+          (content as { summary?: string }).summary ||
+          '',
+      ),
+    ]
+    const exercises = (content as { exercises?: unknown[] }).exercises
+    if (Array.isArray(exercises) && exercises.length) {
+      parts.push('', '## 练习题', '')
+      exercises.forEach((ex, index) => {
+        const row = ex as Record<string, unknown>
+        parts.push(`### ${index + 1}. ${row.stem || row.question || '题目'}`)
+        if (Array.isArray(row.options)) {
+          row.options.forEach((opt, oi) => {
+            parts.push(`${String.fromCharCode(65 + oi)}. ${opt}`)
+          })
+        }
+        if (row.answer != null || row.correct_index != null) {
+          parts.push(`答案：${row.answer ?? row.correct_index}`)
+        }
+        parts.push('')
+      })
+    }
+    blob = new Blob([parts.join('\n')], { type: 'text/markdown;charset=utf-8' })
+    filename = `${item.title || 'resource'}-${item.id}.md`
+  } else {
+    blob = new Blob([JSON.stringify({ id: item.id, title: item.title, content }, null, 2)], {
+      type: 'application/json;charset=utf-8',
+    })
+    filename = `${item.title || 'resource'}-${item.id}.json`
+  }
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename.replace(/[\\/:*?"<>|]/g, '_')
+  anchor.click()
+  URL.revokeObjectURL(url)
 }

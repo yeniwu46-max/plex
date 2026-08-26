@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NCheckbox, NIcon, useMessage } from 'naive-ui'
+import { NButton, NCheckbox, NIcon, NModal, useMessage } from 'naive-ui'
 import {
   AddOutline,
   PeopleOutline,
@@ -58,6 +58,12 @@ const actingTrialId = ref<number | null>(null)
 const errorMessage = ref('')
 const trials = ref<TrialCard[]>([])
 const detailTrialId = ref<number | null>(null)
+const detailModalShow = ref(false)
+
+function openTrialDetail(trialId: number) {
+  detailTrialId.value = trialId
+  detailModalShow.value = true
+}
 
 const typeLabels: Record<string, string> = {
   solo: '个人挑战',
@@ -312,8 +318,8 @@ watch(selectedClassId, () => {
                 :class="[`trial-card--${trial.tone}`, `trial-card--${trial.scene}`]"
                 role="button"
                 tabindex="0"
-                @click="detailTrialId = trial.id"
-                @keydown.enter.prevent="detailTrialId = trial.id"
+                @click="openTrialDetail(trial.id)"
+                @keydown.enter.prevent="openTrialDetail(trial.id)"
               >
                 <div class="trial-art" aria-hidden="true">
                   <span class="trial-art__sun" />
@@ -372,7 +378,7 @@ watch(selectedClassId, () => {
                     >
                       结束
                     </n-button>
-                    <n-button size="tiny" secondary @click="detailTrialId = trial.id">
+                    <n-button size="tiny" secondary @click="openTrialDetail(trial.id)">
                       查看作答
                     </n-button>
                   </div>
@@ -381,11 +387,21 @@ watch(selectedClassId, () => {
             </div>
           </div>
 
-          <TeacherTrialDetailPanel
-            v-if="detailTrialId && activeTab === 'manage'"
-            :trial-id="detailTrialId"
-            @close="detailTrialId = null"
-          />
+          <n-modal
+            v-model:show="detailModalShow"
+            preset="card"
+            :bordered="false"
+            class="trial-detail-modal"
+            style="width: min(980px, calc(100vw - 32px))"
+            title=""
+            @after-leave="detailTrialId = null"
+          >
+            <TeacherTrialDetailPanel
+              v-if="detailTrialId && activeTab === 'manage'"
+              :trial-id="detailTrialId"
+              @close="detailModalShow = false"
+            />
+          </n-modal>
 
         </section>
 

@@ -8,7 +8,7 @@
  */
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
-import katexPlugin from '@vscode/markdown-it-katex'
+import katexPluginImport from '@vscode/markdown-it-katex'
 import hljs from 'highlight.js'
 import mermaid from 'mermaid'
 import 'highlight.js/styles/github-dark.css'
@@ -21,6 +21,32 @@ const props = withDefaults(
   }>(),
   { streaming: false },
 )
+
+/**
+ * `@vscode/markdown-it-katex` is CommonJS and marks its export as `__esModule`.
+ * Vite's development dependency optimizer can therefore expose it as
+ * `{ default: { default: plugin } }`, while production builds expose the
+ * function directly. Normalize both shapes before passing it to markdown-it.
+ */
+function unwrapDefaultExport<T>(moduleValue: T): T {
+  let value: unknown = moduleValue
+  const visited = new Set<unknown>()
+
+  while (
+    value
+    && typeof value === 'object'
+    && 'default' in value
+    && !visited.has(value)
+  ) {
+    visited.add(value)
+    value = (value as { default: unknown }).default
+  }
+
+  if (typeof value !== 'function') {
+    throw new TypeError('KaTeX Markdown 插件加载失败')
+  }
+  return value as T
+}
 
 const md = new MarkdownIt({
   html: false,
@@ -41,7 +67,7 @@ const md = new MarkdownIt({
     }
   },
 })
-md.use(katexPlugin)
+md.use(unwrapDefaultExport(katexPluginImport))
 
 let mermaidReady = false
 function ensureMermaid() {
@@ -65,6 +91,149 @@ const container = ref<HTMLElement | null>(null)
 const rendered = computed(() => md.render(props.content || ''))
 let mermaidSeq = 0
 
+const ZOOM_MIN = 0.75
+const ZOOM_MAX = 2.5
+const ZOOM_STEP = 0.25
+
+function clampZoom(value: number) {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100))
+}
+
+function readSvgSize(svg: SVGSVGElement) {
+  const viewBox = svg.viewBox?.baseVal
+  const width = Number(svg.getAttribute('width')) || viewBox?.width || svg.clientWidth || 640
+  const height = Number(svg.getAttribute('height')) || viewBox?.height || svg.clientHeight || 360
+  return {
+    width: Math.max(1, width),
+    height: Math.max(1, height),
+  }
+}
+
+/** 将 Mermaid SVG 栅格化为 PNG，供剪贴板复制。 */
+function svgToPngBlob(svg: SVGSVGElement): Promise<Blob> {
+  const { width, height } = readSvgSize(svg)
+  const clone = svg.cloneNode(true) as SVGSVGElement
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+  if (!clone.getAttribute('width')) clone.setAttribute('width', String(width))
+  if (!clone.getAttribute('height')) clone.setAttribute('height', String(height))
+  const xml = new XMLSerializer().serializeToString(clone)
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`
+  const pixelRatio = Math.min(2, window.devicePixelRatio || 1)
+
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.ceil(width * pixelRatio)
+      canvas.height = Math.ceil(height * pixelRatio)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('canvas_unavailable'))
+        return
+      }
+      ctx.fillStyle = '#04141e'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+      ctx.drawImage(img, 0, 0, width, height)
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('png_encode_failed'))),
+        'image/png',
+      )
+    }
+    img.onerror = () => reject(new Error('svg_rasterize_failed'))
+    img.src = url
+  })
+}
+
+/** 按钮整体缩放 + 复制图片（不用滚轮）。 */
+function attachMermaidControls(root: HTMLElement) {
+  const viewport = root.querySelector<HTMLElement>('.mermaid-viewport')
+  const canvas = root.querySelector<HTMLElement>('.mermaid-canvas')
+  const label = root.querySelector<HTMLElement>('[data-zoom-label]')
+  const btnIn = root.querySelector<HTMLButtonElement>('[data-zoom-in]')
+  const btnOut = root.querySelector<HTMLButtonElement>('[data-zoom-out]')
+  const btnReset = root.querySelector<HTMLButtonElement>('[data-zoom-reset]')
+  const btnCopy = root.querySelector<HTMLButtonElement>('[data-copy-image]')
+  if (!viewport || !canvas) return
+
+  let scale = 1
+  const base = { width: 0, height: 0 }
+
+  const measureBase = () => {
+    const svg = canvas.querySelector('svg')
+    if (!svg) return
+    // 先清缩放再量原始尺寸，避免叠加误差
+    canvas.style.zoom = ''
+    canvas.style.transform = ''
+    canvas.style.width = ''
+    canvas.style.height = ''
+    const size = readSvgSize(svg)
+    base.width = size.width
+    base.height = size.height
+  }
+
+  const apply = () => {
+    // CSS zoom：整图等比放大，布局占位同步变大，视口内滚动查看
+    const style = canvas.style as CSSStyleDeclaration & { zoom?: string }
+    if ('zoom' in style || 'zoom' in document.documentElement.style) {
+      style.zoom = String(scale)
+      canvas.style.transform = ''
+      canvas.style.width = ''
+      canvas.style.height = ''
+    } else {
+      canvas.style.removeProperty('zoom')
+      canvas.style.transformOrigin = 'top left'
+      canvas.style.transform = `scale(${scale})`
+      if (base.width && base.height) {
+        canvas.style.width = `${base.width * scale}px`
+        canvas.style.height = `${base.height * scale}px`
+      }
+    }
+    if (label) label.textContent = `${Math.round(scale * 100)}%`
+    root.dataset.zoomed = scale === 1 ? '0' : '1'
+  }
+
+  const setScale = (next: number) => {
+    scale = clampZoom(next)
+    apply()
+  }
+
+  measureBase()
+  btnIn?.addEventListener('click', () => setScale(scale + ZOOM_STEP))
+  btnOut?.addEventListener('click', () => setScale(scale - ZOOM_STEP))
+  btnReset?.addEventListener('click', () => setScale(1))
+
+  btnCopy?.addEventListener('click', async () => {
+    const svg = canvas.querySelector('svg')
+    if (!svg || !btnCopy) return
+    const original = btnCopy.textContent
+    btnCopy.disabled = true
+    try {
+      const blob = await svgToPngBlob(svg)
+      if (navigator.clipboard && 'ClipboardItem' in window) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      } else {
+        // 不支持剪贴板图片时降级为下载
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = '知识图.png'
+        link.click()
+        URL.revokeObjectURL(link.href)
+      }
+      btnCopy.textContent = '已复制'
+    } catch {
+      btnCopy.textContent = '复制失败'
+    } finally {
+      window.setTimeout(() => {
+        btnCopy.textContent = original
+        btnCopy.disabled = false
+      }, 1600)
+    }
+  })
+
+  apply()
+}
+
 async function renderMermaidBlocks() {
   if (props.streaming || !container.value) return
   const blocks = container.value.querySelectorAll<HTMLElement>('[data-mermaid]')
@@ -77,8 +246,25 @@ async function renderMermaidBlocks() {
       const { svg } = await mermaid.render(`md-mermaid-${Date.now()}-${mermaidSeq++}`, source)
       const wrapper = document.createElement('div')
       wrapper.className = 'mermaid-diagram'
-      wrapper.innerHTML = svg
+      wrapper.setAttribute('role', 'group')
+      wrapper.setAttribute('aria-label', '知识图，可整体缩放')
+      wrapper.innerHTML = `
+        <div class="mermaid-toolbar">
+          <span class="mermaid-toolbar__hint">使用按钮整体放大缩小</span>
+          <div class="mermaid-toolbar__actions">
+            <button type="button" class="mermaid-zoom-btn" data-zoom-out aria-label="缩小">−</button>
+            <span class="mermaid-zoom-label" data-zoom-label>100%</span>
+            <button type="button" class="mermaid-zoom-btn" data-zoom-in aria-label="放大">+</button>
+            <button type="button" class="mermaid-zoom-btn mermaid-zoom-btn--text" data-zoom-reset>重置</button>
+            <button type="button" class="mermaid-zoom-btn mermaid-zoom-btn--text" data-copy-image>复制图片</button>
+          </div>
+        </div>
+        <div class="mermaid-viewport" tabindex="0">
+          <div class="mermaid-canvas">${svg}</div>
+        </div>
+      `
       block.replaceWith(wrapper)
+      attachMermaidControls(wrapper)
     } catch {
       // 图源语法错误时保留源码展示，不阻塞其余内容。
       block.classList.add('mermaid-source--failed')
@@ -202,16 +388,87 @@ watch(
 
 .markdown-body :deep(.mermaid-diagram) {
   margin: 0.6em 0;
-  padding: 0.75em;
+  padding: 0.55em 0.65em 0.65em;
   border-radius: 10px;
   background: rgba(4, 20, 30, 0.72);
   border: 1px solid rgba(110, 228, 255, 0.14);
-  overflow-x: auto;
+  overflow: hidden;
+}
+
+.markdown-body :deep(.mermaid-toolbar) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.markdown-body :deep(.mermaid-toolbar__hint) {
+  font-size: 0.75rem;
+  color: rgba(180, 220, 235, 0.62);
+}
+
+.markdown-body :deep(.mermaid-toolbar__actions) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.markdown-body :deep(.mermaid-zoom-btn) {
+  min-width: 1.85rem;
+  height: 1.85rem;
+  padding: 0 0.4rem;
+  border-radius: 6px;
+  border: 1px solid rgba(110, 228, 255, 0.28);
+  background: rgba(8, 36, 48, 0.9);
+  color: #d9f6ff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.markdown-body :deep(.mermaid-zoom-btn:hover) {
+  border-color: rgba(37, 245, 238, 0.55);
+  background: rgba(14, 56, 72, 0.95);
+}
+
+.markdown-body :deep(.mermaid-zoom-btn--text) {
+  font-size: 0.78rem;
+  min-width: auto;
+  padding: 0 0.55rem;
+}
+
+.markdown-body :deep(.mermaid-zoom-label) {
+  min-width: 2.6rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: rgba(210, 240, 250, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-body :deep(.mermaid-viewport) {
+  position: relative;
+  max-height: min(70vh, 560px);
+  min-height: 180px;
+  overflow: auto;
+  border-radius: 8px;
+  background: rgba(2, 12, 20, 0.45);
+  outline: none;
+}
+
+.markdown-body :deep(.mermaid-canvas) {
+  display: inline-block;
+  min-width: 100%;
+  transform-origin: top left;
 }
 
 .markdown-body :deep(.mermaid-diagram svg) {
-  max-width: 100%;
+  max-width: none;
+  width: auto;
   height: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 .markdown-body :deep(.mermaid-source) {

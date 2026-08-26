@@ -2,7 +2,7 @@
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, useMessage } from 'naive-ui'
-import { fetchLearningPath, type LearningDomain, type LearningPathOrderedNode, type NextBestAction, type RemediationPath } from '../api/studentProgress'
+import { fetchLearningPath, fetchLearningPathAdvice, type LearningDomain, type LearningPathOrderedNode, type NextBestAction, type RemediationPath } from '../api/studentProgress'
 import { planLearningPath } from '../api/agentService'
 import { getPythonTrialQuestion, type PythonTrialQuestion } from '../data/pythonTrialQuestions'
 import {
@@ -55,13 +55,17 @@ type Domain = {
   locked?: boolean
 }
 
+/** 兜底星域与知识点取第一个，跟着 registry 走，避免写死已下线的 id */
+const DEFAULT_DOMAIN_KEY = STAR_PATH_DOMAINS[0]?.key ?? ''
+const DEFAULT_NODE_ID = STAR_PATH_DOMAINS[0]?.knowledgePoints[0]?.id ?? ''
+
 const loading = ref(true)
 const errorMessage = ref('')
 const domains = ref<Domain[]>([])
 const activeTabKey = ref<string>(STAR_PATH_TAB_ALL)
-const activeDomainKey = ref('data-vars')
+const activeDomainKey = ref(DEFAULT_DOMAIN_KEY)
 const selectedKnowledgeId = ref<string | null>(null)
-const selectedNodeId = ref('stage1-intro')
+const selectedNodeId = ref(DEFAULT_NODE_ID)
 const activeQuestionSlot = ref(0)
 const orderedNodes = ref<LearningPathOrderedNode[]>([])
 const activePathNodeId = ref<string | null>(null)
@@ -70,6 +74,9 @@ const remediationPaths = ref<RemediationPath[]>([])
 const pathAgentTrace = ref<{ backend?: string; steps?: Array<{ agentId: string; name: string; latencyMs: number; summary: string }> } | null>(null)
 const graphBackend = ref<string | undefined>()
 const pathPanelLoading = ref(false)
+const pathAdvice = ref<string | null>(null)
+const pathAdviceLoading = ref(false)
+const pathAdviceBackend = ref<string | null>(null)
 const pageSearch = ref('')
 const questionSearchHits = ref<PythonTrialQuestion[]>([])
 const questionSearchLoading = ref(false)
@@ -442,7 +449,7 @@ function selectTab(tabKey: string) {
   if (tabKey === STAR_PATH_TAB_ALL) {
     const first = STAR_PATH_DOMAINS[0]?.knowledgePoints[0]
     selectedKnowledgeId.value = first?.id ?? null
-    selectedNodeId.value = first?.id ?? 'stage1-intro'
+    selectedNodeId.value = first?.id ?? DEFAULT_NODE_ID
     void router.replace({ path: '/student/star-path', query: {} })
     return
   }
@@ -450,7 +457,7 @@ function selectTab(tabKey: string) {
   const points = getKnowledgePointsForDomain(tabKey)
   const firstKp = points[0]
   selectedKnowledgeId.value = firstKp?.id ?? null
-  selectedNodeId.value = firstKp?.id ?? 'stage1-intro'
+  selectedNodeId.value = firstKp?.id ?? DEFAULT_NODE_ID
   void router.replace({
     path: '/student/star-path',
     query: { domain: tabKey, kp: firstKp?.id ?? undefined },
@@ -487,6 +494,7 @@ function openSearchHit(question: PythonTrialQuestion) {
 
 async function refreshPathPlan(focusNode?: string | null) {
   pathPanelLoading.value = true
+  pathAdviceLoading.value = true
   try {
     const plan = await planLearningPath({
       focus_node_id: focusNode ?? activePathNodeId.value ?? undefined,
@@ -501,6 +509,16 @@ async function refreshPathPlan(focusNode?: string | null) {
     /* 保留 learning-path GET 已返回的数据 */
   } finally {
     pathPanelLoading.value = false
+  }
+  try {
+    const advice = await fetchLearningPathAdvice(focusNode ?? activePathNodeId.value ?? undefined)
+    pathAdvice.value = advice.advice
+    pathAdviceBackend.value = advice.backend
+  } catch {
+    pathAdvice.value = nextBestAction.value?.reason ?? null
+    pathAdviceBackend.value = 'local_rules'
+  } finally {
+    pathAdviceLoading.value = false
   }
 }
 
@@ -550,13 +568,13 @@ function applyRouteQuery() {
       const points = getKnowledgePointsForDomain(domain)
       const first = points[0]
       selectedKnowledgeId.value = first?.id ?? null
-      selectedNodeId.value = first?.id ?? 'stage1-intro'
+      selectedNodeId.value = first?.id ?? DEFAULT_NODE_ID
     }
   } else {
     activeTabKey.value = STAR_PATH_TAB_ALL
     const first = STAR_PATH_DOMAINS[0]?.knowledgePoints[0]
     selectedKnowledgeId.value = first?.id ?? null
-    selectedNodeId.value = first?.id ?? 'stage1-intro'
+    selectedNodeId.value = first?.id ?? DEFAULT_NODE_ID
   }
 
 }
@@ -765,6 +783,9 @@ onActivated(() => {
             :agent-trace="pathAgentTrace"
             :graph-backend="graphBackend"
             :loading="pathPanelLoading"
+            :ai-advice="pathAdvice"
+            :ai-advice-loading="pathAdviceLoading"
+            :ai-advice-backend="pathAdviceBackend"
             @select-node="onPathNodeSelect"
             @action="onPathAction"
           />

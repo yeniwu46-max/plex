@@ -19,7 +19,7 @@ const props = defineProps<{
   domainKey?: string
 }>()
 
-const layoutKey = computed(() => props.domainKey ?? 'data-vars')
+const layoutKey = computed(() => props.domainKey ?? 'all')
 const viewportRef = ref<HTMLElement | null>(null)
 /** 切换节点时递增，强制选中框/脉冲动效重新播放 */
 const selectionAnimKey = ref(0)
@@ -52,9 +52,7 @@ const emit = defineEmits<{
 
 type LineStatus = 'done' | 'active' | 'locked'
 
-const nodePositions = computed(() =>
-  computeDagreLayout(props.nodes, layoutKey.value),
-)
+const nodePositions = computed(() => computeDagreLayout(props.nodes))
 
 const connectionPaths = computed(() => {
   const nodes = props.nodes

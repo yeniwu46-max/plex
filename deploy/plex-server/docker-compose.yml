@@ -1,0 +1,25 @@
+services:
+  plex-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: plex-a3-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      FLASK_ENV: production
+      FLASK_DEBUG: "0"
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: "5100"
+    ports:
+      - "127.0.0.1:5100:5100"
+    volumes:
+      - ./backend/instance:/app/backend/instance
+      - ./backend/media:/app/backend/media
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5100/api/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s

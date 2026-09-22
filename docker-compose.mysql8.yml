@@ -1,0 +1,23 @@
+services:
+  mysql8:
+    image: mysql:8.0
+    container_name: plex-mysql8
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: ${PLEX_MYSQL_DATABASE:-plex_learning}
+      MYSQL_USER: ${PLEX_MYSQL_USER:-plex}
+      MYSQL_PASSWORD: ${PLEX_MYSQL_PASSWORD:?set PLEX_MYSQL_PASSWORD before starting}
+      MYSQL_ROOT_PASSWORD: ${PLEX_MYSQL_ROOT_PASSWORD:?set PLEX_MYSQL_ROOT_PASSWORD before starting}
+    ports:
+      - "${PLEX_MYSQL_PORT:-3307}:3306"
+    volumes:
+      - plex_mysql8_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  plex_mysql8_data:

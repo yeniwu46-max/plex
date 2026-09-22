@@ -1,0 +1,17 @@
+[Unit]
+Description=PLEX A3 Flask backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/plex-a3/backend
+Environment=FLASK_ENV=production
+Environment=FLASK_DEBUG=0
+Environment=SERVER_PORT=5100
+ExecStart=/opt/plex-a3/venv/bin/gunicorn -w 1 -k gthread --threads 4 --timeout 120 --bind 127.0.0.1:5100 run:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

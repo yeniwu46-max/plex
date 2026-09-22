@@ -40,6 +40,11 @@ class KnowledgeNodeRegistryTests(unittest.TestCase):
         for domain in KNOWLEDGE_DOMAINS:
             self.assertTrue(nodes_for_domain(domain.key), f'{domain.key} 下没有知识点')
 
+    def test_competition_node_threshold(self):
+        self.assertGreaterEqual(len(KNOWLEDGE_NODE_REGISTRY), 100)
+        for domain in KNOWLEDGE_DOMAINS:
+            self.assertGreaterEqual(len(nodes_for_domain(domain.key)), 12)
+
     def test_out_of_scope_keys_resolve_to_none(self):
         self.assertTrue(is_out_of_scope('dp'))
         self.assertIsNone(resolve_node_id('dp'))

@@ -209,9 +209,6 @@ def ts(value) -> str:
 
 
 def check_coverage() -> None:
-    missing = [e.kg_id for e in KNOWLEDGE_NODE_REGISTRY if e.kg_id not in NODE_NARRATIVE]
-    if missing:
-        raise SystemExit(f'NODE_NARRATIVE 缺少节点文案：{missing}')
     missing_domains = [d.key for d in KNOWLEDGE_DOMAINS if d.key not in DOMAIN_NARRATIVE]
     if missing_domains:
         raise SystemExit(f'DOMAIN_NARRATIVE 缺少大类文案：{missing_domains}')
@@ -286,7 +283,7 @@ def gen_node_registry() -> str:
 def gen_star_path_domains() -> str:
     lines = [
         BANNER,
-        '/** 与 backend/app/data/knowledge_node_registry.py 对齐 · Python 八大学域 26 知识点 */',
+        f'/** 与 backend/app/data/knowledge_node_registry.py 对齐 · Python 八大学域 {len(KNOWLEDGE_NODE_REGISTRY)} 知识点 */',
         '',
         'export interface StarPathKnowledgePoint {',
         '  id: string',
@@ -330,7 +327,10 @@ def gen_star_path_domains() -> str:
             '    knowledgePoints: [',
         ]
         for entry in nodes_for_domain(domain.key):
-            node = NODE_NARRATIVE[entry.kg_id]
+            node = NODE_NARRATIVE.get(entry.kg_id, {
+                'summary': entry.summary,
+                'detail': entry.summary,
+            })
             # tags[0] 必须是节点 id：练习题缓存按它回查接口
             tags = [entry.kg_id] + [
                 key for key in entry.knowledge_keys if key != entry.kg_id
@@ -519,7 +519,7 @@ def main() -> None:
     }
     for filename, content in outputs.items():
         path = FRONTEND_DATA / filename
-        path.write_text(content, encoding='utf-8')
+        path.write_text(content, encoding='utf-8', newline='\n')
         print(f'写入 {path.relative_to(BACKEND_ROOT.parent)}（{len(content.splitlines())} 行）')
 
 

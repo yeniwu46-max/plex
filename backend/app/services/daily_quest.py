@@ -50,6 +50,16 @@ DEFAULT_DAILY_QUESTS = [
         'reward_xp': 25,
         'sort_order': 40,
     },
+    {
+        'key': 'spaced-review',
+        'period': '全天',
+        'time': '随时',
+        'title': '间隔复习',
+        'description': '完成 1 次到期错题复习，巩固知识图谱掌握度',
+        'total': 1,
+        'reward_xp': 30,
+        'sort_order': 50,
+    },
 ]
 
 
@@ -69,12 +79,14 @@ class DailyQuestService(BaseService):
     def get_today(user_id):
         today = date.today()
         records = DailyQuestService._ensure_today_records(user_id, today)
+        DailyQuestService._sync_review_quest(user_id, today, records)
         return DailyQuestService._build_today_payload(user_id, today, records)
 
     @staticmethod
     def advance_progress(user_id, quest_key):
         today = date.today()
         records = DailyQuestService._ensure_today_records(user_id, today)
+        DailyQuestService._sync_review_quest(user_id, today, records)
         record = next((item for item in records if item.quest and item.quest.key == quest_key), None)
         if not record:
             raise Exception('今日委托不存在或未启用')
@@ -102,6 +114,7 @@ class DailyQuestService(BaseService):
             db.session.commit()
 
         refreshed = DailyQuestService._ensure_today_records(user_id, today)
+        DailyQuestService._sync_review_quest(user_id, today, refreshed)
         payload = DailyQuestService._build_today_payload(user_id, today, refreshed)
         payload['incentive'] = incentive_feedback
         return payload
@@ -110,6 +123,7 @@ class DailyQuestService(BaseService):
     def claim_bonus(user_id):
         today = date.today()
         records = DailyQuestService._ensure_today_records(user_id, today)
+        DailyQuestService._sync_review_quest(user_id, today, records)
         payload = DailyQuestService._build_today_payload(user_id, today, records)
         if not payload['all_completed']:
             raise Exception('今日委托尚未全部完成')
@@ -122,6 +136,7 @@ class DailyQuestService(BaseService):
             )
             db.session.commit()
         refreshed = DailyQuestService._ensure_today_records(user_id, today)
+        DailyQuestService._sync_review_quest(user_id, today, refreshed)
         result = DailyQuestService._build_today_payload(user_id, today, refreshed)
         if incentive_feedback:
             result['incentive'] = incentive_feedback
@@ -172,6 +187,7 @@ class DailyQuestService(BaseService):
             'bonus_claimed': bonus_claimed,
             'all_completed': bool(records) and completed_count == len(records),
         }
+        payload['review_queue'] = DailyQuestService._review_queue_summary(user_id)
         try:
             from app.services.assignment import AssignmentService
 
@@ -179,6 +195,45 @@ class DailyQuestService(BaseService):
         except Exception:
             payload['teacher_assignments'] = {'pending_count': 0, 'total_count': 0, 'items': []}
         return payload
+
+    @staticmethod
+    def _review_queue_summary(user_id):
+        """Expose a small, read-only SM-2 summary for the student quest board."""
+        from .mistake import MistakeService
+
+        due = MistakeService.list_due_reviews(user_id)
+        from app.models import StudentMistake
+
+        today = utc_now().date().isoformat()
+        reviewed_today = 0
+        rows = StudentMistake.query.filter_by(user_id=user_id).all()
+        for row in rows:
+            schedule = ((row.meta or {}).get('review_schedule') or {}) if isinstance(row.meta, dict) else {}
+            reviewed_at = schedule.get('last_reviewed_at')
+            if isinstance(reviewed_at, str) and reviewed_at[:10] == today:
+                reviewed_today += 1
+        return {'due_count': due['total'], 'reviewed_today': reviewed_today}
+
+    @staticmethod
+    def _sync_review_quest(user_id, target_date, records):
+        """Complete the review quest once a student has submitted an SM-2 review today."""
+        review_record = next((item for item in records if item.quest and item.quest.key == 'spaced-review'), None)
+        if not review_record or review_record.completed_at:
+            return
+        summary = DailyQuestService._review_queue_summary(user_id)
+        if summary['reviewed_today'] < 1:
+            return
+        review_record.current = review_record.quest.total
+        review_record.completed_at = utc_now()
+        if not review_record.reward_claimed_at:
+            DailyQuestService._add_points(
+                user_id=user_id,
+                points=review_record.quest.reward_xp,
+                reason='daily_quest:spaced-review',
+                related_id=review_record.quest.id,
+            )
+            review_record.reward_claimed_at = utc_now()
+        db.session.commit()
 
     @staticmethod
     def _add_points(user_id, points, reason, related_id=None):

@@ -1,0 +1,16 @@
+{
+  "benchmark": "plex-mysql8-clean-environment",
+  "run_at_utc": "2026-08-28T11:42:14+00:00",
+  "database_url_present": false,
+  "database_url": "",
+  "backend": null,
+  "version": null,
+  "version_comment": null,
+  "table_count": 0,
+  "checks": {
+    "configured": false,
+    "mysql_8": false,
+    "connectivity": false
+  },
+  "passed": false
+}

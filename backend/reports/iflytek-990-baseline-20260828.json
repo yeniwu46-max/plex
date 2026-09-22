@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-08-28",
+  "deadline": "2026-10-01",
+  "counts": {
+    "profile_dimensions": 8,
+    "knowledge_domains": 8,
+    "knowledge_graph_nodes": 26,
+    "knowledge_graph_edges": 35,
+    "grading_agents": 8,
+    "learning_agents": 9,
+    "declared_resource_types": 6
+  },
+  "hard_thresholds": {
+    "knowledge_graph_nodes": {"required": 100, "actual": 26, "passed": false},
+    "knowledge_graph_edges": {"required": 200, "actual": 35, "passed": false},
+    "profile_dimensions": {"required": 6, "actual": 8, "passed": true},
+    "professional_agents": {"required": 4, "actual_registered_learning_agents": 9, "passed_registration_only": true},
+    "resource_types": {"required": 5, "actual_declared": 6, "passed_declaration_only": true},
+    "intent_routing_accuracy_percent": {"required": 90, "actual": null, "passed": false},
+    "hallucination_rate_percent": {"maximum": 5, "actual": null, "passed": false},
+    "first_token_latency_seconds": {"maximum": 1.5, "actual": null, "passed": false},
+    "real_course_count": {"required": 1, "actual": null, "passed": false},
+    "student_uses": {"required": 100, "actual": null, "passed": false}
+  },
+  "sm2": {
+    "implemented": true,
+    "api_due_reviews": "/api/v1/student/mistakes/reviews/due",
+    "api_submit_review": "/api/v1/student/mistakes/{mistake_id}/review",
+    "independent_tests_passed": 7,
+    "full_exam_mistake_review_kg_path_loop_verified": false
+  },
+  "test_evidence": {
+    "mistake_and_sm2": {"passed": 7, "duration_seconds": 5.98},
+    "profile_and_knowledge_graph": {"passed": 17, "duration_seconds": 101.60},
+    "agent_rag_learning_cycle_resources": {"passed": 24, "duration_seconds": 26.05},
+    "total_passed": 48
+  }
+}

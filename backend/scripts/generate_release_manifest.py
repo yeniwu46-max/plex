@@ -27,9 +27,21 @@ EXCLUDED_PARTS = {
     "dist",
     "instance",
     "uploads",
+    # 非候选源码/历史归档目录；其中包含数据库转储、运行时二进制和旧版演示素材。
+    "_incoming_data",
+    "outputs",
+    "runtime",
+    "SoftwareCopyright-Skill",
+    "PLEX-A3-supporting-documents-20260720",
+    "demo",
+    "runtime-samples",
+    "output",
 }
 EXCLUDED_PREFIXES = (".venv",)
 EXCLUDED_SUFFIXES = {".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", ".log"}
+# 原始 SQL 转储不属于可运行参赛包，且常超过 25 MB；课程 RAG 文档已提供可审计知识源。
+EXCLUDED_SUFFIXES.add(".sql")
+EXCLUDED_SUFFIXES.add(".pyd")
 SECRET_NAMES = {".env", ".env.local", ".env.production", "credentials.json"}
 POST_MANIFEST_REPORTS = {"release-manifest.json", "release-readiness.json"}
 MAX_FILE_BYTES = 25 * 1024 * 1024

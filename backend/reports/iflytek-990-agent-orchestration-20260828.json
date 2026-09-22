@@ -1,0 +1,19 @@
+{
+  "benchmark": "multi-agent-orchestration-contract",
+  "learning_registered_count": 9,
+  "grading_registered_count": 8,
+  "professional_agent_requirement_passed": true,
+  "registered_agent_status_count": 7,
+  "trace_step_count": 5,
+  "trace_contract_passed": true,
+  "runtime_health": {
+    "avg_latency_ms": 0.1,
+    "success_rate": 100.0,
+    "error_count": 0,
+    "registered_count": 7
+  },
+  "backend": "mock",
+  "degraded_mode_explicit": true,
+  "note": "该报告验证编排契约和本地降级链；真实模型后端仍需凭证专项测评。",
+  "status": "passed"
+}

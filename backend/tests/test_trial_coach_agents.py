@@ -96,6 +96,14 @@ class TrialCoachAgentsTestCase(unittest.TestCase):
         self.assertEqual(data['agentId'], 'trial_custom_coach')
         self.assertTrue(data['response'])
 
+    def test_natural_language_question_can_infer_intent(self):
+        payload = {**self._payload('custom')}
+        payload.pop('intent', None)
+        payload['userQuestion'] = '请帮我优化这段代码的时间复杂度'
+        resp = self.client.post('/api/v1/agents/trial-coach', json=payload, headers=self.auth())
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get_json()['data']['intent'], 'optimization')
+
 
 if __name__ == '__main__':
     unittest.main()

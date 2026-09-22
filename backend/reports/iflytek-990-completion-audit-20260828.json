@@ -1,0 +1,154 @@
+{
+  "benchmark": "iflytek-990-requirement-level-audit",
+  "run_at_utc": "2026-08-29T05:15:09+00:00",
+  "local_passed": true,
+  "submission_ready": false,
+  "verified_local_count": 12,
+  "blocked_external": [
+    "spark_live",
+    "voice",
+    "experiment",
+    "mysql8",
+    "mp4"
+  ],
+  "missing": [],
+  "checks": [
+    {
+      "key": "profile",
+      "label": "动态多维画像本地评测",
+      "evidence": "reports/iflytek-990-profile-extraction-20260828.json",
+      "status": "verified_local",
+      "passed": true,
+      "note": "真实学生画像仍待外部"
+    },
+    {
+      "key": "graph",
+      "label": "知识图谱节点与关系",
+      "evidence": "reports/iflytek-990-kg-validation-20260828.json",
+      "status": "verified_local",
+      "passed": true,
+      "note": ""
+    },
+    {
+      "key": "agents",
+      "label": "多智能体编排契约",
+      "evidence": "reports/iflytek-990-agent-orchestration-20260828.json",
+      "status": "verified_local",
+      "passed": true,
+      "note": "真实星火后端仍待外部"
+    },
+    {
+      "key": "intent",
+      "label": "自然语言意图路由",
+      "evidence": "reports/iflytek-990-intent-dispatch-20260828.json",
+      "status": "verified_local",
+      "passed": true,
+      "note": "真实学生语料仍待外部"
+    },
+    {
+      "key": "grounding",
+      "label": "RAG/图谱本地幻觉防线",
+      "evidence": "reports/iflytek-990-hallucination-local-20260828.json",
+      "status": "verified_local",
+      "passed": true,
+      "note": ""
+    },
+    {
+      "key": "resources",
+      "label": "不少于五类个性化资源",
+      "evidence": "app/services/personalized_resource.py",
+      "status": "verified_local",
+      "passed": true,
+      "note": ""
+    },
+    {
+      "key": "replanning",
+      "label": "错题复习触发路径重规划",
+      "evidence": "reports/iflytek-990-path-replanning-20260828.json",
+      "status": "verified_local",
+      "passed": true,
+      "note": ""
+    },
+    {
+      "key": "sm2",
+      "label": "SM-2 错题复习调度",
+      "evidence": "app/services/mistake.py",
+      "status": "verified_local",
+      "passed": true,
+      "note": ""
+    },
+    {
+      "key": "demo",
+      "label": "本地全流程彩排",
+      "evidence": "reports/iflytek-990-demo-rehearsal-20260828.json",
+      "status": "verified_local",
+      "passed": true,
+      "note": ""
+    },
+    {
+      "key": "risk",
+      "label": "风险解释契约",
+      "evidence": "reports/iflytek-990-risk-explainability-20260828.json",
+      "status": "verified_local",
+      "passed": true,
+      "note": "确定性贡献不冒充 SHAP"
+    },
+    {
+      "key": "teacher_dashboard",
+      "label": "教师风险看板与干预完成率",
+      "evidence": "frontend/src/views/TeacherHomeView.vue",
+      "status": "verified_local",
+      "passed": true,
+      "note": "浏览器录屏仍待外部"
+    },
+    {
+      "key": "spark_live",
+      "label": "真实讯飞 Spark 100 条调用",
+      "evidence": "reports/iflytek-990-live-20260828.json",
+      "status": "blocked_external",
+      "passed": false,
+      "note": "当前 not_configured"
+    },
+    {
+      "key": "voice",
+      "label": "完整 ASR/LLM/TTS/数字人 30 轮",
+      "evidence": "reports/iflytek-990-voice-20260828.json",
+      "status": "blocked_external",
+      "passed": false,
+      "note": "当前仅本地 TTS 部分"
+    },
+    {
+      "key": "experiment",
+      "label": "真实教学实验 ≥100 人次",
+      "evidence": "reports/iflytek-990-experiment-20260828.json",
+      "status": "blocked_external",
+      "passed": false,
+      "note": "当前 0 人次"
+    },
+    {
+      "key": "mysql8",
+      "label": "MySQL 8 干净环境",
+      "evidence": "reports/a3-next-stage/clean-environment.json",
+      "status": "blocked_external",
+      "passed": false,
+      "note": "需报告中明确 mysql_8=true"
+    },
+    {
+      "key": "pptx",
+      "label": "路演 PPTX",
+      "evidence": "docs/submission/artifacts/PLEX-iflytek-990-defense.pptx",
+      "status": "verified_local",
+      "passed": true,
+      "note": ""
+    },
+    {
+      "key": "mp4",
+      "label": "演示 MP4",
+      "evidence": "docs/submission/artifacts/PLEX-A3-demo.mp4",
+      "status": "blocked_external",
+      "passed": false,
+      "note": "当前文件不存在"
+    }
+  ],
+  "policy": "external requirements require external evidence; local/mock reports never close them"
+}

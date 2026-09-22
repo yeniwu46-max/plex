@@ -1,0 +1,11 @@
+{
+  "benchmark": "local-rag-grounding-and-hallucination-guard",
+  "sample_count": 100,
+  "clean_hallucination_rate": 0.0,
+  "clean_failures": [],
+  "negative_control_count": 10,
+  "negative_control_detection_rate": 1.0,
+  "backend": "local_rules",
+  "remote_model_hallucination_verified": false,
+  "note": "本地 RAG/图谱约束基准；不能替代真实讯飞输出的幻觉率测评。"
+}

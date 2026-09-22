@@ -14,6 +14,10 @@ class LearningAdaptationService:
             'action': 'visual_micro_practice', 'difficulty': 'lower', 'knowledge_key': key,
             'resources': ['visual_execution', 'micro_practice'], 'micro_practice_count': 3,
             'recovery_rule': '完成 3 道补救练习且至少答对 2 道后恢复常规难度',
+            'ticket': {
+                'status': 'open', 'priority': 'high', 'owner_role': 'teacher',
+                'sla_hours': 48, 'due_at': (utc_now()).isoformat(),
+            },
         }
 
     @classmethod
@@ -62,4 +66,32 @@ class LearningAdaptationService:
     @staticmethod
     def teacher_summary(user_id: int) -> dict:
         active = LearningAdaptationService.active_for_student(user_id)
-        return {'active_interventions': active, 'risk_level': 'needs_support' if active else 'stable'}
+        tickets = []
+        for item in active:
+            ticket = (item.get('action_plan') or {}).get('ticket') or {}
+            tickets.append({
+                'adaptation_id': item.get('id'), 'student_id': user_id,
+                'knowledge_key': item.get('knowledge_key'), 'status': ticket.get('status', 'open'),
+                'priority': ticket.get('priority', 'medium'), 'owner_role': ticket.get('owner_role', 'teacher'),
+                'sla_hours': ticket.get('sla_hours', 48), 'trigger_evidence': item.get('trigger_evidence') or {},
+                'action_plan': item.get('action_plan') or {},
+            })
+        return {'active_interventions': active, 'tickets': tickets, 'risk_level': 'needs_support' if active else 'stable'}
+
+    @staticmethod
+    def update_ticket(user_id: int, adaptation_id: int, status: str, note: str = '') -> dict:
+        if status not in {'open', 'in_progress', 'resolved'}:
+            raise ValueError('工单状态无效')
+        row = LearningAdaptation.query.filter_by(id=adaptation_id, user_id=user_id).first()
+        if not row:
+            raise ValueError('干预工单不存在')
+        plan = dict(row.action_plan or {})
+        ticket = dict(plan.get('ticket') or {})
+        ticket.update({'status': status, 'last_note': note[:500], 'updated_at': utc_now().isoformat()})
+        plan['ticket'] = ticket
+        row.action_plan = plan
+        if status == 'resolved':
+            row.status = 'recovered'
+            row.resolved_at = utc_now()
+        db.session.commit()
+        return row.to_dict()

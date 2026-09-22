@@ -32,6 +32,12 @@ class ResourceGenerationTask(BaseModel):
     audit_report = db.Column(db.JSON)
 
     def to_dict(self, resources=None):
+        retry_count = ResourceGenerationTask.query.filter_by(retry_of=self.task_id).count()
+        dependency_graph = [
+            {'agent': step.get('agent'), 'depends_on': step.get('depends_on')}
+            for step in (self.steps or [])
+            if isinstance(step, dict)
+        ]
         return {
             'task_id': self.task_id,
             'status': self.status,
@@ -43,6 +49,8 @@ class ResourceGenerationTask(BaseModel):
             'backend': self.backend,
             'fallback_reason': self.fallback_reason,
             'retry_of': self.retry_of,
+            'retry_count': retry_count,
+            'dependency_graph': dependency_graph,
             'profile_version': self.profile_version or 0,
             'request_fingerprint': self.request_fingerprint,
             'recoverable': bool(self.recoverable),

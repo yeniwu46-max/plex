@@ -178,6 +178,8 @@ class StabilityTestCase(unittest.TestCase):
         ).get_json()['data']
         self.assertEqual(first['task_id'], second['task_id'])
         self.assertEqual(first['profile_version'], second['profile_version'])
+        self.assertIn('dependency_graph', first)
+        self.assertIn('retry_count', first)
         with self.app.app_context():
             PersonalizedResourceService.run_task(self.app, first['task_id'])
             self.assertEqual(ResourceGenerationTask.query.count(), 1)
@@ -213,6 +215,7 @@ class StabilityTestCase(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.get_json()['data']['retry_of'], 'rg_stale')
+        self.assertEqual(response.get_json()['data']['retry_count'], 0)
 
     def test_invalid_resource_risks(self):
         risks = PersonalizedResourceService._risk_reasons({

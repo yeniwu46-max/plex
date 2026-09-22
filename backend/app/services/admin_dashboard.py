@@ -381,7 +381,7 @@ class AdminDashboardService:
 
     @staticmethod
     def list_class_students(class_id: int):
-        cls = Class.query.get(class_id)
+        cls = db.session.get(Class, class_id)
         if not cls:
             return None
         student_role = Role.query.filter_by(name='student').first()
@@ -389,7 +389,7 @@ class AdminDashboardService:
         if student_role:
             query = query.filter_by(role_id=student_role.id)
         students = query.order_by(User.id.asc()).all()
-        teacher = User.query.get(cls.teacher_id) if cls.teacher_id else None
+        teacher = db.session.get(User, cls.teacher_id) if cls.teacher_id else None
         return {
             'class_id': class_id,
             'class_name': cls.name or f'班级{class_id}',
@@ -419,7 +419,7 @@ class AdminDashboardService:
 
     @staticmethod
     def list_class_trial_stats(class_id: int):
-        cls = Class.query.get(class_id)
+        cls = db.session.get(Class, class_id)
         if not cls:
             return None
         trials = Trial.query.filter_by(class_id=class_id).order_by(Trial.id.desc()).all()
@@ -449,7 +449,7 @@ class AdminDashboardService:
             ]
             student_progress = []
             for part in parts[:40]:
-                user = User.query.get(part.user_id)
+                user = db.session.get(User, part.user_id)
                 answered = TrialQuestionProgress.query.filter_by(
                     trial_id=trial.id, user_id=part.user_id, status='completed'
                 ).count()

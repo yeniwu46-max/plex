@@ -1,5 +1,6 @@
-"""错题本 API 测试"""
+"""错题本与 SM-2 复习闭环 API 测试"""
 import unittest
+from datetime import datetime
 
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash
@@ -7,6 +8,7 @@ from werkzeug.security import generate_password_hash
 from app import create_app
 from app.models import Class, Role, StudentMistake, Trial, TrialQuestion, User, db
 from app.services.question_generator import QuestionGenerator
+from app.services.mistake import MistakeService
 
 
 class MistakesTestCase(unittest.TestCase):
@@ -137,6 +139,91 @@ class MistakesTestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         items = resp.get_json()['data']['items']
         self.assertTrue(any(i['question_ref'] == 'py-teacher-view' for i in items))
+
+    def test_sm2_algorithm_uses_one_then_six_day_intervals(self):
+        now = datetime(2026, 8, 28, 8, 0, 0)
+        first = MistakeService.calculate_sm2(None, 5, now)
+        self.assertEqual(first['repetitions'], 1)
+        self.assertEqual(first['interval_days'], 1)
+        second = MistakeService.calculate_sm2(first, 5, now)
+        self.assertEqual(second['repetitions'], 2)
+        self.assertEqual(second['interval_days'], 6)
+
+    def test_wrong_answer_enters_due_queue_and_review_reschedules_it(self):
+        run_resp = self.client.post(
+            '/api/v1/student/code-trial/runs',
+            json={
+                'question_id': 'sm2-demo-01',
+                'question_title': 'SM-2 闭环题',
+                'knowledge_key': 'loop',
+                'cases': [{'label': '样例1', 'passed': False}],
+            },
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(run_resp.status_code, 200)
+        mistake_id = run_resp.get_json()['data']['record']['id']
+
+        due_resp = self.client.get(
+            '/api/v1/student/mistakes/reviews/due',
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(due_resp.status_code, 200)
+        due_items = due_resp.get_json()['data']['items']
+        self.assertTrue(any(item['id'] == mistake_id for item in due_items))
+
+        review_resp = self.client.post(
+            f'/api/v1/student/mistakes/{mistake_id}/review',
+            json={'quality': 5},
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(review_resp.status_code, 200)
+        record = review_resp.get_json()['data']['record']
+        self.assertEqual(record['review_schedule']['algorithm'], 'SM-2')
+        self.assertEqual(record['review_schedule']['interval_days'], 1)
+        self.assertEqual(record['review_schedule']['repetitions'], 1)
+        self.assertEqual(
+            review_resp.get_json()['data']['knowledge_graph_update']['status'],
+            'learning',
+        )
+
+        due_again = self.client.get(
+            '/api/v1/student/mistakes/reviews/due',
+            headers=self.auth(self.student_token),
+        )
+        self.assertFalse(any(item['id'] == mistake_id for item in due_again.get_json()['data']['items']))
+
+        second_review = self.client.post(
+            f'/api/v1/student/mistakes/{mistake_id}/review',
+            json={'quality': 5},
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(second_review.status_code, 200)
+        update = second_review.get_json()['data']
+        self.assertEqual(update['record']['review_schedule']['interval_days'], 6)
+        self.assertEqual(update['knowledge_graph_update']['status'], 'mastered')
+        self.assertEqual(update['knowledge_graph_update']['review_repetitions'], 2)
+        self.assertGreaterEqual(update['student_profile_update']['version'], 2)
+        self.assertEqual(update['student_profile_update']['reason'], 'sm2_review')
+        self.assertIn(
+            '两轮',
+            update['student_profile_update']['dimensions']['knowledge_foundation']['value'],
+        )
+        self.assertTrue(update['learning_path_update']['replanned'])
+        self.assertEqual(update['learning_path_update']['trigger'], 'sm2_review')
+        self.assertNotEqual(update['learning_path_update']['active_node_id'], 'loop-for')
+        path_diff = update['learning_path_update']['path_diff']
+        self.assertIn('previous_active_node_id', path_diff)
+        self.assertIn('current_active_node_id', path_diff)
+        self.assertIsInstance(path_diff['changed'], bool)
+        self.assertEqual(len(path_diff['previous_top_node_ids']), 5)
+        self.assertEqual(len(path_diff['current_top_node_ids']), 5)
+
+    def test_review_quality_validation(self):
+        with self.app.app_context():
+            with self.assertRaisesRegex(ValueError, '0 到 5'):
+                MistakeService.calculate_sm2(None, 6)
+            with self.assertRaisesRegex(ValueError, '0 到 5'):
+                MistakeService.calculate_sm2(None, 4.5)
 
 
 if __name__ == '__main__':

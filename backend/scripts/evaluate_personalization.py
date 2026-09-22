@@ -97,7 +97,14 @@ def _serialized_bundle(resources: list[dict]) -> str:
 
 def _bundle_metrics(knowledge_key: str, profile_name: str, profile: dict) -> dict:
     resources = _generate_resources(knowledge_key, profile)
-    quality = PersonalizedResourceService._quality_report(resources, knowledge_key)
+    # This is a deterministic local gate across the full curriculum. Remote AI
+    # review is tested separately; calling it for every profile/node would make
+    # results dependent on credentials, network latency, and provider output.
+    quality = PersonalizedResourceService._quality_report(
+        resources,
+        knowledge_key,
+        allow_remote_review=False,
+    )
     pedagogical = _pedagogical_metrics(resources)
     serialized = _serialized_bundle(resources)
     expected_difficulty = 40 if '零基础' in profile['knowledge_foundation'] else 65

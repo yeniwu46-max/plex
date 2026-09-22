@@ -161,6 +161,11 @@ def create_app(config_name='development'):
 
     app = Flask(__name__)
     app.config.from_object(config)
+    database_uri = str(app.config.get('SQLALCHEMY_DATABASE_URI') or '')
+    if database_uri.startswith('sqlite'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'connect_args': {'check_same_thread': False},
+        }
 
     db.init_app(app)
     jwt = JWTManager(app)

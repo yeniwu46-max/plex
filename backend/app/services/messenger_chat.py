@@ -474,6 +474,7 @@ class MessengerChatService:
             'label': '组织回答',
         }
         t1 = time.monotonic()
+        first_token_ms = None
 
         for provider in stream_provider_chain('messenger'):
             emitted = False
@@ -482,6 +483,8 @@ class MessengerChatService:
                 # 连接 3s / 读流 45s：星火流式按 token 推送，避免过短读超时造成卡顿重连
                 for delta in iter_openai_stream(provider, messages, max_tokens=480, timeout=(3, 45)):
                     emitted = True
+                    if first_token_ms is None:
+                        first_token_ms = int((time.monotonic() - t0) * 1000)
                     collected.append(delta)
                     yield {'type': 'delta', 'text': delta}
             except Exception:
@@ -511,6 +514,12 @@ class MessengerChatService:
                     'rag_used': rag_used,
                     'reply': reply or '结合你的近况，建议先巩固薄弱知识点，再做一道对应试炼。',
                     'thinking': thinking,
+                    'latency': {
+                        'context_ms': thinking[0]['latencyMs'],
+                        'first_token_ms': first_token_ms,
+                        'generation_ms': int((time.monotonic() - t1) * 1000),
+                        'target_first_token_ms': 1500,
+                    },
                 }
                 # 图解短超时尽力而为；失败不影响文字已完成
                 if MessengerChatService._wants_illustration(text):
@@ -530,6 +539,8 @@ class MessengerChatService:
             '结合你的近况，建议先巩固薄弱知识点，再做一道对应试炼。'
         )
         for piece in chunk_text(full):
+            if first_token_ms is None:
+                first_token_ms = int((time.monotonic() - t0) * 1000)
             yield {'type': 'delta', 'text': piece}
         thinking.append({
             'id': 'llm',
@@ -544,6 +555,13 @@ class MessengerChatService:
             'rag_used': bool(result.get('rag_used')) or rag_used,
             'reply': full,
             'thinking': thinking,
+            'latency': {
+                'context_ms': thinking[0]['latencyMs'],
+                'first_token_ms': first_token_ms,
+                'generation_ms': int((time.monotonic() - t1) * 1000),
+                'target_first_token_ms': 1500,
+                'degraded': True,
+            },
         }
         if MessengerChatService._wants_illustration(text):
             yield {

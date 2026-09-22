@@ -37,6 +37,13 @@ export interface MessengerStreamResult {
   rag_used?: boolean
   illustration?: { url: string; caption?: string }
   thinking?: AgentTraceStep[]
+  latency?: {
+    context_ms: number | null
+    first_token_ms: number | null
+    generation_ms: number | null
+    target_first_token_ms: number
+    degraded?: boolean
+  }
 }
 
 export interface MessengerStreamHandlers {
@@ -111,6 +118,7 @@ export async function streamMessengerChat(
             rag_used: Boolean(event.rag_used),
             illustration,
             thinking,
+            latency: event.latency as MessengerStreamResult['latency'],
           }
           // 文字先落地，不等待后续 illustration 帧
           handlers.onDone?.(earlyHolder.value)
@@ -128,6 +136,7 @@ export async function streamMessengerChat(
             illustration
             ?? (doneEvent.illustration as { url: string; caption?: string } | undefined),
           thinking: thinking ?? mapThinking(doneEvent.thinking),
+          latency: doneEvent.latency as MessengerStreamResult['latency'],
         }
       : null)
     if (!result) throw new Error('对话流意外结束，请重试')

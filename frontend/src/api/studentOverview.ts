@@ -158,6 +158,7 @@ export interface DailyQuestTodayResult {
   all_completed: boolean
   teacher_assignments?: TeacherAssignmentsResult
   incentive?: IncentiveFeedbackPayload
+  review_queue?: { due_count: number; reviewed_today: number }
 }
 
 export interface StudentOverview {

@@ -1,0 +1,1 @@
+participant_id,stage,event_type,knowledge_key,question_id,is_correct,study_minutes,recommendation_shown,recommendation_accepted,due_reviews,completed_reviews,teacher_review_minutes,ticket_status,timestamp

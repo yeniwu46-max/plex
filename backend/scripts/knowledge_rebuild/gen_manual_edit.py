@@ -149,7 +149,7 @@ def main() -> None:
         lines.append('1. `UPDATE problems SET needs_review=0, review_note=NULL WHERE id=?;`')
         lines.append(
             '2. 重跑 `python scripts/knowledge_rebuild/smoke_api.py` '
-            '确认 8 域 / 26 节点 / 每节点 ≥4 题'
+            '确认 8 域 / 100 节点 / 每节点 ≥4 题'
         )
         lines.append('3. 前端走一遍：星轨 → 答题 → 试炼中心 → 知识图谱')
         lines.append('')

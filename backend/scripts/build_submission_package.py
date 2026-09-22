@@ -66,6 +66,7 @@ SOURCE_ROOT_FILES = (
     "package.json",
     "package-lock.json",
     "docker-compose.neo4j.yml",
+    "docker-compose.mysql8.yml",
 )
 
 SOURCE_DIRS = ("backend", "frontend", "picture", "ppplex", "scripts", "request")

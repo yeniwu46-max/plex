@@ -1,4 +1,4 @@
-export type QuestAccent = 'teal' | 'amber' | 'blue' | 'purple'
+export type QuestAccent = 'teal' | 'amber' | 'blue' | 'purple' | 'rose'
 
 export interface DailyQuestDefinition {
   key: string
@@ -51,6 +51,16 @@ export const DAILY_QUESTS: DailyQuestDefinition[] = [
     accent: 'purple',
     total: 1,
     rewardXp: 25,
+  },
+  {
+    key: 'spaced-review',
+    period: '全天',
+    time: '随时',
+    title: '间隔复习',
+    description: '完成 1 次到期错题复习，巩固知识图谱掌握度',
+    accent: 'rose',
+    total: 1,
+    rewardXp: 30,
   },
 ]
 

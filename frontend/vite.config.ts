@@ -18,11 +18,16 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (!id.includes('node_modules')) return
-            if (id.includes('naive-ui') || id.includes('@vicons')) return 'ui'
-            if (id.includes('echarts') || id.includes('zrender')) return 'charts'
+            const moduleId = id.replaceAll('\\', '/')
+            // 不把整个 Naive UI / ECharts 依赖树强制塞进首屏共享 chunk：
+            // 这些组件只在教师/成长页使用，交给 Rollup 按路由拆分，避免首屏预算被离线页面依赖拖垮。
             if (id.includes('monaco-editor')) return 'monaco'
             if (id.includes('@antv/g6')) return 'g6'
-            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vue-vendor'
+            if (
+              moduleId.includes('/node_modules/vue/')
+              || moduleId.includes('/node_modules/pinia/')
+              || moduleId.includes('/node_modules/vue-router/')
+            ) return 'vue-vendor'
           },
         },
       },
@@ -30,6 +35,8 @@ export default defineConfig(({ mode }) => {
     server: {
       port: devPort,
       strictPort: true,
+      // Allow temporary public tunnels (Cloudflare / Pinggy / localtunnel).
+      allowedHosts: true,
       proxy: {
         '/api': {
           target: apiTarget,

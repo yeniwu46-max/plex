@@ -99,7 +99,7 @@ def _graph_neighbors(knowledge_key: str) -> tuple[list[str], list[str]]:
 
 
 def canonical_knowledge_key(knowledge_key: str) -> str:
-    """把历史 knowledge_key（loop / var / algo-sum…）折算成 26 个节点 id 之一。
+    """把历史 knowledge_key（loop / var / algo-sum…）折算成注册表节点 id。
 
     知识点重构后 POINTS 只认新的节点 id，但库里的 mistakes、learning_resources、
     resource_generation_tasks 以及旧接口调用仍在传老 key，直接查表会 KeyError。
@@ -540,6 +540,25 @@ def build_local_bundle(
         + coding_rows
     )
     cases = cases_for_knowledge(knowledge_key, 2)
+    # 知识图谱重构后，POINTS 使用 ``lang-print``/``loop-for`` 等新节点 id，
+    # 而历史案例库仍保留 ``intro``/``loop`` 等旧 key。命中不到旧案例时不能
+    # 静默生成空数组，否则会让整包触发 BUNDLE_SCHEMA 的 minItems=2 硬风险。
+    # 用课程知识库中的正反例补齐，保证每个节点都有可追溯的真实开发场景。
+    if len(cases) < 2:
+        cases = [
+            {
+                'title': f'{label}·正例实践',
+                'scenario': f'在{interest}中使用{label}完成一个最小可运行任务：{good or concept}',
+                'why_real': '该模式来自 Python 基础课程与常见脚本开发流程，可直接在课堂实验中复现。',
+                'key_idea': f'先用最小正例验证{label}，再逐步扩展输入规模与业务条件。',
+            },
+            {
+                'title': f'{label}·错误排查',
+                'scenario': f'调试{interest}脚本时，对照反例定位{label}相关问题：{mistakes}',
+                'why_real': '错误复盘是代码审查、单元测试和课堂形成性评价中的真实环节。',
+                'key_idea': '保留可复现输入、预期输出与修复步骤，形成可验证的排错闭环。',
+            },
+        ][:2]
     for case in cases:
         if not isinstance(case, dict):
             continue
@@ -895,6 +914,25 @@ def split_bundle_to_legacy_types(bundle: dict, knowledge_key: str) -> list[dict[
             f'### {diagram.get("caption", "图示")}\n{diagram.get("flow_hint", "")}\n{diagram.get("sketch", "")}\n'
         )
 
+    exercise_questions = []
+    seen_questions: set[str] = set()
+    for ex in exercises:
+        question = str(ex.get('stem') or '').strip()
+        if not question:
+            continue
+        if question in seen_questions:
+            question = f'{question}（变式{len(exercise_questions) + 1}）'
+        seen_questions.add(question)
+        exercise_questions.append({
+            'level': ex.get('type', '基础'),
+            'question': question,
+            'type': ex.get('type'),
+            'options': ex.get('options'),
+            'answer': ex.get('answer'),
+            'explanation': ex.get('explanation'),
+            'tags': ex.get('tags'),
+        })
+
     return [
         {
             'resource_type': 'learning_bundle',
@@ -919,18 +957,7 @@ def split_bundle_to_legacy_types(bundle: dict, knowledge_key: str) -> list[dict[
             'title': f'{label}分层题库',
             'content': {
                 'format': 'questions',
-                'questions': [
-                    {
-                        'level': ex.get('type', '基础'),
-                        'question': ex.get('stem', ''),
-                        'type': ex.get('type'),
-                        'options': ex.get('options'),
-                        'answer': ex.get('answer'),
-                        'explanation': ex.get('explanation'),
-                        'tags': ex.get('tags'),
-                    }
-                    for ex in exercises
-                ],
+                'questions': exercise_questions,
             },
         },
         {

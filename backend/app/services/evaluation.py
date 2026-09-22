@@ -127,6 +127,37 @@ class EvaluationService:
         return tags
 
     @staticmethod
+    def _risk_explanations(user_id: int, domain_mastery: list, start: datetime, end: datetime) -> list[dict]:
+        """Return auditable feature contributions behind the risk decision.
+
+        Values are deterministic, bounded contributions rather than an invented
+        SHAP score.  Each item carries its evidence and can be reproduced from
+        the learning-report query window.
+        """
+        rows = TrialQuestionProgress.query.filter(
+            TrialQuestionProgress.user_id == user_id,
+            TrialQuestionProgress.status == 'completed',
+            TrialQuestionProgress.answered_at >= start,
+            TrialQuestionProgress.answered_at <= end,
+        ).all()
+        explanations: list[dict] = []
+        if not rows:
+            explanations.append({'feature': 'practice_count', 'label': '近期练习量', 'contribution': 0.35, 'value': 0, 'evidence': '统计窗口内无完成练习'})
+        else:
+            accuracy = sum(1 for row in rows if row.is_correct) / len(rows)
+            if accuracy < 0.6:
+                explanations.append({'feature': 'accuracy', 'label': '近期正确率', 'contribution': round(min(0.35, 0.6 - accuracy), 3), 'value': round(accuracy * 100, 1), 'evidence': f'{len(rows)} 条已完成作答'})
+        weak = [item for item in domain_mastery if item.get('answered', 0) >= 2 and item.get('mastery_rate', 0) < 40]
+        if weak:
+            explanations.append({'feature': 'weak_domain', 'label': '薄弱知识域', 'contribution': 0.3, 'value': weak[0].get('mastery_rate', 0), 'evidence': weak[0].get('label', '')})
+        mistakes = MistakeService.list_weak_knowledge(user_id, limit=1)
+        if mistakes:
+            fail_count = int(mistakes[0].get('fail_count') or 0)
+            if fail_count >= 3:
+                explanations.append({'feature': 'mistake_cluster', 'label': '错题集中度', 'contribution': round(min(0.3, fail_count / 20), 3), 'value': fail_count, 'evidence': mistakes[0].get('knowledge_label') or mistakes[0].get('knowledge_key')})
+        return sorted(explanations, key=lambda item: item['contribution'], reverse=True)
+
+    @staticmethod
     def _recommendations(user_id: int, weak_knowledge: list) -> list[dict]:
         recs = []
         if weak_knowledge:
@@ -220,6 +251,7 @@ class EvaluationService:
             'trend': EvaluationService._trend_extended(user_id, days),
             'radar': ability.get('radar'),
             'risk_tags': EvaluationService._risk_tags(user_id, domain_mastery, start, end),
+            'risk_explanations': EvaluationService._risk_explanations(user_id, domain_mastery, start, end),
             'recommendations': EvaluationService._recommendations(user_id, weak),
         }
 
@@ -565,6 +597,7 @@ class EvaluationService:
                 'learning_index': report['summary']['index'],
                 'level_label': report['summary']['level_label'],
                 'risk_tags': report['risk_tags'],
+                'risk_explanations': report.get('risk_explanations') or [],
                 'weak_knowledge': report['weak_knowledge'],
             }
             student_reports.append(entry)

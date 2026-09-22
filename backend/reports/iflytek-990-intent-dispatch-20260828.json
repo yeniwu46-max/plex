@@ -1,0 +1,16 @@
+{
+  "benchmark": "trial-coach-intent-dispatch-contract",
+  "cases": 100,
+  "passed": 100,
+  "accuracy": 1.0,
+  "supported_intents": [
+    "code_quality",
+    "custom",
+    "error_diagnosis",
+    "optimization"
+  ],
+  "network_required": false,
+  "failures": [],
+  "natural_language_cases": 100,
+  "natural_language_accuracy": 1.0
+}

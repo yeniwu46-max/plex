@@ -1,0 +1,15 @@
+{
+  "benchmark": "iflytek-spark-live-grounding",
+  "run_at_utc": "2026-08-28T08:18:12+00:00",
+  "invocation": "python scripts/evaluate_iflytek_live.py",
+  "requested_cases": 100,
+  "status": "not_configured",
+  "credential_configured": false,
+  "model": null,
+  "success_count": 0,
+  "parse_pass_count": 0,
+  "grounded_pass_count": 0,
+  "latency_ms": [],
+  "errors": [],
+  "note": "未检测到讯飞凭证，未使用本地规则冒充真实调用。"
+}

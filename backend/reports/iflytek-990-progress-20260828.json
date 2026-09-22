@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "measured_at": "2026-08-28",
+  "knowledge_graph": {
+    "domains": 8,
+    "nodes": 100,
+    "edges": 256,
+    "unique_edge_signatures": 256,
+    "minimum_nodes_passed": true,
+    "minimum_edges_passed": true,
+    "valid_rag_documents": 100,
+    "knowledge_contract_errors": 0,
+    "integrity_validation": "passed",
+    "integrity_report": "backend/reports/iflytek-990-kg-validation-20260828.json"
+  },
+  "sm2": {
+    "implemented": true,
+    "due_queue_api": "/api/v1/student/mistakes/reviews/due",
+    "review_api": "/api/v1/student/mistakes/{mistake_id}/review",
+    "student_profile_update_verified": true,
+    "knowledge_graph_mastery_update_verified": true,
+    "learning_path_replan_verified": true,
+    "path_change_comparison_api_verified": true,
+    "due_review_priority_in_path": true,
+    "frontend_review_flow_typechecked": true,
+    "frontend_review_flow_runtime_verified": false,
+    "daily_quest_integration": true,
+    "teacher_review_snapshot": true
+  },
+  "path_replanning": {
+    "status": "passed",
+    "backend": "local_rules",
+    "checks": {
+      "mistake_created": true,
+      "due_queue_contains_mistake": true,
+      "sm2_review_saved": true,
+      "profile_updated": true,
+      "graph_mastery_updated": true,
+      "path_replanned": true,
+      "path_plan_remains_valid": true
+    },
+    "before_next_best_action": "loop-for",
+    "after_next_best_action": "loop-while",
+    "node_count": 100,
+    "report": "backend/reports/iflytek-990-path-replanning-20260828.json",
+    "real_student_verified": false
+  },
+  "intent_dispatch": {
+    "contract_cases": 100,
+    "contract_accuracy": 1.0,
+    "natural_language_cases": 100,
+    "natural_language_classifier_accuracy": 1.0,
+    "real_student_corpus_verified": false,
+    "report": "backend/reports/iflytek-990-intent-dispatch-20260828.json"
+  },
+  "live_iflytek": {
+    "status": "not_configured",
+    "requested_cases": 100,
+    "report": "backend/reports/iflytek-990-live-20260828.json",
+    "real_call_evidence_verified": false,
+    "script_direct_invocation_verified": true
+  },
+  "experiment": {
+    "protocol": "docs/2026-08-28-iflytek-990-真实教学实验方案.md",
+    "template": "backend/data/experiments/iflytek990_event_template.csv",
+    "analysis_script": "backend/scripts/analyze_iflytek990_experiment.py",
+    "status": "insufficient_real_data",
+    "participant_count": 0,
+    "real_effect_verified": false,
+    "schema_validation_passed": true,
+    "privacy_identifier_check": true,
+    "analysis_metrics_include_stddev_median": true
+  },
+  "agent_orchestration": {
+    "status": "passed",
+    "learning_registered_count": 9,
+    "grading_registered_count": 8,
+    "trace_step_count": 5,
+    "trace_contract_passed": true,
+    "task_dependency_persistence": true,
+    "retry_count_persistence": true,
+    "backend": "mock",
+    "report": "backend/reports/iflytek-990-agent-orchestration-20260828.json",
+    "real_model_backend_verified": false
+  },
+  "hallucination_local": {
+    "sample_count": 100,
+    "clean_hard_risk_rate": 0.0,
+    "negative_control_detection_rate": 1.0,
+    "backend": "local_rules",
+    "remote_model_hallucination_verified": false,
+    "report": "backend/reports/iflytek-990-hallucination-local-20260828.json"
+  },
+  "stream_latency": {
+    "instrumented": true,
+    "fields": ["context_ms", "first_token_ms", "generation_ms", "degraded"],
+    "asr_tts_stage_measurement": false,
+    "tts_local_rounds_completed": 30,
+    "tts_local_p95_ms": 1731,
+    "tts_local_backend": "iflytek_or_fallback_configured",
+    "full_voice_rounds_verified": false,
+    "p95_target_verified": false,
+    "voice_report": "backend/reports/iflytek-990-voice-20260828.json"
+  },
+  "profile_extraction": {
+    "case_count": 50,
+    "backend": "local_rules",
+    "balanced_field_accuracy": 1.0,
+    "exact_case_match_rate": 1.0,
+    "real_model_verified": false,
+    "report": "backend/reports/iflytek-990-profile-extraction-20260828.json"
+  },
+  "demo_rehearsal": {
+    "status": "passed",
+    "backend": "local_rules",
+    "rounds": 2,
+    "resource_count_minimum": 5,
+    "task_polling_verified": true,
+    "profile_feedback_verified": true,
+    "teacher_review_verified": true,
+    "task_persistence_verified": true,
+    "real_student_verified": false,
+    "report": "backend/reports/iflytek-990-demo-rehearsal-20260828.json"
+  },
+  "risk_explainability": {
+    "status": "passed",
+    "backend": "local_rules",
+    "explanation_count": 1,
+    "contract_checks_passed": true,
+    "shap_claimed": false,
+    "real_model_verified": false,
+    "report": "backend/reports/iflytek-990-risk-explainability-20260828.json"
+  },
+  "teacher_dashboard": {
+    "intervention_metrics_api": true,
+    "fields": ["intervention_count", "intervention_resolved_count", "intervention_completion_rate"],
+    "frontend_completion_rate_card": true,
+    "browser_recording_verified": false
+  },
+  "completion_audit": {
+    "local_passed": true,
+    "submission_ready": false,
+    "verified_local_count": 12,
+    "blocked_external": ["spark_live", "voice", "experiment", "mysql8", "mp4"],
+    "report": "backend/reports/iflytek-990-completion-audit-20260828.json"
+  },
+  "verification": {
+    "backend_tests_passed": 177,
+    "backend_test_duration_seconds": 144.64,
+    "frontend_production_build_passed": true,
+    "frontend_bundle_gate_passed": true,
+    "release_readiness_local_passed": true,
+    "roadshow_pptx_generated": true,
+    "roadshow_pptx_slides": 10,
+    "roadshow_pptx_visual_qa": "passed_after_title_fix",
+    "roadshow_pptx": "docs/submission/artifacts/PLEX-iflytek-990-defense.pptx",
+    "typescript_passed": true,
+    "vite_build_passed": true,
+    "bundle_budget_passed": true,
+    "initial_gzip_actual_bytes": 128613,
+    "initial_gzip_budget_bytes": 153600
+  }
+}

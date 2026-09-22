@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""统一知识节点注册表（2026-07-30 重排为 8 大类 / 26 节点）。
+"""统一知识节点注册表（8 大类 / 100 个 Python 课程知识节点）。
 
 这里是全站知识点的**唯一权威定义**，以下产物都由它派生，必须保持一致：
 
@@ -201,6 +201,128 @@ KNOWLEDGE_NODE_REGISTRY: tuple[KnowledgeNodeEntry, ...] = (
         'intermediate', 3, 'python-search-stat', '求和、计数、找最值与去重',
     ),
 )
+
+
+def _curriculum_node(
+    kg_id: str,
+    label: str,
+    domain_key: str,
+    summary: str,
+    level: str = 'intermediate',
+    difficulty: int = 2,
+) -> KnowledgeNodeEntry:
+    """Build a compact registry entry for the expanded course curriculum."""
+    return KnowledgeNodeEntry(
+        kg_id,
+        label,
+        domain_key,
+        kg_id,
+        (label,),
+        (kg_id,),
+        level,
+        difficulty,
+        f'python-{kg_id}',
+        summary,
+    )
+
+
+# 2026 产业赛命题要求知识图谱至少 100 个节点。扩展节点仍限定在原有八大学域，
+# 每个节点对应一个可讲授、可练习、可测评的原子概念，而不是用占位节点凑数。
+CURRICULUM_EXTENSION: tuple[KnowledgeNodeEntry, ...] = (
+    # ---- 1. 语言入门：3 + 9 = 12 ----
+    _curriculum_node('lang-identifier', '标识符与命名', 'lang-basics', '掌握变量名规则、关键字与可读命名', 'basic', 1),
+    _curriculum_node('lang-number', '数值字面量', 'lang-basics', '认识整数、浮点数、科学计数法与进制表示', 'basic', 1),
+    _curriculum_node('lang-bool', '布尔值与 None', 'lang-basics', '理解 True、False、None 及其基本用途', 'basic', 1),
+    _curriculum_node('lang-literal-string', '字符串字面量', 'lang-basics', '掌握引号、转义字符与多行字符串', 'basic', 1),
+    _curriculum_node('lang-format', '格式化输出', 'lang-basics', '使用 f-string 控制文本、数值精度与对齐', 'basic', 2),
+    _curriculum_node('lang-docstring', '注释与文档字符串', 'lang-basics', '用注释和 docstring 解释程序意图', 'basic', 1),
+    _curriculum_node('lang-debug', '基础调试方法', 'lang-basics', '通过打印、断点和最小复现定位错误', 'intermediate', 2),
+    _curriculum_node('lang-errors', '错误信息阅读', 'lang-basics', '识别语法错误、类型错误和名称错误', 'intermediate', 2),
+    _curriculum_node('lang-style', 'PEP 8 编码规范', 'lang-basics', '形成缩进、空格、命名与代码布局规范', 'intermediate', 2),
+
+    # ---- 2. 顺序结构：3 + 9 = 12 ----
+    _curriculum_node('seq-assignment', '赋值语句', 'sequence', '理解赋值方向、多重赋值与交换变量', 'basic', 1),
+    _curriculum_node('seq-augmented', '复合赋值', 'sequence', '使用 +=、-=、*= 等更新变量状态', 'basic', 1),
+    _curriculum_node('seq-compare', '比较运算', 'sequence', '比较数值与文本并得到布尔结果', 'basic', 1),
+    _curriculum_node('seq-logic', '逻辑运算', 'sequence', '组合 and、or、not 并理解短路求值', 'basic', 2),
+    _curriculum_node('seq-rounding', '精度与舍入', 'sequence', '理解浮点误差、round 与格式化精度', 'intermediate', 2),
+    _curriculum_node('seq-math', 'math 数学函数', 'sequence', '调用常量、开方、三角与取整函数', 'intermediate', 2),
+    _curriculum_node('seq-random', '随机数基础', 'sequence', '生成可复现随机数并理解随机种子', 'intermediate', 2),
+    _curriculum_node('seq-datetime', '日期时间基础', 'sequence', '表示时间、计算时间差并格式化日期', 'intermediate', 3),
+    _curriculum_node('seq-pipeline', '输入—处理—输出', 'sequence', '把输入、计算、校验和输出组织成顺序流程', 'intermediate', 2),
+
+    # ---- 3. 分支结构：3 + 9 = 12 ----
+    _curriculum_node('branch-truthy', '真值判断', 'branch', '理解空值、零值和容器的真假规则', 'basic', 2),
+    _curriculum_node('branch-chain', '链式比较', 'branch', '用链式比较清晰表达数值区间', 'basic', 2),
+    _curriculum_node('branch-membership', '成员与身份判断', 'branch', '正确使用 in、not in、is 与 ==', 'intermediate', 2),
+    _curriculum_node('branch-ternary', '条件表达式', 'branch', '用条件表达式完成简单二选一赋值', 'intermediate', 2),
+    _curriculum_node('branch-guard', '卫语句', 'branch', '通过提前返回减少分支嵌套', 'intermediate', 3),
+    _curriculum_node('branch-validation', '输入校验分支', 'branch', '为范围、格式和缺失值设计校验逻辑', 'intermediate', 3),
+    _curriculum_node('branch-state', '状态决策', 'branch', '根据离散状态组织互斥业务规则', 'intermediate', 3),
+    _curriculum_node('branch-match', '模式匹配 match', 'branch', '使用 match-case 表达结构化多分支', 'advanced', 4),
+    _curriculum_node('branch-test-design', '分支测试设计', 'branch', '为每条分支设计边界与反例测试', 'advanced', 4),
+
+    # ---- 4. 循环结构：4 + 9 = 13 ----
+    _curriculum_node('loop-range-detail', 'range 参数与边界', 'loop', '掌握起点、终点、步长和反向区间', 'basic', 2),
+    _curriculum_node('loop-enumerate', 'enumerate 遍历', 'loop', '同时获取序列下标与元素', 'intermediate', 2),
+    _curriculum_node('loop-zip', 'zip 并行遍历', 'loop', '同步遍历多个序列并处理长度差异', 'intermediate', 2),
+    _curriculum_node('loop-accumulator', '累加器模式', 'loop', '用循环完成求和、连乘与状态聚合', 'basic', 2),
+    _curriculum_node('loop-counter', '计数器模式', 'loop', '按条件累计次数并避免重复计数', 'basic', 2),
+    _curriculum_node('loop-sentinel', '哨兵循环', 'loop', '用特殊输入或状态控制未知次数循环', 'intermediate', 3),
+    _curriculum_node('loop-else', '循环 else', 'loop', '理解自然结束与 break 退出的差异', 'advanced', 3),
+    _curriculum_node('loop-comprehension', '列表推导式', 'loop', '把映射和筛选循环写成清晰推导式', 'intermediate', 3),
+    _curriculum_node('loop-complexity', '循环复杂度直觉', 'loop', '根据嵌套层数估算运行次数', 'advanced', 4),
+
+    # ---- 5. 数组：3 + 10 = 13 ----
+    _curriculum_node('array-slice', '列表切片', 'array', '使用切片复制、截取、步进和反转列表', 'basic', 2),
+    _curriculum_node('array-methods', '列表常用方法', 'array', '掌握 append、extend、insert、pop 与 remove', 'basic', 2),
+    _curriculum_node('array-copy', '浅拷贝与别名', 'array', '区分同一对象、浅拷贝与嵌套可变对象', 'intermediate', 3),
+    _curriculum_node('array-tuple', '元组与解包', 'array', '使用不可变序列和结构化解包', 'basic', 2),
+    _curriculum_node('array-set', '集合运算', 'array', '完成去重、交并差与成员测试', 'intermediate', 2),
+    _curriculum_node('array-dict', '字典基础', 'array', '用键值映射完成查找、更新与遍历', 'intermediate', 3),
+    _curriculum_node('array-stack', '列表实现栈', 'array', '用后进先出结构处理撤销与括号问题', 'intermediate', 3),
+    _curriculum_node('array-queue', '队列与 deque', 'array', '用先进先出结构组织待处理任务', 'intermediate', 3),
+    _curriculum_node('array-sort-key', '按键排序', 'array', '使用 sort、sorted、key 与 reverse', 'intermediate', 3),
+    _curriculum_node('array-comprehension', '容器推导式', 'array', '生成列表、集合和字典并添加筛选条件', 'advanced', 4),
+
+    # ---- 6. 字符串：3 + 10 = 13 ----
+    _curriculum_node('string-immutable', '字符串不可变性', 'string', '理解修改字符串实际会创建新对象', 'basic', 2),
+    _curriculum_node('string-format', '字符串格式化', 'string', '使用 f-string 表达式、宽度、精度与填充', 'basic', 2),
+    _curriculum_node('string-split-join', '拆分与拼接', 'string', '用 split 和 join 处理结构化文本', 'basic', 2),
+    _curriculum_node('string-search', '子串查找', 'string', '使用 find、index、in 与 startswith', 'intermediate', 2),
+    _curriculum_node('string-validate', '字符分类校验', 'string', '用 isdigit、isalpha 等检查输入格式', 'intermediate', 2),
+    _curriculum_node('string-encoding', '字符编码', 'string', '理解 Unicode、UTF-8、编码与解码', 'intermediate', 3),
+    _curriculum_node('string-regex', '正则表达式入门', 'string', '用模式完成文本匹配、提取与替换', 'advanced', 4),
+    _curriculum_node('string-frequency', '字符频次统计', 'string', '结合字典统计词频和字符频率', 'intermediate', 3),
+    _curriculum_node('string-palindrome', '回文与规范化', 'string', '在忽略空格和大小写后判断回文', 'intermediate', 3),
+    _curriculum_node('string-file-text', '文本文件处理', 'string', '安全读写文本并逐行清洗数据', 'advanced', 4),
+
+    # ---- 7. 函数与递归：3 + 10 = 13 ----
+    _curriculum_node('func-scope', '作用域与生命周期', 'function', '理解局部、全局、nonlocal 与名称查找', 'intermediate', 3),
+    _curriculum_node('func-default', '默认参数', 'function', '设计默认值并规避可变默认参数陷阱', 'intermediate', 3),
+    _curriculum_node('func-keyword', '关键字参数', 'function', '用参数名提升函数调用可读性', 'intermediate', 2),
+    _curriculum_node('func-varargs', '可变参数', 'function', '使用 *args 与 **kwargs 接收不定参数', 'advanced', 4),
+    _curriculum_node('func-lambda', 'lambda 表达式', 'function', '为排序与映射编写短小匿名函数', 'intermediate', 3),
+    _curriculum_node('func-higher-order', '高阶函数', 'function', '把函数作为参数或返回值组织行为', 'advanced', 4),
+    _curriculum_node('func-contract', '函数契约与文档', 'function', '明确输入、输出、异常和副作用', 'intermediate', 3),
+    _curriculum_node('func-unit-test', '函数单元测试', 'function', '用正常、边界和异常用例验证函数', 'advanced', 4),
+    _curriculum_node('func-pure', '纯函数与副作用', 'function', '区分返回结果与修改外部状态', 'advanced', 4),
+    _curriculum_node('func-memoization', '递归记忆化', 'function', '缓存重复子问题以优化递归计算', 'advanced', 5),
+
+    # ---- 8. 查找与搜索：4 + 8 = 12 ----
+    _curriculum_node('search-complexity', '时间复杂度', 'search', '比较 O(1)、O(log n)、O(n) 与 O(n²)', 'advanced', 4),
+    _curriculum_node('search-boundary', '二分边界模板', 'search', '处理左闭右闭、左闭右开与重复元素边界', 'advanced', 5),
+    _curriculum_node('search-bubble', '冒泡排序', 'search', '通过相邻交换逐轮确定最大元素', 'intermediate', 3),
+    _curriculum_node('search-selection', '选择排序', 'search', '每轮选择最值并放到已排序区', 'intermediate', 3),
+    _curriculum_node('search-insertion', '插入排序', 'search', '维护已排序区并插入新元素', 'advanced', 4),
+    _curriculum_node('search-hash', '哈希查找', 'search', '利用集合和字典实现近似常数时间查找', 'advanced', 4),
+    _curriculum_node('search-two-pointer', '双指针搜索', 'search', '用左右或快慢指针缩小搜索空间', 'advanced', 5),
+    _curriculum_node('search-bfs', '广度优先搜索入门', 'search', '使用队列按层搜索最短步数', 'advanced', 5),
+)
+
+KNOWLEDGE_NODE_REGISTRY = KNOWLEDGE_NODE_REGISTRY + CURRICULUM_EXTENSION
+
+assert len(KNOWLEDGE_NODE_REGISTRY) == 100
 
 
 # 旧库里存在、但不属于本次 8 大类（Python 入门）覆盖范围的 knowledge_key。

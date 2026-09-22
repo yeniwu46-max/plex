@@ -1,0 +1,107 @@
+{
+  "run_at": "2026-08-28T16:02:20",
+  "rounds": [
+    {
+      "round": 1,
+      "student": "student001",
+      "profile_version_before_feedback": 44,
+      "profile_version_after_feedback": 45,
+      "task_id": "rg_3a943649244d449d8e20",
+      "task_backend": "deepseek",
+      "resource_count": 7,
+      "pending_review_count": 7,
+      "approved_resource_id": 245,
+      "visible_resource_count_after_review": 116,
+      "task_persisted_after_refresh": true
+    },
+    {
+      "round": 2,
+      "student": "student002",
+      "profile_version_before_feedback": 7,
+      "profile_version_after_feedback": 8,
+      "task_id": "rg_fd17fa32d37d4c42922d",
+      "task_backend": "deepseek",
+      "resource_count": 7,
+      "pending_review_count": 7,
+      "approved_resource_id": 252,
+      "visible_resource_count_after_review": 5,
+      "task_persisted_after_refresh": true
+    }
+  ],
+  "health": {
+    "application": {
+      "database": "healthy",
+      "deepseek": {
+        "backend": "deepseek",
+        "configured": true,
+        "model": "deepseek-chat",
+        "status": "available"
+      },
+      "knowledge_base": {
+        "backend": "mock",
+        "indexed_documents": 2,
+        "status": "healthy"
+      },
+      "spark": {
+        "backend": "unavailable",
+        "configured": false,
+        "error_code": "not_checked",
+        "latency_ms": null,
+        "model": null,
+        "request_id": null,
+        "status": "unavailable"
+      },
+      "status": "healthy",
+      "task_executor": {
+        "available": true,
+        "backend": "in_process",
+        "max_workers": 2
+      },
+      "xfyun_agent": {
+        "backend": "unavailable",
+        "bot_id": "5709919",
+        "configured": false,
+        "error_code": "not_checked",
+        "flow_id": null,
+        "latency_ms": null,
+        "status": "unavailable"
+      }
+    },
+    "ai": {
+      "deepseek": {
+        "backend": "deepseek",
+        "configured": true,
+        "model": "deepseek-chat",
+        "status": "available"
+      },
+      "effective_backend": "deepseek",
+      "fallback": {
+        "available": true,
+        "backend": "local_rules"
+      },
+      "spark": {
+        "backend": "unavailable",
+        "configured": false,
+        "error_code": "not_checked",
+        "latency_ms": null,
+        "model": null,
+        "request_id": null,
+        "status": "unavailable"
+      },
+      "xfyun_agent": {
+        "backend": "unavailable",
+        "bot_id": "5709919",
+        "configured": false,
+        "error_code": "not_checked",
+        "flow_id": null,
+        "latency_ms": null,
+        "status": "unavailable"
+      }
+    },
+    "admin_login_verified": true
+  },
+  "passed": true,
+  "backend": "local_rules",
+  "real_student_verified": false,
+  "note": "本报告证明本地 API 彩排链路，不替代真实讯飞调用或真实教学实验。"
+}

@@ -95,9 +95,6 @@ def code_learning_cycle():
 @jwt_required()
 def trial_coach():
     body = request.get_json(silent=True) or {}
-    intent = (body.get('intent') or '').strip()
-    if not intent:
-        return error_response('intent required', code=400)
     try:
         return success_response(AgentOrchestrator.trial_coach(body))
     except ValueError as exc:

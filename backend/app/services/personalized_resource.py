@@ -514,6 +514,7 @@ class PersonalizedResourceService:
         profile: dict | None = None,
         audit_report: dict | None = None,
         bundle: dict | None = None,
+        allow_remote_review: bool = True,
     ) -> dict:
         from agents.resource_review_agent import is_hard_risk, review_generated_resource
 
@@ -567,6 +568,7 @@ class PersonalizedResourceService:
             audit_report=audit_report,
             risk_reasons=bundle_risks_for_ai,
             title=title,
+            allow_remote=allow_remote_review,
         )
         if audit_report is not None:
             metadata = dict(audit_report.get('metadata') or {})

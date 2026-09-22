@@ -182,6 +182,40 @@ class StudentProfileService:
         return changes
 
     @staticmethod
+    def update_from_sm2_review(user_id: int, mistake_record: dict, quality: int) -> dict:
+        """Persist spaced-review evidence into the dynamic learner profile."""
+        schedule = mistake_record.get('review_schedule') or {}
+        repetitions = int(schedule.get('repetitions') or 0)
+        label = mistake_record.get('knowledge_label') or mistake_record.get('knowledge_key') or '当前知识点'
+        evidence = [
+            f'SM-2 复习质量 {quality}/5',
+            f'连续成功复习轮次 {repetitions}',
+            f'下一次复习时间 {schedule.get("due_at") or "待安排"}',
+        ]
+        if quality < 3:
+            foundation = f'「{label}」复习未通过，需要按计划重新学习'
+            state = '需要支持：本轮回忆不稳定，已安排次日复习'
+        elif repetitions >= 2:
+            foundation = f'「{label}」已通过两轮及以上间隔复习，掌握表现稳定'
+            state = '复习状态稳定，可继续下一知识点并按期回顾'
+        else:
+            foundation = f'「{label}」已通过首轮复习，仍需继续间隔巩固'
+            state = '本轮复习通过，等待下一次间隔复习验证'
+        return StudentProfileService.apply_changes(
+            user_id,
+            {
+                'knowledge_foundation': StudentProfileService._dimension(
+                    foundation, evidence, 0.92, 'behavior'
+                ),
+                'cognitive_state': StudentProfileService._dimension(
+                    state, evidence, 0.88, 'behavior'
+                ),
+            },
+            'sm2_review',
+            'local_rules',
+        )
+
+    @staticmethod
     def diagnostic_questions() -> list[dict]:
         # (knowledge_key, question_type, stem, options, correct_index, code_preview)
         specs = [

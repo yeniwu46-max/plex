@@ -51,5 +51,6 @@ class StudentMistake(db.Model):
             'fail_count': self.fail_count,
             'last_failed_at': self.last_failed_at.isoformat() if self.last_failed_at else None,
             'last_passed_at': self.last_passed_at.isoformat() if self.last_passed_at else None,
+            'review_schedule': meta.get('review_schedule'),
             'meta': meta,
         }

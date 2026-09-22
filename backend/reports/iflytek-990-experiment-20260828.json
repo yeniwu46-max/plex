@@ -1,0 +1,32 @@
+{
+  "status": "insufficient_real_data",
+  "source": "data\\experiments\\iflytek990_event_template.csv",
+  "event_rows": 0,
+  "participant_count": 0,
+  "paired_pre_post_count": 0,
+  "paired_accuracy": [],
+  "metrics": {
+    "pre_accuracy_mean": null,
+    "post_accuracy_mean": null,
+    "delta_mean": null,
+    "delta_stddev": null,
+    "delta_median": null,
+    "recommendation_acceptance_rate": null,
+    "sm2_review_completion_rate": null,
+    "teacher_review_minutes_mean": null
+  },
+  "stage_counts": {
+    "intervention": 0,
+    "post": 0,
+    "pre": 0
+  },
+  "validation": {
+    "missing_columns": [],
+    "invalid_stage_rows": [],
+    "missing_required_rows": [],
+    "pii_like_participant_ids": [],
+    "duplicate_event_keys": []
+  },
+  "validation_passed": true,
+  "evidence_policy": "no synthetic data; insufficient samples remain explicitly incomplete"
+}

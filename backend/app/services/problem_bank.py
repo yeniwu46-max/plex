@@ -8,7 +8,7 @@ from app.data.knowledge_node_registry import (
     kg_id_from_key,
     nodes_for_domain,
 )
-from app.models import Problem, ProblemSubmission, ProblemTag, ProblemTagMap
+from app.models import Problem, ProblemSubmission, ProblemTag, ProblemTagMap, db
 
 
 # 旧题库的 A~G 分组。重排后不再是主分类（主分类见 domain_key / kg_node_id），
@@ -84,14 +84,14 @@ class ProblemBankService:
 
     @staticmethod
     def get_problem_detail(problem_id: int, include_answer: bool = False) -> dict:
-        problem = Problem.query.get(problem_id)
+        problem = db.session.get(Problem, problem_id)
         if not problem:
             raise ValueError(f'题目 {problem_id} 不存在')
         return problem.to_dict(include_answer=include_answer)
 
     @staticmethod
     def list_submissions(problem_id: int, legacy_user_id: int | None = None, limit: int = 100) -> dict:
-        problem = Problem.query.get(problem_id)
+        problem = db.session.get(Problem, problem_id)
         if not problem:
             raise ValueError(f'题目 {problem_id} 不存在')
         query = ProblemSubmission.query.filter_by(problem_id=problem_id)
@@ -107,7 +107,7 @@ class ProblemBankService:
 
     @staticmethod
     def get_submission_detail(submission_id: int) -> dict:
-        submission = ProblemSubmission.query.get(submission_id)
+        submission = db.session.get(ProblemSubmission, submission_id)
         if not submission:
             raise ValueError(f'提交记录 {submission_id} 不存在')
         return submission.to_dict(include_code=True)
@@ -133,7 +133,7 @@ class ProblemBankService:
         维度作为统计口径，并提供班级下拉供教师切换查看，而不是编造出一个假
         的"当前用户班级"过滤。完整取舍说明见 REPORT.md 增强篇 5。
         """
-        problem = Problem.query.get(problem_id)
+        problem = db.session.get(Problem, problem_id)
         if not problem:
             raise ValueError(f'题目 {problem_id} 不存在')
 

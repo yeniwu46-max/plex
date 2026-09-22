@@ -24,6 +24,8 @@ KNOWN_LICENSES = {
     "pytest": "MIT",
     "python-dateutil": "Apache-2.0 OR BSD-3-Clause",
     "python-dotenv": "BSD-3-Clause",
+    "truststore": "MIT",
+    "pyttsx3": "MPL-2.0",
     "requests": "Apache-2.0",
     "werkzeug": "BSD-3-Clause",
 }

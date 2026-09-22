@@ -2,7 +2,7 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
-from app.models import Class, PointsLog, RankingCache, Trial, TrialQuestion, TrialQuestionProgress, User, UserDailyQuest, db
+from app.models import Class, LearningAdaptation, PointsLog, RankingCache, StudentMistake, Trial, TrialQuestion, TrialQuestionProgress, User, UserDailyQuest, db
 
 from .base import BaseService
 from .question_generator import QuestionGenerator
@@ -41,7 +41,7 @@ class TeacherService(BaseService):
         attention_students = TeacherService._attention_students(students_payload)
         recent_activity = TeacherService._recent_activity(selected_class.id)
 
-        metrics = TeacherService._metrics(students_payload)
+        metrics = TeacherService._metrics(students_payload, [student.id for student in students])
 
         return {
             'teacher': TeacherService._teacher_payload(teacher),
@@ -62,6 +62,10 @@ class TeacherService(BaseService):
             selected = db.session.get(Class, class_id)
             if selected and (role_name != 'teacher' or selected.teacher_id == teacher_id):
                 return selected
+            # 真实存在但归属其他教师的班级必须拒绝，不能通过回落到本人班级
+            # 把越权请求伪装成成功响应。
+            if selected and role_name == 'teacher' and selected.teacher_id != teacher_id:
+                raise PermissionError('不能访问非本人负责的班级')
             # 库重建 / 前端 localStorage 残留旧 class_id 时，回落到本人可用班级
             if classes:
                 return classes[0]
@@ -193,8 +197,25 @@ class TeacherService(BaseService):
                 'last_activity_at': last_log.created_at.isoformat() if last_log and last_log.created_at else None,
                 'inactive_days': inactive_days,
                 'is_inactive_7d': not last_log or (last_log.created_at and last_log.created_at < seven_days_ago),
+                **TeacherService._review_snapshot(student.id),
             })
         return rows
+
+    @staticmethod
+    def _review_snapshot(student_id):
+        today = utc_now().date().isoformat()
+        due_count = 0
+        reviewed_today = 0
+        current = utc_now()
+        for row in StudentMistake.query.filter_by(user_id=student_id).all():
+            schedule = ((row.meta or {}).get('review_schedule') or {}) if isinstance(row.meta, dict) else {}
+            due_at = schedule.get('due_at')
+            if isinstance(due_at, str) and (due_at[:10] <= current.date().isoformat()):
+                due_count += 1
+            reviewed_at = schedule.get('last_reviewed_at')
+            if isinstance(reviewed_at, str) and reviewed_at[:10] == today:
+                reviewed_today += 1
+        return {'review_due_count': due_count, 'reviewed_today': reviewed_today}
 
     @staticmethod
     def _today_progress(student_ids, today):
@@ -232,21 +253,37 @@ class TeacherService(BaseService):
         return attention[:8]
 
     @staticmethod
-    def _metrics(students_payload):
+    def _intervention_metrics(student_ids):
+        if not student_ids:
+            return {'intervention_count': 0, 'intervention_resolved_count': 0, 'intervention_completion_rate': 0}
+        rows = LearningAdaptation.query.filter(LearningAdaptation.user_id.in_(student_ids)).all()
+        resolved = sum(1 for row in rows if row.status == 'recovered')
+        return {
+            'intervention_count': len(rows),
+            'intervention_resolved_count': resolved,
+            'intervention_completion_rate': round(resolved / len(rows) * 100) if rows else 0,
+        }
+
+    @staticmethod
+    def _metrics(students_payload, student_ids=None):
         total = len(students_payload)
         active_students = [student for student in students_payload if student['status'] == 'active']
         avg_points = round(sum(student['total_points'] for student in students_payload) / total) if total else 0
         avg_today_completion = (
             round(sum(student['today_completion_rate'] for student in students_payload) / total) if total else 0
         )
-        return {
+        result = {
             'student_count': total,
             'active_count': len(active_students),
             'frozen_count': len([student for student in students_payload if student['status'] == 'frozen']),
             'avg_points': avg_points,
             'avg_today_completion': avg_today_completion,
+            'review_due_students': sum(1 for student in students_payload if student.get('review_due_count', 0) > 0),
+            'reviewed_today_students': sum(1 for student in students_payload if student.get('reviewed_today', 0) > 0),
             'attention_count': len(TeacherService._attention_students(students_payload)),
         }
+        result.update(TeacherService._intervention_metrics(student_ids or []))
+        return result
 
     @staticmethod
     def _recent_activity(class_id):
@@ -283,7 +320,12 @@ class TeacherService(BaseService):
                 'frozen_count': 0,
                 'avg_points': 0,
                 'avg_today_completion': 0,
+                'review_due_students': 0,
+                'reviewed_today_students': 0,
                 'attention_count': 0,
+                'intervention_count': 0,
+                'intervention_resolved_count': 0,
+                'intervention_completion_rate': 0,
             },
             'heatmap': {'days': [], 'rows': []},
             'ranking': [],

@@ -546,7 +546,7 @@ class PracticeQuestionService:
                 db_id = int(ref[3:])
             except ValueError:
                 return None
-            row = TrialQuestion.query.get(db_id)
+            row = db.session.get(TrialQuestion, db_id)
             if row and (row.question_type or 'mcq') == 'coding':
                 return PracticeQuestionService._db_row_to_payload(row)
             return None

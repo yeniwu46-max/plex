@@ -21,6 +21,20 @@ INTENT_CUSTOM = 'custom'
 
 VALID_INTENTS = {INTENT_ERROR, INTENT_QUALITY, INTENT_OPTIMIZE, INTENT_CUSTOM}
 
+
+def infer_intent(payload: dict) -> str:
+    """Deterministic fallback router for natural-language trial questions."""
+    text = ' '.join(str(payload.get(key) or '') for key in ('userQuestion', 'user_question', 'question', 'stderr', 'errorMessage')).lower()
+    rules = (
+        (INTENT_ERROR, ('报错', '错误', '异常', 'traceback', 'nameerror', 'syntaxerror', 'error')),
+        (INTENT_OPTIMIZE, ('优化', '效率', '复杂度', '性能', '快一点', '简化')),
+        (INTENT_QUALITY, ('质量', '规范', '可读', '命名', '结构', 'review', '审查')),
+    )
+    for intent, keywords in rules:
+        if any(keyword in text for keyword in keywords):
+            return intent
+    return INTENT_CUSTOM
+
 AGENT_META: dict[str, dict[str, str]] = {
     INTENT_ERROR: {
         'id': 'trial_error_diagnosis',

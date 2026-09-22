@@ -288,6 +288,87 @@ def list_student_mistakes():
         return error_response(str(exc), 50001, None, 500)
 
 
+@student_progress_bp.route('/mistakes/reviews/due', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def list_due_mistake_reviews():
+    try:
+        user_id = int(get_jwt_identity())
+        limit = request.args.get('limit', 20, type=int)
+        return success_response(MistakeService.list_due_reviews(user_id, limit=limit))
+    except (TypeError, ValueError) as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_progress_bp.route('/mistakes/<int:mistake_id>/review', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def submit_mistake_review(mistake_id):
+    try:
+        user_id = int(get_jwt_identity())
+        payload = request.get_json(silent=True) or {}
+        from app.services.learning_path import LearningPathService
+        previous_learning_path = LearningPathService.plan(user_id)
+        quality = payload.get('quality')
+        record = MistakeService.submit_review(user_id, mistake_id, quality)
+
+        from app.data.knowledge_node_registry import resolve_node_id
+        from app.services.knowledge_graph import KnowledgeGraphService
+        from app.services.student_profile import StudentProfileService
+
+        profile = StudentProfileService.update_from_sm2_review(user_id, record, quality)
+        node_id = resolve_node_id(record.get('knowledge_key'))
+        graph = KnowledgeGraphService.get_student_graph(user_id)
+        graph_node = next(
+            (item for item in graph.get('nodes', []) if item.get('id') == node_id),
+            None,
+        )
+        learning_path = LearningPathService.plan(user_id)
+        before_nodes = [item.get('id') for item in previous_learning_path.get('ordered_nodes', [])]
+        after_nodes = [item.get('id') for item in learning_path.get('ordered_nodes', [])]
+        path_diff = {
+            'previous_active_node_id': previous_learning_path.get('active_node_id'),
+            'current_active_node_id': learning_path.get('active_node_id'),
+            'changed': previous_learning_path.get('active_node_id') != learning_path.get('active_node_id')
+            or before_nodes[:10] != after_nodes[:10],
+            'previous_top_node_ids': before_nodes[:5],
+            'current_top_node_ids': after_nodes[:5],
+        }
+        return success_response({
+            'record': record,
+            'student_profile_update': {
+                'version': profile.get('version'),
+                'completion_rate': profile.get('completion_rate'),
+                'reason': 'sm2_review',
+                'dimensions': {
+                    key: profile.get('dimensions', {}).get(key)
+                    for key in ('knowledge_foundation', 'cognitive_state')
+                },
+            },
+            'knowledge_graph_update': {
+                'node_id': node_id,
+                'status': (graph_node or {}).get('status'),
+                'review_count': (graph_node or {}).get('review_count', 0),
+                'review_repetitions': (graph_node or {}).get('review_repetitions', 0),
+                'last_review_quality': (graph_node or {}).get('last_review_quality'),
+                'next_review_due_at': (graph_node or {}).get('next_review_due_at'),
+            },
+            'learning_path_update': {
+                'active_node_id': learning_path.get('active_node_id'),
+                'next_best_action': learning_path.get('next_best_action'),
+                'replanned': True,
+                'trigger': 'sm2_review',
+                'path_diff': path_diff,
+            },
+        }, '复习结果已记录，知识图谱与学习路径已更新')
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
 @student_progress_bp.route('/code-trial/runs', methods=['POST'])
 @jwt_required()
 @role_required('student')

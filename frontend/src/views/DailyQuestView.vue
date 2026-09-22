@@ -13,6 +13,7 @@ import {
   SparklesOutline,
   SunnyOutline,
   TimeOutline,
+  RefreshOutline,
 } from '@vicons/ionicons5'
 import PlexSidebar from '../components/layout/PlexSidebar.vue'
 import PlexTopbar from '../components/layout/PlexTopbar.vue'
@@ -60,6 +61,7 @@ const iconMap: Record<string, Component> = {
   'fragment-repair': markRaw(ExtensionPuzzleOutline),
   'trial-challenge': markRaw(BarbellOutline),
   'night-summary': markRaw(DocumentTextOutline),
+  'spaced-review': markRaw(RefreshOutline),
 }
 
 const fallbackQuests = DAILY_QUESTS.map((quest) => ({
@@ -83,7 +85,7 @@ const quests = computed<Quest[]>(() => {
       title: quest.title || fallback?.title || '',
       description: quest.description || fallback?.description || '',
       icon: iconMap[quest.key] ?? markRaw(SparklesOutline),
-      accent: fallback?.accent ?? (['teal', 'amber', 'blue', 'purple'][index % 4] as QuestAccent),
+      accent: fallback?.accent ?? (['teal', 'amber', 'blue', 'purple', 'rose'][index % 5] as QuestAccent),
       current: quest.current,
       total: quest.total,
       rewardXp: quest.reward_xp,
@@ -268,8 +270,9 @@ onMounted(loadTodayQuests)
                   >
                     <span class="quest-card__text">
                       <strong>{{ quest.title }}</strong>
-                      <span v-if="quest.key === 'morning-launch'">进入探索舱即可自动完成</span>
-                      <span v-else-if="quest.key === 'night-summary'">访问探索档案即可自动完成</span>
+                    <span v-if="quest.key === 'morning-launch'">进入探索舱即可自动完成</span>
+                    <span v-else-if="quest.key === 'night-summary'">访问探索档案即可自动完成</span>
+                    <span v-else-if="quest.key === 'spaced-review'">完成今日到期错题复习后自动完成</span>
                       <span v-else-if="quest.current >= quest.total">已完成 ✓</span>
                       <span v-else>完成对应任务后自动更新</span>
                     </span>
@@ -1027,6 +1030,10 @@ onMounted(loadTodayQuests)
 
 .quest-row--purple {
   --quest-color: #c261ff;
+}
+
+.quest-row--rose {
+  --quest-color: #ff7da8;
 }
 
 .quest-row--done .quest-card {

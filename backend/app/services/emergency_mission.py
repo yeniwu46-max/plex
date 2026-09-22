@@ -426,7 +426,7 @@ class EmergencyMissionService:
             lines.append(
                 f'第{question.sort_order}题：{question.stem}\n'
                 f'学生选择：{EmergencyMissionService._format_answer_letter(selected)} · '
-                f'{'正确' if question.is_correct else '错误'} · '
+                f"{'正确' if question.is_correct else '错误'} · "
                 f'正确答案：{EmergencyMissionService._format_answer_letter(correct)}'
             )
 
@@ -455,7 +455,7 @@ class EmergencyMissionService:
                 '本次补给站任务已完成。建议回顾每道题涉及的边界条件：'
                 '注意循环范围、比较符号与特殊输入（如 0、空值、边界值）。'
                 '可在星轨学习中针对「'
-                f'{session.focus_label or '相关知识点'}'
+                f"{session.focus_label or '相关知识点'}"
                 '」再做一次巩固练习。'
             )
 

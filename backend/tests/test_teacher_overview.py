@@ -89,6 +89,9 @@ class TeacherOverviewTestCase(unittest.TestCase):
         payload = response.get_json()['data']
         self.assertEqual(payload['selected_class']['id'], self.own_class_id)
         self.assertEqual(payload['metrics']['student_count'], 2)
+        self.assertEqual(payload['metrics']['intervention_count'], 0)
+        self.assertEqual(payload['metrics']['intervention_resolved_count'], 0)
+        self.assertEqual(payload['metrics']['intervention_completion_rate'], 0)
         self.assertEqual(payload['ranking'][0]['student_name'], '学生乙')
         self.assertEqual(payload['ranking'][0]['points'], 780)
 

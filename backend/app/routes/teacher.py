@@ -229,6 +229,24 @@ def get_student_learning_adaptations(student_id):
         return error_response(str(exc), 40401, None, 404)
 
 
+@teacher_bp.route('/students/<int:student_id>/learning-adaptations/<int:adaptation_id>/ticket', methods=['PATCH'])
+@jwt_required()
+@role_required('teacher', 'admin')
+def update_student_adaptation_ticket(student_id, adaptation_id):
+    try:
+        current_user_id = int(get_jwt_identity())
+        MistakeService.list_for_teacher_student(current_user_id, student_id, _role_name(current_user_id))
+        from app.services.learning_adaptation import LearningAdaptationService
+        body = request.get_json(silent=True) or {}
+        return success_response(LearningAdaptationService.update_ticket(
+            student_id, adaptation_id, str(body.get('status') or ''), str(body.get('note') or '')
+        ))
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
+
+
 @teacher_bp.route('/students/<int:student_id>/learning-effect', methods=['GET'])
 @jwt_required()
 @role_required('teacher', 'admin')

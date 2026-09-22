@@ -82,6 +82,8 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertIn('summary', body)
         self.assertIn('domain_mastery', body)
         self.assertIn('recommendations', body)
+        self.assertIn('risk_explanations', body)
+        self.assertIsInstance(body['risk_explanations'], list)
 
     def test_teacher_class_evaluation(self):
         resp = self.client.get(
@@ -92,6 +94,8 @@ class EvaluationTestCase(unittest.TestCase):
         body = resp.get_json()['data']
         self.assertEqual(body['class_id'], self.class_id)
         self.assertIn('students', body)
+        if body['students']:
+            self.assertIn('risk_explanations', body['students'][0])
 
     def _create_effect_evidence(self, before_count=3, after_count=3):
         with self.app.app_context():

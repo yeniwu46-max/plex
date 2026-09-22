@@ -99,6 +99,8 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
         ))
         bundle = next(item for item in task['resources'] if item['resource_type'] == 'learning_bundle')
         self.assertEqual(bundle['content']['format'], 'pedagogical_v2')
+        self.assertGreaterEqual(len(bundle['content']['cases']), 2)
+        self.assertNotIn('insufficient_cases', validate_bundle_risks(bundle['content']))
         self.assertEqual(len(bundle['content']['exercises']), 6)
         self.assertEqual(
             {ex['type'] for ex in bundle['content']['exercises']},
@@ -136,6 +138,7 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
         exercise_set = next(item for item in task['resources'] if item['resource_type'] == 'exercise_set')
         questions = exercise_set['content']['questions']
         self.assertEqual(len(questions), 6)
+        self.assertEqual(len({q['question'] for q in questions}), len(questions))
         self.assertTrue(all(q.get('answer') for q in questions))
 
         metrics = self.client.get(

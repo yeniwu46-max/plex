@@ -119,12 +119,17 @@ def audit(output: Path) -> dict:
         }
 
     clean_report, _ = _load_json(EVIDENCE_REPORTS["clean_environment"])
+    mysql_report, _ = _load_json(
+        REPO_ROOT / "backend/reports/a3-next-stage/mysql-clean-environment.json"
+    )
     external_conditions = (clean_report or {}).get("external_conditions", {})
     external_gates = {
         "iflytek_spark": external_conditions.get("iflytek_spark") == "credential_configured",
         "github_ci": external_conditions.get("github_cli") == "authenticated",
         "mysql_8": (
-            (REPO_ROOT / "backend/reports/a3-next-stage/mysql-clean-environment.json").is_file()
+            isinstance(mysql_report, dict)
+            and mysql_report.get("passed") is True
+            and mysql_report.get("checks", {}).get("mysql_8") is True
         ),
     }
     manifest_report, _ = _load_json(EVIDENCE_REPORTS["release_manifest"])
@@ -150,7 +155,7 @@ def audit(output: Path) -> dict:
         "worktree_clean_at_manifest": release_metadata.get("worktree_dirty") is False,
     }
     deliverable_paths = {
-        "defense_pptx": REPO_ROOT / "docs/submission/artifacts/PLEX-A3-defense.pptx",
+        "defense_pptx": REPO_ROOT / "docs/submission/artifacts/PLEX-iflytek-990-defense.pptx",
         "demo_video": REPO_ROOT / "docs/submission/artifacts/PLEX-A3-demo.mp4",
     }
     delivery_gates = {

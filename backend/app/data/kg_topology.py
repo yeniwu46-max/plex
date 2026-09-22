@@ -59,10 +59,32 @@ def _build_edges() -> list[dict]:
         for prev, current in zip(entries, entries[1:]):
             add(prev.kg_id, current.kg_id, 'prerequisite', '前置')
 
+        # 同一学域中隔一个节点建立“相关”关系，表达可并行巩固的相邻概念。
+        # 这类边不参与解锁，只用于检索增强和学习路径的候选扩展。
+        for current, related in zip(entries, entries[2:]):
+            add(current.kg_id, related.kg_id, 'related', '相关')
+
     # 跨类主线：每个大类的首个节点由上一大类的首个节点引出
     domain_heads = [nodes_for_domain(d.key)[0].kg_id for d in KNOWLEDGE_DOMAINS]
     for prev, current in zip(domain_heads, domain_heads[1:]):
         add(prev, current, 'prerequisite', '前置')
+
+    # 学域收尾节点指向下一学域入口，作为完成一阶段后的推荐延伸。
+    domain_tails = [nodes_for_domain(d.key)[-1].kg_id for d in KNOWLEDGE_DOMAINS]
+    for current, next_head in zip(domain_tails, domain_heads[1:]):
+        add(current, next_head, 'path', '推荐路径')
+
+    # 语义关系覆盖：这些边供诊断、资源绑定和迁移推荐使用，不参与前置解锁。
+    semantic_types = (
+        ('assesses', '考查'), ('error', '导致错误'), ('remediation', '补救'),
+        ('resource', '推荐资源'), ('mastery', '掌握'), ('transfer', '迁移'),
+        ('belongs_to', '属于'),
+    )
+    for domain in KNOWLEDGE_DOMAINS:
+        entries = nodes_for_domain(domain.key)
+        for index, (edge_type, label) in enumerate(semantic_types):
+            if index + 1 < len(entries):
+                add(entries[index].kg_id, entries[index + 1].kg_id, edge_type, label)
 
     # 跨类相关/推荐：把实际教学中互相依赖的点连起来
     add('loop-for', 'array-traverse', 'related', '相关')
@@ -70,7 +92,7 @@ def _build_edges() -> list[dict]:
     add('loop-for', 'string-scan', 'related', '相关')
     add('array-basic', 'search-linear', 'prerequisite', '前置')
     add('array-traverse', 'search-stat', 'prerequisite', '前置')
-    add('func-define', 'func-recursion', 'related', '相关')
+    add('seq-logic', 'branch-if', 'prerequisite', '前置')
     add('search-linear', 'search-binary', 'path', '推荐路径')
     add('search-sort', 'search-binary', 'path', '推荐路径')
     add('string-method', 'array-basic', 'related', '相关')
@@ -84,3 +106,9 @@ KG_EDGES = _build_edges()
 KG_NODE_IDS = frozenset(node['id'] for node in KG_NODES)
 
 assert len(KG_NODES) == len(KNOWLEDGE_NODE_REGISTRY)
+assert len(KG_NODES) >= 100
+assert len(KG_EDGES) >= 200
+assert {edge['type'] for edge in KG_EDGES}.issuperset({item[0] for item in (
+    ('prerequisite',), ('related',), ('path',), ('assesses',), ('error',),
+    ('remediation',), ('resource',), ('mastery',), ('transfer',), ('belongs_to',),
+)})

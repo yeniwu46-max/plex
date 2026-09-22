@@ -10,6 +10,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from sqlalchemy import text
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -50,7 +52,16 @@ def run(output: Path, static_frontend: bool = False) -> dict:
     health_response = client.get('/api/v1/health')
     health = health_response.get_json() or {}
     with app.app_context():
-        database_backend = app.extensions['sqlalchemy'].engine.dialect.name
+        engine = app.extensions['sqlalchemy'].engine
+        database_backend = engine.dialect.name
+        try:
+            with engine.connect() as connection:
+                database_version = str(connection.execute(text('SELECT VERSION()')).scalar() or '')
+                database_comment = str(connection.execute(text('SELECT @@version_comment')).scalar() or '')
+        except Exception as exc:
+            database_version = ''
+            database_comment = f'version_probe_failed:{type(exc).__name__}'
+    mysql_8 = database_backend == 'mysql' and database_version.startswith('8.')
     checks = {
         'python': {'passed': sys.version_info >= (3, 12), 'version': sys.version.split()[0]},
         'node': {
@@ -68,13 +79,23 @@ def run(output: Path, static_frontend: bool = False) -> dict:
         'database': {
             'passed': health_response.status_code == 200,
             'backend': database_backend,
+            'version': database_version,
+            'version_comment': database_comment,
+        },
+        'mysql_8': {
+            'passed': mysql_8,
+            'required': 'MySQL 8.x',
+            'observed_backend': database_backend,
+            'observed_version': database_version,
         },
         'health': {'passed': health_response.status_code == 200, 'response_code': health.get('code')},
         'demo_accounts': {'passed': all(accounts.values()), 'accounts': accounts},
     }
     report = {
         'run_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
-        'passed': all(item['passed'] for item in checks.values()),
+        # Keep runtime smoke readiness separate from the external MySQL 8
+        # acceptance gate; release-readiness audits that gate explicitly.
+        'passed': all(item['passed'] for key, item in checks.items() if key != 'mysql_8'),
         'checks': checks,
         'external_conditions': {
             'docker': 'available' if shutil.which('docker') else 'blocked_local_tool_missing',

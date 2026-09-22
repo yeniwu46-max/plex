@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NIcon, NSelect } from 'naive-ui'
+import { NButton, NIcon, NSelect, NTag } from 'naive-ui'
 import {
   CompassOutline,
   CubeOutline,
@@ -159,7 +159,7 @@ const mistakeChartData = computed(() => {
   return items
 })
 
-const DAILY_QUEST_LABELS = ['晨间启动', '修复知识碎片', '试炼挑战', '夜间总结'] as const
+const DAILY_QUEST_LABELS = ['晨间启动', '修复知识碎片', '试炼挑战', '夜间总结', '间隔复习'] as const
 
 const heatmap = computed(() => overview.value?.heatmap ?? { days: [], rows: [] })
 const ranking = computed(() => overview.value?.ranking ?? [])
@@ -175,6 +175,7 @@ const explorationStats = computed(() => [
   { key: 'trials', icon: SparklesOutline, value: Math.max(0, metrics.value?.avg_points ?? 0), label: '平均 XP' },
   { key: 'active', icon: PeopleOutline, value: metrics.value?.active_count ?? 0, label: '活跃 Explorer' },
   { key: 'repair', icon: ShieldCheckmarkOutline, value: `${activityScore.value}%`, label: '今日修复率' },
+  { key: 'intervention', icon: ShieldCheckmarkOutline, value: `${metrics.value?.intervention_completion_rate ?? 0}%`, label: '干预完成率' },
   { key: 'risk', icon: CubeOutline, value: metrics.value?.attention_count ?? 0, label: '需跟进学生' },
 ])
 
@@ -228,6 +229,18 @@ const evaluationAttention = computed(() => {
     learning_index: student.learning_index,
     level_label: student.level_label,
   }))
+})
+
+const riskExplanationSummary = computed(() => {
+  const counts = new Map<string, { label: string; count: number }>()
+  for (const student of classEvaluation.value?.attention_students ?? []) {
+    for (const item of student.risk_explanations ?? []) {
+      const current = counts.get(item.feature) ?? { label: item.label, count: 0 }
+      current.count += 1
+      counts.set(item.feature, current)
+    }
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 3)
 })
 
 const mergedAttentionStudents = computed(() => {
@@ -396,6 +409,12 @@ function onAttentionSelect(student: AttentionStudentListItem) {
               >
                 +{{ mergedAttentionStudents.length - 5 }}
               </button>
+            </div>
+            <div v-if="riskExplanationSummary.length" class="risk-explanation-summary" aria-label="风险解释摘要">
+              <span>主要风险因子</span>
+              <n-tag v-for="item in riskExplanationSummary" :key="item.label" size="small" type="warning">
+                {{ item.label }} · {{ item.count }}人
+              </n-tag>
             </div>
           </article>
 
@@ -643,6 +662,21 @@ function onAttentionSelect(student: AttentionStudentListItem) {
   gap: 1.05rem;
   margin-top: auto;
   padding-bottom: 0.35rem;
+}
+
+.risk-explanation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+  color: rgba(224, 237, 255, 0.72);
+  font-size: 0.74rem;
+}
+
+.risk-explanation-summary > span {
+  margin-right: 0.2rem;
+  color: rgba(224, 237, 255, 0.52);
 }
 
 .explorer-chip {

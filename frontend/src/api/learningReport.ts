@@ -25,6 +25,14 @@ export interface LearningRecommendation {
   knowledge_key: string | null
 }
 
+export interface RiskExplanation {
+  feature: string
+  label: string
+  contribution: number
+  value: number
+  evidence: string
+}
+
 export interface LearningReportResult {
   period: string
   summary: LearningReportSummary
@@ -34,6 +42,7 @@ export interface LearningReportResult {
   trend: AbilityStatsResult['trend']
   radar: AbilityStatsResult['radar']
   risk_tags: string[]
+  risk_explanations: RiskExplanation[]
   recommendations: LearningRecommendation[]
   student?: { id: number; username: string; real_name: string }
 }
@@ -74,6 +83,7 @@ export interface ClassEvaluationStudent {
   learning_index: number
   level_label: string
   risk_tags: string[]
+  risk_explanations?: RiskExplanation[]
   weak_knowledge: WeakKnowledgeItem[]
 }
 

@@ -192,9 +192,11 @@ class AgentOrchestrator:
     @staticmethod
     def trial_coach(payload: dict) -> dict:
         """试炼编程页 · 三类辅导智能体（报错/质量/优化），禁止直接给答案。"""
-        from agents.trial_coach_agents import VALID_INTENTS, execute
+        from agents.trial_coach_agents import VALID_INTENTS, execute, infer_intent
 
         intent = str(payload.get('intent') or '').strip()
+        if not intent:
+            intent = infer_intent(payload)
         if intent not in VALID_INTENTS:
             raise ValueError(f'unsupported intent: {intent}')
         return execute(intent, payload)

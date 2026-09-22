@@ -60,17 +60,20 @@ def review_generated_resource(
     audit_report: dict | None = None,
     risk_reasons: list[str] | None = None,
     title: str = '',
+    allow_remote: bool = True,
 ) -> dict[str, Any]:
     """调用 OpenAI 审核资源；无密钥或失败时回退到规则判定。"""
     audit_report = audit_report or {}
     risk_reasons = list(risk_reasons or [])
-    openai_result = _openai_review(
-        bundle=bundle or {},
-        knowledge_key=knowledge_key,
-        audit_report=audit_report,
-        risk_reasons=risk_reasons,
-        title=title,
-    )
+    openai_result = None
+    if allow_remote:
+        openai_result = _openai_review(
+            bundle=bundle or {},
+            knowledge_key=knowledge_key,
+            audit_report=audit_report,
+            risk_reasons=risk_reasons,
+            title=title,
+        )
     if openai_result:
         return openai_result
     return _rules_fallback(bundle or {}, knowledge_key, audit_report, risk_reasons)

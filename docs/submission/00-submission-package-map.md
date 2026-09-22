@@ -11,6 +11,8 @@
 | 要求 | 应提交/引用的材料 | 说明 | 当前状态 |
 |---|---|---|---|
 | 演示 PPT | `docs/submission/12-defense-deck-spec.md`；目标产物 `docs/submission/artifacts/PLEX-A3-defense.pptx` | 10 页、7 分钟结构；每页必须绑定证据对象 | 规格已完成，正式 PPTX 待生成 |
+| 990 路演底稿 | `docs/submission/15-iflytek-990-defense-script.md`；`docs/submission/artifacts/PLEX-iflytek-990-defense.pptx` | 10 页口播、证据脚注、未完成项口径 | Markdown 底稿与 10 页 PPTX 已生成；MP4 待录制 |
+| 990 完成度审计 | `docs/2026-08-28-iflytek-990-completion-audit.md` | 指标逐项状态、证据和外部关闭条件 | 审计表已完成 |
 | 多智能体相关文件 | `backend/agents/`、`backend/app/services/resource_audit/`、`backend/data/rag_docs/`、`backend/reports/`、配置样例和启动脚本 | 包含项目源码、课程知识库、报告、模型/后端配置说明；不得包含 `.env` 或真实密钥 | 文件组边界见 `14-freeze-file-groups.md` |
 | 演示视频 | `docs/submission/10-demo-script.md`、`docs/submission/13-recording-runbook.md`；目标产物 `docs/submission/artifacts/PLEX-A3-demo.mp4` | 时长控制 7 分钟内，主备路线都要保留真实状态标识 | 脚本已完成，视频待录制 |
 | 智能体开发类型 | `docs/submission/02-system-design.md`、`03-multi-agent-design.md` | Web 应用；多智能体流程作为学习资源生产、路径推荐和质量审核链路嵌入系统 | 已整理 |

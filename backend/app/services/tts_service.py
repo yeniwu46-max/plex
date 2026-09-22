@@ -19,6 +19,7 @@ import json
 import os
 import ssl
 import uuid
+import time
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
@@ -214,6 +215,12 @@ class TtsService:
 
     @classmethod
     def synthesize_to_media(cls, text: str, prefix: str = 'lesson') -> str | None:
+        return cls.synthesize_to_media_with_metrics(text, prefix=prefix)['url']
+
+    @classmethod
+    def synthesize_to_media_with_metrics(cls, text: str, prefix: str = 'lesson') -> dict:
+        """Synthesize audio and expose auditable backend/latency metadata."""
+        started = time.monotonic()
         audio = IflytekTtsService.synthesize(text)
         backend = 'iflytek'
         ext = 'mp3'
@@ -226,12 +233,20 @@ class TtsService:
                 audio, ext = local
                 backend = 'local'
         if not audio:
-            return None
+            return {'url': None, 'backend': None, 'first_packet_ms': None, 'duration_ms': round((time.monotonic() - started) * 1000)}
         audio_dir = MEDIA_ROOT / 'audio'
         audio_dir.mkdir(parents=True, exist_ok=True)
         filename = f'{prefix}-{backend}-{uuid.uuid4().hex[:12]}.{ext}'
         (audio_dir / filename).write_bytes(audio)
-        return f'/api/v1/media/audio/{filename}'
+        duration_ms = round((time.monotonic() - started) * 1000)
+        return {
+            'url': f'/api/v1/media/audio/{filename}',
+            'backend': backend,
+            # Current adapters write complete media; total synthesis duration is
+            # the conservative first-audio-packet proxy until streaming TTS is enabled.
+            'first_packet_ms': duration_ms,
+            'duration_ms': duration_ms,
+        }
 
 
 @classmethod  # type: ignore[misc]

@@ -13,6 +13,7 @@ from app.data.knowledge_node_registry import (
 from app.models import PersonalizedLearningResource, StudentProfile, TrialQuestion, User, db
 from app.services.knowledge_graph import KnowledgeGraphService
 from app.services.learning_adaptation import LearningAdaptationService
+from app.services.mistake import MistakeService
 from app.services.neo4j_client import get_graph_store, graph_backend_name
 
 
@@ -94,13 +95,28 @@ class LearningPathService:
         mastery: dict[str, dict],
         focus_id: str | None,
         entry_level: str,
+        due_node_ids: set[str] | None = None,
     ) -> float:
         score = mastery.get(node_id, {}).get('mastery_score', 0.0)
         gap = 1.0 - score
         focus_bonus = 0.15 if focus_id and node_id == focus_id else 0.0
         related_bonus = 0.08 if focus_id and focus_id in get_graph_store().get_prerequisites(node_id) else 0.0
         level_penalty = 0.05 if entry_level == 'intermediate' and score < 0.3 else 0.0
-        return gap + focus_bonus + related_bonus - level_penalty
+        due_bonus = 0.12 if due_node_ids and node_id in due_node_ids else 0.0
+        return gap + focus_bonus + related_bonus + due_bonus - level_penalty
+
+    @staticmethod
+    def _due_node_ids(user_id: int) -> set[str]:
+        """Map due SM-2 mistakes to graph nodes so overdue recall is prioritized."""
+        try:
+            due = MistakeService.list_due_reviews(user_id, limit=100).get('items') or []
+        except Exception:
+            return set()
+        return {
+            kg_id_from_key(str(item.get('knowledge_key')))
+            for item in due
+            if item.get('knowledge_key') and kg_id_from_key(str(item.get('knowledge_key')))
+        }
 
     @staticmethod
     def _bind_resources(user_id: int, kg_id: str) -> list[dict]:
@@ -200,8 +216,9 @@ class LearningPathService:
                 focus_id = kg_id_from_key(str(weak[0]))
 
         remediation_paths = cls._build_remediation_paths(user_id, mastery)
+        due_node_ids = cls._due_node_ids(user_id)
 
-        # 星轨要把 26 个节点全部铺出来：既然已经取消解锁限制，学生可以任意跳转，
+        # 星轨要把注册表中的节点全部铺出来：既然已经取消解锁限制，学生可以任意跳转，
         # 路径就不该只列"还没掌握的"那几个（全掌握时原来只会剩 5 个兜底节点）。
         # 排序仍按推荐度来，_nba_score 以 1-掌握度 为主项，未掌握的自然排在前面；
         # 分数相同的按拓扑顺序（即教学顺序）稳定排列。
@@ -213,7 +230,7 @@ class LearningPathService:
         scored = []
         for nid in ordered_candidates:
             entry = get_entry(nid)
-            scored.append((cls._nba_score(nid, mastery, focus_id, entry.level if entry else 'basic'), nid))
+            scored.append((cls._nba_score(nid, mastery, focus_id, entry.level if entry else 'basic', due_node_ids), nid))
         scored.sort(key=lambda item: (-item[0], position[item[1]]))
         ordered_ids = [nid for _, nid in scored] or node_ids
 
@@ -255,6 +272,8 @@ class LearningPathService:
             if active_entry and active_entry.get('prerequisites_met')
             else '请先完成前置知识点再推进'
         )
+        if due_node_ids and active_node in due_node_ids:
+            nba_reason += '；该节点存在到期错题，优先安排间隔复习'
 
         return {
             'ordered_nodes': ordered_nodes,

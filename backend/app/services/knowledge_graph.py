@@ -38,6 +38,10 @@ class KnowledgeGraphService:
             'wrong': 0,
             'fail_count': 0,
             'error_types': Counter(),
+            'review_count': 0,
+            'review_repetitions': 0,
+            'last_review_quality': None,
+            'next_review_due_at': None,
         }
 
     @staticmethod
@@ -86,18 +90,46 @@ class KnowledgeGraphService:
             bucket['fail_count'] = max(bucket['fail_count'], row.fail_count or 1)
             if row.error_type:
                 bucket['error_types'][row.error_type] += row.fail_count or 1
+
+        # SM-2 is part of the same mastery evidence, not a parallel profile.
+        # Successful spaced reviews can therefore move a node from learning to
+        # mastered and immediately change the next-best learning path action.
+        for row in StudentMistake.query.filter_by(user_id=user_id).all():
+            meta = row.meta if isinstance(row.meta, dict) else {}
+            schedule = meta.get('review_schedule') if isinstance(meta, dict) else None
+            if not isinstance(schedule, dict):
+                continue
+            node_id = KnowledgeGraphService._node_id_for_key(row.knowledge_key)
+            if node_id is None:
+                continue
+            bucket = stats[node_id]
+            repetitions = max(0, int(schedule.get('repetitions') or 0))
+            bucket['review_count'] += max(0, int(schedule.get('review_count') or 0))
+            if repetitions >= bucket['review_repetitions']:
+                bucket['review_repetitions'] = repetitions
+                bucket['last_review_quality'] = schedule.get('last_quality')
+                bucket['next_review_due_at'] = schedule.get('due_at')
         return stats
 
     @staticmethod
     def _resolve_status(node_id: str, stats: dict, recommended_ids: set[str]) -> str:
-        bucket = stats.get(node_id, {'answered': 0, 'correct': 0, 'fail_count': 0})
+        bucket = stats.get(node_id, {
+            'answered': 0,
+            'correct': 0,
+            'fail_count': 0,
+            'review_repetitions': 0,
+        })
         answered = bucket['answered']
-        if node_id in recommended_ids:
-            return 'recommended'
         if bucket['fail_count'] >= 2 or (answered >= 1 and answered and bucket['correct'] / answered < 0.4):
             return 'weak'
+        if bucket.get('review_repetitions', 0) >= 2 and (bucket.get('last_review_quality') or 0) >= 3:
+            return 'mastered'
         if answered >= 2 and bucket['correct'] / answered >= 0.8:
             return 'mastered'
+        if node_id in recommended_ids:
+            return 'recommended'
+        if bucket.get('review_repetitions', 0) >= 1:
+            return 'learning'
         if answered >= 1:
             return 'learning'
         return 'unlearned'
@@ -129,6 +161,10 @@ class KnowledgeGraphService:
             'weak_score': round(weak_score, 2),
             'affected_student_count': affected_student_count,
             'top_error_types': top_error_types,
+            'review_count': int(bucket.get('review_count') or 0),
+            'review_repetitions': int(bucket.get('review_repetitions') or 0),
+            'last_review_quality': bucket.get('last_review_quality'),
+            'next_review_due_at': bucket.get('next_review_due_at'),
         }
 
     @staticmethod

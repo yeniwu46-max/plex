@@ -1,6 +1,6 @@
 """错题本：写入、查询、薄弱知识点"""
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.models import StudentMistake, TrialQuestion, User, db
 from app.services.question_generator import QuestionGenerator
@@ -8,6 +8,75 @@ from app.utils.time import utc_now
 
 
 class MistakeService:
+    SM2_MIN_EASE_FACTOR = 1.3
+
+    @staticmethod
+    def _new_review_schedule(now: datetime | None = None) -> dict:
+        """Create the initial SM-2 state for a newly recorded mistake."""
+        current = now or utc_now()
+        return {
+            'algorithm': 'SM-2',
+            'ease_factor': 2.5,
+            'interval_days': 0,
+            'repetitions': 0,
+            'review_count': 0,
+            'last_quality': None,
+            'last_reviewed_at': None,
+            'due_at': current.isoformat() + 'Z',
+        }
+
+    @staticmethod
+    def _parse_review_time(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(str(value).replace('Z', ''))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def calculate_sm2(schedule: dict | None, quality: int, now: datetime | None = None) -> dict:
+        """Advance an SM-2 schedule using a 0..5 recall-quality score."""
+        if isinstance(quality, bool) or not isinstance(quality, int) or not 0 <= quality <= 5:
+            raise ValueError('quality 必须是 0 到 5 的整数')
+
+        current = now or utc_now()
+        state = dict(schedule or MistakeService._new_review_schedule(current))
+        repetitions = max(0, int(state.get('repetitions') or 0))
+        previous_interval = max(0, int(state.get('interval_days') or 0))
+        ease_factor = max(
+            MistakeService.SM2_MIN_EASE_FACTOR,
+            float(state.get('ease_factor') or 2.5),
+        )
+
+        if quality < 3:
+            repetitions = 0
+            interval_days = 1
+        else:
+            if repetitions == 0:
+                interval_days = 1
+            elif repetitions == 1:
+                interval_days = 6
+            else:
+                interval_days = max(1, round(previous_interval * ease_factor))
+            repetitions += 1
+
+        ease_factor = max(
+            MistakeService.SM2_MIN_EASE_FACTOR,
+            ease_factor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02),
+        )
+        due_at = current + timedelta(days=interval_days)
+        return {
+            'algorithm': 'SM-2',
+            'ease_factor': round(ease_factor, 2),
+            'interval_days': interval_days,
+            'repetitions': repetitions,
+            'review_count': int(state.get('review_count') or 0) + 1,
+            'last_quality': quality,
+            'last_reviewed_at': current.isoformat() + 'Z',
+            'due_at': due_at.isoformat() + 'Z',
+        }
+
     @staticmethod
     def _upsert(
         user_id: int,
@@ -33,6 +102,16 @@ class MistakeService:
         if question_title:
             merged_meta['question_title'] = question_title
         merged_meta['knowledge_label'] = QuestionGenerator.label_for_key(key)
+
+        if not passed:
+            existing_meta = row.meta if row and isinstance(row.meta, dict) else {}
+            previous_schedule = existing_meta.get('review_schedule')
+            schedule = dict(previous_schedule) if isinstance(previous_schedule, dict) else MistakeService._new_review_schedule(now)
+            # A fresh failure makes the item immediately due while preserving its review history.
+            schedule['repetitions'] = 0
+            schedule['interval_days'] = 0
+            schedule['due_at'] = now.isoformat() + 'Z'
+            merged_meta['review_schedule'] = schedule
 
         if passed:
             if not row:
@@ -215,6 +294,60 @@ class MistakeService:
         if active_only:
             rows = [row for row in rows if MistakeService._is_active(row)]
         return [row.to_dict() for row in rows]
+
+    @staticmethod
+    def list_due_reviews(user_id: int, *, limit: int = 20, now: datetime | None = None) -> dict:
+        """Return due SM-2 reviews and lazily enroll historical active mistakes."""
+        current = now or utc_now()
+        capped_limit = min(max(int(limit), 1), 100)
+        rows = StudentMistake.query.filter_by(user_id=user_id).order_by(
+            StudentMistake.last_failed_at.desc()
+        ).all()
+        due_rows = []
+        changed = False
+        for row in rows:
+            meta = dict(row.meta) if isinstance(row.meta, dict) else {}
+            schedule = meta.get('review_schedule')
+            if not isinstance(schedule, dict):
+                if not MistakeService._is_active(row):
+                    continue
+                schedule = MistakeService._new_review_schedule(row.last_failed_at or current)
+                meta['review_schedule'] = schedule
+                row.meta = meta
+                changed = True
+            due_at = MistakeService._parse_review_time(schedule.get('due_at'))
+            if due_at is None or due_at <= current:
+                due_rows.append(row)
+
+        if changed:
+            db.session.commit()
+        due_rows.sort(
+            key=lambda item: MistakeService._parse_review_time(
+                ((item.meta or {}).get('review_schedule') or {}).get('due_at')
+            ) or datetime.min
+        )
+        items = [row.to_dict() for row in due_rows[:capped_limit]]
+        return {'items': items, 'total': len(due_rows), 'limit': capped_limit}
+
+    @staticmethod
+    def submit_review(user_id: int, mistake_id: int, quality: int) -> dict:
+        """Record recall quality, update mastery state, and schedule the next review."""
+        row = StudentMistake.query.filter_by(id=mistake_id, user_id=user_id).first()
+        if not row:
+            raise ValueError('错题不存在')
+
+        now = utc_now()
+        meta = dict(row.meta) if isinstance(row.meta, dict) else {}
+        schedule = MistakeService.calculate_sm2(meta.get('review_schedule'), quality, now)
+        meta['review_schedule'] = schedule
+        row.meta = meta
+        if quality >= 3:
+            row.last_passed_at = now
+        else:
+            row.fail_count = (row.fail_count or 0) + 1
+            row.last_failed_at = now
+        db.session.commit()
+        return row.to_dict()
 
     @staticmethod
     def list_recent_with_meta(user_id: int, limit: int = 8) -> list[dict]:

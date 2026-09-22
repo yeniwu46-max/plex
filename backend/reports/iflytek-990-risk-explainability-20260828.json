@@ -1,0 +1,18 @@
+{
+  "benchmark": "iflytek-990-risk-explainability-contract",
+  "run_at_utc": "2026-08-28T08:19:23+00:00",
+  "backend": "local_rules",
+  "status": "passed",
+  "real_model_verified": false,
+  "shap_claimed": false,
+  "explanation_count": 1,
+  "checks": {
+    "demo_login": true,
+    "report_endpoint": true,
+    "all_have_feature": true,
+    "all_have_evidence": true,
+    "contributions_bounded": true,
+    "all_have_value": true
+  },
+  "note": "确定性贡献因子和证据链通过契约检查；未宣称 SHAP，也不替代真实训练数据。"
+}

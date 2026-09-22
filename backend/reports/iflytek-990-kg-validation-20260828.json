@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "node_count": 100,
+  "edge_count": 256,
+  "duplicate_nodes": [],
+  "duplicate_edges": [],
+  "invalid_edges": [],
+  "isolated_nodes": [],
+  "prerequisite_cycle": false,
+  "cycle_nodes": [],
+  "relation_types": [
+    "assesses",
+    "belongs_to",
+    "error",
+    "mastery",
+    "path",
+    "prerequisite",
+    "related",
+    "remediation",
+    "resource",
+    "transfer"
+  ],
+  "missing_relation_types": []
+}

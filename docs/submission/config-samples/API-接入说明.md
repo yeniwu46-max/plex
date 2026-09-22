@@ -5,12 +5,12 @@
 | 文件 | 运行时目标 | 用途 |
 |---|---|---|
 | `backend.env.production-ready` | `source/backend/.env` | SQLite + `AGENT_BACKEND=auto` + DeepSeek/OpenAI 等 |
-| `api-keys.spark.local` | `source/backend/.env.spark.local` | 讯飞 Spark Lite + 星辰 Agent（小E） |
+| `api-keys.spark.local` | `source/backend/.env.spark.local` | 讯飞 Spark Pro + 星辰 Agent（小E） |
 
 ## 接入能力
 
 - **驿站小E / 自由问答**：讯飞星辰 Agent（`XFYUN_AGENT_*`）→ Spark → DeepSeek
-- **个性化资源生成**：讯飞 Spark Lite（`IFLYTEK_SPARK_*`）
+- **个性化资源生成**：讯飞 Spark Pro（HTTP `APIPassword`，`IFLYTEK_SPARK_*`）
 - **试炼编程辅导 / 教师 AI 出题**：DeepSeek（`DEEPSEEK_*`）
 - **多智能体流水线**：`AGENT_BACKEND=auto`（CrewAI 可选 + LLM 增强）
 

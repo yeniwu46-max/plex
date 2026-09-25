@@ -59,6 +59,9 @@ def execute(payload: dict) -> dict:
     prereq: list[str] = []
     for node in related:
         prereq.extend(PREREQUISITE_MAP.get(node, []))
+    # Knowledge Intelligence Layer：用权威知识图谱补充前置与常见误区（经 KnowledgeService，不直接访问存储）
+    graph_extra = _graph_lookup(related)
+    prereq.extend(graph_extra.get('prerequisites') or [])
     prereq = list(dict.fromkeys(prereq))[:4]
 
     # 复习节点优先放“偏弱 / 未掌握”的关联节点
@@ -76,10 +79,46 @@ def execute(payload: dict) -> dict:
     else:
         graph_reason = f'该错误与「{focus}」的理解直接相关，建议先巩固前置知识再练同类题。'
 
-    return {
+    if graph_extra.get('misconceptions'):
+        graph_reason += f' 常见误区：{"；".join(graph_extra["misconceptions"][:2])}'
+
+    result = {
         'relatedNodes': related,
         'prerequisiteNodes': prereq,
         'recommendedReviewNodes': review,
         'graphReason': graph_reason,
         'masteryByNode': mastery_by_node,
     }
+    if graph_extra:
+        result['knowledgeGraph'] = graph_extra
+    return result
+
+
+def _graph_lookup(node_names: list[str]) -> dict:
+    """把中文节点名解析到权威图谱 concept_id，返回前置知识点名、常见误区与后续推荐；不可用时返回 {}。"""
+    try:
+        from app.services.knowledge import KnowledgeService
+
+        concept_ids: list[str] = []
+        prerequisites: list[str] = []
+        misconceptions: list[str] = []
+        next_recommended: list[str] = []
+        for name in node_names[:3]:
+            ids = KnowledgeService.resolve_concepts([name, name.replace(' ', '')])
+            if not ids:
+                continue
+            detail = KnowledgeService.concept_detail(ids[0]) or {}
+            concept_ids.append(ids[0])
+            prerequisites.extend(p['name'] for p in detail.get('prerequisite_nodes') or [])
+            misconceptions.extend(m.get('description') or m.get('name') for m in detail.get('misconception_nodes') or [])
+            next_recommended.extend(n['name'] for n in detail.get('next_nodes') or [])
+        if not concept_ids:
+            return {}
+        return {
+            'conceptIds': concept_ids,
+            'prerequisites': list(dict.fromkeys(prerequisites))[:4],
+            'misconceptions': [m[:80] for m in dict.fromkeys(m for m in misconceptions if m)][:3],
+            'nextRecommended': list(dict.fromkeys(next_recommended))[:3],
+        }
+    except Exception:  # noqa: BLE001 - 无应用上下文或知识层未就绪时静默退化
+        return {}

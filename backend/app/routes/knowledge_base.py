@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """Knowledge base route - RAG service."""
 from flask import Blueprint, request
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from ..services.course_safety import SafetyViolation
 from ..services.rag_service import RagService
+from ..utils.access import current_user_from_id
 from ..utils.decorators import role_required
 from ..utils.response import error_response, success_response
 
@@ -28,8 +29,11 @@ def query_knowledge():
     question = body.get('question', '').strip()
     if not question:
         return error_response('question required', code=400)
+    user_id = int(get_jwt_identity())
+    user = current_user_from_id(user_id)
+    role = user.role.name if user and user.role else 'student'
     try:
-        result = RagService.query(question)
+        result = RagService.query(question, user_id=user_id, role=role)
     except SafetyViolation as exc:
         return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
     return success_response({

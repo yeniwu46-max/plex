@@ -311,7 +311,11 @@ def submit_mistake_review(mistake_id):
         payload = request.get_json(silent=True) or {}
         from app.services.learning_path import LearningPathService
         previous_learning_path = LearningPathService.plan(user_id)
-        quality = payload.get('quality')
+        questionnaire_answers = payload.get('questionnaire_answers')
+        if questionnaire_answers:
+            quality = MistakeService.compute_review_quality_from_questionnaire(questionnaire_answers)
+        else:
+            quality = payload.get('quality')
         record = MistakeService.submit_review(user_id, mistake_id, quality)
 
         from app.data.knowledge_node_registry import resolve_node_id

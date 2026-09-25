@@ -142,6 +142,11 @@ const router = createRouter({
           name: 'teacher-resource-review',
           component: () => import('../views/TeacherResourceReviewView.vue'),
         },
+        {
+          path: 'knowledge',
+          name: 'teacher-knowledge',
+          component: () => import('../views/TeacherKnowledgeView.vue'),
+        },
       ],
     },
     {
@@ -235,6 +240,7 @@ const routeTitles: Record<string, string> = {
   'teacher-trial-create': '创建试炼',
   'teacher-problem-bank': '题库管理',
   'teacher-resource-review': '资源审核',
+  'teacher-knowledge': '知识星域',
   'admin-home': '平台管理',
 }
 

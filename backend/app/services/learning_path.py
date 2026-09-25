@@ -316,6 +316,25 @@ class LearningPathService:
             'fallback': True,
         }
 
+        # Knowledge Intelligence Layer：为首个薄弱节点补充前置与常见误区，让建议落到具体知识点
+        knowledge_hint = ''
+        focus_key = (weak[0].get('id') if weak else None) or focus_node_id
+        if focus_key:
+            try:
+                from app.services.knowledge import KnowledgeService
+
+                prereqs = KnowledgeService.prerequisites(str(focus_key))
+                detail = KnowledgeService.concept_detail(str(focus_key)) or {}
+                misconceptions = [m.get('name') for m in (detail.get('misconception_nodes') or [])][:2]
+                if prereqs or misconceptions:
+                    knowledge_hint = (
+                        f"知识图谱提示：「{detail.get('name') or focus_key}」的前置知识点：{'、'.join(p['name'] for p in prereqs) or '无'}；"
+                        f"常见误区：{'、'.join(m for m in misconceptions if m) or '无'}"
+                    )
+                    fallback['knowledge_hint'] = knowledge_hint
+            except Exception:  # noqa: BLE001
+                knowledge_hint = ''
+
         provider = learning_path_provider()
         if not provider:
             return fallback
@@ -330,6 +349,7 @@ class LearningPathService:
             f"薄弱节点：{_fmt(weak)}\n"
             f"已掌握：{_fmt(strong)}\n"
             f"系统推荐：{nba.get('reason') or '无'}"
+            + (f"\n{knowledge_hint}" if knowledge_hint else '')
         )
         try:
             response = direct_post(
@@ -365,6 +385,7 @@ class LearningPathService:
                 'next_step': next_step or advice[:80],
                 'backend': 'deepseek',
                 'fallback': False,
+                **({'knowledge_hint': knowledge_hint} if knowledge_hint else {}),
             }
         except Exception:
             return fallback

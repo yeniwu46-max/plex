@@ -227,6 +227,14 @@ def create_app(config_name='development'):
             except Exception:
                 db.session.rollback()
                 app.logger.exception('Resource task recovery skipped; run `python manage.py upgrade`.')
+            # Knowledge Intelligence Layer：图谱种子 + 内建课程文档索引在后台线程完成，不阻塞启动
+            from app.services.knowledge import KnowledgeService
+
+            try:
+                KnowledgeService.bootstrap_async(app)
+            except Exception:
+                db.session.rollback()
+                app.logger.exception('Knowledge layer bootstrap skipped; run `python manage.py upgrade`.')
 
     return app
 

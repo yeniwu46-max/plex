@@ -96,7 +96,9 @@ def code_learning_cycle():
 def trial_coach():
     body = request.get_json(silent=True) or {}
     try:
-        return success_response(AgentOrchestrator.trial_coach(body))
+        identity = get_jwt_identity()
+        user_id = int(identity) if identity is not None and str(identity).isdigit() else None
+        return success_response(AgentOrchestrator.trial_coach(body, user_id=user_id))
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
 

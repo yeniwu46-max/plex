@@ -125,6 +125,39 @@ def interpret_profile(
     return result, backend, model
 
 
+def _graph_rag_context(knowledge_key: str, knowledge_node: dict | None) -> dict:
+    """经 KnowledgeService（公共 Knowledge Service，Agent 不直接操作向量库）取图谱上下文与教师审核材料。失败返回 {}。"""
+    try:
+        from app.services.knowledge import KnowledgeService
+
+        keys = [knowledge_key]
+        if isinstance(knowledge_node, dict) and knowledge_node.get('id'):
+            keys.append(str(knowledge_node['id']))
+        data = KnowledgeService.concept_knowledge(keys, knowledge_types=['concept_explanation', 'misconception', 'example', 'teacher_note', 'extension'], top_k=4)
+    except Exception:  # noqa: BLE001 - 知识层不可用时不阻断资源生成
+        return {}
+    if not data.get('concept_ids'):
+        return {}
+    graph = data.get('graph') or {}
+    nodes = graph.get('nodes') or []
+
+    def _names(role: str) -> list[str]:
+        return [str(n.get('name') or n.get('concept_id')) for n in nodes if n.get('role') == role][:4]
+
+    verified = [
+        {'title': c.get('title') or c.get('document_title') or '补充材料', 'snippet': (c.get('content') or '')[:200], 'knowledge_type': c.get('knowledge_type')}
+        for c in (data.get('chunks') or [])
+        if c.get('teacher_verified')
+    ][:3]
+    return {
+        'concept_ids': data['concept_ids'],
+        'prerequisites': _names('prerequisite'),
+        'misconceptions': _names('misconception'),
+        'next_recommended': _names('next'),
+        'teacher_verified_passages': verified,
+    }
+
+
 def retrieve_knowledge(
     *,
     knowledge_key: str,
@@ -150,6 +183,8 @@ def retrieve_knowledge(
         'advanced_question': (section.get('advanced_question') or '')[:200],
         'source': section.get('source') or '',
     }
+    # Knowledge Intelligence Layer：图谱上下文（前置/误区/后续）+ 教师上传并审核过的补充材料，经 KnowledgeService 取材
+    graph_context = _graph_rag_context(knowledge_key, knowledge_node)
     payload = {
         'knowledge_key': knowledge_key,
         'knowledge_label': knowledge_label,
@@ -161,6 +196,8 @@ def retrieve_knowledge(
         },
         'course_knowledge_base': kb_excerpt,
     }
+    if graph_context:
+        payload['knowledge_graph'] = graph_context
     raw = _llm_json(
         system=(
             '你是高校 Python 课程的「知识检索智能体」。'
@@ -178,6 +215,8 @@ def retrieve_knowledge(
 
     result = dict(baseline)
     result['knowledge_node'] = knowledge_node
+    if graph_context:
+        result['graph_context'] = graph_context
     result['course_section'] = {
         'document_id': kb_excerpt['document_id'],
         'source_file': kb_excerpt['source_file'],

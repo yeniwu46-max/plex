@@ -1,0 +1,71 @@
+{
+  "$comment": "Knowledge Intelligence Layer 检索/重排/置信度配置。可用环境变量 KNOWLEDGE_CONFIG_DIR 指向覆盖目录。",
+  "course_id": "python-basics",
+  "graph": {
+    "prerequisite_hops": 1,
+    "prerequisite_hops_when_weak": 2,
+    "max_expanded_nodes": 12,
+    "include_relations": ["PREREQUISITE_OF", "RELATED_TO", "MISCONCEPTION_OF", "NEXT_RECOMMENDED", "EXAMPLE_OF", "EXERCISE_FOR", "REMEDIATES"],
+    "role_weights": {
+      "focus": 1.0,
+      "prerequisite": 0.8,
+      "misconception": 0.75,
+      "related": 0.55,
+      "next": 0.45,
+      "example": 0.6,
+      "exercise": 0.5,
+      "resource": 0.5
+    }
+  },
+  "query_understanding": {
+    "max_concepts": 4,
+    "min_lexical_score": 0.18,
+    "use_llm": false,
+    "llm_timeout_seconds": 6
+  },
+  "vector": {
+    "top_k": 20,
+    "lexical_top_k": 20,
+    "hybrid_alpha": 0.6,
+    "min_candidates_for_grounding": 1
+  },
+  "metadata_filter": {
+    "difficulty_band": 1,
+    "prefer_verified": true,
+    "allowed_status": ["active"],
+    "exclude_knowledge_types_in_practice": ["solution"]
+  },
+  "rerank": {
+    "weights": {
+      "semantic_similarity": 0.40,
+      "concept_relevance": 0.25,
+      "learner_fit": 0.20,
+      "teacher_verified": 0.10,
+      "resource_quality": 0.05
+    },
+    "final_top_k": 6,
+    "max_context_chars": 3200,
+    "diversity_per_document": 3
+  },
+  "confidence": {
+    "grounded_threshold": 0.42,
+    "high_threshold": 0.68,
+    "min_supporting_chunks": 1,
+    "lexical_evidence_floor": 0.22,
+    "lexical_evidence_saturation": 0.5,
+    "vector_evidence_floor": 0.42,
+    "vector_evidence_saturation": 0.7,
+    "no_evidence_answer": "我在课程知识库里没有找到足够可靠的依据来回答这个问题。你可以换个说法、指出具体知识点，或先看看下面的相关知识点。"
+  },
+  "logging": {
+    "query_preview_chars": 120,
+    "store_chunk_scores": true
+  },
+  "index": {
+    "max_chunk_chars": 1400,
+    "min_chunk_chars": 120,
+    "merge_short_paragraph_chars": 260,
+    "embedding_batch_size": 32,
+    "sync_in_tests": true
+  }
+}

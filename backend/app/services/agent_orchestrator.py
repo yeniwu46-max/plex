@@ -190,7 +190,7 @@ class AgentOrchestrator:
         }
 
     @staticmethod
-    def trial_coach(payload: dict) -> dict:
+    def trial_coach(payload: dict, *, user_id: int | None = None) -> dict:
         """试炼编程页 · 三类辅导智能体（报错/质量/优化），禁止直接给答案。"""
         from agents.trial_coach_agents import VALID_INTENTS, execute, infer_intent
 
@@ -199,7 +199,7 @@ class AgentOrchestrator:
             intent = infer_intent(payload)
         if intent not in VALID_INTENTS:
             raise ValueError(f'unsupported intent: {intent}')
-        return execute(intent, payload)
+        return execute(intent, payload, user_id=user_id)
 
     @staticmethod
     def code_hint(payload: dict) -> dict:

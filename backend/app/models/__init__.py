@@ -36,6 +36,9 @@ from .problem_bank import (
     ProblemTag,
     ProblemTagMap,
 )
+from .knowledge_graph import KnowledgeConcept, KnowledgeRelation
+from .knowledge_document import KnowledgeDocument, KnowledgeChunk, KnowledgeIndexJob
+from .rag_query_log import RagQueryLog
 
 __all__ = [
     'db',
@@ -80,4 +83,10 @@ __all__ = [
     'ProblemSubmission',
     'ProblemTag',
     'ProblemTagMap',
+    'KnowledgeConcept',
+    'KnowledgeRelation',
+    'KnowledgeDocument',
+    'KnowledgeChunk',
+    'KnowledgeIndexJob',
+    'RagQueryLog',
 ]

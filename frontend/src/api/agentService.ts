@@ -1,4 +1,5 @@
 import { http, type ApiEnvelope } from './http'
+import type { MessengerKnowledge } from './rag'
 
 /** 错因层级（四层错因模型） */
 export type ErrorLayer = 'syntax' | 'rule' | 'logic' | 'transfer' | 'none'
@@ -271,6 +272,8 @@ export interface TrialCoachPayload {
   answerStatus?: 'correct' | 'wrong' | 'partial' | 'not_run'
   userQuestion?: string
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+  /** 提示层级 1-4，由后端 Answer Policy 按掌握度封顶 */
+  hintLevel?: number
 }
 
 export interface TrialCoachResult {
@@ -284,6 +287,9 @@ export interface TrialCoachResult {
   improvements?: string[]
   policy: 'no_direct_answer'
   backend?: string
+  /** Graph-enhanced RAG 学生安全视图（相关知识点 / 推荐下一步 / 来源） */
+  knowledge?: MessengerKnowledge | null
+  hintLevel?: number | null
 }
 
 const AGENT_TIMEOUT_MS = 15_000

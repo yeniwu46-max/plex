@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { NIcon } from 'naive-ui'
 import { CodeSlashOutline, LockClosedOutline, ServerOutline } from '@vicons/ionicons5'
 import {
@@ -24,7 +24,7 @@ const viewportRef = ref<HTMLElement | null>(null)
 /** 切换节点时递增，强制选中框/脉冲动效重新播放 */
 const selectionAnimKey = ref(0)
 
-const { transformStyle, isDragging, onWheel, onPointerDown, onPointerMove, onPointerUp, fitView } =
+const { transformStyle, isDragging, onWheel, onPointerDown, onPointerMove, onPointerUp, fitView, centerOnElement } =
   useMapViewport(viewportRef)
 
 onMounted(() => {
@@ -45,6 +45,20 @@ watch(
   },
 )
 
+function centerSelectedNode(smooth = true) {
+  const id = props.selectedId
+  if (!id || !viewportRef.value) return
+  const el = viewportRef.value.querySelector<HTMLElement>(`[data-track-node-id="${CSS.escape(id)}"]`)
+  centerOnElement(el, smooth)
+}
+
+watch(
+  () => props.selectedId,
+  () => {
+    void nextTick(() => centerSelectedNode(true))
+  },
+)
+
 const emit = defineEmits<{
   select: [node: StarPathNode]
   selectGem: [payload: { node: StarPathNode; slot: number }]
@@ -52,7 +66,15 @@ const emit = defineEmits<{
 
 type LineStatus = 'done' | 'active' | 'locked'
 
-const nodePositions = computed(() => computeDagreLayout(props.nodes))
+const trackLayout = computed(() => computeDagreLayout(props.nodes))
+
+const nodePositions = computed(() => trackLayout.value.positions)
+
+const trackCanvasStyle = computed(() => ({
+  width: `${trackLayout.value.width}px`,
+  height: `${trackLayout.value.height}px`,
+  minWidth: `${trackLayout.value.width}px`,
+}))
 
 const connectionPaths = computed(() => {
   const nodes = props.nodes
@@ -60,8 +82,8 @@ const connectionPaths = computed(() => {
 
   return nodes.slice(0, -1).map((fromNode, index) => {
     const toNode = nodes[index + 1]!
-    const from = nodePositions.value[fromNode.id] ?? { x: 50, y: 50 }
-    const to = nodePositions.value[toNode.id] ?? { x: 50, y: 50 }
+    const from = nodePositions.value[fromNode.id] ?? { x: trackLayout.value.width / 2, y: trackLayout.value.height / 2 }
+    const to = nodePositions.value[toNode.id] ?? { x: trackLayout.value.width / 2, y: trackLayout.value.height / 2 }
     return {
       key: `${fromNode.id}-${toNode.id}`,
       d: bezierPath(from, to),
@@ -100,11 +122,19 @@ function nodePositionClasses(node: StarPathNode) {
   ]
 }
 
+function nodeIndex(node: StarPathNode) {
+  return props.nodes.findIndex((item) => item.id === node.id)
+}
+
 function nodeStyle(node: StarPathNode) {
-  const pos = nodePositions.value[node.id] ?? { x: 50, y: 42 }
+  const pos = nodePositions.value[node.id] ?? { x: trackLayout.value.width / 2, y: trackLayout.value.height * 0.42 }
+  const idx = nodeIndex(node)
+  const staggerY = idx >= 0 && idx % 2 === 1 ? 14 : -10
+  const maxY = trackLayout.value.height - 48
+  const minY = 48
   return {
-    left: `${pos.x}%`,
-    top: `${pos.y}%`,
+    left: `${pos.x}px`,
+    top: `${Math.min(maxY, Math.max(minY, pos.y + staggerY))}px`,
   }
 }
 
@@ -155,13 +185,22 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
     @pointercancel="onPointerUp"
   >
     <div class="path-viewport__inner" :style="transformStyle">
-      <div class="path-track" :class="layoutKey ? `path-track--${layoutKey}` : ''">
+      <div
+        class="path-track"
+        :class="layoutKey ? `path-track--${layoutKey}` : ''"
+        :style="trackCanvasStyle"
+      >
         <div class="path-orbits" aria-hidden="true">
           <span class="orbit orbit--outer" />
           <span class="orbit orbit--middle" />
           <span class="orbit orbit--inner" />
         </div>
-        <svg class="path-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <svg
+          class="path-lines"
+          :viewBox="`0 0 ${trackLayout.width} ${trackLayout.height}`"
+          preserveAspectRatio="xMidYMid meet"
+          aria-hidden="true"
+        >
           <defs>
             <linearGradient :id="lineGradientId('done', variant ?? 'four')" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stop-color="rgba(18,216,200,0.35)" />
@@ -210,12 +249,17 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
           v-for="node in nodes"
           :key="`${node.id}-${isVisualCurrent(node) ? selectionAnimKey : 'idle'}`"
           class="track-node"
-          :class="nodePositionClasses(node)"
+          :data-track-node-id="node.id"
+          :class="[
+            ...nodePositionClasses(node),
+            nodeIndex(node) % 2 === 1 ? 'track-node--stagger' : '',
+          ]"
           :style="nodeStyle(node)"
           role="button"
           :tabindex="isStarPathNodeUnlocked(node) ? 0 : -1"
           :aria-current="isVisualCurrent(node) ? 'step' : undefined"
           :aria-label="`${displayId(node)} ${node.title}${node.status === 'locked' ? '，未解锁' : ''}${isVisualCurrent(node) ? '，当前所在' : ''}`"
+          @pointerdown.stop
           @click.stop="onNodeClick(node)"
           @keydown.enter.prevent="onNodeClick(node)"
           @keydown.space.prevent="onNodeClick(node)"
@@ -242,6 +286,7 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
               :disabled="displayGem(node, slot - 1) === 'locked'"
               :title="`试炼 s${slot - 1}`"
               :aria-label="`切换到第 ${slot} 题 s${slot - 1}`"
+              @pointerdown.stop
               @click="onGemClick($event, node, slot - 1)"
             />
           </div>
@@ -272,14 +317,19 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
 
 .path-viewport__inner {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
+  min-width: 100%;
+  min-height: 100%;
+  width: max-content;
+  height: max-content;
   transform-origin: center center;
   will-change: transform;
 }
 
 .path-track {
-  position: absolute;
-  inset: 1.5rem 0.5rem 3.25rem 0.25rem;
+  position: relative;
+  margin: 1.5rem auto 3.25rem;
   transform: none;
   transform-origin: center center;
 }
@@ -340,20 +390,20 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
 }
 
 .path-line {
-  stroke-width: 0.48;
+  stroke-width: 2.4;
   stroke-linecap: round;
 }
 
 .path-line--done {
-  stroke-width: 0.44;
+  stroke-width: 2.2;
 }
 
 .path-line--active {
-  stroke-width: 0.56;
+  stroke-width: 2.8;
 }
 
 .path-line--locked {
-  stroke-dasharray: 1.6 2.4;
+  stroke-dasharray: 8 12;
 }
 
 .track-node {
@@ -363,7 +413,8 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
   z-index: 2;
   display: grid;
   width: max-content;
-  max-width: 128px;
+  max-width: 168px;
+  min-width: 112px;
   justify-items: center;
   align-items: center;
   text-align: center;
@@ -424,18 +475,23 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
 .track-node strong {
   margin-top: 0.45rem;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 0.76rem;
-  line-height: 1.25;
-  word-break: break-all;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   letter-spacing: 0.02em;
+  max-width: 136px;
 }
 
 .track-node__label {
   margin: 0.08rem 0 0;
   color: rgba(240, 247, 255, 0.86);
-  font-size: 0.72rem;
-  line-height: 1.35;
-  max-width: 112px;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  max-width: 156px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .track-node__gems {
@@ -508,8 +564,10 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
   margin: 0.06rem 0 0;
   color: rgba(240, 247, 255, 0.88);
   font-size: 0.74rem;
-  line-height: 1.35;
-  max-width: 104px;
+  line-height: 1.4;
+  max-width: 156px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .track-node em {
@@ -539,7 +597,11 @@ function isGemSelected(node: StarPathNode, slotIndex: number) {
   --node-color: #23ffde;
   --node-orb: 68px;
   z-index: 3;
-  max-width: 124px;
+  max-width: 152px;
+}
+
+.track-node--stagger .track-node__label {
+  margin-top: 0.14rem;
 }
 
 .track-node--current .track-node__orb {

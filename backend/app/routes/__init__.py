@@ -28,6 +28,8 @@ from .trial_comments import trial_comments_bp
 from .health import health_bp
 from .media import media_bp
 from .problem_bank import problem_bank_bp
+from .knowledge import knowledge_bp
+from .rag import rag_bp
 
 def register_routes(app):
     """注册所有路由"""
@@ -59,3 +61,5 @@ def register_routes(app):
     app.register_blueprint(health_bp)
     app.register_blueprint(media_bp)
     app.register_blueprint(problem_bank_bp)
+    app.register_blueprint(knowledge_bp)
+    app.register_blueprint(rag_bp)

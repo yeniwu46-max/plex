@@ -309,6 +309,12 @@ function syncKnowledgeFromNode(node: StarPathNode) {
 function onNodeClick(node: StarPathNode) {
   selectedNodeId.value = node.id
   syncKnowledgeFromNode(node)
+  if (showDomainTrack.value) {
+    void router.replace({
+      path: '/student/star-path',
+      query: { domain: activeDomainKey.value, kp: node.id },
+    })
+  }
 }
 
 function onGemSelect(payload: { node: StarPathNode; slot: number }) {
@@ -566,9 +572,14 @@ function applyRouteQuery() {
       selectedNodeId.value = kp
     } else {
       const points = getKnowledgePointsForDomain(domain)
-      const first = points[0]
-      selectedKnowledgeId.value = first?.id ?? null
-      selectedNodeId.value = first?.id ?? DEFAULT_NODE_ID
+      const keepSelection = points.some((point) => point.id === selectedNodeId.value)
+      if (keepSelection) {
+        selectedKnowledgeId.value = selectedNodeId.value
+      } else {
+        const first = points[0]
+        selectedKnowledgeId.value = first?.id ?? null
+        selectedNodeId.value = first?.id ?? DEFAULT_NODE_ID
+      }
     }
   } else {
     activeTabKey.value = STAR_PATH_TAB_ALL
@@ -1520,10 +1531,12 @@ onActivated(() => {
 
 .path-canvas {
   position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: 460px;
   height: 100%;
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .path-track {

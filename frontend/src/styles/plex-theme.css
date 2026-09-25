@@ -503,6 +503,148 @@ html[data-theme='light'] .topbar-actions {
   display: none;
 }
 
+/* ─── 驿站 / 成长档案 浅色适配 ───────────────────────────── */
+html[data-theme='light'] .analysis-panel {
+  background: var(--plex-bg-card) !important;
+  border-color: var(--plex-border-subtle) !important;
+  box-shadow: var(--plex-shadow) !important;
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .analysis-panel header h2,
+html[data-theme='light'] .analysis-panel header h2 span {
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .messenger-box__toggle {
+  background: var(--plex-bg-input) !important;
+  border-color: var(--plex-border-subtle) !important;
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .messenger-box__label {
+  border-color: var(--plex-border) !important;
+  color: var(--plex-accent) !important;
+}
+
+html[data-theme='light'] .messenger-box__panel {
+  background: var(--plex-bg-elevated) !important;
+  border-color: var(--plex-border-subtle) !important;
+  box-shadow: var(--plex-shadow) !important;
+}
+
+html[data-theme='light'] .messenger-session-tab,
+html[data-theme='light'] .messenger-session-tab__btn {
+  color: var(--plex-text-muted) !important;
+}
+
+html[data-theme='light'] .messenger-session-tab--active,
+html[data-theme='light'] .messenger-session-tab--active .messenger-session-tab__btn {
+  color: var(--plex-text) !important;
+  background: rgba(8, 145, 178, 0.08) !important;
+}
+
+html[data-theme='light'] .chat-thread {
+  background: var(--plex-bg-input) !important;
+  border-color: var(--plex-border-subtle) !important;
+}
+
+html[data-theme='light'] .chat-thread__empty strong,
+html[data-theme='light'] .chat-thread__item--assistant p,
+html[data-theme='light'] .chat-thread__loading {
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .chat-thread__empty p {
+  color: var(--plex-text-muted) !important;
+}
+
+html[data-theme='light'] .chat-thread__item--user {
+  background: rgba(8, 145, 178, 0.12) !important;
+}
+
+html[data-theme='light'] .chat-thread__item--user p {
+  color: #0e7490 !important;
+}
+
+html[data-theme='light'] .chat-thread__item--assistant {
+  background: rgba(15, 23, 42, 0.04) !important;
+}
+
+html[data-theme='light'] .chat-thread__illustration {
+  background: var(--plex-bg-card) !important;
+  border-color: var(--plex-border-subtle) !important;
+}
+
+html[data-theme='light'] .chat-thread__illustration figcaption {
+  color: var(--plex-text-muted) !important;
+}
+
+html[data-theme='light'] .prompt-dock {
+  background: var(--plex-bg-card) !important;
+  border-color: var(--plex-border) !important;
+  box-shadow: var(--plex-shadow) !important;
+}
+
+html[data-theme='light'] .file-exchange {
+  background: var(--plex-bg-card) !important;
+  border-color: var(--plex-border-subtle) !important;
+}
+
+html[data-theme='light'] .file-exchange__header h3,
+html[data-theme='light'] .file-exchange__item strong {
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .file-exchange__header p,
+html[data-theme='light'] .file-exchange__empty,
+html[data-theme='light'] .file-exchange__item span,
+html[data-theme='light'] .file-exchange__upload h4 {
+  color: var(--plex-text-muted) !important;
+}
+
+html[data-theme='light'] .file-exchange__item {
+  border-bottom-color: var(--plex-border-subtle) !important;
+}
+
+html[data-theme='light'] .file-preview__code {
+  background: var(--plex-bg-code) !important;
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .file-preview__frame {
+  background: var(--plex-bg-input) !important;
+}
+
+html[data-theme='light'] .file-preview__fallback {
+  color: var(--plex-text-muted) !important;
+}
+
+html[data-theme='light'] .file-preview-modal.n-card {
+  background: var(--plex-modal-bg) !important;
+  border-color: var(--plex-border-subtle) !important;
+}
+
+html[data-theme='light'] .file-preview-modal .n-card-header__main {
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .growth-hero,
+html[data-theme='light'] .tech-stat-card {
+  background: var(--plex-bg-card) !important;
+  border-color: var(--plex-border-subtle) !important;
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .growth-hero h2 {
+  color: var(--plex-text) !important;
+}
+
+html[data-theme='light'] .growth-meta,
+html[data-theme='light'] .growth-state {
+  color: var(--plex-text-muted) !important;
+}
+
 /* ─── LoginView 浅色适配 ────────────────────────────────── */
 html[data-theme='light'] .login-page {
   background: #f0f4f8 !important;

@@ -11,6 +11,8 @@ import MarkdownIt from 'markdown-it'
 import katexPluginImport from '@vscode/markdown-it-katex'
 import hljs from 'highlight.js'
 import mermaid from 'mermaid'
+import MermaidDiagramModal from './MermaidDiagramModal.vue'
+import { attachMermaidControls, mermaidDiagramToolbarHtml } from '../../utils/mermaidDiagramControls'
 import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
 
@@ -91,147 +93,12 @@ const container = ref<HTMLElement | null>(null)
 const rendered = computed(() => md.render(props.content || ''))
 let mermaidSeq = 0
 
-const ZOOM_MIN = 0.75
-const ZOOM_MAX = 2.5
-const ZOOM_STEP = 0.25
+const mermaidModalOpen = ref(false)
+const mermaidModalSvg = ref('')
 
-function clampZoom(value: number) {
-  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100))
-}
-
-function readSvgSize(svg: SVGSVGElement) {
-  const viewBox = svg.viewBox?.baseVal
-  const width = Number(svg.getAttribute('width')) || viewBox?.width || svg.clientWidth || 640
-  const height = Number(svg.getAttribute('height')) || viewBox?.height || svg.clientHeight || 360
-  return {
-    width: Math.max(1, width),
-    height: Math.max(1, height),
-  }
-}
-
-/** 将 Mermaid SVG 栅格化为 PNG，供剪贴板复制。 */
-function svgToPngBlob(svg: SVGSVGElement): Promise<Blob> {
-  const { width, height } = readSvgSize(svg)
-  const clone = svg.cloneNode(true) as SVGSVGElement
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-  if (!clone.getAttribute('width')) clone.setAttribute('width', String(width))
-  if (!clone.getAttribute('height')) clone.setAttribute('height', String(height))
-  const xml = new XMLSerializer().serializeToString(clone)
-  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`
-  const pixelRatio = Math.min(2, window.devicePixelRatio || 1)
-
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.ceil(width * pixelRatio)
-      canvas.height = Math.ceil(height * pixelRatio)
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        reject(new Error('canvas_unavailable'))
-        return
-      }
-      ctx.fillStyle = '#04141e'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
-      ctx.drawImage(img, 0, 0, width, height)
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error('png_encode_failed'))),
-        'image/png',
-      )
-    }
-    img.onerror = () => reject(new Error('svg_rasterize_failed'))
-    img.src = url
-  })
-}
-
-/** 按钮整体缩放 + 复制图片（不用滚轮）。 */
-function attachMermaidControls(root: HTMLElement) {
-  const viewport = root.querySelector<HTMLElement>('.mermaid-viewport')
-  const canvas = root.querySelector<HTMLElement>('.mermaid-canvas')
-  const label = root.querySelector<HTMLElement>('[data-zoom-label]')
-  const btnIn = root.querySelector<HTMLButtonElement>('[data-zoom-in]')
-  const btnOut = root.querySelector<HTMLButtonElement>('[data-zoom-out]')
-  const btnReset = root.querySelector<HTMLButtonElement>('[data-zoom-reset]')
-  const btnCopy = root.querySelector<HTMLButtonElement>('[data-copy-image]')
-  if (!viewport || !canvas) return
-
-  let scale = 1
-  const base = { width: 0, height: 0 }
-
-  const measureBase = () => {
-    const svg = canvas.querySelector('svg')
-    if (!svg) return
-    // 先清缩放再量原始尺寸，避免叠加误差
-    canvas.style.zoom = ''
-    canvas.style.transform = ''
-    canvas.style.width = ''
-    canvas.style.height = ''
-    const size = readSvgSize(svg)
-    base.width = size.width
-    base.height = size.height
-  }
-
-  const apply = () => {
-    // CSS zoom：整图等比放大，布局占位同步变大，视口内滚动查看
-    const style = canvas.style as CSSStyleDeclaration & { zoom?: string }
-    if ('zoom' in style || 'zoom' in document.documentElement.style) {
-      style.zoom = String(scale)
-      canvas.style.transform = ''
-      canvas.style.width = ''
-      canvas.style.height = ''
-    } else {
-      canvas.style.removeProperty('zoom')
-      canvas.style.transformOrigin = 'top left'
-      canvas.style.transform = `scale(${scale})`
-      if (base.width && base.height) {
-        canvas.style.width = `${base.width * scale}px`
-        canvas.style.height = `${base.height * scale}px`
-      }
-    }
-    if (label) label.textContent = `${Math.round(scale * 100)}%`
-    root.dataset.zoomed = scale === 1 ? '0' : '1'
-  }
-
-  const setScale = (next: number) => {
-    scale = clampZoom(next)
-    apply()
-  }
-
-  measureBase()
-  btnIn?.addEventListener('click', () => setScale(scale + ZOOM_STEP))
-  btnOut?.addEventListener('click', () => setScale(scale - ZOOM_STEP))
-  btnReset?.addEventListener('click', () => setScale(1))
-
-  btnCopy?.addEventListener('click', async () => {
-    const svg = canvas.querySelector('svg')
-    if (!svg || !btnCopy) return
-    const original = btnCopy.textContent
-    btnCopy.disabled = true
-    try {
-      const blob = await svgToPngBlob(svg)
-      if (navigator.clipboard && 'ClipboardItem' in window) {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-      } else {
-        // 不支持剪贴板图片时降级为下载
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = '知识图.png'
-        link.click()
-        URL.revokeObjectURL(link.href)
-      }
-      btnCopy.textContent = '已复制'
-    } catch {
-      btnCopy.textContent = '复制失败'
-    } finally {
-      window.setTimeout(() => {
-        btnCopy.textContent = original
-        btnCopy.disabled = false
-      }, 1600)
-    }
-  })
-
-  apply()
+function openMermaidModal(svgHtml: string) {
+  mermaidModalSvg.value = svgHtml
+  mermaidModalOpen.value = true
 }
 
 async function renderMermaidBlocks() {
@@ -245,26 +112,27 @@ async function renderMermaidBlocks() {
     try {
       const { svg } = await mermaid.render(`md-mermaid-${Date.now()}-${mermaidSeq++}`, source)
       const wrapper = document.createElement('div')
-      wrapper.className = 'mermaid-diagram'
+      wrapper.className = 'mermaid-diagram mermaid-diagram--compact'
       wrapper.setAttribute('role', 'group')
-      wrapper.setAttribute('aria-label', '知识图，可整体缩放')
+      wrapper.setAttribute('aria-label', '知识图，点击查看全屏')
       wrapper.innerHTML = `
-        <div class="mermaid-toolbar">
-          <span class="mermaid-toolbar__hint">使用按钮整体放大缩小</span>
-          <div class="mermaid-toolbar__actions">
-            <button type="button" class="mermaid-zoom-btn" data-zoom-out aria-label="缩小">−</button>
-            <span class="mermaid-zoom-label" data-zoom-label>100%</span>
-            <button type="button" class="mermaid-zoom-btn" data-zoom-in aria-label="放大">+</button>
-            <button type="button" class="mermaid-zoom-btn mermaid-zoom-btn--text" data-zoom-reset>重置</button>
-            <button type="button" class="mermaid-zoom-btn mermaid-zoom-btn--text" data-copy-image>复制图片</button>
+        ${mermaidDiagramToolbarHtml(true)}
+        <button type="button" class="mermaid-open-full" data-open-full aria-label="全屏查看知识图">
+          <div class="mermaid-viewport" tabindex="-1">
+            <div class="mermaid-canvas">${svg}</div>
           </div>
-        </div>
-        <div class="mermaid-viewport" tabindex="0">
-          <div class="mermaid-canvas">${svg}</div>
-        </div>
+          <span class="mermaid-open-full__badge">点击查看全图</span>
+        </button>
       `
       block.replaceWith(wrapper)
-      attachMermaidControls(wrapper)
+      attachMermaidControls(wrapper, { enablePan: false, fitOnMount: true })
+      const openBtn = wrapper.querySelector<HTMLButtonElement>('[data-open-full]')
+      const openFull = (event: Event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        openMermaidModal(svg)
+      }
+      openBtn?.addEventListener('click', openFull)
     } catch {
       // 图源语法错误时保留源码展示，不阻塞其余内容。
       block.classList.add('mermaid-source--failed')
@@ -287,6 +155,7 @@ watch(
 
 <template>
   <div ref="container" class="markdown-body" v-html="rendered" />
+  <MermaidDiagramModal v-model:show="mermaidModalOpen" :svg-html="mermaidModalSvg" />
 </template>
 
 <style scoped>
@@ -447,14 +316,51 @@ watch(
   font-variant-numeric: tabular-nums;
 }
 
+.markdown-body :deep(.mermaid-diagram--compact .mermaid-toolbar__actions) {
+  display: none;
+}
+
+.markdown-body :deep(.mermaid-open-full) {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  text-align: inherit;
+}
+
+.markdown-body :deep(.mermaid-open-full__badge) {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.45rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  color: rgba(210, 240, 250, 0.92);
+  background: rgba(4, 18, 28, 0.82);
+  border: 1px solid rgba(110, 228, 255, 0.22);
+  pointer-events: none;
+}
+
 .markdown-body :deep(.mermaid-viewport) {
   position: relative;
-  max-height: min(70vh, 560px);
-  min-height: 180px;
+  max-height: min(75vh, 640px);
+  min-height: 240px;
   overflow: auto;
   border-radius: 8px;
   background: rgba(2, 12, 20, 0.45);
   outline: none;
+  cursor: inherit;
+}
+
+.markdown-body :deep(.mermaid-diagram--compact .mermaid-viewport) {
+  max-height: 200px;
+  min-height: 140px;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .markdown-body :deep(.mermaid-canvas) {

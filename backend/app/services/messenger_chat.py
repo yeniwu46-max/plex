@@ -128,9 +128,60 @@ class MessengerChatService:
             for idx, item in enumerate(history)
         )
 
+    # ------------------------------------------------------------------ Knowledge Intelligence Layer
+    @staticmethod
+    def _knowledge_plan(user_id: int, message: str):
+        """Graph-enhanced RAG 两段式第一步：检索 + 教学策略 + 上下文（不生成回答）。失败返回 None，不阻断对话。"""
+        try:
+            from app.services.knowledge import KnowledgeService
+
+            return KnowledgeService.prepare(message, user_id=user_id, role='student', scene='chat')
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).warning('knowledge prepare failed: %s', exc)
+            return None
+
+    @staticmethod
+    def _knowledge_context_text(plan, limit: int = 1400) -> str:
+        """把 RagPlan 压成给 LLM 的课程参考 + 教学策略指令；证据不足时返回空串。"""
+        if plan is None or plan.blocked_reason or not plan.knowledge_grounded:
+            return ''
+        from app.services.knowledge.strategy_service import StrategyService
+
+        parts = []
+        if plan.context.knowledge_context:
+            parts.append(f'知识图谱上下文：\n{plan.context.knowledge_context}')
+        if plan.context.retrieved_context:
+            parts.append(f'课程材料（只依据这些材料回答，材料没有的内容要明确说不确定）：\n{plan.context.retrieved_context}')
+        instructions = StrategyService.instructions(plan.strategy)
+        if instructions:
+            parts.append(f'教学策略：\n{instructions}')
+        if plan.context.hint_instruction:
+            parts.append(plan.context.hint_instruction)
+        return '\n\n'.join(parts)[:limit]
+
+    @staticmethod
+    def _knowledge_finalize(plan, reply: str, *, source: str, model: str | None = None) -> dict | None:
+        """两段式第二步：记录 RAG 日志并产出学生端安全视图（不含分值）。"""
+        if plan is None:
+            return None
+        try:
+            from app.services.knowledge import KnowledgeService
+
+            answer = KnowledgeService.finalize(plan, answer_text=reply, generation_mode='llm' if source != 'rules' else 'extractive', model=model, provider=source)
+            payload = answer.to_dict()
+            payload.pop('answer', None)
+            return payload
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).warning('knowledge finalize failed: %s', exc)
+            return None
+
     @staticmethod
     def _student_context_light(user_id: int, message: str, history=None) -> tuple[dict, str, bool]:
-        """流式首字前的轻量上下文：跳过完整学情报告与重 RAG，避免阻塞 TTFT。"""
+        """流式首字前的轻量上下文：跳过完整学情报告，只做一次图谱增强检索（本地毫秒级），避免阻塞 TTFT。"""
         history_rows = MessengerChatService._normalize_history(history)
         weak: list = []
         try:
@@ -143,24 +194,19 @@ class MessengerChatService:
             str(item.get('knowledge_label') or item.get('knowledge_key') or '')
             for item in weak[:3]
         ) or '暂无明显薄弱知识点'
-        rag_context = ''
-        try:
-            # mock/轻量检索即可；完整 LlamaIndex 查询会拖慢首 token
-            rag = RagService._mock_query(message) if hasattr(RagService, '_mock_query') else {}
-            snippets = [s.get('snippet', '') for s in (rag.get('sources') or []) if s.get('snippet')]
-            rag_context = '\n'.join(f'- {s}' for s in snippets)[:280]
-        except Exception:
-            rag_context = ''
+        plan = MessengerChatService._knowledge_plan(user_id, message)
+        rag_context = MessengerChatService._knowledge_context_text(plan)
         context = (
             f'{MessengerChatService.ASSISTANT_SYSTEM_PROMPT}\n\n'
             f'最近对话（最多 18 条，越靠后越新）：\n{MessengerChatService._format_history(history_rows)}\n\n'
             f'学生薄弱知识（轻量）：{weak_labels}。\n'
-            f'内部课程参考（只用于理解问题，不要说明来源）：{rag_context or "无"}'
+            f'内部课程参考（只用于组织回答，不要向学生说明来源或提到“材料/知识库”）：\n{rag_context or "无（知识库中没有足够依据，如学生问的是课程外内容请如实说明不确定）"}'
         )
         report = {
             'summary': {},
             'weak_knowledge': weak,
             'recommendations': [],
+            'knowledge_plan': plan,
         }
         return report, context, bool(rag_context)
 
@@ -169,7 +215,9 @@ class MessengerChatService:
         report = EvaluationService.get_student_learning_report(user_id, '7d')
         summary = report.get('summary') or {}
         weak = report.get('weak_knowledge') or []
-        rag_context = RagService.build_context(message)
+        plan = MessengerChatService._knowledge_plan(user_id, message)
+        report['knowledge_plan'] = plan
+        rag_context = MessengerChatService._knowledge_context_text(plan)
         history_rows = MessengerChatService._normalize_history(history)
         weak_labels = '、'.join(
             str(item.get('knowledge_label') or item.get('knowledge_key') or '')
@@ -224,6 +272,7 @@ class MessengerChatService:
                 'source': 'xfyun_agent',
                 'recommendations': report.get('recommendations') or [],
                 'rag_used': rag_used,
+                'knowledge': MessengerChatService._knowledge_finalize(report.get('knowledge_plan'), cleaned, source='xfyun_agent'),
             }
         except Exception as exc:
             import logging
@@ -258,6 +307,7 @@ class MessengerChatService:
                 'source': 'spark',
                 'recommendations': report.get('recommendations') or [],
                 'rag_used': rag_used,
+                'knowledge': MessengerChatService._knowledge_finalize(report.get('knowledge_plan'), cleaned, source='spark'),
             }
         except Exception as exc:
             import logging
@@ -314,11 +364,13 @@ class MessengerChatService:
             cleaned = MessengerChatService._clean_reply(text)
             if not cleaned or MessengerChatService._is_low_quality_reply(cleaned, message):
                 return None
+            knowledge = MessengerChatService._knowledge_finalize(report.get('knowledge_plan'), cleaned, source='llm', model=model)
             return {
                 'reply': cleaned,
                 'source': 'llm',
                 'recommendations': report.get('recommendations') or [],
                 'rag_used': rag_used,
+                'knowledge': knowledge,
             }
         except Exception as exc:
             import logging
@@ -335,12 +387,25 @@ class MessengerChatService:
 
     @staticmethod
     def _rag_rule_reply(user_id: int, message: str, history=None) -> dict:
-        rag = RagService.query(message)
+        """无 LLM 时的兜底：知识层 grounded 抽取式回答 + 规则建议；证据不足时只给规则建议，不编造。"""
         base = MessengerChatService._rule_reply(user_id, message, history)
-        if rag.get('sources'):
+        try:
+            rag = RagService.query(message, user_id=user_id)
+        except Exception:  # noqa: BLE001
+            rag = {}
+        if rag.get('knowledge_grounded') and rag.get('answer'):
             base['reply'] = f'{rag["answer"]}\n\n{base["reply"]}'
             base['source'] = 'rag'
+            base['rag_used'] = True
             base['rag_sources'] = rag.get('sources')
+            base['knowledge'] = {
+                'concepts': rag.get('concepts') or [],
+                'sources': rag.get('sources') or [],
+                'recommended_next': rag.get('recommended_next') or [],
+                'teaching_strategy': rag.get('teaching_strategy') or {},
+                'confidence_level': rag.get('confidence_level'),
+                'knowledge_grounded': True,
+            }
         base['reply'] = MessengerChatService._clean_reply(base['reply'])
         return base
 
@@ -504,14 +569,18 @@ class MessengerChatService:
                 thinking.append({
                     'id': 'llm',
                     'label': '生成回复',
-                    'summary': '已根据学情与对话上下文组织回答。',
+                    'summary': '已根据学情、知识图谱上下文与对话上下文组织回答。' if rag_used else '已根据学情与对话上下文组织回答。',
                     'latencyMs': int((time.monotonic() - t1) * 1000),
                 })
+                knowledge = MessengerChatService._knowledge_finalize(
+                    report.get('knowledge_plan'), reply, source='llm_stream', model=provider[2],
+                )
                 yield {
                     'type': 'done',
                     'source': 'llm_stream',
                     'recommendations': report.get('recommendations') or [],
                     'rag_used': rag_used,
+                    'knowledge': knowledge,
                     'reply': reply or '结合你的近况，建议先巩固薄弱知识点，再做一道对应试炼。',
                     'thinking': thinking,
                     'latency': {
@@ -553,6 +622,7 @@ class MessengerChatService:
             'source': result.get('source') or 'rules',
             'recommendations': result.get('recommendations') or report.get('recommendations') or [],
             'rag_used': bool(result.get('rag_used')) or rag_used,
+            'knowledge': result.get('knowledge'),
             'reply': full,
             'thinking': thinking,
             'latency': {

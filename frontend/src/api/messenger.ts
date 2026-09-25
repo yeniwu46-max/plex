@@ -2,6 +2,7 @@ import { http, type ApiEnvelope } from './http'
 import { postSseStream } from './sse'
 import type { LearningRecommendation } from './learningReport'
 import type { AgentTraceStep } from './agentService'
+import type { MessengerKnowledge } from './rag'
 
 /** 驿站对话超时（LLM 生成通常 2–8 秒） */
 const MESSENGER_CHAT_TIMEOUT_MS = 25_000
@@ -13,6 +14,8 @@ export interface MessengerChatResult {
   recommendations?: LearningRecommendation[]
   rag_used?: boolean
   rag_sources?: Array<{ doc_id: string; score: number; snippet?: string }>
+  /** Graph-enhanced RAG 知识卡片（学生安全视图） */
+  knowledge?: MessengerKnowledge | null
 }
 
 export interface MessengerChatHistoryItem {
@@ -35,6 +38,7 @@ export interface MessengerStreamResult {
   source: string
   recommendations?: LearningRecommendation[]
   rag_used?: boolean
+  knowledge?: MessengerKnowledge | null
   illustration?: { url: string; caption?: string }
   thinking?: AgentTraceStep[]
   latency?: {
@@ -70,6 +74,13 @@ function mapThinking(raw: unknown): AgentTraceStep[] | undefined {
     })
   })
   return steps.length ? steps : undefined
+}
+
+function mapKnowledge(raw: unknown): MessengerKnowledge | null {
+  if (!raw || typeof raw !== 'object') return null
+  const row = raw as Partial<MessengerKnowledge>
+  if (typeof row.knowledge_grounded !== 'boolean') return null
+  return row as MessengerKnowledge
 }
 
 /** SSE 流式驿站对话：收到 done 立即返回，图解可稍后到达。 */
@@ -116,6 +127,7 @@ export async function streamMessengerChat(
             source: String(event.source ?? 'llm_stream'),
             recommendations: (event.recommendations as LearningRecommendation[] | undefined) ?? [],
             rag_used: Boolean(event.rag_used),
+            knowledge: mapKnowledge(event.knowledge),
             illustration,
             thinking,
             latency: event.latency as MessengerStreamResult['latency'],
@@ -132,6 +144,7 @@ export async function streamMessengerChat(
           source: String(doneEvent.source ?? 'llm_stream'),
           recommendations: (doneEvent.recommendations as LearningRecommendation[] | undefined) ?? [],
           rag_used: Boolean(doneEvent.rag_used),
+          knowledge: mapKnowledge(doneEvent.knowledge),
           illustration:
             illustration
             ?? (doneEvent.illustration as { url: string; caption?: string } | undefined),

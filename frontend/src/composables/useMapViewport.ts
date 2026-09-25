@@ -39,8 +39,17 @@ export function useMapViewport(containerRef: Ref<HTMLElement | null>) {
     scale.value = next
   }
 
+  function isPanTarget(event: PointerEvent) {
+    const target = event.target as HTMLElement | null
+    if (!target?.closest) return true
+    return !target.closest(
+      '.track-node, .track-gem, .legend, button, a, input, textarea, select, [role="button"]',
+    )
+  }
+
   function onPointerDown(event: PointerEvent) {
     if (event.button !== 0) return
+    if (!isPanTarget(event)) return
     isDragging.value = true
     dragStartX = event.clientX
     dragStartY = event.clientY
@@ -73,8 +82,61 @@ export function useMapViewport(containerRef: Ref<HTMLElement | null>) {
     panY.value = 0
   }
 
+  let panAnimationFrame = 0
+
+  function cancelPanAnimation() {
+    if (panAnimationFrame) {
+      cancelAnimationFrame(panAnimationFrame)
+      panAnimationFrame = 0
+    }
+  }
+
+  function animatePanTo(targetX: number, targetY: number, durationMs = 420) {
+    cancelPanAnimation()
+    const startX = panX.value
+    const startY = panY.value
+    const deltaX = targetX - startX
+    const deltaY = targetY - startY
+    if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) {
+      panX.value = targetX
+      panY.value = targetY
+      return
+    }
+    const started = performance.now()
+    const step = (now: number) => {
+      const t = Math.min(1, (now - started) / durationMs)
+      const eased = 1 - (1 - t) ** 3
+      panX.value = startX + deltaX * eased
+      panY.value = startY + deltaY * eased
+      if (t < 1) {
+        panAnimationFrame = requestAnimationFrame(step)
+      } else {
+        panAnimationFrame = 0
+      }
+    }
+    panAnimationFrame = requestAnimationFrame(step)
+  }
+
+  /** 将视口内某元素平滑平移到容器中心（不改变缩放）。 */
+  function centerOnElement(element: HTMLElement | null, smooth = true) {
+    const container = containerRef.value
+    if (!container || !element) return
+    const cRect = container.getBoundingClientRect()
+    const eRect = element.getBoundingClientRect()
+    const targetX =
+      panX.value + (cRect.left + cRect.width / 2) - (eRect.left + eRect.width / 2)
+    const targetY =
+      panY.value + (cRect.top + cRect.height / 2) - (eRect.top + eRect.height / 2)
+    if (smooth) animatePanTo(targetX, targetY)
+    else {
+      panX.value = targetX
+      panY.value = targetY
+    }
+  }
+
   onBeforeUnmount(() => {
     isDragging.value = false
+    cancelPanAnimation()
   })
 
   return {
@@ -89,5 +151,7 @@ export function useMapViewport(containerRef: Ref<HTMLElement | null>) {
     onPointerUp,
     resetView,
     fitView,
+    centerOnElement,
+    animatePanTo,
   }
 }

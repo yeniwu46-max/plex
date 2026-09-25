@@ -24,6 +24,13 @@ import {
   type MistakeReviewResult,
   type StudentMistakeItem,
 } from '../api/studentMistakes'
+import MistakeReviewQuestionnaire from '../components/growth/MistakeReviewQuestionnaire.vue'
+import {
+  buildSm2ReviewQuestions,
+  computeSm2QualityFromAnswers,
+  isSm2QuestionnaireComplete,
+  type ReviewAnswerValue,
+} from '../utils/sm2ReviewQuestionnaire'
 
 const ERROR_TYPE_LABELS: Record<string, string> = {
   wrong_output: '输出错误',
@@ -44,7 +51,7 @@ const detailOpen = ref(false)
 const loading = ref(true)
 const errorMessage = ref('')
 const dueReviews = ref<StudentMistakeItem[]>([])
-const reviewQualities = ref<Record<number, number>>({})
+const reviewAnswers = ref<Record<number, Record<string, ReviewAnswerValue | undefined>>>({})
 const reviewSubmittingId = ref<number | null>(null)
 const reviewFeedback = ref<MistakeReviewResult | null>(null)
 const reviewError = ref('')
@@ -183,16 +190,23 @@ async function loadArchive(force = false) {
 }
 
 async function recordReview(item: StudentMistakeItem) {
-  const quality = reviewQualities.value[item.id]
-  if (!Number.isInteger(quality) || quality < 0 || quality > 5) {
-    reviewError.value = '请先选择 0–5 的回忆质量'
+  const questions = buildSm2ReviewQuestions(item)
+  const answersMap = reviewAnswers.value[item.id] ?? {}
+  if (!isSm2QuestionnaireComplete(questions, answersMap)) {
+    reviewError.value = '请先完成本题的客观自测问卷'
     return
   }
+  const questionnaireAnswers = questions.map((question) => ({
+    question_id: question.id,
+    value: answersMap[question.id] as ReviewAnswerValue,
+  }))
+  const quality = computeSm2QualityFromAnswers(questionnaireAnswers)
   reviewSubmittingId.value = item.id
   reviewError.value = ''
   try {
-    reviewFeedback.value = await submitMistakeReview(item.id, quality)
+    reviewFeedback.value = await submitMistakeReview(item.id, quality, questionnaireAnswers)
     dueReviews.value = dueReviews.value.filter((row) => row.id !== item.id)
+    delete reviewAnswers.value[item.id]
     const graph = await fetchStudentKnowledgeGraph().catch(() => null)
     if (graph) knowledgeGraphNodes.value = graph.nodes
   } catch (error) {
@@ -276,7 +290,7 @@ onActivated(() => {
             <header>
               <span>SM-2 REVIEW</span>
               <h3>今日错题复习</h3>
-              <p>按真实回忆情况评分，系统会更新画像、知识图谱与下一学习节点。</p>
+              <p>完成客观自测问卷后提交，系统会换算 SM-2 质量分并更新画像、知识图谱与下一学习节点。</p>
             </header>
             <div v-if="dueReviews.length" class="review-list">
               <section v-for="item in dueReviews" :key="item.id" class="review-item">
@@ -287,18 +301,12 @@ onActivated(() => {
                     已错 {{ item.fail_count }} 次 · 已复习 {{ item.review_schedule?.review_count ?? 0 }} 次
                   </small>
                 </div>
-                <div class="review-quality" aria-label="回忆质量评分">
-                  <button
-                    v-for="score in [0, 1, 2, 3, 4, 5]"
-                    :key="score"
-                    type="button"
-                    :class="{ active: reviewQualities[item.id] === score }"
-                    :aria-pressed="reviewQualities[item.id] === score"
-                    @click="reviewQualities[item.id] = score"
-                  >
-                    {{ score }}
-                  </button>
-                </div>
+                <MistakeReviewQuestionnaire
+                  :model-value="reviewAnswers[item.id] ?? {}"
+                  :item="item"
+                  :disabled="reviewSubmittingId === item.id"
+                  @update:model-value="(value) => (reviewAnswers[item.id] = value)"
+                />
                 <n-button
                   type="primary"
                   size="small"
@@ -308,7 +316,7 @@ onActivated(() => {
                   提交复习
                 </n-button>
               </section>
-              <p class="review-scale">0 = 完全忘记 · 3 = 勉强回忆 · 5 = 熟练掌握</p>
+              <p class="review-scale">不清楚 / 部分清楚 / 清楚 会换算为 0–5 分并写入 SM-2 复习计划</p>
             </div>
             <p v-else class="empty">今日暂无到期错题。新的错题会自动进入间隔复习计划。</p>
             <p v-if="reviewError" class="review-error">{{ reviewError }}</p>
@@ -438,5 +446,5 @@ onActivated(() => {
 
 <style scoped>
 .growth-page{width:100%;padding:0.75rem var(--plex-page-gutter-x) 2rem;overflow:visible}.growth-state{padding:2rem 0;color:rgba(190,208,224,.72)}.growth-state--error{display:flex;align-items:center;gap:.75rem;color:#ffb4b4}.growth-hero{display:flex;justify-content:space-between;gap:1.5rem;padding:1.5rem;margin-bottom:1rem;border:1px solid rgba(52,230,197,.16);border-radius:16px;background:rgba(3,16,28,.86)}.eyebrow{margin:0 0 .35rem;color:#39e6c7;font-size:.72rem;letter-spacing:.12em}.growth-hero h2{margin:0;color:#f5fbff;font-size:1.65rem}.growth-meta{display:flex;flex-wrap:wrap;gap:.65rem 1rem;margin:.55rem 0 0;color:rgba(214,230,244,.72);font-size:.9rem}.growth-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;min-width:min(100%,320px)}.tech-stat-card{position:relative;overflow:hidden;padding:.85rem 1rem .9rem 1.15rem;border:1px solid rgba(52,230,197,.18);border-radius:12px;background:linear-gradient(135deg,rgba(52,230,197,.06),rgba(3,16,28,.55) 58%),rgba(3,16,28,.72);backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 0 20px rgba(52,230,197,.04);transition:border-color .25s ease,box-shadow .25s ease}.tech-stat-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#34e6c5,#0891b2);box-shadow:0 0 14px rgba(52,230,197,.65)}.tech-stat-card::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(52,230,197,.03) 0 1px,transparent 1px 14px);opacity:.45;pointer-events:none}.tech-stat-card:hover{border-color:rgba(52,230,197,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 28px rgba(52,230,197,.12)}.tech-stat-card--rank::before{background:linear-gradient(180deg,#7bf8ff,#34e6c5)}.tech-stat-card--rate::before{background:linear-gradient(180deg,#818cf8,#38bdf8)}.tech-stat-card__corner{position:absolute;width:10px;height:10px;border-color:rgba(52,230,197,.55);border-style:solid;opacity:.75}.tech-stat-card__corner--tl{top:6px;left:8px;border-width:1px 0 0 1px}.tech-stat-card__corner--br{right:8px;bottom:6px;border-width:0 1px 1px 0}.tech-stat-card small{display:block;color:#88a3b5;font-size:.78rem;letter-spacing:.04em}.tech-stat-card strong{display:block;margin-top:.35rem;color:#edf8fb;font-family:'JetBrains Mono','Consolas',monospace;font-size:1.15rem;font-weight:700;text-shadow:0 0 16px rgba(52,230,197,.35)}.growth-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-bottom:1rem}.growth-card{padding:1.2rem;border:1px solid rgba(52,230,197,.16);border-radius:16px;background:rgba(3,16,28,.86)}.growth-card header span{color:#39e6c7;font-size:.72rem;letter-spacing:.12em}.growth-card h3{margin:.35rem 0;color:#f5fbff}.growth-card p{color:#a9c2d0;line-height:1.55}.skill-card{min-height:320px;display:flex;flex-direction:column}.skill-hud{position:relative;flex:1;display:flex;flex-direction:column;padding:.85rem;border:1px solid rgba(52,230,197,.14);border-radius:14px;background:linear-gradient(145deg,rgba(52,230,197,.05),rgba(3,16,28,.72)),repeating-linear-gradient(135deg,rgba(52,230,197,.03) 0 1px,transparent 1px 16px);backdrop-filter:blur(8px)}.skill-hud__corner{position:absolute;width:12px;height:12px;border-color:rgba(52,230,197,.55);border-style:solid;opacity:.8}.skill-hud__corner--tl{top:8px;left:8px;border-width:1px 0 0 1px}.skill-hud__corner--br{right:8px;bottom:8px;border-width:0 1px 1px 0}.skill-grid{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;flex:1;align-content:start}.skill-grid__item{padding:.65rem .75rem;border:1px solid rgba(52,230,197,.12);border-radius:10px;background:rgba(2,10,18,.55)}.skill-grid__head{display:flex;justify-content:space-between;gap:.5rem;margin-bottom:.45rem}.skill-grid__head strong{color:#edf8fb;font-size:.84rem}.skill-grid__head em{font-style:normal;color:#34e6c5;font-family:'JetBrains Mono','Consolas',monospace;font-size:.78rem;font-weight:700}.skill-grid__track{height:7px;border-radius:999px;background:rgba(148,163,184,.18);overflow:hidden}.skill-grid__fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0891b2,#34e6c5 55%,#5ffff3);box-shadow:0 0 12px rgba(52,230,197,.45)}.timeline li{display:grid;grid-template-columns:5.5rem 1fr;gap:.75rem;padding:.65rem 0;border-bottom:1px solid rgba(142,177,192,.12)}.timeline__toggle{display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.timeline__toggle span{color:#39e6c7;font-size:.76rem;font-weight:600}.timeline__detail{margin-top:.45rem;padding:.35rem .75rem;border:1px solid rgba(52,230,197,.35);border-radius:999px;background:rgba(52,230,197,.08);color:#34e6c5;font-size:.78rem;cursor:pointer}.timeline time{color:#88a3b5;font-size:.78rem}.timeline p{margin:.15rem 0 0;color:#8da7b6;font-size:.82rem}.chart-card{min-height:280px}.chart-wrap{height:220px}.chart-wrap--hud{position:relative;display:grid;place-items:center}.chart-wrap--hud::before{content:'';position:absolute;width:180px;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(52,230,197,.12),transparent 68%);filter:blur(8px);pointer-events:none}.chart-wrap__ring{position:absolute;border-radius:50%;border:1px dashed rgba(52,230,197,.18);pointer-events:none}.chart-wrap__ring--outer{width:min(210px,78%);aspect-ratio:1;animation:chart-ring-spin 18s linear infinite}.chart-wrap__ring--inner{width:min(150px,56%);aspect-ratio:1;border-color:rgba(129,140,248,.22);animation:chart-ring-spin 24s linear infinite reverse}.mistake-card{background:linear-gradient(180deg,rgba(52,230,197,.03),rgba(3,16,28,.88))}.report-summary{margin-top:.75rem;color:#8da7b6;font-size:.84rem}.empty{color:#8da7b6;font-size:.85rem}.growth-charts-row{grid-column:span 2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}@keyframes chart-ring-spin{to{transform:rotate(360deg)}}@media(max-width:900px){.growth-hero,.growth-stats,.growth-grid{grid-template-columns:1fr}.growth-charts-row{grid-column:auto;grid-template-columns:1fr}}
-.review-card{grid-column:span 2;min-height:auto}.review-card header p{margin:.2rem 0 .9rem;color:#8da7b6;font-size:.85rem}.review-list{display:grid;gap:.65rem}.review-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:.9rem;padding:.85rem;border:1px solid rgba(52,230,197,.14);border-radius:12px;background:rgba(2,10,18,.55)}.review-item__copy strong{color:#edf8fb}.review-item__copy p{margin:.2rem 0;color:#a9c2d0;font-size:.84rem}.review-item__copy small{color:#7894a4}.review-quality{display:flex;gap:.3rem}.review-quality button{width:2rem;height:2rem;border:1px solid rgba(52,230,197,.25);border-radius:7px;background:rgba(52,230,197,.04);color:#b9d4dc;cursor:pointer}.review-quality button:hover,.review-quality button.active{border-color:#34e6c5;background:rgba(52,230,197,.17);color:#effffd;box-shadow:0 0 12px rgba(52,230,197,.16)}.review-scale{margin:.1rem 0 0;color:#7894a4!important;font-size:.75rem}.review-error{margin:.65rem 0 0;color:#ffaaa9!important}.review-feedback{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem .9rem;margin-top:.8rem;padding:.75rem .85rem;border-left:3px solid #34e6c5;background:rgba(52,230,197,.07);color:#dffcf7}.review-feedback strong{color:#6ef4df}.review-feedback span{color:#c6dce3}.review-feedback small{flex-basis:100%;color:#8fabb7}@media(max-width:900px){.review-card{grid-column:auto}.review-item{grid-template-columns:1fr}.review-quality{flex-wrap:wrap}}
+.review-card{grid-column:span 2;min-height:auto}.review-card header p{margin:.2rem 0 .9rem;color:#8da7b6;font-size:.85rem}.review-list{display:grid;gap:.65rem}.review-item{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:.75rem;padding:.85rem;border:1px solid rgba(52,230,197,.14);border-radius:12px;background:rgba(2,10,18,.55)}.review-item__copy strong{color:#edf8fb}.review-item__copy p{margin:.2rem 0;color:#a9c2d0;font-size:.84rem}.review-item__copy small{color:#7894a4}.review-scale{margin:.1rem 0 0;color:#7894a4!important;font-size:.75rem}.review-error{margin:.65rem 0 0;color:#ffaaa9!important}.review-feedback{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem .9rem;margin-top:.8rem;padding:.75rem .85rem;border-left:3px solid #34e6c5;background:rgba(52,230,197,.07);color:#dffcf7}.review-feedback strong{color:#6ef4df}.review-feedback span{color:#c6dce3}.review-feedback small{flex-basis:100%;color:#8fabb7}@media(max-width:900px){.review-card{grid-column:auto}}
 </style>

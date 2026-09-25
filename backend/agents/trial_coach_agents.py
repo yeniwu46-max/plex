@@ -336,7 +336,60 @@ def _format_chat_response(body: dict[str, Any]) -> str:
     return '\n'.join(line for line in lines if line).strip()
 
 
-def execute(intent: str, payload: dict) -> dict:
+def _trial_student_knowledge_view(view: dict[str, Any] | None, payload: dict) -> dict[str, Any] | None:
+    """试炼页：弱化泛化「推荐下一步」，仅在有运行/用例问题时保留误区类提示。"""
+    if not view:
+        return None
+    status = _answer_status(payload)
+    has_issue = bool(str(payload.get('stderr') or '').strip()) or bool(payload.get('failedCases')) or status in {'wrong', 'partial'}
+    if not has_issue:
+        view = {**view, 'recommended_next': []}
+    else:
+        nxt = view.get('recommended_next') or []
+        if isinstance(nxt, list):
+            view = {**view, 'recommended_next': [item for item in nxt if isinstance(item, dict) and item.get('type') == 'misconception'][:1]}
+    concepts = view.get('concepts') or []
+    if isinstance(concepts, list) and concepts:
+        focus = [c for c in concepts if isinstance(c, dict) and c.get('role') == 'focus']
+        rest = [c for c in concepts if isinstance(c, dict) and c.get('role') != 'focus']
+        view = {**view, 'concepts': (focus + rest)[:5]}
+    sources = view.get('sources') or []
+    if isinstance(sources, list):
+        view = {**view, 'sources': sources[:3 if has_issue else 2]}
+    if not view.get('concepts') and not view.get('recommended_next') and not view.get('sources'):
+        return None
+    return view
+
+
+def _knowledge_plan(user_id: int | None, intent: str, payload: dict, user_question: str):
+    """Graph-enhanced RAG 两段式第一步：以试炼场景（禁泄题 + Hint Level）检索课程材料。失败返回 None，不阻断辅导。"""
+    try:
+        from app.services.knowledge import KnowledgeService
+
+        topic = str(payload.get('topic') or '').strip()
+        title = str(payload.get('questionTitle') or payload.get('exerciseId') or '').strip()
+        query = user_question or ' '.join(part for part in (topic, title, _intent_focus(intent)) if part)
+        context: dict[str, Any] = {
+            'task_type': 'trial',
+            'task_id': payload.get('exerciseId'),
+            'title': title,
+            'concept_hint': topic,
+        }
+        hint_level = payload.get('hintLevel') or payload.get('hint_level')
+        if hint_level not in (None, ''):
+            try:
+                context['hint_level'] = max(1, min(4, int(hint_level)))
+            except (TypeError, ValueError):
+                pass
+        return KnowledgeService.prepare(query, user_id=user_id, role='student', scene='trial', context=context)
+    except Exception as exc:  # noqa: BLE001
+        import logging
+
+        logging.getLogger(__name__).warning('trial_coach knowledge prepare failed: %s', exc)
+        return None
+
+
+def execute(intent: str, payload: dict, *, user_id: int | None = None) -> dict:
     """运行指定 intent 的试炼辅导智能体。"""
     if intent not in VALID_INTENTS:
         raise ValueError(f'unsupported intent: {intent}')
@@ -347,6 +400,15 @@ def execute(intent: str, payload: dict) -> dict:
     history = payload.get('conversationHistory') or payload.get('conversation_history') or []
     body: dict[str, Any] = _rules_result(intent, payload, user_question)
     backend = 'rules'
+
+    # 知识层取材：只经 KnowledgeService，不直接触碰向量库；证据不足时 knowledge_text 为空
+    knowledge_plan = _knowledge_plan(user_id, intent, payload, user_question)
+    knowledge_text = ''
+    if knowledge_plan is not None:
+        from app.services.knowledge import KnowledgeService
+
+        knowledge_text = KnowledgeService.plan_context_text(knowledge_plan, limit=1200)
+    knowledge_block = f'\n\n【课程参考与提示策略】\n{knowledge_text}' if knowledge_text else ''
 
     llm_context = {
         'questionTitle': payload.get('questionTitle'),
@@ -360,6 +422,7 @@ def execute(intent: str, payload: dict) -> dict:
         'answerStatus': _answer_status(payload),
         'constraints': payload.get('constraints'),
         'userQuestion': user_question,
+        'courseReference': knowledge_text or None,
     }
 
     # 优先 DeepSeek；讯飞星火仅作兜底（未配置时跳过，避免超时卡住）
@@ -371,7 +434,7 @@ def execute(intent: str, payload: dict) -> dict:
     provider = llm_provider()
     if backend == 'rules' and provider and user_question:
         prompt_user = (
-            f'【练习上下文】\n{_build_context_block(payload)}\n\n'
+            f'【练习上下文】\n{_build_context_block(payload)}{knowledge_block}\n\n'
             f'【学生问题】\n{user_question}'
         )
         text = chat_text(
@@ -396,7 +459,7 @@ def execute(intent: str, payload: dict) -> dict:
 
     if backend == 'rules' and spark_ok and user_question:
         prompt_user = (
-            f'【练习上下文】\n{_build_context_block(payload)}\n\n'
+            f'【练习上下文】\n{_build_context_block(payload)}{knowledge_block}\n\n'
             f'【学生问题】\n{user_question}'
         )
         try:
@@ -433,6 +496,17 @@ def execute(intent: str, payload: dict) -> dict:
 
     response_text = _format_chat_response(body) if not user_question else str(body.get('response') or '')
 
+    knowledge_view = None
+    if knowledge_plan is not None:
+        from app.services.knowledge import KnowledgeService
+
+        # Answer Policy：按 Hint Level / 掌握度封顶裁剪代码与完整解法，练习场景禁泄题
+        response_text = KnowledgeService.apply_answer_policy(knowledge_plan, response_text) or response_text
+        knowledge_view = KnowledgeService.student_view(
+            knowledge_plan, answer_text=response_text, generation_mode='llm' if backend != 'rules' else 'extractive', provider=backend,
+        )
+        knowledge_view = _trial_student_knowledge_view(knowledge_view, payload)
+
     return {
         'agentId': meta['id'],
         'agentName': meta['name'],
@@ -444,4 +518,6 @@ def execute(intent: str, payload: dict) -> dict:
         'improvements': body.get('improvements') or body.get('suggestions') or body.get('checklist') or [],
         'policy': NO_ANSWER_POLICY,
         'backend': backend,
+        'knowledge': knowledge_view,
+        'hintLevel': knowledge_view.get('hint_level') if knowledge_view else None,
     }

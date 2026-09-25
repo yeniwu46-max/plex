@@ -34,6 +34,7 @@ export interface PersonalizedResource {
   is_anomaly?: boolean
   student_warning?: string | null
   ai_review?: Record<string, unknown>
+  created_at?: string | null
 }
 
 export interface ResourceTask {

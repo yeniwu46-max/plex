@@ -5,6 +5,7 @@ import PlexFileUploader from '../shared/upload/PlexFileUploader.vue'
 import {
   fetchClassFiles,
   fetchUploadFileBlob,
+  fetchUploadPdfBlob,
   filePathFromUrl,
   isImagePreviewType,
   isPdfPreviewType,
@@ -120,19 +121,22 @@ async function openFile(file: ClassSharedFile) {
   previewVisible.value = true
   previewLoading.value = true
   try {
-    const blob = await fetchUploadFileBlob(file.url)
-    if (isTextPreviewType(file.fileType, file.fileName)) {
-      previewKind.value = 'text'
-      previewText.value = await blob.text()
-    } else if (isPdfPreviewType(file.fileType, file.fileName)) {
+    if (isPdfPreviewType(file.fileType, file.fileName)) {
+      const pdfBlob = await fetchUploadPdfBlob(file.url)
       previewKind.value = 'pdf'
-      previewObjectUrl.value = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
-    } else if (isImagePreviewType(file.fileType, file.fileName)) {
-      previewKind.value = 'image'
-      previewObjectUrl.value = URL.createObjectURL(blob)
+      previewObjectUrl.value = URL.createObjectURL(pdfBlob)
     } else {
-      previewKind.value = 'unsupported'
-      previewObjectUrl.value = URL.createObjectURL(blob)
+      const blob = await fetchUploadFileBlob(file.url)
+      if (isTextPreviewType(file.fileType, file.fileName)) {
+        previewKind.value = 'text'
+        previewText.value = await blob.text()
+      } else if (isImagePreviewType(file.fileType, file.fileName)) {
+        previewKind.value = 'image'
+        previewObjectUrl.value = URL.createObjectURL(blob)
+      } else {
+        previewKind.value = 'unsupported'
+        previewObjectUrl.value = URL.createObjectURL(blob)
+      }
     }
   } catch (error) {
     message.error(error instanceof Error ? error.message : '文件预览失败')
@@ -278,12 +282,18 @@ defineExpose({ reload: loadFiles })
     >
       <n-spin :show="previewLoading">
         <pre v-if="previewKind === 'text'" class="file-preview__code">{{ previewText }}</pre>
-        <iframe
+        <object
           v-else-if="previewKind === 'pdf' && previewObjectUrl"
           class="file-preview__frame"
-          :src="previewObjectUrl"
-          title="PDF 预览"
-        />
+          :data="previewObjectUrl"
+          type="application/pdf"
+        >
+          <iframe
+            class="file-preview__frame"
+            :src="previewObjectUrl"
+            title="PDF 预览"
+          />
+        </object>
         <img
           v-else-if="previewKind === 'image' && previewObjectUrl"
           class="file-preview__image"

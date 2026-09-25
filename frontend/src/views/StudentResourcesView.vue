@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue'
-import { NButton, NCollapse, NCollapseItem, NModal, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
+import { NButton, NCollapse, NCollapseItem, NInput, NModal, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
@@ -22,6 +22,11 @@ import {
 } from '../data/moduleCategories'
 import { xiaoEResourceProgressHint, xiaoEResourceBackendLabel } from '../utils/xiaoEPersona'
 import { formatHttpError } from '../api/http'
+import {
+  RESOURCE_DATE_FILTER_OPTIONS,
+  filterPersonalizedResources,
+  type ResourceDateFilter,
+} from '../utils/resourceListFilters'
 
 const message = useMessage()
 const knowledgeKey = ref<ModuleCategoryValue>('loop')
@@ -31,6 +36,12 @@ const learningStyles = ref(['案例', '代码实验', '图文'])
 /** 生成目标资源类型：all = 完整学习包（不含视频） */
 const generateResourceType = ref<'all' | PersonalizedResource['resource_type']>('all')
 const resourceFilter = ref('all')
+const resourceSearch = ref('')
+const resourceDateFilter = ref<ResourceDateFilter>('all')
+const resourceThemeFilter = ref<'all' | ModuleCategoryValue>('all')
+const modalResourceSearch = ref('')
+const modalResourceDateFilter = ref<ResourceDateFilter>('all')
+const modalResourceThemeFilter = ref<'all' | ModuleCategoryValue>('all')
 const task = ref<ResourceTask | null>(null)
 const taskHistory = ref<ResourceTask[]>([])
 const resources = ref<PersonalizedResource[]>([])
@@ -86,6 +97,20 @@ const typeOptions = computed(() => [
   { label: '全部类型', value: 'all' },
   ...Object.entries(typeLabels).map(([value, label]) => ({ value, label })),
 ])
+
+const themeFilterOptions = computed(() => [
+  { label: '全部主题', value: 'all' },
+  ...knowledgeOptions.map((item) => ({ label: item.label, value: item.value })),
+])
+
+function applyListFilters(
+  items: PersonalizedResource[],
+  search: string,
+  date: ResourceDateFilter,
+  theme: 'all' | ModuleCategoryValue,
+) {
+  return filterPersonalizedResources(items, { search, date, theme })
+}
 
 const generateTypeOptions = computed(() => [
   { label: '完整学习包 · 含语音', value: 'all' },
@@ -150,8 +175,33 @@ const overviewGroupCount = computed(() => groupByKnowledge(overviewItems.value).
 const overviewResourceCount = computed(() => overviewItems.value.length)
 
 const groupedResources = computed(() => {
-  const filtered = overviewItems.value.filter(
+  const typeFiltered = overviewItems.value.filter(
     (item) => resourceFilter.value === 'all' || item.resource_type === resourceFilter.value,
+  )
+  const filtered = applyListFilters(
+    typeFiltered,
+    resourceSearch.value,
+    resourceDateFilter.value,
+    resourceThemeFilter.value,
+  )
+  return groupByKnowledge(filtered)
+})
+
+const filteredApprovedResources = computed(() =>
+  applyListFilters(
+    approvedResources.value,
+    modalResourceSearch.value,
+    modalResourceDateFilter.value,
+    modalResourceThemeFilter.value,
+  ),
+)
+
+const filteredKnowledgeGroups = computed(() => {
+  const filtered = applyListFilters(
+    overviewItems.value,
+    modalResourceSearch.value,
+    modalResourceDateFilter.value,
+    modalResourceThemeFilter.value,
   )
   return groupByKnowledge(filtered)
 })
@@ -191,10 +241,16 @@ const anomalyResources = computed(() =>
   resources.value.filter((item) => Boolean(item.is_anomaly) && item.review_status !== 'rejected'),
 )
 
-const knowledgeGroups = computed(() => groupByKnowledge(overviewItems.value))
-
 function openResourceStatModal(kind: ResourceStatModal) {
   resourceStatModal.value = kind
+  modalResourceSearch.value = ''
+  modalResourceDateFilter.value = 'all'
+  modalResourceThemeFilter.value = 'all'
+}
+
+function formatResourceDate(value: string | null | undefined) {
+  if (!value) return '时间未记录'
+  return value.slice(0, 10)
 }
 
 const resourceStatModalVisible = computed({
@@ -325,6 +381,9 @@ async function generateQuizSet() {
 
 function resetTypeFilter() {
   resourceFilter.value = 'all'
+  resourceSearch.value = ''
+  resourceDateFilter.value = 'all'
+  resourceThemeFilter.value = 'all'
 }
 
 async function revealResourceList() {
@@ -526,15 +585,36 @@ onActivated(() => {
         :style="{ width: 'min(480px, 92vw)', maxWidth: '92vw' }"
         :title="resourceStatModal === 'knowledge' ? '按知识点分类' : resourceStatModal === 'resources' ? '可学习资源' : '异常待关注'"
       >
+        <div
+          v-if="resourceStatModal === 'knowledge' || resourceStatModal === 'resources'"
+          class="resource-stat-modal__filters"
+        >
+          <n-input
+            v-model:value="modalResourceSearch"
+            size="small"
+            clearable
+            placeholder="搜索标题或知识点"
+          />
+          <n-select
+            v-model:value="modalResourceDateFilter"
+            size="small"
+            :options="RESOURCE_DATE_FILTER_OPTIONS"
+          />
+          <n-select
+            v-model:value="modalResourceThemeFilter"
+            size="small"
+            :options="themeFilterOptions"
+          />
+        </div>
         <div v-if="resourceStatModal === 'knowledge'" class="resource-stat-modal__body">
-          <p v-if="!knowledgeGroups.length" class="resource-stat-modal__empty">暂无已生成资源</p>
-          <section v-for="group in knowledgeGroups" :key="group.label" class="resource-stat-group">
+          <p v-if="!filteredKnowledgeGroups.length" class="resource-stat-modal__empty">暂无已生成资源</p>
+          <section v-for="group in filteredKnowledgeGroups" :key="group.label" class="resource-stat-group">
             <h4>{{ group.label }}</h4>
             <ul class="resource-stat-list">
               <li v-for="item in group.items" :key="item.id">
                 <div class="resource-stat-list__main">
                   <strong>{{ typeLabels[item.resource_type] || item.resource_type }} · {{ item.title }}</strong>
-                  <span>{{ item.knowledge_label }}</span>
+                  <span>{{ item.knowledge_label }} · {{ formatResourceDate(item.created_at) }}</span>
                 </div>
                 <div class="resource-stat-list__actions">
                   <n-button size="tiny" type="primary" secondary @click="viewResourceMaterial(item)">查看资料</n-button>
@@ -546,11 +626,15 @@ onActivated(() => {
         </div>
         <div v-else-if="resourceStatModal === 'resources'" class="resource-stat-modal__body">
           <p v-if="!approvedResources.length" class="resource-stat-modal__empty">暂无审核通过的资源，可先预览待审内容</p>
+          <p v-else-if="!filteredApprovedResources.length" class="resource-stat-modal__empty">没有符合筛选条件的资源</p>
           <ul v-else class="resource-stat-list">
-            <li v-for="item in approvedResources" :key="item.id">
+            <li v-for="item in filteredApprovedResources" :key="item.id">
               <div class="resource-stat-list__main">
                 <strong>{{ item.title }}</strong>
-                <span>{{ item.knowledge_label }} · {{ typeLabels[item.resource_type] || item.resource_type }}</span>
+                <span>
+                  {{ item.knowledge_label }} · {{ typeLabels[item.resource_type] || item.resource_type }}
+                  · {{ formatResourceDate(item.created_at) }}
+                </span>
               </div>
               <div class="resource-stat-list__actions">
                 <n-button size="tiny" type="primary" secondary @click="viewResourceMaterial(item)">查看资料</n-button>
@@ -675,9 +759,30 @@ onActivated(() => {
         <section ref="resourceListRef" class="resource-tools">
           <div>
             <h2>已生成资源</h2>
-            <p class="resource-tools__hint">已批准与待审资源均可点开学习；默认显示全部类型。</p>
+            <p class="resource-tools__hint">已批准与待审资源均可点开学习；支持按标题、时间与知识主题筛选。</p>
           </div>
-          <n-select v-model:value="resourceFilter" :options="typeOptions" class="type-select" />
+          <div class="resource-tools__filters">
+            <n-input
+              v-model:value="resourceSearch"
+              size="small"
+              clearable
+              placeholder="搜索标题"
+              class="resource-tools__search"
+            />
+            <n-select
+              v-model:value="resourceDateFilter"
+              size="small"
+              :options="RESOURCE_DATE_FILTER_OPTIONS"
+              class="resource-tools__select"
+            />
+            <n-select
+              v-model:value="resourceThemeFilter"
+              size="small"
+              :options="themeFilterOptions"
+              class="resource-tools__select"
+            />
+            <n-select v-model:value="resourceFilter" :options="typeOptions" class="type-select" />
+          </div>
         </section>
 
         <div v-if="groupedResources.length" class="resource-layout">
@@ -792,8 +897,8 @@ onActivated(() => {
           </section>
         </div>
         <section v-else-if="hasAnyVisibleResources" class="resource-state">
-          当前类型下没有资源。
-          <n-button type="primary" size="small" @click="resetTypeFilter">查看全部类型</n-button>
+          当前筛选条件下没有资源。
+          <n-button type="primary" size="small" @click="resetTypeFilter">清除筛选</n-button>
         </section>
         <section v-else class="resource-state">
           暂无匹配资源。可在上方选择知识点后点击「生成」，生成完成后会出现在这里。
@@ -999,8 +1104,31 @@ onActivated(() => {
 }
 
 .resource-stat-modal :deep(.n-card__content) {
-  max-height: min(68vh, 520px);
+  max-height: min(52vh, 380px);
   overflow-y: auto;
+}
+
+.resource-stat-modal__filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+}
+
+.resource-tools__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.resource-tools__search {
+  width: min(200px, 42vw);
+}
+
+.resource-tools__select {
+  width: 118px;
 }
 
 .resource-stat-modal__empty {

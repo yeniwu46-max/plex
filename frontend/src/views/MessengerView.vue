@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NDropdown, NIcon, NInput, useMessage } from 'naive-ui'
 import { postMessengerChat, postMessengerKnowledgeGraph, postMessengerLearningDocument, streamMessengerChat } from '../api/messenger'
@@ -16,8 +16,15 @@ import {
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import PlexAgentTracePanel from '../components/agent/PlexAgentTracePanel.vue'
+import MessengerKnowledgeCard from '../components/student/MessengerKnowledgeCard.vue'
+import type { MessengerKnowledge } from '../api/rag'
 import { xiaoEThinkingMessage, xiaoETimeoutMessage, xiaoENormalizeReply } from '../utils/xiaoEPersona'
 import { openPracticeQuestionByRef } from '../utils/practiceQuestionNav'
+import { useSpeechRecognitionInput } from '../composables/useSpeechRecognitionInput'
+import {
+  useMessengerChatSessions,
+  type PersistedChatMessage,
+} from '../composables/useMessengerChatSessions'
 
 const router = useRouter()
 const message = useMessage()
@@ -29,6 +36,8 @@ type ChatMessage = {
   stageLabel?: string
   thinking?: AgentTraceStep[]
   illustration?: { url: string; caption?: string }
+  /** Graph-enhanced RAG 参考知识（学生安全视图） */
+  knowledge?: MessengerKnowledge | null
   questionPick?: MessengerQuickActionResult['question_pick']
   retry?: () => void
   /** 工具产物：学习文档可下载 MD */
@@ -82,10 +91,106 @@ function assistantErrorText(error: unknown, retry?: () => void): ChatMessage {
 
 const prompt = ref('')
 const chatLoading = ref(false)
-const voiceListening = ref(false)
 const chatMessages = ref<ChatMessage[]>([])
 const chatThreadEl = ref<HTMLElement | null>(null)
 let scrollRaf = 0
+
+const {
+  sessions: messengerSessions,
+  activeSessionId,
+  activeSession,
+  canCreateSession,
+  switchSession,
+  createSession,
+  renameSession,
+  setSessionMessages,
+  touchSession,
+} = useMessengerChatSessions()
+
+let syncingSessionMessages = false
+
+function formatSessionTime(ts: number) {
+  const d = new Date(ts)
+  return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function persistActiveSessionMessages() {
+  if (syncingSessionMessages || !activeSessionId.value) return
+  const persisted: PersistedChatMessage[] = chatMessages.value.map(
+    ({ retry: _retry, thinking: _thinking, ...rest }) => ({
+      ...rest,
+      streaming: false,
+      stageLabel: undefined,
+    }),
+  )
+  setSessionMessages(activeSessionId.value, persisted)
+}
+
+watch(
+  () => activeSessionId.value,
+  (id) => {
+    if (!id) return
+    syncingSessionMessages = true
+    const stored = messengerSessions.value.find((s) => s.id === id)?.messages ?? []
+    chatMessages.value = stored.map((m) => ({ ...m })) as ChatMessage[]
+    syncingSessionMessages = false
+    scrollThreadToBottom()
+  },
+  { immediate: true },
+)
+
+watch(chatMessages, () => persistActiveSessionMessages(), { deep: true })
+
+const renamingSessionId = ref('')
+const renameDraft = ref('')
+const messengerBoxOpen = ref(false)
+
+function startRenameSession(id: string, currentName: string) {
+  renamingSessionId.value = id
+  renameDraft.value = currentName
+}
+
+function commitRenameSession() {
+  if (!renamingSessionId.value) return
+  renameSession(renamingSessionId.value, renameDraft.value)
+  renamingSessionId.value = ''
+  renameDraft.value = ''
+}
+
+function cancelRenameSession() {
+  renamingSessionId.value = ''
+  renameDraft.value = ''
+}
+
+function onNewMessengerSession() {
+  if (!canCreateSession.value) {
+    message.warning('最多保留 5 个对话窗口')
+    return
+  }
+  const session = createSession()
+  if (session) {
+    prompt.value = ''
+    message.success(`已新建「${session.name}」`)
+  }
+}
+
+function onSelectMessengerSession(id: string) {
+  if (id === activeSessionId.value) {
+    messengerBoxOpen.value = false
+    return
+  }
+  switchSession(id)
+  touchSession(id)
+  messengerBoxOpen.value = false
+}
+
+const { listening: voiceListening, toggle: toggleVoiceInput } = useSpeechRecognitionInput({
+  getText: () => prompt.value,
+  setText: (value) => {
+    prompt.value = value
+  },
+  message,
+})
 
 function recentChatHistory() {
   return chatMessages.value.slice(-18).map((msg) => ({
@@ -210,6 +315,7 @@ async function sendChatText(text: string, appendUserMessage = true) {
             latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : 80,
           }))
         }
+        if (partial.knowledge) msg.knowledge = partial.knowledge
         msg.stageLabel = undefined
         msg.streaming = false
         scrollThreadToBottom()
@@ -226,6 +332,7 @@ async function sendChatText(text: string, appendUserMessage = true) {
       const reply = xiaoENormalizeReply(result.reply || msg.text)
       msg.text = reply || msg.text || '我先根据你的近况给一点方向：优先复习薄弱知识点，再做一道对应试炼题巩固。'
       if (result.illustration) msg.illustration = result.illustration
+      if (result.knowledge) msg.knowledge = result.knowledge
       if (result.thinking?.length) {
         msg.thinking = result.thinking
       } else if (msg.thinking?.length) {
@@ -249,6 +356,7 @@ async function sendChatText(text: string, appendUserMessage = true) {
       try {
         const fallback = await postMessengerChat(text, history)
         if (msg) {
+          msg.knowledge = fallback.knowledge ?? null
           msg.text = xiaoENormalizeReply(fallback.reply) || '小E 这次没组织好语言，点「重试」再来一次。'
           msg.streaming = false
           msg.stageLabel = undefined
@@ -278,50 +386,6 @@ async function sendChat() {
   if (!text) return
   prompt.value = ''
   await sendChatText(text)
-}
-
-type SpeechRecognitionCtor = new () => {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  onresult: ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null
-  onerror: ((event: { error?: string }) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
-function toggleVoiceInput() {
-  if (voiceListening.value) {
-    voiceListening.value = false
-    return
-  }
-  const SpeechRecognition = (window as Window & {
-    SpeechRecognition?: SpeechRecognitionCtor
-    webkitSpeechRecognition?: SpeechRecognitionCtor
-  }).SpeechRecognition
-    || (window as Window & { webkitSpeechRecognition?: SpeechRecognitionCtor }).webkitSpeechRecognition
-  if (!SpeechRecognition) {
-    message.warning('当前浏览器不支持语音输入，请改用文字提问')
-    return
-  }
-  const recognition = new SpeechRecognition()
-  recognition.lang = 'zh-CN'
-  recognition.interimResults = false
-  recognition.continuous = false
-  voiceListening.value = true
-  recognition.onresult = (event) => {
-    const text = event.results[0]?.[0]?.transcript?.trim()
-    if (text) prompt.value = `${prompt.value}${prompt.value ? ' ' : ''}${text}`
-  }
-  recognition.onerror = () => {
-    message.error('语音识别失败，请检查麦克风权限')
-    voiceListening.value = false
-  }
-  recognition.onend = () => {
-    voiceListening.value = false
-  }
-  recognition.start()
 }
 
 const toolMenuOptions = [
@@ -464,8 +528,75 @@ async function runToolAction(key: string) {
         </div>
 
         <aside class="analysis-panel" aria-label="与小E对话反馈">
-          <header>
-            <h2>小E 对话反馈 <span aria-hidden="true">▮▮</span></h2>
+          <header class="analysis-panel__head">
+            <div class="analysis-panel__title-row">
+              <h2>小E 对话反馈 <span aria-hidden="true">▮▮</span></h2>
+            </div>
+            <div class="messenger-box">
+              <button
+                type="button"
+                class="messenger-box__toggle"
+                :aria-expanded="messengerBoxOpen"
+                aria-controls="messenger-box-panel"
+                @click="messengerBoxOpen = !messengerBoxOpen"
+              >
+                <span class="messenger-box__label">BOX</span>
+                <span class="messenger-box__current">{{ activeSession?.name || '对话' }}</span>
+                <span class="messenger-box__chevron" aria-hidden="true">{{ messengerBoxOpen ? '▴' : '▾' }}</span>
+              </button>
+              <div
+                v-show="messengerBoxOpen"
+                id="messenger-box-panel"
+                class="messenger-box__panel"
+                role="tablist"
+                aria-label="对话窗口"
+              >
+                <div class="messenger-box__panel-head">
+                  <span>切换对话窗口 · 最多 5 个</span>
+                  <button
+                    type="button"
+                    class="messenger-session-add"
+                    :disabled="!canCreateSession"
+                    aria-label="新建对话窗口"
+                    @click="onNewMessengerSession"
+                  >
+                    +
+                  </button>
+                </div>
+                <div
+                  v-for="session in messengerSessions"
+                  :key="session.id"
+                  class="messenger-session-tab"
+                  :class="{ 'is-active': session.id === activeSessionId }"
+                  role="tab"
+                  :aria-selected="session.id === activeSessionId"
+                >
+                  <template v-if="renamingSessionId === session.id">
+                    <input
+                      v-model="renameDraft"
+                      class="messenger-session-rename"
+                      maxlength="40"
+                      @keydown.enter.prevent="commitRenameSession"
+                      @keydown.esc.prevent="cancelRenameSession"
+                      @blur="commitRenameSession"
+                    />
+                  </template>
+                  <button
+                    v-else
+                    type="button"
+                    class="messenger-session-tab__btn"
+                    @click="onSelectMessengerSession(session.id)"
+                    @dblclick.stop="startRenameSession(session.id, session.name)"
+                  >
+                    {{ session.name }}
+                  </button>
+                  <small>最近使用 {{ formatSessionTime(session.lastActiveAt) }}</small>
+                </div>
+              </div>
+            </div>
+            <p v-if="activeSession" class="messenger-session-meta">
+              创建于 {{ formatSessionTime(activeSession.createdAt) }} · 最近使用 {{ formatSessionTime(activeSession.lastActiveAt) }}
+            </p>
           </header>
           <div ref="chatThreadEl" class="chat-thread" aria-label="与小E对话">
             <div v-if="!chatMessages.length" class="chat-thread__empty">
@@ -485,6 +616,7 @@ async function runToolAction(key: string) {
                 </p>
                 <MarkdownRenderer v-if="msg.text" :content="msg.text" :streaming="msg.streaming" />
                 <span v-if="msg.streaming" class="chat-thread__cursor" aria-hidden="true" />
+                <MessengerKnowledgeCard v-if="msg.knowledge && !msg.streaming" :knowledge="msg.knowledge" />
                 <figure v-if="msg.illustration?.url" class="chat-thread__illustration">
                   <img :src="msg.illustration.url" :alt="msg.illustration.caption || '图解说明'" loading="lazy" />
                   <figcaption>{{ msg.illustration.caption || '图解说明' }}</figcaption>
@@ -1478,6 +1610,160 @@ async function runToolAction(key: string) {
 .analysis-panel header h2 span {
   color: #26ffee;
   letter-spacing: 0.15em;
+}
+
+.analysis-panel__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.analysis-panel__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.messenger-box {
+  position: relative;
+}
+
+.messenger-box__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 228, 255, 0.2);
+  background:
+    linear-gradient(135deg, rgba(37, 245, 238, 0.08), transparent 55%),
+    rgba(6, 22, 34, 0.82);
+  color: rgba(235, 247, 255, 0.94);
+  cursor: pointer;
+  text-align: left;
+}
+
+.messenger-box__label {
+  flex: 0 0 auto;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(37, 245, 238, 0.35);
+  color: #26ffee;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.messenger-box__current {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.messenger-box__chevron {
+  flex: 0 0 auto;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.75rem;
+}
+
+.messenger-box__panel {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: min(280px, 42vh);
+  overflow-y: auto;
+  padding: 0.55rem;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 228, 255, 0.22);
+  background: rgba(4, 16, 26, 0.96);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.messenger-box__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.15rem 0.25rem;
+  font-size: 0.68rem;
+  color: rgba(148, 163, 184, 0.92);
+}
+
+.messenger-session-add {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 245, 238, 0.35);
+  background: rgba(8, 28, 42, 0.85);
+  color: #26ffee;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.messenger-session-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.messenger-session-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid rgba(110, 228, 255, 0.14);
+  background: rgba(6, 22, 34, 0.72);
+}
+
+.messenger-session-tab.is-active {
+  border-color: rgba(37, 245, 238, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(37, 245, 238, 0.12);
+}
+
+.messenger-session-tab__btn {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: rgba(235, 247, 255, 0.92);
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.messenger-session-tab small {
+  font-size: 0.65rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.messenger-session-rename {
+  width: 100%;
+  border: 1px solid rgba(37, 245, 238, 0.35);
+  border-radius: 6px;
+  background: rgba(4, 14, 24, 0.95);
+  color: #edf7ff;
+  font-size: 0.78rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.messenger-session-meta {
+  margin: 0;
+  font-size: 0.68rem;
+  color: rgba(148, 163, 184, 0.88);
 }
 
 .chat-thread {

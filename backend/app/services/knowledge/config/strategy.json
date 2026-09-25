@@ -1,0 +1,69 @@
+{
+  "$comment": "Educational Strategy Layer 阈值与策略映射。掌握度区间与 Hint Level 策略统一在此配置。",
+  "mastery_thresholds": {
+    "low": 0.4,
+    "high": 0.75
+  },
+  "strategy_by_mastery": {
+    "low": ["PREREQUISITE_REMEDIATION", "SCAFFOLDING"],
+    "medium": ["EXAMPLE_BASED", "PRACTICE_RECOMMENDATION"],
+    "high": ["SOCRATIC_GUIDANCE", "EXTENSION"]
+  },
+  "strategy_by_intent": {
+    "concept_explain": ["DIRECT_EXPLANATION"],
+    "debug_error": ["MISCONCEPTION_CORRECTION", "SCAFFOLDING"],
+    "practice_request": ["PRACTICE_RECOMMENDATION"],
+    "compare": ["EXAMPLE_BASED", "DIRECT_EXPLANATION"],
+    "code_review": ["SCAFFOLDING", "MISCONCEPTION_CORRECTION"],
+    "extension": ["EXTENSION"],
+    "general": []
+  },
+  "misconception_boost": ["MISCONCEPTION_CORRECTION"],
+  "max_strategies": 3,
+  "hint_policy": {
+    "$comment": "练习/试炼场景下的 Answer Policy。level 1-4 逐级放开；max_level_by_mastery 限制不同掌握度下允许的最高提示级别。",
+    "default_level": 1,
+    "levels": {
+      "1": {
+        "name": "概念提示",
+        "allow_code": false,
+        "allow_solution": false,
+        "instruction": "只点出题目考查的知识点与思考方向，不给出任何步骤、伪代码或答案。"
+      },
+      "2": {
+        "name": "思路引导",
+        "allow_code": false,
+        "allow_solution": false,
+        "instruction": "用提问和分步骤的思路引导学生，可以给出输入输出的分析，但禁止出现可直接提交的代码或最终答案。"
+      },
+      "3": {
+        "name": "关键片段",
+        "allow_code": true,
+        "allow_solution": false,
+        "max_code_lines": 3,
+        "instruction": "可以给出不超过 3 行的关键语法片段或伪代码骨架，必须留空核心逻辑，禁止给出完整实现或最终答案。"
+      },
+      "4": {
+        "name": "完整讲解",
+        "allow_code": true,
+        "allow_solution": true,
+        "instruction": "可以完整讲解解题思路并给出参考实现，但必须先说明思路再展示代码，并指出学生原先卡住的原因。"
+      }
+    },
+    "max_level_by_mastery": {
+      "low": 3,
+      "medium": 3,
+      "high": 4
+    },
+    "practice_scenes": ["trial", "practice", "exercise", "emergency", "problem"]
+  },
+  "explanation_preference_map": {
+    "$comment": "七维画像 explanation_preference 取值 → 表达风格提示（用于 teaching_strategy.style）。",
+    "concise": "精炼直给，先结论后要点，控制在 5 句以内。",
+    "detailed": "循序渐进、解释每一步的原因，可适当展开背景。",
+    "example_first": "先给一个贴近生活或代码的小例子，再抽象出概念。",
+    "visual": "多用类比、结构化列表与对照表帮助建立画面感。",
+    "analogy": "多用比喻与类比连接已知经验。",
+    "default": "先结论后解释，配一个简短例子。"
+  }
+}

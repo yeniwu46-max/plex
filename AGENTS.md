@@ -31,6 +31,7 @@
 - **前端源码**：[`frontend/`](frontend/)（Vue 3 + Vite + Naive UI + Pinia + Axios）。开发时 `npm run dev`（默认 `http://localhost:5180`），经 Vite 代理访问 `/api` → 后端（代理目标见 `frontend/.env.development` 的 `VITE_API_PROXY`，默认 `http://127.0.0.1:5100`）。UI/UX 与游戏化规范见 [frontend_design_v2.md](frontend_design_v2.md)。外部 React 原型仅作参考，正式功能以 Vue 实现，见《技术选型与约定》。
 - **教师端路由**：`/teacher`（领航总览）、`/teacher/starfield`（星域观测）、`/teacher/explorers`（Explorer 档案）；试炼/设置入口 `/trial-arena`、`/admin`。班级数据由 [`TeacherOverviewLayout.vue`](frontend/src/layouts/TeacherOverviewLayout.vue) 注入，勿在页面组件顶层对 Shell 使用 `inject`。
 - **学生端近期能力**（2026-05-27 沉淀见 [docs/2026-05-27-student-exploration-summary.md](docs/2026-05-27-student-exploration-summary.md)）：教师发布试炼 → 探索舱/今日委托题目；补给站紧急任务；星轨六大学域知识点导航（`/student/star-path`）。
+- **Knowledge Intelligence Layer**（Graph-enhanced RAG，2026-09）：后端包 `backend/app/services/knowledge/`，统一经 `KnowledgeService` 对外；向量库与 MySQL 元数据分离，Agent **不得**直接操作 Vector DB。API：`/api/v1/knowledge/*`、`/api/v1/rag/*`。环境变量见 `backend/.env.example`（`EMBEDDING_*`、`VECTOR_*`、`KNOWLEDGE_*`、`RAG_LLM_*`）。架构说明见 [docs/2026-09-24-knowledge-intelligence-layer-design.md](docs/2026-09-24-knowledge-intelligence-layer-design.md)。前端：`frontend/src/api/knowledge.ts`、`rag.ts`；管理员「知识智能」、教师 `/teacher/knowledge`、小E/试炼教练消费 `knowledge` 安全视图（不含相似度分值）。
 
 ---
 

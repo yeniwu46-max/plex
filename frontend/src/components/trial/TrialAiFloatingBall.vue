@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { NButton, NIcon, NInput, NSpin } from 'naive-ui'
-import { ChatbubbleEllipsesOutline, CloseOutline, SendOutline } from '@vicons/ionicons5'
-import { trialCoach, messengerQuickAction, type TrialCoachIntent, type TrialCoachPayload, type TrialCoachResult } from '../../api/agentService'
+import { NButton, NIcon, NInput, NSpin, useMessage } from 'naive-ui'
+import { ChatbubbleEllipsesOutline, CloseOutline, MicOutline, SendOutline } from '@vicons/ionicons5'
+import { trialCoach, type TrialCoachIntent, type TrialCoachPayload, type TrialCoachResult } from '../../api/agentService'
 import MarkdownRenderer from '../common/MarkdownRenderer.vue'
+import MessengerKnowledgeCard from '../student/MessengerKnowledgeCard.vue'
+import type { MessengerKnowledge } from '../../api/rag'
+import { useSpeechRecognitionInput } from '../../composables/useSpeechRecognitionInput'
 import { xiaoECleanProse, xiaoEThinkingMessage, XIAO_E_PERSONA_INTRO } from '../../utils/xiaoEPersona'
-import { openPracticeQuestionByRef } from '../../utils/practiceQuestionNav'
+import { trimTrialCoachKnowledge } from '../../utils/trialCoachPresentation'
 
 export type TrialCoachContext = {
   exerciseId: string
@@ -29,13 +31,22 @@ type ChatMessage = {
   content: string
   agentName?: string
   questionPick?: { code: string; id: string; title: string }
+  knowledge?: MessengerKnowledge | null
 }
 
 const props = defineProps<{
   context: TrialCoachContext
 }>()
 
-const router = useRouter()
+const messageApi = useMessage()
+
+const { listening: voiceListening, toggle: toggleVoiceInput } = useSpeechRecognitionInput({
+  getText: () => inputText.value,
+  setText: (value) => {
+    inputText.value = value
+  },
+  message: messageApi,
+})
 
 const BALL_SIZE = 52
 const MARGIN = 20
@@ -53,6 +64,13 @@ const inputText = ref('')
 const messages = ref<ChatMessage[]>([])
 const messagesEl = ref<HTMLElement | null>(null)
 const activeIntent = ref<TrialCoachIntent>('custom')
+const hintLevel = ref(2)
+const hintLevelOptions = [
+  { label: 'L1 思路', value: 1 },
+  { label: 'L2 定位', value: 2 },
+  { label: 'L3 片段', value: 3 },
+  { label: 'L4 解析', value: 4 },
+]
 
 const dialogWidth = ref(DEFAULT_DIALOG_WIDTH)
 const dialogHeight = ref(DEFAULT_DIALOG_HEIGHT)
@@ -225,6 +243,7 @@ function buildPayload(intent: TrialCoachIntent, userQuestion: string) {
     allPassed: props.context.allPassed,
     answerStatus,
     userQuestion,
+    hintLevel: hintLevel.value,
     conversationHistory: messages.value
       .filter((item) => item.content.trim())
       .slice(-8)
@@ -232,33 +251,28 @@ function buildPayload(intent: TrialCoachIntent, userQuestion: string) {
   }
 }
 
-async function openQuestionPick(pick: NonNullable<ChatMessage['questionPick']>) {
-  const ok = await openPracticeQuestionByRef(router, pick.id)
-  if (!ok) {
-    pushMessage('assistant', '这道题的入口暂时打不开，稍后在星轨学习或顶部搜索里再试一次。')
+function buildLocalIntro() {
+  const status = runStatusLabel.value
+  const intro = `${XIAO_E_PERSONA_INTRO} 当前题目「${props.context.questionTitle}」，运行状态：${status}。`
+  const stderr = props.context.stderr?.trim()
+  const failed = props.context.failedCases?.length ?? 0
+  if (stderr) {
+    return `${intro}\n我看到编辑器里有报错信息，你可以点「询问报错原因」或直接描述卡在哪一步。`
   }
+  if (failed > 0) {
+    return `${intro}\n有 ${failed} 个用例未通过，我会结合你当前的代码和输出帮你定位问题。`
+  }
+  if (props.context.allPassed && props.context.caseResults.length) {
+    return `${intro}\n这题已经跑通了，如需优化或检查代码质量，可以用上方快捷按钮。`
+  }
+  return `${intro}\n先把核心逻辑写完整并运行测试，我会根据最新代码和运行结果来回答。`
 }
 
 async function loadPracticeContext() {
   if (contextLoading.value || contextLoaded.value) return
   contextLoading.value = true
   try {
-    const result = await messengerQuickAction('next_trial')
-    const weakHint = xiaoECleanProse(result.reply)
-    const status = runStatusLabel.value
-    const intro = `${XIAO_E_PERSONA_INTRO} 当前题目「${props.context.questionTitle}」，运行状态：${status}。`
-    const body = weakHint ? `结合你最近的练习情况：${weakHint}` : '结合你最近的练习情况，先把当前这题的核心步骤写完整再运行测试。'
-    pushMessage('assistant', `${intro}\n${body}`, '小E')
-    if (result.question_pick) {
-      pushMessage('assistant', '如果这题已经掌握，可以按推荐去练下一道。', '小E', result.question_pick)
-    }
-    contextLoaded.value = true
-  } catch {
-    pushMessage(
-      'assistant',
-      `你好，我是小E。当前题目是「${props.context.questionTitle}」，状态：${runStatusLabel.value}。运行测试后我可以帮你看报错和思路。`,
-      '小E',
-    )
+    pushMessage('assistant', buildLocalIntro(), '小E')
     contextLoaded.value = true
   } finally {
     contextLoading.value = false
@@ -271,6 +285,7 @@ function pushMessage(
   content: string,
   agentName?: string,
   questionPick?: ChatMessage['questionPick'],
+  knowledge?: MessengerKnowledge | null,
 ) {
   messages.value.push({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -278,6 +293,7 @@ function pushMessage(
     content,
     agentName,
     questionPick,
+    knowledge,
   })
 }
 
@@ -300,7 +316,17 @@ async function sendQuestion(question: string, intent: TrialCoachIntent = activeI
 
   try {
     const result: TrialCoachResult = await trialCoach(buildPayload(intent, text))
-    pushMessage('assistant', xiaoECleanProse(result.response), result.agentName)
+    if (typeof result.hintLevel === 'number' && result.hintLevel >= 1 && result.hintLevel <= 4) {
+      hintLevel.value = result.hintLevel
+    }
+    const payloadSnapshot = buildPayload(intent, text)
+    const knowledge = trimTrialCoachKnowledge(result.knowledge ?? null, {
+      topic: payloadSnapshot.topic,
+      stderr: payloadSnapshot.stderr,
+      failedCases: payloadSnapshot.failedCases,
+      answerStatus: payloadSnapshot.answerStatus,
+    })
+    pushMessage('assistant', xiaoECleanProse(result.response), result.agentName, undefined, knowledge)
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'AI 辅导请求失败'
     pushMessage('assistant', msg.includes('404') ? '辅导服务未就绪，请确认后端已重启。' : msg)
@@ -377,6 +403,20 @@ onBeforeUnmount(() => {
             </button>
           </header>
 
+          <div class="trial-ai-float__hint-row">
+            <span>提示层级</span>
+            <button
+              v-for="opt in hintLevelOptions"
+              :key="opt.value"
+              type="button"
+              class="trial-ai-float__chip"
+              :class="{ 'is-active': hintLevel === opt.value }"
+              :disabled="loading"
+              @click="hintLevel = opt.value"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
           <div class="trial-ai-float__shortcuts">
             <button
               v-for="item in shortcuts"
@@ -400,16 +440,11 @@ onBeforeUnmount(() => {
               <header v-if="msg.role === 'assistant' && msg.agentName">
                 <small>{{ msg.agentName }}</small>
               </header>
-              <MarkdownRenderer v-if="msg.role === 'assistant'" :content="msg.content" />
+              <template v-if="msg.role === 'assistant'">
+                <MarkdownRenderer :content="msg.content" />
+                <MessengerKnowledgeCard v-if="msg.knowledge" :knowledge="msg.knowledge" />
+              </template>
               <p v-else>{{ msg.content }}</p>
-              <button
-                v-if="msg.questionPick"
-                type="button"
-                class="trial-ai-float__pick"
-                @click="openQuestionPick(msg.questionPick)"
-              >
-                去练 {{ msg.questionPick.code }} · {{ msg.questionPick.title }}
-              </button>
             </article>
             <div v-if="contextLoading || loading" class="trial-ai-float__typing">
               <n-spin size="small" />
@@ -418,14 +453,26 @@ onBeforeUnmount(() => {
           </div>
 
           <footer class="trial-ai-float__composer">
-            <n-input
-              v-model:value="inputText"
-              type="textarea"
-              placeholder="有问题尽管问我，小E 来帮你～"
-              :autosize="{ minRows: 2, maxRows: 5 }"
-              :disabled="loading"
-              @keydown="onInputKeydown"
-            />
+            <div class="trial-ai-float__composer-row">
+              <button
+                type="button"
+                class="trial-ai-float__mic"
+                :class="{ 'is-active': voiceListening }"
+                aria-label="语音输入"
+                :disabled="loading"
+                @click="toggleVoiceInput"
+              >
+                <n-icon :component="MicOutline" />
+              </button>
+              <n-input
+                v-model:value="inputText"
+                type="textarea"
+                placeholder="有问题尽管问我，小E 来帮你～"
+                :autosize="{ minRows: 2, maxRows: 5 }"
+                :disabled="loading"
+                @keydown="onInputKeydown"
+              />
+            </div>
             <n-button type="primary" :loading="loading" :disabled="!inputText.trim()" @click="onSend">
               <template #icon><n-icon :component="SendOutline" /></template>
               发送
@@ -578,6 +625,23 @@ onBeforeUnmount(() => {
   padding: 0.15rem;
 }
 
+.trial-ai-float__hint-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.45rem;
+  padding: 0 0.15rem;
+}
+.trial-ai-float__hint-row > span {
+  color: rgba(186, 230, 253, 0.65);
+  font-size: 0.72rem;
+}
+.trial-ai-float__chip.is-active {
+  border-color: rgba(37, 245, 238, 0.55);
+  background: rgba(37, 245, 238, 0.14);
+  color: #ccfbf1;
+}
 .trial-ai-float__shortcuts {
   display: flex;
   flex-wrap: wrap;
@@ -680,6 +744,41 @@ onBeforeUnmount(() => {
   padding: 0.75rem 1rem 1rem;
   border-top: 1px solid rgba(130, 212, 255, 0.1);
   background: rgba(3, 10, 18, 0.55);
+}
+
+.trial-ai-float__composer-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+.trial-ai-float__composer-row :deep(.n-input) {
+  flex: 1;
+}
+
+.trial-ai-float__mic {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-top: 0.15rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 242, 255, 0.22);
+  background: rgba(8, 20, 32, 0.85);
+  color: rgba(148, 163, 184, 0.95);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.trial-ai-float__mic.is-active {
+  border-color: rgba(0, 242, 255, 0.55);
+  color: #00f2ff;
+  box-shadow: 0 0 12px rgba(0, 242, 255, 0.25);
+}
+
+.trial-ai-float__mic:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .trial-ai-float__composer :deep(.n-input) {

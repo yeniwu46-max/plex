@@ -1,138 +1,141 @@
 # -*- coding: utf-8 -*-
-"""RAG 知识库：Mock / LlamaIndex 可切换。"""
-import os
-from datetime import datetime
+"""RAG 知识库门面（兼容层）。
+
+历史上这里是 Mock / LlamaIndex 可切换实现；现在统一委托给 Knowledge Intelligence Layer
+（``app.services.knowledge.KnowledgeService``），保留原有返回结构以兼容 ``/kb/*`` 路由、
+健康检查与资源审核等旧调用方。业务实现请看 ``app/services/knowledge``。
+"""
+from __future__ import annotations
+
+from typing import Any
 
 from app.services.course_safety import CourseSafetyService
 from app.utils.time import utc_now
-MOCK_DOCUMENTS = [
-    {
-        'id': 'doc_001',
-        'name': 'Python-basics.pdf',
-        'size': 2048576,
-        'type': 'pdf',
-        'status': 'indexed',
-        'chunk_count': 128,
-        'uploaded_at': '2026-05-20T10:30:00',
-        'uploader': 'teacher001',
-    },
-    {
-        'id': 'doc_002',
-        'name': 'Algorithm-slides.pptx',
-        'size': 5242880,
-        'type': 'pptx',
-        'status': 'indexed',
-        'chunk_count': 256,
-        'uploaded_at': '2026-05-22T14:15:00',
-        'uploader': 'teacher001',
-    },
-    {
-        'id': 'doc_003',
-        'name': 'DataStruct-exercises.docx',
-        'size': 1048576,
-        'type': 'docx',
-        'status': 'processing',
-        'chunk_count': 0,
-        'uploaded_at': '2026-05-28T09:00:00',
-        'uploader': 'teacher001',
-    },
-]
 
-MOCK_QA = {
-    'loop': 'for 循环与 while 循环是两种基本循环结构，注意边界条件避免死循环。',
-    'recursion': '递归是函数调用自身的技术，需要基线条件与递归条件。',
-    'sort': '常见排序：冒泡 O(n^2)、快排 O(nlogn)、归并 O(nlogn)。',
-    'list': '列表是 Python 最常用的数据结构，支持 append、切片、排序等操作。',
-    'python': 'Python 强调可读性，变量无需声明类型，使用缩进表示代码块。',
-    '变量': '变量用于存储数据，Python 中通过赋值创建变量。',
-    '函数': '函数通过 def 定义，可接收参数并返回结果。',
-}
+DEFAULT_ANSWER = '课程知识库中暂无足够依据回答该问题，建议先查阅对应章节或换个说法。'
 
-DEFAULT_ANSWER = '根据课程知识库，该问题与计算思维核心概念相关，建议查阅对应章节。'
+
+def _knowledge_service():
+    from app.services.knowledge import KnowledgeService
+
+    return KnowledgeService
 
 
 class RagService:
     @staticmethod
     def backend_name() -> str:
-        return os.getenv('RAG_BACKEND', 'mock').lower()
+        try:
+            from app.services.knowledge.providers.vector_store import get_vector_store
+
+            return f'graph-rag:{get_vector_store().backend}'
+        except Exception:  # noqa: BLE001
+            return 'graph-rag'
 
     @staticmethod
     def upload(filename: str) -> dict:
+        """旧接口仅返回受理信息；实际导入请使用 POST /api/v1/knowledge/documents。"""
         task_id = 'task_' + utc_now().strftime('%Y%m%d%H%M%S')
         return {
             'task_id': task_id,
             'filename': filename,
-            'status': 'processing',
-            'estimated_time': '30s',
+            'status': 'accepted',
+            'estimated_time': '—',
             'backend': RagService.backend_name(),
+            'hint': '请通过 /api/v1/knowledge/documents 上传并索引文档',
         }
 
     @staticmethod
-    def query(question: str) -> dict:
+    def query(question: str, *, user_id: int | None = None, role: str = 'student') -> dict:
+        """兼容旧结构：answer / sources[{doc_id, score, snippet}] / confidence / backend。"""
         CourseSafetyService.ensure_safe(question, enforce_course_scope=True)
-        backend = RagService.backend_name()
-        if backend == 'llamaindex':
-            try:
-                return RagService._llamaindex_query(question)
-            except Exception:
-                pass
-        return RagService._mock_query(question)
-
-    @staticmethod
-    def _mock_query(question: str) -> dict:
-        answer = DEFAULT_ANSWER
-        sources = []
-        for keyword, ans in MOCK_QA.items():
-            if keyword.lower() in question.lower():
-                answer = ans
-                sources = [{'doc_id': 'doc_001', 'score': 0.92, 'snippet': ans[:80]}]
-                break
+        answer = _knowledge_service().answer(question, user_id=user_id, role=role, scene='chat')
+        sources = [
+            {
+                'doc_id': s.get('document_id'),
+                'chunk_id': s.get('chunk_id'),
+                'title': s.get('title') or s.get('document_title'),
+                'knowledge_type': s.get('knowledge_type'),
+                'teacher_verified': bool(s.get('teacher_verified')),
+                'snippet': s.get('preview') or '',
+            }
+            for s in answer.sources
+        ]
         return {
-            'answer': answer,
+            'answer': answer.answer if answer.knowledge_grounded else (answer.answer or DEFAULT_ANSWER),
             'sources': sources,
-            'confidence': 0.92 if sources else 0.55,
-            'backend': 'mock',
+            'confidence': round(float(answer.confidence), 3),
+            'confidence_level': answer.confidence_level,
+            'knowledge_grounded': answer.knowledge_grounded,
+            'concepts': answer.concepts,
+            'recommended_next': answer.recommended_next,
+            'teaching_strategy': answer.teaching_strategy,
+            'backend': RagService.backend_name(),
         }
 
     @staticmethod
-    def _llamaindex_query(question: str) -> dict:
-        from llama_index.core import Settings
-        from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+    def list_documents() -> dict:
+        from app.services.knowledge.index_service import IndexService
 
-        data_dir = os.getenv('RAG_DATA_DIR', 'backend/data/rag_docs')
-        if not os.path.isdir(data_dir):
-            return RagService._mock_query(question)
-        docs = SimpleDirectoryReader(data_dir).load_data()
-        index = VectorStoreIndex.from_documents(docs)
-        engine = index.as_query_engine(similarity_top_k=3)
-        response = engine.query(question)
-        text = str(response)
-        sources = [{'doc_id': 'local', 'score': 0.85, 'snippet': text[:120]}]
-        return {'answer': text, 'sources': sources, 'confidence': 0.85, 'backend': 'llamaindex'}
+        pagination = IndexService.list_documents(page=1, per_page=100)
+        documents = [
+            {
+                'id': d.id,
+                'name': d.title,
+                'size': d.file_size,
+                'type': d.file_type,
+                'status': 'indexed' if d.status == 'READY' else ('failed' if d.status == 'FAILED' else 'processing'),
+                'index_status': d.status,
+                'chunk_count': d.chunk_count,
+                'uploaded_at': d.created_at.isoformat() if d.created_at else None,
+                'uploader': d.uploaded_by,
+                'source': d.source,
+                'teacher_verified': bool(d.teacher_verified),
+            }
+            for d in pagination.items
+        ]
+        return {'documents': documents, 'total': pagination.total}
 
     @staticmethod
-    def list_documents():
-        return {'documents': MOCK_DOCUMENTS, 'total': len(MOCK_DOCUMENTS)}
-
-    @staticmethod
-    def status():
-        indexed = len([d for d in MOCK_DOCUMENTS if d['status'] == 'indexed'])
+    def status() -> dict:
+        info: dict[str, Any] = {}
+        try:
+            info = _knowledge_service().status()
+        except Exception:  # noqa: BLE001
+            info = {}
+        docs = info.get('documents') or {}
+        total = int(info.get('document_total') or 0)
+        indexed = int(docs.get('READY') or 0)
+        failed = int(docs.get('FAILED') or 0)
         return {
-            'status': 'healthy',
+            'status': 'healthy' if info.get('ready') else 'degraded',
             'backend': RagService.backend_name(),
-            'total_documents': len(MOCK_DOCUMENTS),
+            'total_documents': total,
             'indexed_documents': indexed,
-            'processing_documents': len(MOCK_DOCUMENTS) - indexed,
-            'total_chunks': sum(d['chunk_count'] for d in MOCK_DOCUMENTS),
+            'processing_documents': max(0, total - indexed - failed),
+            'failed_documents': failed,
+            'total_chunks': int(info.get('chunk_total') or 0),
+            'embedded_chunks': int(info.get('chunk_embedded') or 0),
+            'concept_total': int(info.get('concept_total') or 0),
+            'vector': info.get('vector'),
             'last_sync': utc_now().isoformat(),
         }
 
     @staticmethod
-    def build_context(question: str) -> str:
-        result = RagService.query(question)
-        if not result.get('sources'):
+    def build_context(question: str, *, user_id: int | None = None, top_k: int = 4) -> str:
+        """给 LLM 的紧凑课程参考（不含分值）；证据不足返回空串。"""
+        try:
+            CourseSafetyService.ensure_safe(question)
+        except Exception:  # noqa: BLE001
             return ''
-        snippets = [s.get('snippet', '') for s in result['sources'] if s.get('snippet')]
-        if not snippets:
-            return result.get('answer', '')
-        return '\n'.join(f'- {s}' for s in snippets)
+        try:
+            result = _knowledge_service().retrieve(question, user_id=user_id, top_k=top_k, log=False)
+        except Exception:  # noqa: BLE001
+            return ''
+        if not result.get('knowledge_grounded'):
+            return ''
+        lines = []
+        for item in result.get('reranked') or []:
+            content = (item.get('content') or '').strip().replace('\n', ' ')
+            if content:
+                lines.append(f'- {content[:220]}')
+        return '\n'.join(lines[:top_k])

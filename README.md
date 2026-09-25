@@ -47,10 +47,16 @@ PLEX Universe 是一个面向编程学习场景的个性化学习平台，项目
 - `/teacher/starfield`：星域观测，按知识领域观察班级风险与掌握情况。
 - `/teacher/explorers`：Explorer 档案，查看学生画像、成长曲线、委托、知识与试炼记录。
 - `/teacher/trials`：试炼中枢，创建、发布、编辑和查看班级试炼。
+- `/teacher/knowledge`：知识星域，查看知识图谱与前置关系、审核 AI 教学资源、修正关联、观察高频问题与薄弱知识点。
 
 ### 管理端
 
 - `/admin`：控制中枢，仅管理员可访问。用于平台配置、AI 策略、通知开关、试炼规则和数据安全设置。
+- `/admin` → **知识智能**：知识库导入与索引状态、知识星域图谱、检索测试与诊断、RAG 请求日志（Graph-enhanced RAG 公共知识服务）。
+
+### 知识智能层（Graph-enhanced RAG）
+
+小E 答疑、试炼教练、资源流水线与学习路径等能力共用 `KnowledgeService`：混合检索（图谱 1-hop + 向量 + 词法 + 重排）、教学策略与 Hint Level 1–4 泄题策略、证据不足时 `LOW_CONFIDENCE`。配置见 `backend/.env.example` 与 `backend/config/retrieval.json`、`strategy.json`；设计文档见 `docs/2026-09-24-knowledge-intelligence-layer-design.md`。
 
 ## 项目结构
 

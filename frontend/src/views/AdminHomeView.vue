@@ -40,13 +40,16 @@ const AdminAgentOrchestrationPanel = defineAsyncComponent(
 const AdminTrialObservatoryPanel = defineAsyncComponent(
   () => import('../components/admin/AdminTrialObservatoryPanel.vue'),
 )
+const AdminKnowledgePanel = defineAsyncComponent(
+  () => import('../components/admin/AdminKnowledgePanel.vue'),
+)
 import type { SystemAnnouncement } from '../api/teacherAnnouncements'
 import { fetchAdminDashboard, type AdminDashboardResult } from '../api/adminSettings'
 import { fetchAgentOrchestration, type AgentOrchestrationResult } from '../api/agentOrchestration'
 import { fetchAgentsStatus, type AgentStatusItem } from '../api/agentService'
 import { useThemeStore } from '../stores/theme'
 
-type NavKey = 'nexus' | 'agents' | 'observer' | 'governance'
+type NavKey = 'nexus' | 'agents' | 'knowledge' | 'observer' | 'governance'
 type Tone = 'purple' | 'amber' | 'green' | 'red'
 
 interface MetricCard {
@@ -174,6 +177,7 @@ const announcementTargetOptions: SelectOption[] = [
 const navItems = [
   { key: 'nexus' as const, label: '中央总控', sub: 'Central Nexus', icon: SettingsOutline },
   { key: 'agents' as const, label: '智能体编排', sub: 'Agent Orchestration', icon: PeopleOutline },
+  { key: 'knowledge' as const, label: '知识智能', sub: 'Knowledge Intelligence', icon: GitNetworkOutline },
   { key: 'observer' as const, label: '系统观测', sub: 'System Observatory', icon: AppsOutline },
   { key: 'governance' as const, label: '权限与控制', sub: 'Governance Center', icon: ShieldCheckmarkOutline },
 ]
@@ -667,6 +671,7 @@ const currentNav = computed(() => navItems.find((item) => item.key === activeNav
 const pageSubtitle = computed(() => {
   if (activeNav.value === 'observer') return '观测试炼数据、平台波动与各模块运行状态'
   if (activeNav.value === 'agents') return '配置检查智能体编排，协同完成学生做题自动校验'
+  if (activeNav.value === 'knowledge') return '管理知识库、知识星域与 Graph-enhanced RAG 检索调试'
   return '实时掌控 PLEX 平台的运行状态与关键指标'
 })
 const visibleMetrics = computed(() => {
@@ -857,7 +862,7 @@ onMounted(() => {
   void loadAgentOrchestrationMetrics()
 
   // Handle ?panel=xxx deep link navigation
-  const valid: NavKey[] = ['nexus', 'agents', 'observer', 'governance']
+  const valid: NavKey[] = ['nexus', 'agents', 'knowledge', 'observer', 'governance']
   const initPanel = route.query.panel as string | undefined
   if (initPanel && valid.includes(initPanel as NavKey)) {
     setActiveNav(initPanel as NavKey)
@@ -1194,6 +1199,8 @@ onUnmounted(() => {
         data-tour="admin-agent-flow"
         @orchestration-updated="loadAgentOrchestrationMetrics"
       />
+
+      <AdminKnowledgePanel v-else-if="activeNav === 'knowledge'" />
 
       <section v-else-if="activeNav === 'governance'" class="dashboard-grid governance-grid" aria-label="权限与公告" data-tour="admin-permission-control">
         <article class="panel governance-announce-panel">

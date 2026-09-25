@@ -9,6 +9,7 @@ import {
   PlanetOutline,
   SettingsOutline,
   LibraryOutline,
+  GitNetworkOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../../stores/auth'
 
@@ -18,6 +19,7 @@ export type TeacherNavKey =
   | 'trial'
   | 'classes'
   | 'resources'
+  | 'knowledge'
   | 'admin'
   // 'problem-bank' 暂无对应侧边栏入口（题库预览为独立预览页面，见
   // ProblemBankPreviewView.vue），仅用于 activeNav 类型占位，不渲染导航按钮。
@@ -45,6 +47,7 @@ const allNavItems = [
   { key: 'trial' as const, label: '试炼中枢', sub: 'TRIAL COMMAND', icon: BarbellOutline, to: '/teacher/trials' },
   { key: 'classes' as const, label: '班级管理', sub: 'CLASS MANAGEMENT', icon: PeopleOutline, to: '/teacher/classes' },
   { key: 'resources' as const, label: '资源审核', sub: 'RESOURCE REVIEW', icon: LibraryOutline, to: '/teacher/resources' },
+  { key: 'knowledge' as const, label: '知识星域', sub: 'KNOWLEDGE UNIVERSE', icon: GitNetworkOutline, to: '/teacher/knowledge' },
   { key: 'admin' as const, label: '控制中枢', sub: 'CONTROL CENTER', icon: SettingsOutline, to: '/admin' },
 ]
 

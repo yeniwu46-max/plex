@@ -330,6 +330,27 @@ class MistakeService:
         return {'items': items, 'total': len(due_rows), 'limit': capped_limit}
 
     @staticmethod
+    def compute_review_quality_from_questionnaire(answers: list | None) -> int:
+        """Map objective questionnaire answers (0/1/2) to SM-2 quality 0..5."""
+        if not isinstance(answers, list) or not answers:
+            raise ValueError('questionnaire_answers 不能为空')
+
+        scores: list[int] = []
+        for item in answers:
+            if not isinstance(item, dict):
+                continue
+            value = item.get('value')
+            if isinstance(value, bool) or not isinstance(value, int) or value not in (0, 1, 2):
+                raise ValueError('questionnaire_answers 的 value 必须是 0、1 或 2')
+            scores.append(value)
+
+        if not scores:
+            raise ValueError('questionnaire_answers 至少包含一题有效作答')
+
+        average = sum(scores) / (len(scores) * 2)
+        return max(0, min(5, round(average * 5)))
+
+    @staticmethod
     def submit_review(user_id: int, mistake_id: int, quality: int) -> dict:
         """Record recall quality, update mastery state, and schedule the next review."""
         row = StudentMistake.query.filter_by(id=mistake_id, user_id=user_id).first()

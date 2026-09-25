@@ -122,10 +122,22 @@ export async function fetchDueMistakeReviews(limit = 20) {
   return data.data
 }
 
-export async function submitMistakeReview(mistakeId: number, quality: number) {
+export interface Sm2QuestionnaireAnswerPayload {
+  question_id: string
+  value: 0 | 1 | 2
+}
+
+export async function submitMistakeReview(
+  mistakeId: number,
+  quality: number,
+  questionnaireAnswers?: Sm2QuestionnaireAnswerPayload[],
+) {
   const { data } = await http.post<ApiEnvelope<MistakeReviewResult>>(
     `/v1/student/mistakes/${mistakeId}/review`,
-    { quality },
+    {
+      quality,
+      questionnaire_answers: questionnaireAnswers,
+    },
   )
   if (data.code !== 0) throw new Error(data.message || '复习结果提交失败')
   return data.data

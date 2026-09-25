@@ -140,6 +140,52 @@ class MistakesTestCase(unittest.TestCase):
         items = resp.get_json()['data']['items']
         self.assertTrue(any(i['question_ref'] == 'py-teacher-view' for i in items))
 
+    def test_questionnaire_answers_map_to_sm2_quality(self):
+        quality = MistakeService.compute_review_quality_from_questionnaire(
+            [
+                {'question_id': 'concept', 'value': 2},
+                {'question_id': 'steps', 'value': 2},
+                {'question_id': 'focus_a', 'value': 2},
+                {'question_id': 'focus_b', 'value': 1},
+                {'question_id': 'transfer', 'value': 1},
+            ]
+        )
+        self.assertEqual(quality, 4)
+
+        low = MistakeService.compute_review_quality_from_questionnaire(
+            [{'question_id': 'concept', 'value': 0}, {'question_id': 'steps', 'value': 0}]
+        )
+        self.assertEqual(low, 0)
+
+    def test_review_accepts_questionnaire_payload(self):
+        run_resp = self.client.post(
+            '/api/v1/student/code-trial/runs',
+            json={
+                'question_id': 'sm2-questionnaire-01',
+                'question_title': '问卷复习题',
+                'knowledge_key': 'loop',
+                'cases': [{'label': '样例1', 'passed': False}],
+            },
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(run_resp.status_code, 200)
+        mistake_id = run_resp.get_json()['data']['record']['id']
+
+        review_resp = self.client.post(
+            f'/api/v1/student/mistakes/{mistake_id}/review',
+            json={
+                'questionnaire_answers': [
+                    {'question_id': 'concept', 'value': 2},
+                    {'question_id': 'steps', 'value': 2},
+                    {'question_id': 'focus_a', 'value': 2},
+                ],
+            },
+            headers=self.auth(self.student_token),
+        )
+        self.assertEqual(review_resp.status_code, 200)
+        record = review_resp.get_json()['data']['record']
+        self.assertEqual(record['review_schedule']['last_quality'], 5)
+
     def test_sm2_algorithm_uses_one_then_six_day_intervals(self):
         now = datetime(2026, 8, 28, 8, 0, 0)
         first = MistakeService.calculate_sm2(None, 5, now)

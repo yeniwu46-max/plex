@@ -11,7 +11,7 @@ import {
   NPopover,
   type DropdownOption,
 } from 'naive-ui'
-import { ChevronDownOutline, ExitOutline, NotificationsOutline, RefreshOutline } from '@vicons/ionicons5'
+import { ChevronDownOutline, ExitOutline, NotificationsOutline, RefreshOutline, RocketOutline } from '@vicons/ionicons5'
 import { usePlexTour, type TourRole } from '../../composables/usePlexTour'
 import { useAuthStore } from '../../stores/auth'
 import { useNotificationStore } from '../../stores/notifications'
@@ -84,6 +84,14 @@ const userOptions = computed<DropdownOption[]>(() => {
     })
     items.push({ type: 'divider', key: 'd0' })
   }
+  if (isStudent.value) {
+    items.push({
+      label: '星港补给站',
+      key: 'student-store',
+      icon: () => h(RocketOutline),
+    })
+    items.push({ type: 'divider', key: 'd-store' })
+  }
   if (tourRoleForUser.value) {
     items.push({
       label: '重新查看功能导览',
@@ -139,6 +147,10 @@ function onNotificationClick(id: string) {
 }
 
 async function handleUserSelect(key: string) {
+  if (key === 'student-store') {
+    await router.push({ name: 'student-store' })
+    return
+  }
   if (key === 'teacher-profile') {
     teacherProfileShow.value = true
     return
@@ -230,7 +242,7 @@ async function handleUserSelect(key: string) {
       <plex-theme-switcher />
       <span class="plex-topbar__divider" />
       <n-dropdown trigger="click" :options="userOptions" @select="handleUserSelect">
-        <button type="button" class="plex-topbar__user" aria-label="打开用户菜单">
+        <button type="button" class="plex-topbar__user" aria-label="打开个人信息菜单">
           <n-avatar round :size="52" class="plex-topbar__avatar">
             <span class="plex-avatar-bot" aria-hidden="true">
               <span class="plex-avatar-bot__head" />

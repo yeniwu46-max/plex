@@ -97,7 +97,7 @@ onActivated(() => {
 <template>
   <DashboardShell
     active-nav="store"
-    page-title="星港商店"
+    page-title="星港补给站"
     page-subtitle="按需解锁额外挑战与进阶成长体验"
     search-placeholder=""
     hide-search

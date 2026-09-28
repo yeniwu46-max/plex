@@ -318,7 +318,6 @@ watch(
             </p>
             <div class="hero-band__actions">
               <RouterLink to="/student/discovery" class="primary-link">进入探索舱</RouterLink>
-              <RouterLink to="/student/store" class="primary-link">查看权益商店</RouterLink>
             </div>
           </div>
           <div class="hero-band__meter" aria-label="等级进度">

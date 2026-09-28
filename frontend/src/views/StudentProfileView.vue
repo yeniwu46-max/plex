@@ -439,7 +439,7 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
         <span>会员进阶权益</span>
         <h3>解锁小E 的阶段学习报告</h3>
         <p>基础学习报告、知识雷达和易错模式仍可免费查看。会员阶段报告会结合近期学习证据，整理阶段总结和下一步行动建议。</p>
-        <RouterLink to="/student/store" class="store-link">查看权益商店</RouterLink>
+        <RouterLink to="/student/store" class="store-link">前往星港补给站</RouterLink>
       </section>
 
       <section class="calibration"><div><span>不是填表，而是让小E 更懂你</span><h3>校准我的学习画像</h3><p>选择更接近你的真实偏好，小E 会立刻重排资源和学习节奏。</p></div><n-button secondary type="primary" @click="calibrationVisible = true">优化画像</n-button></section>

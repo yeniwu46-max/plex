@@ -43,7 +43,7 @@ onMounted(() => void load())
     <main class="challenge-page">
       <header class="challenge-header">
         <div><span>PLEX · EXTRA MISSION</span><h1>{{ pack?.title || '算法基础 · 星轨挑战包' }}</h1><p>本挑战包为额外内容；主学习路径和基础练习仍然免费开放。</p></div>
-        <n-button secondary round @click="router.push('/student/store')">返回星港商店</n-button>
+        <n-button secondary round @click="router.push('/student/store')">返回星港补给站</n-button>
       </header>
       <section v-if="loading" class="challenge-state">正在载入挑战内容…</section>
       <section v-else-if="error" class="challenge-state challenge-state--error">

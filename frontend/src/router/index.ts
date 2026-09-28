@@ -238,7 +238,7 @@ const routeTitles: Record<string, string> = {
   'student-star-path-lab': '星轨学习',
   'student-star-path-resources': '学习资源',
   'student-trials': '试炼中心',
-  'student-store': '权益商店',
+  'student-store': '星港补给站',
   'student-store-challenge-pack': '主题挑战包',
   'student-trial-practice': '试炼练习',
   'student-messenger': '驿站助手',

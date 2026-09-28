@@ -9,7 +9,6 @@ import {
   MailOutline,
   PersonCircleOutline,
   RocketOutline,
-  StorefrontOutline,
 } from '@vicons/ionicons5'
 
 export type StudentNavKey = 'home' | 'cabin' | 'track' | 'trial' | 'store' | 'messenger' | 'me'
@@ -33,7 +32,6 @@ const navItems = computed(() => [
   { key: 'cabin' as const, label: '探索舱', sub: 'EXPLORER', icon: RocketOutline, to: '/student/discovery', tour: '' },
   { key: 'track' as const, label: '星轨学习', sub: 'STARPATH', icon: GitNetworkOutline, to: '/student/star-path', tour: 'student-learning-path' },
   { key: 'trial' as const, label: '试炼中心', sub: 'TRIAL ARENA', icon: BarbellOutline, to: '/student/trials', tour: 'student-code-practice' },
-  { key: 'store' as const, label: '权益商店', sub: 'STUDENT STORE', icon: StorefrontOutline, to: '/student/store', tour: '' },
   { key: 'messenger' as const, label: '驿站助手', sub: 'MESSENGER', icon: MailOutline, to: '/student/messenger', tour: 'student-ai-assistant' },
   { key: 'me' as const, label: '我的', sub: 'MY SPACE', icon: PersonCircleOutline, to: '/student/me/growth', tour: '' },
 ])

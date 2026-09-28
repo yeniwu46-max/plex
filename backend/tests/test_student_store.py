@@ -6,7 +6,7 @@ from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash
 
 from app import create_app
-from app.models import Problem, Role, StoreProduct, User, UserEntitlement, db
+from app.models import Problem, Role, StoreProduct, StoreProductProblem, User, UserEntitlement, db
 from app.services.student_store import CHALLENGE_CODE, StudentStoreService
 from app.utils.time import utc_now
 
@@ -78,8 +78,32 @@ class StudentStoreTestCase(unittest.TestCase):
         self.assertEqual(products['explorer_annual']['price_cents'], 6800)
         self.assertEqual(products[CHALLENGE_CODE]['price_cents'], 600)
         self.assertTrue(products[CHALLENGE_CODE]['available'])
+        self.assertIn('挑战通关进度跨设备保存', products[CHALLENGE_CODE]['benefits'])
         with self.app.app_context():
             self.assertEqual(len(StoreProduct.query.filter_by(code=CHALLENGE_CODE).first().challenge_problems), 10)
+
+    def test_challenge_progress_is_saved_and_scoped_to_owner(self):
+        self.activate(self.student_token, CHALLENGE_CODE)
+        pack_url = f'/api/v1/student/store/challenge-packs/{CHALLENGE_CODE}'
+        before = self.client.get(pack_url, headers=self.auth(self.student_token)).get_json()['data']
+        self.assertEqual(before['progress']['completed_count'], 0)
+        self.assertEqual(before['progress']['total'], 10)
+        with self.app.app_context():
+            first_problem_id = StoreProductProblem.query.join(StoreProduct).filter(
+                StoreProduct.code == CHALLENGE_CODE,
+            ).order_by(StoreProductProblem.sort_order).first().problem_id
+
+        progress_url = f'/api/v1/student/store/challenge-packs/{CHALLENGE_CODE}/progress/{first_problem_id}'
+        saved = self.client.post(progress_url, headers=self.auth(self.student_token)).get_json()['data']
+        self.assertTrue(saved['completed'])
+        self.assertFalse(saved['already_completed'])
+        self.assertEqual(saved['progress']['completed_count'], 1)
+        repeated = self.client.post(progress_url, headers=self.auth(self.student_token)).get_json()['data']
+        self.assertTrue(repeated['already_completed'])
+        after = self.client.get(pack_url, headers=self.auth(self.student_token)).get_json()['data']
+        self.assertTrue(after['questions'][0]['completed'])
+        self.assertEqual(after['progress']['percent'], 10)
+        self.assertEqual(self.client.post(progress_url, headers=self.auth(self.other_token)).status_code, 403)
 
     def test_membership_unlocks_pack_and_report_then_expiry_revokes_access(self):
         denied = self.client.get(

@@ -13,6 +13,7 @@ import { generatedQuestionId, resolveQuestionById } from '../utils/starPathQuest
 import { MIN_QUESTIONS_PER_KP } from '../data/starPathKnowledgeTracks'
 import { ensurePracticeQuestionsLoaded, getCachedPracticeQuestion } from '../utils/practiceQuestionCache'
 import { fetchPracticeQuestionByRef } from '../api/practiceQuestions'
+import { completeStudentChallengeQuestion } from '../api/studentStore'
 import { formatQuestionLabel, normalizeQuestion } from '../utils/questionNaming'
 import { wrapEpisodeNarrative } from '../utils/explorationNarrative'
 import { sanitizeQuestionContent } from '../utils/questionStemSanitizer'
@@ -153,6 +154,20 @@ function switchSlot(slot: number) {
   void router.push(`/student/trials/practice/${encodeURIComponent(nextId)}`)
 }
 
+async function saveChallengePackProgress() {
+  const packCode = typeof route.query.pack_code === 'string' ? route.query.pack_code : ''
+  const match = /^bank-(\d+)$/.exec(question.value?.id || '')
+  if (!packCode || !match) return
+  try {
+    const result = await completeStudentChallengeQuestion(packCode, Number(match[1]))
+    if (!result.already_completed) {
+      message.success(`通关记录已写入星际档案 · ${result.progress.completed_count}/${result.progress.total}`)
+    }
+  } catch {
+    message.warning('代码已通过，但进度暂未同步；返回挑战包后可重新查看')
+  }
+}
+
 watch(
   () => [route.params.questionId, route.query.pack_code],
   ([nextId, nextPackCode]) => {
@@ -178,6 +193,7 @@ watch(
       :slot-ids="slotIds"
       :active-slot="activeSlot"
       @select-slot="switchSlot"
+      @passed="saveChallengePackProgress"
     />
     <section v-else-if="!practiceReady" class="practice-missing" aria-label="题目加载中">
       <p>正在加载练习题库…</p>

@@ -74,3 +74,20 @@ class UserEntitlement(db.Model):
             'expires_at': self.expires_at.isoformat() + 'Z' if self.expires_at else None,
             'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
         }
+
+
+class UserChallengeProgress(db.Model):
+    """First-pass completion records for owned challenge-pack missions."""
+    __tablename__ = 'user_challenge_progress'
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'product_id', 'problem_id', name='uq_user_challenge_progress'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('store_products.id', ondelete='CASCADE'), nullable=False, index=True)
+    problem_id = db.Column(db.Integer, db.ForeignKey('problems.id', ondelete='CASCADE'), nullable=False, index=True)
+    completed_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    product = db.relationship('StoreProduct')
+    problem = db.relationship('Problem')

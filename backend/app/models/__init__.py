@@ -39,7 +39,7 @@ from .problem_bank import (
 from .knowledge_graph import KnowledgeConcept, KnowledgeRelation
 from .knowledge_document import KnowledgeDocument, KnowledgeChunk, KnowledgeIndexJob
 from .rag_query_log import RagQueryLog
-from .store import StoreProduct, StoreProductProblem, UserEntitlement
+from .store import StoreProduct, StoreProductProblem, UserEntitlement, UserChallengeProgress
 
 __all__ = [
     'db',
@@ -93,4 +93,5 @@ __all__ = [
     'StoreProduct',
     'StoreProductProblem',
     'UserEntitlement',
+    'UserChallengeProgress',
 ]

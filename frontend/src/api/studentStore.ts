@@ -41,18 +41,35 @@ export interface StoreGrant {
 export interface StoreChallengeQuestion {
   id: string
   code: string
+  problem_id: number
+  stage: number
   title: string
   topic: string
   difficulty: string
   duration_min: number
   question_type: string
+  completed: boolean
 }
 
 export interface StoreChallengePack {
   product_code: string
   title: string
+  description: string
   questions: StoreChallengeQuestion[]
   total: number
+  progress: {
+    completed_count: number
+    total: number
+    percent: number
+  }
+}
+
+export interface ChallengeProgressResult {
+  problem_id: number
+  completed: boolean
+  already_completed: boolean
+  completed_at: string
+  progress: StoreChallengePack['progress']
 }
 
 async function unwrap<T>(request: Promise<{ data: ApiEnvelope<T> }>, fallback: string): Promise<T> {
@@ -86,5 +103,14 @@ export function fetchStudentChallengePack(productCode: string) {
   return unwrap(
     http.get<ApiEnvelope<StoreChallengePack>>(`/v1/student/store/challenge-packs/${encodeURIComponent(productCode)}`),
     '挑战包加载失败',
+  )
+}
+
+export function completeStudentChallengeQuestion(productCode: string, problemId: number) {
+  return unwrap(
+    http.post<ApiEnvelope<ChallengeProgressResult>>(
+      `/v1/student/store/challenge-packs/${encodeURIComponent(productCode)}/progress/${problemId}`,
+    ),
+    '挑战进度保存失败',
   )
 }

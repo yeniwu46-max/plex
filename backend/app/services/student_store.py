@@ -4,32 +4,48 @@ from datetime import timedelta
 from flask import current_app
 from sqlalchemy import or_
 
-from app.models import Problem, StoreProduct, StoreProductProblem, UserEntitlement, db
+from app.models import (
+    Problem, StoreProduct, StoreProductProblem, UserEntitlement,
+    UserChallengeProgress, db,
+)
 from app.utils.time import utc_now
 
 
 MEMBERSHIP_CODES = ('explorer_monthly', 'explorer_annual')
 CHALLENGE_CODE = 'challenge_pack_algorithms_01'
 CHALLENGE_COUNT = 10
+CHALLENGE_PROBLEM_CODES = (
+    'A001', 'B003', 'BR002', 'D009', 'D015',
+    'AR001', 'FN002', 'LP001', 'SE003', 'SE005',
+)
 
 PRODUCTS = (
     {
         'code': 'explorer_monthly', 'name': '探索月卡',
-        'description': '30 天会员权益：当前主题挑战包与进阶阶段报告。',
+        'description': '30 天会员：当前星际挑战包、进阶阶段报告与挑战进度云端存档。',
         'product_type': 'membership', 'price_cents': 990, 'duration_days': 30,
-        'benefits_json': ['member_challenge_pack', 'phase_report'], 'sort_order': 10,
+        'benefits_json': [
+            '算法基础星际挑战包访问权', '进阶阶段学习报告',
+            '挑战通关进度跨设备保存', '会员有效期内可体验当前主题挑战包',
+        ], 'sort_order': 10,
     },
     {
         'code': 'explorer_annual', 'name': '探索年卡',
-        'description': '365 天会员权益：当前主题挑战包与进阶阶段报告。',
+        'description': '365 天会员：当前星际挑战包、进阶阶段报告与挑战进度云端存档。',
         'product_type': 'membership', 'price_cents': 6800, 'duration_days': 365,
-        'benefits_json': ['member_challenge_pack', 'phase_report'], 'sort_order': 20,
+        'benefits_json': [
+            '算法基础星际挑战包访问权', '进阶阶段学习报告',
+            '挑战通关进度跨设备保存', '会员有效期内可体验当前主题挑战包',
+        ], 'sort_order': 20,
     },
     {
         'code': CHALLENGE_CODE, 'name': '算法基础 · 星轨挑战包',
-        'description': '10 道精选编程题组成的额外挑战，不影响免费学习主线。',
+        'description': '十道由基础指令逐步进阶到算法实战的星际任务，不影响免费学习主线。',
         'product_type': 'challenge_pack', 'price_cents': 600, 'duration_days': None,
-        'benefits_json': [CHALLENGE_CODE], 'sort_order': 30,
+        'benefits_json': [
+            '10 道算法基础编程任务', '星际任务简报与分关挑战路线',
+            '挑战通关进度跨设备保存', '永久保留该挑战包访问权',
+        ], 'sort_order': 30,
     },
 )
 
@@ -52,17 +68,30 @@ class StudentStoreService:
         pack = existing.get(CHALLENGE_CODE)
         if pack and len(pack.challenge_problems) < CHALLENGE_COUNT:
             already = {link.problem_id for link in pack.challenge_problems}
-            candidates = (
+            preferred = Problem.query.filter(
+                Problem.problem_no.in_(CHALLENGE_PROBLEM_CODES),
+                Problem.is_active.is_(True),
+                Problem.question_type == 'coding',
+                or_(Problem.needs_review.is_(False), Problem.needs_review.is_(None)),
+                ~Problem.id.in_(already or {-1}),
+            ).all()
+            preferred_by_code = {problem.problem_no: problem for problem in preferred}
+            ordered_preferred = [
+                preferred_by_code[code] for code in CHALLENGE_PROBLEM_CODES
+                if code in preferred_by_code
+            ]
+            fallback = (
                 Problem.query.filter(
                     Problem.is_active.is_(True),
                     Problem.question_type == 'coding',
                     or_(Problem.needs_review.is_(False), Problem.needs_review.is_(None)),
-                    ~Problem.id.in_(already or {-1}),
+                    ~Problem.id.in_(already | {problem.id for problem in ordered_preferred} or {-1}),
                 )
                 .order_by(Problem.star_difficulty, Problem.problem_no)
-                .limit(CHALLENGE_COUNT - len(already))
+                .limit(max(0, CHALLENGE_COUNT - len(already) - len(ordered_preferred)))
                 .all()
             )
+            candidates = (ordered_preferred + fallback)[:CHALLENGE_COUNT - len(already)]
             for problem in candidates:
                 db.session.add(StoreProductProblem(
                     product_id=pack.id,
@@ -215,15 +244,75 @@ class StudentStoreService:
             raise ValueError('挑战包正在准备中')
         from app.services.practice_question import PracticeQuestionService
 
+        progress_rows = UserChallengeProgress.query.filter_by(
+            user_id=user_id, product_id=product.id,
+        ).all()
+        completed_ids = {row.problem_id for row in progress_rows}
         questions = []
-        for link in product.challenge_problems:
+        for index, link in enumerate(product.challenge_problems, start=1):
             payload = PracticeQuestionService._problem_to_payload(link.problem)
             questions.append({
                 'id': payload['id'], 'code': payload['code'], 'title': payload['title'],
                 'topic': payload['topic'], 'difficulty': payload['difficulty'],
                 'duration_min': payload['duration_min'], 'question_type': payload['question_type'],
+                'problem_id': link.problem_id,
+                'stage': index,
+                'completed': link.problem_id in completed_ids,
             })
-        return {'product_code': product.code, 'title': product.name, 'questions': questions, 'total': len(questions)}
+        total = len(questions)
+        completed_count = len(completed_ids)
+        return {
+            'product_code': product.code,
+            'title': product.name,
+            'description': product.description,
+            'questions': questions,
+            'total': total,
+            'progress': {
+                'completed_count': completed_count,
+                'total': total,
+                'percent': round(completed_count / total * 100) if total else 0,
+            },
+        }
+
+    @classmethod
+    def complete_challenge_question(cls, user_id: int, product_code: str, problem_id: int) -> dict:
+        cls.ensure_catalog()
+        product = StoreProduct.query.filter_by(code=product_code, is_active=True).first()
+        if not product or not cls.has_challenge_access(user_id, product_code):
+            raise PermissionError('没有该挑战包的访问权益')
+        link = StoreProductProblem.query.filter_by(
+            product_id=product.id, problem_id=problem_id,
+        ).first()
+        if not link:
+            raise ValueError('题目不属于此挑战包')
+        record = UserChallengeProgress.query.filter_by(
+            user_id=user_id, product_id=product.id, problem_id=problem_id,
+        ).first()
+        already_completed = record is not None
+        if not record:
+            record = UserChallengeProgress(
+                user_id=user_id,
+                product_id=product.id,
+                problem_id=problem_id,
+            )
+            db.session.add(record)
+            db.session.commit()
+            db.session.refresh(record)
+        completed_count = UserChallengeProgress.query.filter_by(
+            user_id=user_id, product_id=product.id,
+        ).count()
+        total = len(product.challenge_problems)
+        return {
+            'problem_id': problem_id,
+            'completed': True,
+            'already_completed': already_completed,
+            'completed_at': record.completed_at.isoformat() + 'Z',
+            'progress': {
+                'completed_count': completed_count,
+                'total': total,
+                'percent': round(completed_count / total * 100) if total else 0,
+            },
+        }
 
     @classmethod
     def has_challenge_access(cls, user_id: int, product_code: str) -> bool:

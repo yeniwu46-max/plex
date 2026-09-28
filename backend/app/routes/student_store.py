@@ -73,3 +73,23 @@ def get_challenge_pack(product_code):
         return error_response(str(exc), 40401, None, 404)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
+
+
+@student_store_bp.route(
+    '/store/challenge-packs/<product_code>/progress/<int:problem_id>',
+    methods=['POST'],
+)
+@jwt_required()
+@role_required('student')
+def complete_challenge_question(product_code, problem_id):
+    try:
+        result = StudentStoreService.complete_challenge_question(
+            int(get_jwt_identity()), product_code, problem_id,
+        )
+        return success_response(result, '挑战进度已保存')
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)

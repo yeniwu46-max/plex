@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onActivated, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NIcon, NTag, useMessage } from 'naive-ui'
+import { NButton, NCard, NIcon, NModal, NTag, useMessage } from 'naive-ui'
 import { ArrowForwardOutline, CheckmarkCircleOutline, SparklesOutline } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import {
@@ -9,7 +9,10 @@ import {
   fetchStudentChallengePack,
   fetchStudentStoreCatalog,
   fetchStudentStoreHistory,
+  createStudentStoreOrder,
+  fetchStudentStoreOrder,
   mockActivateProduct,
+  type StoreOrder,
   type StoreGrant,
   type StoreProduct,
   type StudentEntitlementsResult,
@@ -26,6 +29,11 @@ const loading = ref(true)
 const activatingCode = ref('')
 const errorMessage = ref('')
 const challengeProgress = ref<{ completed_count: number; total: number; percent: number } | null>(null)
+const paymentEnabled = ref(false)
+const checkoutOrder = ref<StoreOrder | null>(null)
+const checkoutVisible = ref(false)
+const checkoutLoading = ref(false)
+let orderPollTimer: ReturnType<typeof setInterval> | undefined
 
 const membershipEndLabel = computed(() => formatDate(entitlements.value?.expires_at))
 
@@ -41,7 +49,9 @@ function formatDate(value: string | null | undefined) {
 }
 
 function grantSourceLabel(source: string) {
-  return source === 'mock' ? '开发模拟权益' : source
+  if (source === 'mock') return '开发模拟权益'
+  if (source === 'alipay') return '支付宝支付'
+  return source
 }
 
 async function load() {
@@ -54,6 +64,7 @@ async function load() {
       fetchStudentStoreHistory(),
     ])
     products.value = catalog.products
+    paymentEnabled.value = catalog.payment_enabled
     entitlements.value = myEntitlements
     history.value = grants
     challengeProgress.value = null
@@ -85,6 +96,61 @@ async function activate(product: StoreProduct) {
   }
 }
 
+function clearOrderPolling() {
+  if (orderPollTimer) clearInterval(orderPollTimer)
+  orderPollTimer = undefined
+}
+
+async function pollOrder() {
+  const current = checkoutOrder.value
+  if (!current || current.status !== 'pending') {
+    clearOrderPolling()
+    return
+  }
+  try {
+    const updated = await fetchStudentStoreOrder(current.order_no)
+    checkoutOrder.value = { ...current, ...updated }
+    if (updated.status === 'paid') {
+      clearOrderPolling()
+      message.success('支付宝已确认付款，权益已开通')
+      await load()
+    } else if (updated.status !== 'pending') {
+      clearOrderPolling()
+    }
+  } catch {
+    // A temporary status query failure must not erase the open QR order.
+  }
+}
+
+function beginOrderPolling() {
+  clearOrderPolling()
+  orderPollTimer = setInterval(() => void pollOrder(), 3000)
+}
+
+async function purchase(product: StoreProduct) {
+  if (paymentEnabled.value) {
+    if (checkoutLoading.value) return
+    checkoutLoading.value = true
+    try {
+      checkoutOrder.value = await createStudentStoreOrder(product.code)
+      checkoutVisible.value = true
+      beginOrderPolling()
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '订单创建失败')
+    } finally {
+      checkoutLoading.value = false
+    }
+  } else {
+    await activate(product)
+  }
+}
+
+function closeCheckout() {
+  checkoutVisible.value = false
+  clearOrderPolling()
+  if (checkoutOrder.value?.status === 'paid') void load()
+}
+
 function openChallenge(product: StoreProduct) {
   void router.push(`/student/store/challenges/${encodeURIComponent(product.code)}`)
 }
@@ -95,10 +161,11 @@ function primaryAction(product: StoreProduct) {
     return
   }
   if (!product.available) return
-  if (entitlements.value?.mock_activation_enabled) void activate(product)
+  if (paymentEnabled.value || entitlements.value?.mock_activation_enabled) void purchase(product)
 }
 
 onMounted(() => void load())
+onUnmounted(clearOrderPolling)
 onActivated(() => {
   if (!loading.value) void load()
 })
@@ -129,10 +196,11 @@ onActivated(() => {
         </aside>
       </header>
 
-      <div class="store-notice" :class="{ 'store-notice--quiet': !entitlements?.mock_activation_enabled }" role="status">
+      <div class="store-notice" :class="{ 'store-notice--quiet': !paymentEnabled && !entitlements?.mock_activation_enabled }" role="status">
         <span class="notice-signal" aria-hidden="true" />
-        <span v-if="entitlements?.mock_activation_enabled">当前为体验开通，不会扣款，也不会生成真实付款记录。</span>
-        <span v-else>商品内容可查看；开通功能暂不可用。</span>
+        <span v-if="paymentEnabled">支付宝正式商户支付已开启；付款结果由支付宝服务端通知确认。</span>
+        <span v-else-if="entitlements?.mock_activation_enabled">当前开发环境仅提供体验开通，不会扣款，也不会生成真实付款记录。</span>
+        <span v-else>商品内容可查看；支付宝商户支付尚未配置。</span>
       </div>
 
       <section v-if="loading" class="store-state">正在整理商品…</section>
@@ -180,10 +248,10 @@ onActivated(() => {
                 <n-button
                   v-else
                   type="primary" round size="large"
-                  :disabled="!product.available || !entitlements?.mock_activation_enabled"
-                  :loading="activatingCode === product.code"
+                  :disabled="!product.available || (!paymentEnabled && !entitlements?.mock_activation_enabled)"
+                  :loading="activatingCode === product.code || (checkoutLoading && !checkoutOrder)"
                   @click="primaryAction(product)"
-                >{{ entitlements?.mock_activation_enabled ? '体验开通' : '暂不可开通' }}</n-button>
+                >{{ paymentEnabled ? '支付宝扫码开通' : entitlements?.mock_activation_enabled ? '体验开通' : '暂不可开通' }}</n-button>
               </div>
             </div>
           </article>
@@ -210,10 +278,10 @@ onActivated(() => {
               </ul>
               <n-button
                 type="primary" round block size="large"
-                :disabled="!entitlements?.mock_activation_enabled"
-                :loading="activatingCode === product.code"
-                @click="activate(product)"
-              >{{ entitlements?.mock_activation_enabled ? '体验开通' : '暂不可开通' }}</n-button>
+                :disabled="!paymentEnabled && !entitlements?.mock_activation_enabled"
+                :loading="activatingCode === product.code || checkoutLoading"
+                @click="purchase(product)"
+              >{{ paymentEnabled ? '支付宝扫码开通' : entitlements?.mock_activation_enabled ? '体验开通' : '暂不可开通' }}</n-button>
             </article>
           </div>
         </section>
@@ -240,6 +308,24 @@ onActivated(() => {
           </ul>
         </section>
       </template>
+      <n-modal v-model:show="checkoutVisible" @after-leave="clearOrderPolling">
+        <n-card class="checkout-card" :bordered="false" role="dialog" aria-modal="true" title="支付宝安全收银" closable @close="closeCheckout">
+          <div v-if="checkoutOrder" class="checkout-content">
+            <div class="checkout-product"><strong>{{ checkoutOrder.product_name }}</strong><span>订单 {{ checkoutOrder.order_no }}</span></div>
+            <strong class="checkout-amount">¥{{ (checkoutOrder.amount_cents / 100).toFixed(2) }}</strong>
+            <img v-if="checkoutOrder.qr_image_data_url && checkoutOrder.status === 'pending'" class="checkout-qr" :src="checkoutOrder.qr_image_data_url" alt="支付宝订单二维码" />
+            <div class="checkout-status" :class="`checkout-status--${checkoutOrder.status}`">
+              <template v-if="checkoutOrder.status === 'paid'">付款已确认，权益已经开通。</template>
+              <template v-else-if="checkoutOrder.status === 'pending'">请使用支付宝扫描二维码；完成后页面会自动确认。</template>
+              <template v-else-if="checkoutOrder.status === 'expired'">二维码已过期，请关闭窗口后重新下单。</template>
+              <template v-else-if="checkoutOrder.status === 'failed'">二维码创建失败，请关闭窗口后重试。</template>
+              <template v-else>此订单已关闭。</template>
+            </div>
+            <small>只认支付宝服务端确认结果；离开此页不影响正在处理的订单。</small>
+            <n-button v-if="checkoutOrder.status !== 'pending'" block type="primary" round @click="closeCheckout">完成</n-button>
+          </div>
+        </n-card>
+      </n-modal>
     </main>
   </DashboardShell>
 </template>
@@ -342,6 +428,16 @@ onActivated(() => {
 .history-dot { width: 8px; height: 8px; border-radius: 50%; background: #6ce9d2; box-shadow: 0 0 12px rgba(108,233,210,.55); }
 .store-state { text-align: center; }
 .store-state--error { color: #ffb4ae; }
+.checkout-card { width: min(430px, calc(100vw - 2rem)); border-radius: 22px; background: #0c1d2b; color: #e9f7fb; }
+.checkout-content { display: grid; justify-items: center; gap: .9rem; text-align: center; }
+.checkout-product { display: grid; gap: .3rem; }
+.checkout-product strong { color: #effaff; font-size: 1.1rem; }
+.checkout-product span, .checkout-content small { color: rgba(219,235,244,.55); font-size: .76rem; overflow-wrap: anywhere; }
+.checkout-amount { color: #9af1de; font-size: 2rem; }
+.checkout-qr { width: 220px; height: 220px; padding: 10px; border-radius: 14px; background: #fff; }
+.checkout-status { color: #dcecf2; font-size: .9rem; line-height: 1.55; }
+.checkout-status--paid { color: #91f0c6; }
+.checkout-status--expired, .checkout-status--failed, .checkout-status--closed { color: #ffd298; }
 @media (max-width: 820px) { .store-hero { grid-template-columns: 1fr; gap: 1.3rem; } .membership-status { min-height: 140px; } .mission-offer { grid-template-columns: minmax(170px,.65fr) 1.35fr; } .membership-layout { grid-template-columns: 1fr 1fr; } .free-constellation { grid-template-columns: 1fr; gap: 1rem; } }
 @media (max-width: 620px) { .store-page { padding-top: 1rem; } .store-hero { border-radius: 22px 22px 22px 6px; } .section-heading { align-items: flex-start; flex-direction: column; gap: .45rem; } .section-heading > p { text-align: left; } .mission-offer { grid-template-columns: 1fr; } .mission-art { min-height: 205px; } .mission-copy { padding: 1.15rem; } .mission-overline { align-items: flex-start; flex-direction: column; } .mission-benefits { grid-template-columns: 1fr; } .membership-layout { grid-template-columns: 1fr; } .membership-card { min-height: 0; } .free-constellation { padding: 1.2rem 1rem; } .free-constellation__items { gap: .75rem .35rem; } .history-list li { grid-template-columns: 12px 1fr; } .history-list li > span:last-child { grid-column: 2; } }
 @media (prefers-reduced-motion: reduce) { .progress-track i { transition: none; } }

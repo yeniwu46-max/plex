@@ -53,7 +53,7 @@ class StoreProductProblem(db.Model):
 
 
 class UserEntitlement(db.Model):
-    """Append-only entitlement grant history; no payment/order is implied by a mock grant."""
+    """Append-only entitlement history from mock activation or a verified provider payment."""
     __tablename__ = 'user_entitlements'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -72,6 +72,46 @@ class UserEntitlement(db.Model):
             'source': self.source,
             'starts_at': self.starts_at.isoformat() + 'Z' if self.starts_at else None,
             'expires_at': self.expires_at.isoformat() + 'Z' if self.expires_at else None,
+            'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
+        }
+
+
+class StoreOrder(db.Model):
+    """Payment order; only a verified provider callback may change it to paid."""
+    __tablename__ = 'store_orders'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_no = db.Column(db.String(40), nullable=False, unique=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('store_products.id', ondelete='RESTRICT'), nullable=False, index=True)
+    product_name = db.Column(db.String(120), nullable=False)
+    amount_cents = db.Column(db.Integer, nullable=False)
+    provider = db.Column(db.String(16), nullable=False, default='alipay')
+    status = db.Column(db.String(16), nullable=False, default='pending', index=True)
+    provider_trade_no = db.Column(db.String(64), unique=True, index=True)
+    qr_code = db.Column(db.Text)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    paid_at = db.Column(db.DateTime, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now, index=True)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+    user = db.relationship('User')
+    product = db.relationship('StoreProduct')
+
+    def to_dict(self):
+        return {
+            'order_no': self.order_no,
+            'user_id': self.user_id,
+            'username': self.user.username if self.user else None,
+            'real_name': self.user.real_name if self.user else None,
+            'product_code': self.product.code if self.product else None,
+            'product_name': self.product_name,
+            'amount_cents': self.amount_cents,
+            'provider': self.provider,
+            'status': self.status,
+            'provider_trade_no': self.provider_trade_no,
+            'expires_at': self.expires_at.isoformat() + 'Z' if self.expires_at else None,
+            'paid_at': self.paid_at.isoformat() + 'Z' if self.paid_at else None,
             'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
         }
 

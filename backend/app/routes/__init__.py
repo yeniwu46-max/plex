@@ -31,6 +31,8 @@ from .problem_bank import problem_bank_bp
 from .knowledge import knowledge_bp
 from .rag import rag_bp
 from .student_store import student_store_bp
+from .store_payments import store_payments_bp
+from .store_admin import store_admin_bp
 
 def register_routes(app):
     """注册所有路由"""
@@ -65,3 +67,5 @@ def register_routes(app):
     app.register_blueprint(knowledge_bp)
     app.register_blueprint(rag_bp)
     app.register_blueprint(student_store_bp)
+    app.register_blueprint(store_payments_bp)
+    app.register_blueprint(store_admin_bp)

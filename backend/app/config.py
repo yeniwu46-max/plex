@@ -73,6 +73,17 @@ class Config:
     GITHUB_CLIENT_SECRET = os.getenv('GITHUB_CLIENT_SECRET')
     GITHUB_REDIRECT_URI = os.getenv('GITHUB_REDIRECT_URI')
 
+    # Alipay merchant face-to-face QR payments. Live payments remain disabled
+    # until all merchant credentials and a public HTTPS notify URL are present.
+    ALIPAY_PAYMENT_ENABLED = os.getenv('ALIPAY_PAYMENT_ENABLED', 'false').lower() == 'true'
+    ALIPAY_APP_ID = os.getenv('ALIPAY_APP_ID', '')
+    ALIPAY_PRIVATE_KEY = os.getenv('ALIPAY_PRIVATE_KEY', '')
+    ALIPAY_PUBLIC_KEY = os.getenv('ALIPAY_PUBLIC_KEY', '')
+    ALIPAY_SELLER_ID = os.getenv('ALIPAY_SELLER_ID', '')
+    ALIPAY_NOTIFY_URL = os.getenv('ALIPAY_NOTIFY_URL', '')
+    ALIPAY_GATEWAY = os.getenv('ALIPAY_GATEWAY', 'https://openapi.alipay.com/gateway.do')
+    ALIPAY_QR_TIMEOUT_MINUTES = int(os.getenv('ALIPAY_QR_TIMEOUT_MINUTES', '15'))
+
 
 class DevelopmentConfig(Config):
     """

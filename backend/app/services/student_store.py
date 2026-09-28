@@ -134,7 +134,12 @@ class StudentStoreService:
                 expires_at=expires,
                 available=available,
             ))
-        return {'products': items, 'mock_activation_enabled': cls.mock_enabled()}
+        from app.services.alipay_payment import AlipayPaymentService
+        return {
+            'products': items,
+            'mock_activation_enabled': cls.mock_enabled(),
+            'payment_enabled': AlipayPaymentService.configured(),
+        }
 
     @staticmethod
     def _membership_end(user_id: int, now=None):

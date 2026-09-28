@@ -17,6 +17,17 @@ export interface StoreProduct {
 export interface StoreCatalogResult {
   products: StoreProduct[]
   mock_activation_enabled: boolean
+  payment_enabled: boolean
+}
+
+export interface StoreOrder {
+  order_no: string
+  product_name: string
+  amount_cents: number
+  status: 'pending' | 'paid' | 'expired' | 'closed' | 'failed'
+  expires_at: string
+  paid_at: string | null
+  qr_image_data_url?: string
 }
 
 export interface StudentEntitlementsResult {
@@ -96,6 +107,20 @@ export function mockActivateProduct(productCode: string) {
       product_code: productCode,
     }),
     '模拟开通失败',
+  )
+}
+
+export function createStudentStoreOrder(productCode: string) {
+  return unwrap(
+    http.post<ApiEnvelope<StoreOrder>>('/v1/student/store/orders', { product_code: productCode }),
+    '支付宝订单创建失败',
+  )
+}
+
+export function fetchStudentStoreOrder(orderNo: string) {
+  return unwrap(
+    http.get<ApiEnvelope<StoreOrder>>(`/v1/student/store/orders/${encodeURIComponent(orderNo)}`),
+    '订单状态查询失败',
   )
 }
 

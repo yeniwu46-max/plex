@@ -1,8 +1,11 @@
-"""Student catalog and mock entitlement routes (no real payment processing)."""
+"""Student catalog, payment order, entitlement, and challenge routes."""
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.services.student_store import StudentStoreService
+from app.services.alipay_payment import (
+    AlipayPaymentService, PaymentProviderError, PaymentUnavailableError,
+)
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
 
@@ -55,6 +58,42 @@ def mock_activate_product():
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_store_bp.route('/store/orders', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def create_store_order():
+    try:
+        payload = request.get_json(silent=True) or {}
+        product_code = payload.get('product_code')
+        if not isinstance(product_code, str) or not product_code.strip():
+            return error_response('缺少商品编号', 40001, None, 400)
+        order = AlipayPaymentService.create_order(int(get_jwt_identity()), product_code.strip())
+        return success_response(order, '支付宝订单已创建', 0, 201)
+    except PaymentUnavailableError as exc:
+        return error_response(str(exc), 50301, None, 503)
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    except PaymentProviderError as exc:
+        return error_response(str(exc), 50201, None, 502)
+    except Exception as exc:
+        return error_response(str(exc), 50001, None, 500)
+
+
+@student_store_bp.route('/store/orders/<order_no>', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_store_order_status(order_no):
+    try:
+        order = AlipayPaymentService.order_status(int(get_jwt_identity()), order_no)
+        return success_response(order)
+    except ValueError as exc:
+        return error_response(str(exc), 40401, None, 404)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 

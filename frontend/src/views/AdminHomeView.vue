@@ -28,6 +28,7 @@ import {
   updateAdminAnnouncement,
 } from '../api/adminAnnouncements'
 import AdminGovernanceComboPanel from '../components/admin/AdminGovernanceComboPanel.vue'
+import AdminStorePanel from '../components/admin/AdminStorePanel.vue'
 import AdminPeopleDrilldown from '../components/admin/AdminPeopleDrilldown.vue'
 import AdminRunningTrialsDrilldown from '../components/admin/AdminRunningTrialsDrilldown.vue'
 import PlexThemeSwitcher from '../components/shared/PlexThemeSwitcher.vue'
@@ -49,7 +50,7 @@ import { fetchAgentOrchestration, type AgentOrchestrationResult } from '../api/a
 import { fetchAgentsStatus, type AgentStatusItem } from '../api/agentService'
 import { useThemeStore } from '../stores/theme'
 
-type NavKey = 'nexus' | 'agents' | 'knowledge' | 'observer' | 'governance'
+type NavKey = 'nexus' | 'agents' | 'knowledge' | 'observer' | 'governance' | 'store'
 type Tone = 'purple' | 'amber' | 'green' | 'red'
 
 interface MetricCard {
@@ -179,6 +180,7 @@ const navItems = [
   { key: 'agents' as const, label: '智能体编排', sub: 'Agent Orchestration', icon: PeopleOutline },
   { key: 'knowledge' as const, label: '知识智能', sub: 'Knowledge Intelligence', icon: GitNetworkOutline },
   { key: 'observer' as const, label: '系统观测', sub: 'System Observatory', icon: AppsOutline },
+  { key: 'store' as const, label: '权益订单', sub: 'Store & Entitlements', icon: AnalyticsOutline },
   { key: 'governance' as const, label: '权限与控制', sub: 'Governance Center', icon: ShieldCheckmarkOutline },
 ]
 
@@ -672,6 +674,7 @@ const pageSubtitle = computed(() => {
   if (activeNav.value === 'observer') return '观测试炼数据、平台波动与各模块运行状态'
   if (activeNav.value === 'agents') return '配置检查智能体编排，协同完成学生做题自动校验'
   if (activeNav.value === 'knowledge') return '管理知识库、知识星域与 Graph-enhanced RAG 检索调试'
+  if (activeNav.value === 'store') return '查看已支付订单、实收金额与已获得权益的用户'
   return '实时掌控 PLEX 平台的运行状态与关键指标'
 })
 const visibleMetrics = computed(() => {
@@ -862,7 +865,7 @@ onMounted(() => {
   void loadAgentOrchestrationMetrics()
 
   // Handle ?panel=xxx deep link navigation
-  const valid: NavKey[] = ['nexus', 'agents', 'knowledge', 'observer', 'governance']
+  const valid: NavKey[] = ['nexus', 'agents', 'knowledge', 'observer', 'governance', 'store']
   const initPanel = route.query.panel as string | undefined
   if (initPanel && valid.includes(initPanel as NavKey)) {
     setActiveNav(initPanel as NavKey)
@@ -988,6 +991,7 @@ onUnmounted(() => {
       </header>
 
       <section
+        v-if="activeNav !== 'store'"
         class="metric-row"
         :class="{ 'metric-row--observer': activeNav === 'observer' || activeNav === 'agents' }"
         aria-label="核心指标"
@@ -1201,6 +1205,8 @@ onUnmounted(() => {
       />
 
       <AdminKnowledgePanel v-else-if="activeNav === 'knowledge'" />
+
+      <AdminStorePanel v-else-if="activeNav === 'store'" class="panel" />
 
       <section v-else-if="activeNav === 'governance'" class="dashboard-grid governance-grid" aria-label="权限与公告" data-tour="admin-permission-control">
         <article class="panel governance-announce-panel">

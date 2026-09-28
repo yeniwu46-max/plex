@@ -67,6 +67,16 @@ const router = createRouter({
           component: () => import('../views/StudentTrialView.vue'),
         },
         {
+          path: 'store',
+          name: 'student-store',
+          component: () => import('../views/StudentStoreView.vue'),
+        },
+        {
+          path: 'store/challenges/:productCode',
+          name: 'student-store-challenge-pack',
+          component: () => import('../views/StudentChallengePackView.vue'),
+        },
+        {
           path: 'trials/practice/:questionId',
           name: 'student-trial-practice',
           component: () => import('../views/StudentTrialPracticeView.vue'),
@@ -228,6 +238,8 @@ const routeTitles: Record<string, string> = {
   'student-star-path-lab': '星轨学习',
   'student-star-path-resources': '学习资源',
   'student-trials': '试炼中心',
+  'student-store': '权益商店',
+  'student-store-challenge-pack': '主题挑战包',
   'student-trial-practice': '试炼练习',
   'student-messenger': '驿站助手',
   'student-growth': '成长档案',

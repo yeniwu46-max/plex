@@ -38,9 +38,11 @@ export async function fetchPracticeQuestions(knowledgeKey?: string, search?: str
   return data.data
 }
 
-export async function fetchPracticeQuestionByRef(questionRef: string) {
+export async function fetchPracticeQuestionByRef(questionRef: string, packCode?: string) {
   const ref = encodeURIComponent(questionRef.trim())
-  const { data } = await http.get<ApiEnvelope<PracticeQuestionPayload>>(`/v1/student/practice-questions/${ref}`)
+  const { data } = await http.get<ApiEnvelope<PracticeQuestionPayload>>(`/v1/student/practice-questions/${ref}`, {
+    params: packCode ? { pack_code: packCode } : undefined,
+  })
   if (data.code !== 0) throw new Error(data.message || '题目不存在')
   return data.data
 }

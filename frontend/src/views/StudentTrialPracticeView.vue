@@ -26,7 +26,7 @@ const remoteQuestion = ref<PythonTrialQuestion | null>(null)
 const questionTransitionKey = ref(0)
 
 onMounted(() => {
-  void loadQuestion(String(route.params.questionId ?? ''))
+  void loadQuestion(String(route.params.questionId ?? ''), typeof route.query.pack_code === 'string' ? route.query.pack_code : undefined)
 })
 
 const questionId = computed(() => String(route.params.questionId ?? ''))
@@ -96,7 +96,8 @@ function resolveLocalQuestion(qid: string): PythonTrialQuestion | null {
 }
 
 const question = computed(() => {
-  const resolved = remoteQuestion.value ?? resolveLocalQuestion(questionId.value)
+  const isPackRoute = typeof route.query.pack_code === 'string' && Boolean(route.query.pack_code)
+  const resolved = isPackRoute ? remoteQuestion.value : remoteQuestion.value ?? resolveLocalQuestion(questionId.value)
   return resolved ? sanitizeQuestionContent(resolved) : null
 })
 
@@ -109,13 +110,15 @@ const pageSubtitle = computed(() => {
   return formatQuestionLabel(question.value)
 })
 
-async function loadQuestion(qid: string) {
+async function loadQuestion(qid: string, packCode?: string) {
   practiceReady.value = false
   remoteQuestion.value = null
   await ensurePracticeQuestionsLoaded()
-  if (!resolveLocalQuestion(qid)) {
+  // Challenge pack links must always round-trip through the server entitlement check,
+  // even when a matching question is already cached locally.
+  if (packCode || !resolveLocalQuestion(qid)) {
     try {
-      const item = await fetchPracticeQuestionByRef(qid)
+      const item = await fetchPracticeQuestionByRef(qid, packCode)
       const base = normalizeQuestion({
         id: item.id,
         code: item.code,
@@ -151,10 +154,10 @@ function switchSlot(slot: number) {
 }
 
 watch(
-  () => route.params.questionId,
-  (nextId) => {
+  () => [route.params.questionId, route.query.pack_code],
+  ([nextId, nextPackCode]) => {
     if (typeof nextId === 'string' && nextId) {
-      void loadQuestion(nextId)
+      void loadQuestion(nextId, typeof nextPackCode === 'string' ? nextPackCode : undefined)
     }
   },
 )

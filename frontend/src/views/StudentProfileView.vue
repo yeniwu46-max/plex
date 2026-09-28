@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { NButton, NInput, NModal, NProgress, NRadio, NRadioGroup, NTag, useMessage } from 'naive-ui'
+import { RouterLink } from 'vue-router'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PlexRadarChart from '../components/charts/PlexRadarChart.vue'
@@ -12,11 +13,14 @@ import {
   type ProfileChatResult, type ProfileDimensionKey,
 } from '../api/personalizedProfile'
 import { fetchStudentLearningReport, generateStudentPhaseReport, type LearningReportResult, type PhaseLearningReport } from '../api/learningReport'
+import { fetchStudentEntitlements, type StudentEntitlementsResult } from '../api/studentStore'
 
 const message = useMessage()
 const profile = ref<DynamicStudentProfile | null>(null)
 const report = ref<LearningReportResult | null>(null)
 const aiReport = ref<PhaseLearningReport | null>(null)
+const entitlements = ref<StudentEntitlementsResult | null>(null)
+const canViewPhaseReport = computed(() => Boolean(entitlements.value?.active_features.includes('phase_report')))
 const updatingReport = ref(false)
 const adaptations = ref<LearningAdaptation[]>([])
 const questions = ref<OnboardingDiagnosticQuestion[]>([])
@@ -224,24 +228,30 @@ const chatStarters = [
 async function load() {
   loading.value = true
   try {
-    const [current, diagnostic, learning, active] = await Promise.all([
-      fetchDynamicProfile(), fetchProfileDiagnostic(), fetchStudentLearningReport('7d'), fetchLearningAdaptations(),
+    const [current, diagnostic, learning, active, access] = await Promise.all([
+      fetchDynamicProfile(), fetchProfileDiagnostic(), fetchStudentLearningReport('7d'), fetchLearningAdaptations(), fetchStudentEntitlements(),
     ])
     profile.value = current
     questions.value = diagnostic.questions
     diagnosticStatus.value = diagnostic.diagnostic.status
     report.value = learning
     adaptations.value = active
-    // 阶段报告可异步补齐，不阻塞首屏画像
-    void generateStudentPhaseReport('7d')
-      .then((result) => { aiReport.value = result.report })
-      .catch(() => { aiReport.value = null })
+    entitlements.value = access
+    if (canViewPhaseReport.value) {
+      // 会员阶段报告可异步补齐，不阻塞首屏画像
+      void generateStudentPhaseReport('7d')
+        .then((result) => { aiReport.value = result.report })
+        .catch(() => { aiReport.value = null })
+    } else {
+      aiReport.value = null
+    }
   } finally {
     loading.value = false
   }
 }
 
 async function refreshPhaseReport() {
+  if (!canViewPhaseReport.value) return
   if (updatingReport.value) return
   updatingReport.value = true
   try {
@@ -393,7 +403,7 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
         <article class="report-card state-card"><header><h3>学习状态提醒</h3></header><p>{{ stateText }}</p><div v-if="adaptations.length" class="adaptation"><n-tag type="warning">小E 已介入</n-tag><strong>{{ adaptations[0].action_plan.resources.join(' + ') }}</strong><small>{{ adaptations[0].action_plan.recovery_rule }}</small></div><div v-else class="adaptation stable"><n-tag type="success">节奏稳定</n-tag><strong>继续保持 25 分钟短时专注</strong><small>下一次练习会根据正确率自动调整。</small></div></article>
       </section>
 
-      <section class="ai-summary">
+      <section v-if="canViewPhaseReport" class="ai-summary">
         <header>
           <div>
             <span>小E 的阶段分析</span>
@@ -423,6 +433,13 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
             <li v-if="!aiReport?.next_actions?.length">先完成一轮短练习，小E 会给出更具体的下一步。</li>
           </ol>
         </div>
+      </section>
+
+      <section v-else class="ai-summary phase-report-locked">
+        <span>会员进阶权益</span>
+        <h3>解锁小E 的阶段学习报告</h3>
+        <p>基础学习报告、知识雷达和易错模式仍可免费查看。会员阶段报告会结合近期学习证据，整理阶段总结和下一步行动建议。</p>
+        <RouterLink to="/student/store" class="store-link">查看权益商店</RouterLink>
       </section>
 
       <section class="calibration"><div><span>不是填表，而是让小E 更懂你</span><h3>校准我的学习画像</h3><p>选择更接近你的真实偏好，小E 会立刻重排资源和学习节奏。</p></div><n-button secondary type="primary" @click="calibrationVisible = true">优化画像</n-button></section>
@@ -533,5 +550,5 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 .dimension-card__meter i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,#34e6c5,#5ad9ff);transition:width .5s ease}
 .dimension-card__confidence{color:#7da5b6;font-size:.72rem}
 @media(max-width:1080px){.chat-workbench{grid-template-columns:1fr}}
-.profile-page{width:100%;padding:0 var(--plex-page-gutter-x) 2rem;overflow-y:auto}.profile-header,.identity-card,.report-card,.ai-summary,.calibration{border:1px solid rgba(52,230,197,.16);background:rgba(3,16,28,.86);border-radius:16px}.profile-header{display:flex;justify-content:space-between;gap:2rem;padding:1.5rem;margin-bottom:1rem}.eyebrow,.identity-title span,.report-card header>span,.ai-summary header span,.calibration span{color:#39e6c7;font-size:.72rem;letter-spacing:.12em}.profile-header h2,.identity-card h3,.report-card h3,.ai-summary h3,.calibration h3{margin:.35rem 0;color:#f5fbff}.profile-header p{color:#a9c2d0;margin:.3rem 0}.header-actions{display:flex;align-items:center;gap:1rem;flex-shrink:0}.identity-card{padding:1.2rem;margin-bottom:1rem}.identity-title{display:flex;align-items:baseline;gap:.8rem}.identity-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}.identity-grid>div{padding:.9rem;border-left:2px solid rgba(52,230,197,.45);background:rgba(52,230,197,.04)}small{display:block;color:#88a3b5;font-size:.78rem}.identity-grid strong{display:block;margin-top:.35rem;color:#edf8fb;line-height:1.4}.report-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:1rem}.report-card{min-height:270px;padding:1.2rem}.report-card header p{color:#8da7b6;font-size:.85rem;margin:.2rem 0}.radar-card{grid-row:span 2}.mistake-list{padding:0;list-style:none}.mistake-list li{display:flex;gap:.7rem;padding:.65rem 0;border-bottom:1px solid rgba(142,177,192,.12)}.mistake-list i{display:grid;place-items:center;width:1.35rem;height:1.35rem;border-radius:50%;background:#5b3a46;color:#ff9da5;font-style:normal}.mistake-list span{display:block;color:#8da7b6;font-size:.82rem;margin-top:.15rem}.empty{color:#8da7b6}.state-card p{line-height:1.65;color:#d4e7ee}.adaptation{display:grid;gap:.45rem;margin-top:1rem;padding:.85rem;background:rgba(255,184,90,.08);border-left:2px solid #ffb85a}.adaptation.stable{background:rgba(52,230,197,.06);border-color:#34e6c5}.adaptation small{color:#a2bbc7}.ai-summary{margin-top:1rem;padding:1.35rem 1.35rem 1.6rem;min-height:320px}.ai-summary header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.ai-summary__actions{display:flex;align-items:center;gap:.55rem;flex-shrink:0}.ai-summary>p{color:#bed0da;line-height:1.65}.focus-items{margin-top:.85rem;padding:.9rem;background:rgba(46,255,241,.04);border:1px solid rgba(46,255,241,.12);border-radius:10px}.focus-items strong{color:#9ef3ea}.focus-items ul{margin:.55rem 0 0;padding:0;list-style:none}.focus-items li{margin:.45rem 0}.focus-items em{display:block;color:#f5fbff;font-style:normal;font-weight:650}.focus-items span{display:block;margin-top:.15rem;color:#9eb6c3;font-size:.84rem;line-height:1.5}.next-actions{margin-top:.9rem;padding:1rem 1rem 1.15rem;min-height:120px;background:rgba(255,255,255,.03);border-radius:10px}.next-actions ol{margin:.5rem 0 0;padding-left:1.2rem;color:#d7e8ee}.next-actions li{margin:.4rem 0;line-height:1.55}.calibration{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.2rem;margin-top:1rem}.calibration p{margin:0;color:#98b2bf}.diagnostic-modal{width:min(520px,92vw)}.calibration-modal{width:min(420px,92vw)}.calibration-modal :deep(.n-card__content){max-height:min(70vh,520px);overflow-y:auto}.modal-intro{color:#8da7b6;line-height:1.55;font-size:.84rem;margin:.1rem 0 .6rem}.calibration-hint{margin:.85rem 0 0;color:#8da7b6;font-size:.82rem;line-height:1.5}.diagnostic-progress{margin-bottom:.5rem}.diagnostic-body{max-height:min(58vh,520px);overflow-y:auto;padding-right:.45rem;margin-right:-.25rem}.diagnostic-body::-webkit-scrollbar{width:6px}.diagnostic-body::-webkit-scrollbar-thumb{background:rgba(52,230,197,.28);border-radius:3px}.question{padding:.7rem .8rem;margin-bottom:.55rem;border:1px solid rgba(52,230,197,.12);border-radius:10px;background:rgba(52,230,197,.03)}.question header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}.question .q-index{color:#39e6c7;font-weight:700;font-size:.82rem;letter-spacing:.06em}.question .q-stem{color:#eef8fb;font-size:.9rem;line-height:1.5;margin:0 0 .5rem}.question .q-code{margin:0 0 .55rem;padding:.6rem .75rem;border-radius:8px;background:#020b15;border:1px solid rgba(52,230,197,.16);color:#9be8d6;font-family:'JetBrains Mono','Fira Code',Consolas,monospace;font-size:.8rem;line-height:1.55;white-space:pre;overflow-x:auto}.q-options{display:flex;flex-direction:column;gap:.1rem}.question :deep(.n-radio){display:flex;align-items:flex-start;margin:.2rem 0;padding:.35rem .5rem;border-radius:7px;font-size:.86rem;transition:background .15s ease}.question :deep(.n-radio:hover){background:rgba(52,230,197,.07)}.modal-footer{display:flex;align-items:center;justify-content:space-between}.calibration-tabs{display:flex;flex-wrap:wrap;gap:.45rem}.option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;margin-top:1rem}.option-grid .n-button{height:auto;min-height:3rem;white-space:normal}@media(max-width:900px){.identity-grid{grid-template-columns:repeat(2,1fr)}.report-grid{grid-template-columns:1fr}.radar-card{grid-row:auto}.profile-header{align-items:flex-start;flex-direction:column}.header-actions{width:100%;justify-content:space-between}}@media(max-width:560px){.profile-page{padding:0 1rem 1.5rem}.identity-grid,.option-grid{grid-template-columns:1fr}.calibration{align-items:flex-start;flex-direction:column}}
+.store-link{display:inline-block;margin-top:.5rem;padding:.65rem 1rem;border-radius:9px;background:#0f9e92;color:#fff;font-weight:650;text-decoration:none}.store-link:hover{background:#12b6a6}
 </style>

@@ -250,12 +250,24 @@ def list_student_practice_questions():
 @role_required('student', 'teacher', 'admin')
 def get_student_practice_question(question_ref):
     try:
+        pack_code = (request.args.get('pack_code') or '').strip()
+        if pack_code:
+            from flask_jwt_extended import get_jwt_identity
+            from app.services.student_store import StudentStoreService
+
+            item = StudentStoreService.challenge_question(int(get_jwt_identity()), pack_code, question_ref)
+            return success_response(item)
+
         from app.services.practice_question import PracticeQuestionService
 
         item = PracticeQuestionService.get_by_ref(question_ref)
         if not item:
             return error_response('题目不存在', 40401, None, 404)
         return success_response(item)
+    except PermissionError as exc:
+        return error_response(str(exc), 40301, None, 403)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 

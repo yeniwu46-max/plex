@@ -31,6 +31,7 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     DEBUG = False
     TESTING = False
+    STORE_MOCK_ACTIVATION_ENABLED = False
 
     # ============ 数据库配置 ============
     # MySQL 连接字符串格式: mysql+pymysql://user:password@host:port/database
@@ -79,6 +80,7 @@ class DevelopmentConfig(Config):
     特点: 调试模式开启，详细日志输出
     """
     DEBUG = True
+    STORE_MOCK_ACTIVATION_ENABLED = True
     SQLALCHEMY_ECHO = True  # 打印SQL语句
     LOG_LEVEL = 'DEBUG'
 
@@ -89,6 +91,7 @@ class TestingConfig(Config):
     特点: 使用内存SQLite数据库，快速测试
     """
     TESTING = True
+    STORE_MOCK_ACTIVATION_ENABLED = True
     SQLALCHEMY_ENGINE_OPTIONS = {}
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # 内存数据库
     SQLALCHEMY_ECHO = True

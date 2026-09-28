@@ -519,6 +519,11 @@ def get_learning_report():
 def generate_learning_report():
     try:
         user_id = int(get_jwt_identity())
+        from app.services.student_store import StudentStoreService
+
+        entitlements = StudentStoreService.entitlements(user_id)
+        if 'phase_report' not in entitlements['active_features']:
+            return error_response('进阶阶段报告为探索会员权益，基础学习报告仍可免费查看', 40301, None, 403)
         payload = request.get_json(silent=True) or {}
         period = payload.get('period') or request.args.get('period', '7d')
         force = bool(payload.get('force') or payload.get('force_refresh'))

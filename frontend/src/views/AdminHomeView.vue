@@ -2698,14 +2698,50 @@ onUnmounted(() => {
 @media (max-width: 760px) {
   .admin-shell {
     flex-direction: column;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
   }
 
   .admin-sidebar {
     width: 100%;
+    order: 2;
+    padding: 0.35rem 0.5rem max(0.35rem, env(safe-area-inset-bottom));
+    border-right: 0;
+    border-top: 1px solid rgba(167, 139, 250, 0.16);
   }
 
   .admin-nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .admin-nav .nav-item {
+    min-width: 92px;
+    min-height: 50px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.1rem;
+    padding: 0.35rem;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .admin-nav .nav-item small,
+  .admin-sidebar .brand,
+  .admin-sidebar .overseer-card,
+  .admin-sidebar .sidebar-actions {
+    display: none;
+  }
+
+  .admin-main {
+    order: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
   }
 
   .metric-row,

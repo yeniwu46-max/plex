@@ -178,13 +178,16 @@ def register():
         for field in required_fields:
             if not data.get(field):
                 return error_response(f'缺少必需字段: {field}', 40001)
+
+        if data.get('role', 'student') != 'student':
+            return error_response('公开注册仅支持学生账号', 40301, None, 403)
         
         result = AuthService.register(
             username=data['username'],
             email=data['email'],
             password=data['password'],
             real_name=data['real_name'],
-            role=data.get('role', 'student')
+            role='student'
         )
         
         return success_response(result, '注册成功', 0, 201)

@@ -275,16 +275,21 @@ onMounted(() => {
 @media (max-width: 760px) {
   .shell {
     flex-direction: column;
-    height: 100%;
-    max-height: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
     overflow: hidden;
   }
 
   .shell :deep(.teacher-sidebar) {
+    order: 2;
     position: relative;
     height: auto;
     max-height: none;
     flex-shrink: 0;
+  }
+
+  .teacher-main {
+    order: 1;
   }
 
   .toolbar-slot {

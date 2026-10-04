@@ -49,6 +49,20 @@ class AuthOAuthTestCase(unittest.TestCase):
         self.assertEqual(body['data']['username'], 'email_login_user')
         self.assertTrue(body['data']['access_token'])
 
+    def test_public_register_cannot_choose_privileged_role(self):
+        for role in ('teacher', 'admin'):
+            with self.subTest(role=role):
+                response = self.client.post('/api/v1/auth/register', json={
+                    'username': f'forbidden_{role}',
+                    'email': f'forbidden_{role}@example.com',
+                    'password': 'secret123',
+                    'real_name': 'Forbidden Role',
+                    'role': role,
+                })
+                self.assertEqual(response.status_code, 403)
+                with self.app.app_context():
+                    self.assertIsNone(User.query.filter_by(username=f'forbidden_{role}').first())
+
     def test_google_oauth_callback_creates_student_session(self):
         start = self.client.get('/api/v1/auth/oauth/google?redirect=/student')
         self.assertEqual(start.status_code, 302)

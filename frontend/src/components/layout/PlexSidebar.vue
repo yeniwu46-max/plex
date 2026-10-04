@@ -214,19 +214,41 @@ function toggleCollapsed() {
   font-size: 1.5rem;
 }
 
+@media (min-width: 761px) and (max-width: 1100px) {
+  .plex-sidebar,
+  .plex-sidebar--collapsed {
+    width: 84px;
+  }
+
+  .plex-sidebar__brand {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .plex-sidebar__name,
+  .plex-nav__copy,
+  .plex-sidebar__collapse {
+    display: none;
+  }
+
+  .plex-nav {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .plex-sidebar,
   .plex-sidebar--collapsed {
     width: 100%;
     min-height: auto;
-    padding: 0.75rem 0.8rem 0.65rem;
+    padding: 0.4rem 0.5rem max(0.4rem, env(safe-area-inset-bottom));
     border-right: 0;
     border-bottom: 1px solid rgba(110, 228, 255, 0.12);
   }
 
   .plex-sidebar__brand {
-    justify-content: center;
-    padding: 0 0 0.65rem;
+    display: none;
   }
 
   .plex-sidebar__nav {
@@ -235,7 +257,7 @@ function toggleCollapsed() {
     flex-direction: row;
     gap: 0.35rem;
     overflow-x: auto;
-    padding-bottom: 0.35rem;
+    padding-bottom: 0;
     justify-content: space-between;
   }
 

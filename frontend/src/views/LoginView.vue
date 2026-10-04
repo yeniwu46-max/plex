@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NInput, NCheckbox, NIcon, NModal, NButton, useMessage } from 'naive-ui'
 import { PersonOutline, LockClosedOutline, EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
+import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationStore } from '../stores/notifications'
 import {
@@ -18,6 +19,7 @@ const route = useRoute()
 const message = useMessage()
 const auth = useAuthStore()
 const notifications = useNotificationStore()
+const isNativeApp = Capacitor.isNativePlatform()
 
 const username = ref('')
 const password = ref('')
@@ -276,10 +278,10 @@ function goRegister() {
 
         <div class="social">
           <div class="social__divider">
-            <span>或使用以下方式登录</span>
+            <span>{{ isNativeApp ? '还没有账号？' : '或使用以下方式登录' }}</span>
           </div>
           <div class="social__row">
-            <button type="button" class="social__btn" aria-label="使用 Google 登录" @click="startOAuth('google')">
+            <button v-if="!isNativeApp" type="button" class="social__btn" aria-label="使用 Google 登录" @click="startOAuth('google')">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
                 <path
                   fill="#EA4335"
@@ -299,14 +301,15 @@ function goRegister() {
                 />
               </svg>
             </button>
-            <button type="button" class="social__btn" aria-label="使用 GitHub 登录" @click="startOAuth('github')">
+            <button v-if="!isNativeApp" type="button" class="social__btn" aria-label="使用 GitHub 登录" @click="startOAuth('github')">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
                 <path
                   d="M12 1C5.92 1 1 5.92 1 12c0 4.86 3.15 8.98 7.52 10.43.55.1.75-.24.75-.53 0-.26-.01-1.13-.01-2.05-3.06.67-3.71-1.47-3.71-1.47-.5-1.27-1.22-1.61-1.22-1.61-1-.68.08-.67.08-.67 1.1.08 1.68 1.13 1.68 1.13.98 1.68 2.56 1.2 3.19.92.1-.71.39-1.2.71-1.47-2.44-.28-5-1.22-5-5.45 0-1.2.43-2.19 1.13-2.96-.11-.28-.49-1.41.11-2.94 0 0 .92-.3 3.03 1.13a10.5 10.5 0 0 1 5.5 0c2.1-1.43 3.02-1.13 3.02-1.13.6 1.53.22 2.66.11 2.94.7.77 1.13 1.76 1.13 2.96 0 5.24-3.56 6.16-6.97 6.49.55.47 1.03 1.4 1.03 2.83 0 2.04-.02 3.69-.02 4.19 0 .41.28.89 1.05.74C19.85 20.98 23 16.86 23 12 23 5.92 18.08 1 12 1z"
                 />
               </svg>
             </button>
-            <button type="button" class="social__btn social__btn--brand" aria-label="注册 PLEX 账号" @click="goRegister">
+            <button v-if="isNativeApp" type="button" class="social__native-register" @click="goRegister">注册 PLEX 账号</button>
+            <button v-else type="button" class="social__btn social__btn--brand" aria-label="注册 PLEX 账号" @click="goRegister">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
                 <path
                   d="M12 2l2.2 6.3L20 12l-5.8 2.1L12 20l-2.2-6.9L4 12l5.8-3.7L12 2z"
@@ -748,6 +751,18 @@ function goRegister() {
   border-color: rgba(0, 245, 212, 0.25);
 }
 
+.social__native-register {
+  min-height: 44px;
+  padding: 0.55rem 1.35rem;
+  border: 1px solid rgba(0, 245, 212, 0.35);
+  border-radius: 999px;
+  background: rgba(0, 245, 212, 0.08);
+  color: #00f5d4;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
 .card__meta {
   display: flex;
   align-items: center;
@@ -811,6 +826,7 @@ function goRegister() {
 @media (max-width: 960px) {
   .login-page {
     flex-direction: column;
+    overflow-y: auto;
   }
 
   .hero {
@@ -826,6 +842,29 @@ function goRegister() {
   .panel {
     flex: 1;
     padding-top: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero {
+    padding: max(1rem, env(safe-area-inset-top)) 1rem 1.25rem;
+  }
+
+  .hero__copy {
+    margin-top: 1.25rem;
+  }
+
+  .hero__robot-wrap,
+  .hero__footer {
+    display: none;
+  }
+
+  .panel {
+    padding: 0 1rem max(1.25rem, env(safe-area-inset-bottom));
+  }
+
+  .card {
+    padding: 1.5rem 1.25rem;
   }
 }
 </style>

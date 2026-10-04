@@ -207,4 +207,24 @@ function goStarMap() {
   align-items: center;
   gap: 0.4rem;
 }
+
+@media (max-width: 760px) {
+  .shell {
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .shell :deep(.plex-sidebar) {
+    order: 2;
+    position: relative;
+    height: auto;
+    max-height: none;
+    flex-shrink: 0;
+  }
+
+  .main {
+    order: 1;
+  }
+}
 </style>

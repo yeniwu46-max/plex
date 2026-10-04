@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PLEX</string>
+    <string name="title_activity_main">PLEX</string>
+    <string name="package_name">com.yeniwu46.plex</string>
+    <string name="custom_url_scheme">com.yeniwu46.plex</string>
+</resources>

@@ -34,6 +34,13 @@ const checkoutOrder = ref<StoreOrder | null>(null)
 const checkoutVisible = ref(false)
 const checkoutLoading = ref(false)
 let orderPollTimer: ReturnType<typeof setInterval> | undefined
+const particles = Array.from({ length: 22 }, (_, index) => ({
+  left: `${7 + ((index * 37) % 86)}%`,
+  top: `${8 + ((index * 53) % 78)}%`,
+  delay: `${(index % 8) * -0.9}s`,
+  duration: `${7 + (index % 6) * 1.4}s`,
+  radius: index % 6 === 0 ? 2 : 1.3,
+}))
 
 const membershipEndLabel = computed(() => formatDate(entitlements.value?.expires_at))
 
@@ -49,8 +56,8 @@ function formatDate(value: string | null | undefined) {
 }
 
 function grantSourceLabel(source: string) {
-  if (source === 'mock') return '开发模拟权益'
-  if (source === 'alipay') return '支付宝支付'
+  if (source === 'mock') return '体验开通'
+  if (source === 'alipay') return '支付宝'
   return source
 }
 
@@ -184,24 +191,16 @@ onActivated(() => {
         <div class="store-hero__copy">
           <span class="store-eyebrow"><n-icon :component="SparklesOutline" /> PLEX · 星港补给</span>
           <h1>为下一次跃迁，补充一点新装备</h1>
-          <p>这里提供额外挑战与进阶复盘。探索主线、基础练习、XP 和排名仍然照常开放。</p>
-          <div class="hero-pills"><span>自主选择</span><span>不影响排名</span><span>没有自动续费</span></div>
+          <p>精选算法挑战与进阶权益，按需选择。</p>
+          <div class="hero-pills"><span>自主选择</span><span>不自动续费</span></div>
         </div>
         <aside class="membership-status" :class="{ 'membership-status--active': entitlements?.membership_active }">
           <span class="status-orbit" aria-hidden="true"><i /></span>
-          <small>你的航行状态</small>
-          <strong>{{ entitlements?.membership_active ? '探索会员' : '自由探索者' }}</strong>
+          <small>会员状态</small>
+          <strong>{{ entitlements?.membership_active ? '探索会员' : '未开通' }}</strong>
           <span v-if="entitlements?.membership_active" class="status-expiry">有效至 {{ membershipEndLabel }}</span>
-          <span v-else class="status-expiry">基础探索权益持续开放</span>
         </aside>
       </header>
-
-      <div class="store-notice" :class="{ 'store-notice--quiet': !paymentEnabled && !entitlements?.mock_activation_enabled }" role="status">
-        <span class="notice-signal" aria-hidden="true" />
-        <span v-if="paymentEnabled">支付宝正式商户支付已开启；付款结果由支付宝服务端通知确认。</span>
-        <span v-else-if="entitlements?.mock_activation_enabled">当前开发环境仅提供体验开通，不会扣款，也不会生成真实付款记录。</span>
-        <span v-else>商品内容可查看；支付宝商户支付尚未配置。</span>
-      </div>
 
       <section v-if="loading" class="store-state">正在整理商品…</section>
       <section v-else-if="errorMessage" class="store-state store-state--error">
@@ -212,46 +211,67 @@ onActivated(() => {
         <section class="mission-section">
           <div class="section-heading">
             <div><span class="section-kicker">额外探索内容</span><h2>星际挑战包</h2></div>
-            <p>十个真实编程任务，完成后会记入你的个人航行档案。</p>
+            <p>10 道算法编程挑战</p>
           </div>
           <article v-for="product in products.filter((item) => item.product_type === 'challenge_pack')" :key="product.code" class="mission-offer">
             <div class="mission-art" aria-hidden="true">
-              <span class="mission-art__planet" />
-              <span class="mission-art__orbit mission-art__orbit--one" />
-              <span class="mission-art__orbit mission-art__orbit--two" />
-              <span class="mission-art__spark mission-art__spark--a">✦</span>
-              <span class="mission-art__spark mission-art__spark--b">·</span>
-              <span class="mission-art__label">SECTOR 01<br />ALGORITHM BELT</span>
+              <svg class="mission-planet" viewBox="0 0 520 390" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <radialGradient id="planetSurface" cx="34%" cy="27%" r="76%">
+                    <stop offset="0" stop-color="#a9f3dc" />
+                    <stop offset=".3" stop-color="#4ab9ae" />
+                    <stop offset=".68" stop-color="#236881" />
+                    <stop offset="1" stop-color="#101e3b" />
+                  </radialGradient>
+                  <linearGradient id="planetRing" x1="0" x2="1" y1="0" y2="1">
+                    <stop stop-color="#b5fff0" stop-opacity=".08" />
+                    <stop offset=".48" stop-color="#8bf4e3" stop-opacity=".8" />
+                    <stop offset="1" stop-color="#82b8f3" stop-opacity=".12" />
+                  </linearGradient>
+                  <filter id="planetGlow" x="-60%" y="-60%" width="220%" height="220%">
+                    <feGaussianBlur stdDeviation="16" />
+                  </filter>
+                  <clipPath id="planetClip"><circle cx="260" cy="190" r="91" /></clipPath>
+                </defs>
+                <circle cx="260" cy="190" r="115" fill="#48c8bd" opacity=".12" filter="url(#planetGlow)" />
+                <ellipse cx="260" cy="190" rx="181" ry="51" fill="none" stroke="url(#planetRing)" stroke-width="2" transform="rotate(-19 260 190)" />
+                <ellipse cx="260" cy="190" rx="153" ry="85" fill="none" stroke="#9ac9e5" stroke-opacity=".24" stroke-width="1" transform="rotate(48 260 190)" />
+                <circle cx="260" cy="190" r="91" fill="url(#planetSurface)" />
+                <g clip-path="url(#planetClip)" fill="#b0f1d8" opacity=".32">
+                  <path d="M181 140l25-13 17 7 6 18-15 9-4 17-17 7-13-13-14-2 4-18zM247 113l24 7 11 18-8 14 12 11-5 20-16 6-3 22-18 14-15-10 6-25-10-14 8-15-9-14zM293 160l26-10 21 8 13 20-10 13-3 21-23 9-12-12-17-2-10-19zM225 222l19-8 18 8 5 18-17 13-21-7-12-13z" />
+                </g>
+                <circle cx="260" cy="190" r="91" fill="none" stroke="#c3fff0" stroke-opacity=".48" />
+                <circle cx="391" cy="126" r="7" fill="#f2d89a" />
+                <circle cx="123" cy="278" r="4" fill="#b8d8ff" />
+                <circle v-for="(particle, index) in particles" :key="index" class="mission-particle" :cx="particle.left" :cy="particle.top" :r="particle.radius" :style="{ animationDelay: particle.delay, animationDuration: particle.duration }" />
+              </svg>
             </div>
             <div class="mission-copy">
-              <div class="mission-overline"><n-tag size="small" round type="info">首发主题</n-tag><span>永久访问 · 个人进度云端保存</span></div>
+              <div class="mission-overline"><n-tag size="small" round type="info">算法基础</n-tag><span>永久解锁</span></div>
               <h3>{{ product.name }}</h3>
-              <p>{{ product.description }}</p>
               <div class="mission-facts">
-                <div><strong>10</strong><span>真实编程任务</span></div>
-                <div><strong>分关</strong><span>由浅入深的航线</span></div>
-                <div><strong>不限</strong><span>练习与重试次数</span></div>
+                <div><strong>10</strong><span>道挑战</span></div>
+                <div><strong>分关</strong><span>循序渐进</span></div>
+                <div><strong>不限</strong><span>练习次数</span></div>
               </div>
               <ul class="mission-benefits">
-                <li v-for="benefit in product.benefits" :key="benefit"><n-icon :component="CheckmarkCircleOutline" />{{ benefit }}</li>
+                <li v-for="benefit in product.benefits.slice(0, 3)" :key="benefit"><n-icon :component="CheckmarkCircleOutline" />{{ benefit }}</li>
               </ul>
               <div v-if="challengeProgress" class="mission-progress">
                 <div><span>你的挑战进度</span><strong>{{ challengeProgress.completed_count }} / {{ challengeProgress.total }} 关</strong></div>
                 <div class="progress-track"><i :style="{ width: `${challengeProgress.percent}%` }" /></div>
               </div>
               <div class="mission-actions">
-                <div><strong>{{ formatPrice(product.price_cents) }}</strong><small>一次开通，永久保留</small></div>
+                <div><strong>{{ formatPrice(product.price_cents) }}</strong></div>
                 <n-button
                   v-if="product.active || entitlements?.membership_active"
                   type="primary" round size="large" @click="openChallenge(product)"
                 >{{ challengeProgress?.completed_count ? '继续挑战' : '进入挑战' }} <n-icon :component="ArrowForwardOutline" /></n-button>
-                <n-button
-                  v-else
+                <n-button v-else-if="product.available && (paymentEnabled || entitlements?.mock_activation_enabled)"
                   type="primary" round size="large"
-                  :disabled="!product.available || (!paymentEnabled && !entitlements?.mock_activation_enabled)"
                   :loading="activatingCode === product.code || (checkoutLoading && !checkoutOrder)"
                   @click="primaryAction(product)"
-                >{{ paymentEnabled ? '支付宝扫码开通' : entitlements?.mock_activation_enabled ? '体验开通' : '暂不可开通' }}</n-button>
+                >{{ paymentEnabled ? '立即开通' : '体验开通' }}</n-button>
               </div>
             </div>
           </article>
@@ -259,8 +279,8 @@ onActivated(() => {
 
         <section class="membership-section">
           <div class="section-heading section-heading--membership">
-            <div><span class="section-kicker">探索会员</span><h2>需要更多陪伴时，再升级航行装备</h2></div>
-            <p>月卡与年卡权益相同，按你的节奏选择即可。</p>
+            <div><span class="section-kicker">探索会员</span><h2>会员方案</h2></div>
+            <p>进阶报告与主题挑战包</p>
           </div>
           <div class="membership-layout">
             <article v-for="product in products.filter((item) => item.product_type === 'membership')" :key="product.code" class="membership-card" :class="{ 'membership-card--annual': product.duration_days === 365, 'membership-card--active': product.active }">
@@ -270,35 +290,22 @@ onActivated(() => {
                 <n-tag v-else-if="product.duration_days === 365" round size="small" type="warning">年付更省</n-tag>
               </div>
               <h3>{{ product.name }}</h3>
-              <p>{{ product.description }}</p>
               <div class="membership-price"><strong>{{ formatPrice(product.price_cents) }}</strong><span> / {{ product.duration_days === 30 ? '30 天' : '365 天' }}</span></div>
-              <div v-if="product.duration_days === 365" class="annual-saving">相较连续购买 12 张月卡，节省 ¥50.80</div>
               <ul class="benefit-list">
-                <li v-for="benefit in product.benefits" :key="benefit"><n-icon :component="CheckmarkCircleOutline" />{{ benefit }}</li>
+                <li v-for="benefit in product.benefits.slice(0, 3)" :key="benefit"><n-icon :component="CheckmarkCircleOutline" />{{ benefit }}</li>
               </ul>
-              <n-button
+              <n-button v-if="product.available && (paymentEnabled || entitlements?.mock_activation_enabled)"
                 type="primary" round block size="large"
-                :disabled="!paymentEnabled && !entitlements?.mock_activation_enabled"
                 :loading="activatingCode === product.code || checkoutLoading"
                 @click="purchase(product)"
-              >{{ paymentEnabled ? '支付宝扫码开通' : entitlements?.mock_activation_enabled ? '体验开通' : '暂不可开通' }}</n-button>
+              >{{ paymentEnabled ? '立即开通' : '体验开通' }}</n-button>
             </article>
           </div>
         </section>
 
-        <section class="free-constellation" aria-label="始终免费的学习内容">
-          <div><span class="section-kicker">自由探索区</span><h2>这些能力始终为你开放</h2><p>补给只增加额外体验，不会收回你已经拥有的学习工具。</p></div>
-          <div class="free-constellation__items">
-            <article><span>01</span><strong>学习主线</strong><small>星轨知识点与基础练习</small></article>
-            <article><span>02</span><strong>学习助手</strong><small>AI 驿站与试炼助教</small></article>
-            <article><span>03</span><strong>成长系统</strong><small>XP、成就与班级排名</small></article>
-            <article><span>04</span><strong>基础报告</strong><small>学习数据与易错模式</small></article>
-          </div>
-        </section>
-
         <section class="store-history">
-          <header><div><span class="section-kicker">航行记录</span><h2>我的补给档案</h2></div><n-tag round :bordered="false">{{ history.length }} 条记录</n-tag></header>
-          <div v-if="!history.length" class="history-empty">开通记录会保存在这里，方便你随时查看权益状态。</div>
+          <header><div><span class="section-kicker">航行记录</span><h2>开通记录</h2></div><n-tag round :bordered="false">{{ history.length }} 条</n-tag></header>
+          <div v-if="!history.length" class="history-empty">暂无记录</div>
           <ul v-else class="history-list">
             <li v-for="grant in history" :key="grant.id">
               <span class="history-dot" />
@@ -311,7 +318,7 @@ onActivated(() => {
       <n-modal v-model:show="checkoutVisible" @after-leave="clearOrderPolling">
         <n-card class="checkout-card" :bordered="false" role="dialog" aria-modal="true" title="支付宝安全收银" closable @close="closeCheckout">
           <div v-if="checkoutOrder" class="checkout-content">
-            <div class="checkout-product"><strong>{{ checkoutOrder.product_name }}</strong><span>订单 {{ checkoutOrder.order_no }}</span></div>
+            <div class="checkout-product"><strong>{{ checkoutOrder.product_name }}</strong></div>
             <strong class="checkout-amount">¥{{ (checkoutOrder.amount_cents / 100).toFixed(2) }}</strong>
             <img v-if="checkoutOrder.qr_image_data_url && checkoutOrder.status === 'pending'" class="checkout-qr" :src="checkoutOrder.qr_image_data_url" alt="支付宝订单二维码" />
             <div class="checkout-status" :class="`checkout-status--${checkoutOrder.status}`">
@@ -321,7 +328,6 @@ onActivated(() => {
               <template v-else-if="checkoutOrder.status === 'failed'">二维码创建失败，请关闭窗口后重试。</template>
               <template v-else>此订单已关闭。</template>
             </div>
-            <small>只认支付宝服务端确认结果；离开此页不影响正在处理的订单。</small>
             <n-button v-if="checkoutOrder.status !== 'pending'" block type="primary" round @click="closeCheckout">完成</n-button>
           </div>
         </n-card>
@@ -349,25 +355,16 @@ onActivated(() => {
 .status-orbit { position: relative; display: block; width: 28px; height: 28px; margin-bottom: .1rem; border: 1px solid rgba(106,230,215,.58); border-radius: 50%; }
 .status-orbit::before { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: #6de9d6; box-shadow: 0 0 14px rgba(109,233,214,.75); }
 .status-orbit i { position: absolute; width: 5px; height: 5px; right: -3px; top: 4px; border-radius: 50%; background: #edcb83; }
-.store-notice { display: flex; align-items: center; gap: .65rem; margin: 1rem 0 0; padding: .75rem .95rem; border-left: 2px solid #dfbb74; background: linear-gradient(90deg, rgba(110,78,28,.2), rgba(18,31,43,.2)); color: #e7d6ad; font-size: .83rem; }
-.store-notice--quiet { border-color: #65808d; color: rgba(219,235,244,.62); }
-.notice-signal { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #e5bd68; box-shadow: 0 0 10px rgba(229,189,104,.45); }
-.store-notice--quiet .notice-signal { background: #728f9c; box-shadow: none; }
 .mission-section, .membership-section { margin-top: 3.1rem; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 1rem; }
-.section-heading h2, .store-history h2, .free-constellation h2 { margin: .3rem 0 0; color: #effaff; font-size: clamp(1.35rem, 2vw, 1.7rem); letter-spacing: -.02em; }
+.section-heading h2, .store-history h2 { margin: .3rem 0 0; color: #effaff; font-size: clamp(1.35rem, 2vw, 1.7rem); letter-spacing: -.02em; }
 .section-heading > p { max-width: 410px; margin: 0; color: rgba(219,235,244,.53); font-size: .88rem; line-height: 1.6; text-align: right; }
 .mission-offer { display: grid; grid-template-columns: minmax(240px, .72fr) 1.28fr; min-height: 360px; overflow: hidden; border: 1px solid rgba(80,221,216,.19); border-radius: 8px 26px 26px 26px; background: linear-gradient(110deg, rgba(8,25,41,.98), rgba(12,28,43,.98)); }
-.mission-art { position: relative; min-height: 100%; overflow: hidden; background: radial-gradient(ellipse at 50% 50%, rgba(22,134,153,.23), transparent 52%), linear-gradient(165deg, #0d2940, #0b1729 75%); }
+.mission-art { position: relative; min-height: 100%; overflow: hidden; background: radial-gradient(ellipse at 50% 50%, rgba(22,134,153,.2), transparent 57%), linear-gradient(165deg, #0d2940, #0b1729 75%); }
 .mission-art::before { content: ''; position: absolute; inset: 13% 9%; border: 1px solid rgba(83,204,211,.15); border-radius: 49% 51% 43% 57%; transform: rotate(-22deg); }
-.mission-art::after { content: ''; position: absolute; width: 150px; height: 150px; left: 50%; top: 47%; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #c1f1d8 0, #51c8ba 11%, #23627c 47%, #122b47 72%); box-shadow: -16px 20px 48px rgba(41,177,190,.23), inset -17px -8px 24px rgba(2,12,26,.55); transform: translate(-50%,-50%); }
-.mission-art__planet { position: absolute; z-index: 2; left: calc(50% - 13px); top: calc(47% - 13px); width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #fff2b0, #e0ad56 47%, #874e4a); box-shadow: 0 0 29px rgba(241,197,109,.68); }
-.mission-art__orbit { position: absolute; z-index: 1; left: 50%; top: 47%; width: 240px; height: 90px; border: 1px solid rgba(136,236,220,.62); border-radius: 50%; transform: translate(-50%,-50%) rotate(-27deg); }
-.mission-art__orbit--two { width: 213px; height: 115px; border-color: rgba(148,191,226,.34); transform: translate(-50%,-50%) rotate(54deg); }
-.mission-art__spark { position: absolute; z-index: 3; color: #c9fff0; text-shadow: 0 0 15px #75f5dd; }
-.mission-art__spark--a { top: 22%; right: 19%; font-size: 1.3rem; }
-.mission-art__spark--b { bottom: 24%; left: 21%; font-size: 2rem; }
-.mission-art__label { position: absolute; left: 1.2rem; bottom: 1.1rem; color: rgba(195,231,237,.57); font-size: .64rem; line-height: 1.6; letter-spacing: .1em; }
+.mission-planet { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.mission-particle { fill: #b4fff1; opacity: .12; filter: drop-shadow(0 0 4px rgba(123,245,222,.9)); transform-box: fill-box; transform-origin: center; animation: particle-drift 8s ease-in-out infinite; }
+@keyframes particle-drift { 0%, 100% { opacity: .12; transform: translateY(4px); } 50% { opacity: .9; transform: translateY(-7px); } }
 .mission-copy { padding: clamp(1.35rem, 3vw, 2.3rem); }
 .mission-overline { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .mission-overline > span { color: rgba(205,230,234,.52); font-size: .76rem; }
@@ -388,7 +385,6 @@ onActivated(() => {
 .mission-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.15rem; }
 .mission-actions > div { display: grid; gap: .14rem; }
 .mission-actions strong { color: #9af1de; font-size: 1.65rem; }
-.mission-actions small { color: rgba(219,235,244,.48); font-size: .74rem; }
 .membership-section { padding-top: .1rem; }
 .membership-layout { display: grid; grid-template-columns: minmax(0,.87fr) minmax(0,1.13fr); align-items: stretch; gap: 1rem; }
 .membership-card { position: relative; display: flex; flex-direction: column; min-height: 370px; padding: 1.5rem; border: 1px solid rgba(130,181,205,.16); border-radius: 22px 8px 22px 22px; background: linear-gradient(152deg, rgba(15,34,51,.97), rgba(8,19,32,.98)); }
@@ -398,24 +394,14 @@ onActivated(() => {
 .membership-glyph { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid rgba(105,218,219,.22); border-radius: 12px 12px 12px 3px; background: rgba(53,151,165,.14); color: #99eee3; font-size: 1.25rem; }
 .membership-card--annual .membership-glyph { border-color: rgba(229,189,104,.25); background: rgba(177,127,47,.15); color: #f1d48f; }
 .membership-card h3 { margin: .9rem 0 .4rem; color: #f0f8fc; font-size: 1.28rem; }
-.membership-card > p { min-height: 2.7rem; margin: 0; color: rgba(219,235,244,.57); font-size: .84rem; line-height: 1.6; }
 .membership-price { display: flex; align-items: baseline; gap: .35rem; margin-top: .7rem; }
 .membership-price strong { color: #9af1de; font-size: 2rem; letter-spacing: -.04em; }
 .membership-card--annual .membership-price strong { color: #f3d68e; }
 .membership-price span { color: rgba(219,235,244,.5); font-size: .8rem; }
-.annual-saving { align-self: flex-start; margin-top: .28rem; padding: .25rem .55rem; border: 1px solid rgba(229,189,104,.18); border-radius: 6px; background: rgba(177,127,47,.1); color: #e9d29a; font-size: .72rem; }
 .benefit-list { display: grid; flex: 1; align-content: start; gap: .58rem; padding: 1rem 0 1.1rem; margin: 0; list-style: none; color: rgba(219,235,244,.75); font-size: .82rem; }
 .benefit-list li { display: flex; align-items: flex-start; gap: .48rem; line-height: 1.45; }
 .benefit-list .n-icon { flex: 0 0 auto; margin-top: .03rem; color: #80e5c2; }
 .membership-card--annual .benefit-list .n-icon { color: #e4c779; }
-.free-constellation { display: grid; grid-template-columns: minmax(210px,.7fr) 1.3fr; gap: 2rem; align-items: center; margin-top: 3rem; padding: 1.5rem; border-left: 2px solid rgba(82,201,197,.52); background: linear-gradient(90deg,rgba(15,44,56,.54),rgba(10,26,39,.16)); }
-.free-constellation h2 { font-size: 1.28rem; }
-.free-constellation p { margin: .48rem 0 0; color: rgba(219,235,244,.5); font-size: .79rem; line-height: 1.55; }
-.free-constellation__items { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .8rem 1.3rem; }
-.free-constellation__items article { display: grid; grid-template-columns: 28px 1fr; gap: .13rem .55rem; align-items: center; }
-.free-constellation__items article > span { grid-row: span 2; color: #6ccbc5; font-size: .69rem; }
-.free-constellation__items strong { color: #dff4f5; font-size: .82rem; }
-.free-constellation__items small { color: rgba(219,235,244,.45); font-size: .7rem; }
 .store-history { margin-top: 2.6rem; padding: 1.35rem 1.5rem; border-top: 1px solid rgba(129,181,201,.17); border-bottom: 1px solid rgba(129,181,201,.1); background: rgba(8,20,33,.35); }
 .store-history header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .6rem; }
 .store-history h2 { font-size: 1.22rem; }
@@ -438,7 +424,7 @@ onActivated(() => {
 .checkout-status { color: #dcecf2; font-size: .9rem; line-height: 1.55; }
 .checkout-status--paid { color: #91f0c6; }
 .checkout-status--expired, .checkout-status--failed, .checkout-status--closed { color: #ffd298; }
-@media (max-width: 820px) { .store-hero { grid-template-columns: 1fr; gap: 1.3rem; } .membership-status { min-height: 140px; } .mission-offer { grid-template-columns: minmax(170px,.65fr) 1.35fr; } .membership-layout { grid-template-columns: 1fr 1fr; } .free-constellation { grid-template-columns: 1fr; gap: 1rem; } }
-@media (max-width: 620px) { .store-page { padding-top: 1rem; } .store-hero { border-radius: 22px 22px 22px 6px; } .section-heading { align-items: flex-start; flex-direction: column; gap: .45rem; } .section-heading > p { text-align: left; } .mission-offer { grid-template-columns: 1fr; } .mission-art { min-height: 205px; } .mission-copy { padding: 1.15rem; } .mission-overline { align-items: flex-start; flex-direction: column; } .mission-benefits { grid-template-columns: 1fr; } .membership-layout { grid-template-columns: 1fr; } .membership-card { min-height: 0; } .free-constellation { padding: 1.2rem 1rem; } .free-constellation__items { gap: .75rem .35rem; } .history-list li { grid-template-columns: 12px 1fr; } .history-list li > span:last-child { grid-column: 2; } }
-@media (prefers-reduced-motion: reduce) { .progress-track i { transition: none; } }
+@media (max-width: 820px) { .store-hero { grid-template-columns: 1fr; gap: 1.3rem; } .membership-status { min-height: 140px; } .mission-offer { grid-template-columns: minmax(170px,.65fr) 1.35fr; } .membership-layout { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 620px) { .store-page { padding-top: 1rem; } .store-hero { border-radius: 22px 22px 22px 6px; } .section-heading { align-items: flex-start; flex-direction: column; gap: .45rem; } .section-heading > p { text-align: left; } .mission-offer { grid-template-columns: 1fr; } .mission-art { min-height: 205px; } .mission-copy { padding: 1.15rem; } .mission-overline { align-items: flex-start; flex-direction: column; } .mission-benefits { grid-template-columns: 1fr; } .membership-layout { grid-template-columns: 1fr; } .membership-card { min-height: 0; } .history-list li { grid-template-columns: 12px 1fr; } .history-list li > span:last-child { grid-column: 2; } }
+@media (prefers-reduced-motion: reduce) { .progress-track i { transition: none; } .mission-particle { animation: none; } }
 </style>

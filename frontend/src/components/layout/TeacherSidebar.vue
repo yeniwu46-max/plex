@@ -81,6 +81,8 @@ function toggleCollapsed() {
         :to="item.to"
         class="teacher-nav"
         :class="{ 'teacher-nav--active': item.key === activeKey }"
+        :aria-label="item.label"
+        :title="item.label"
       >
         <span class="teacher-nav__bar" aria-hidden="true" />
         <n-icon :component="item.icon" class="teacher-nav__icon" />
@@ -323,19 +325,41 @@ function toggleCollapsed() {
   padding-inline: 0.5rem;
 }
 
+@media (min-width: 761px) and (max-width: 1100px) {
+  .teacher-sidebar,
+  .teacher-sidebar--collapsed {
+    width: 84px;
+  }
+
+  .teacher-sidebar__brand {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .teacher-sidebar__name,
+  .teacher-nav__copy,
+  .teacher-sidebar__dock {
+    display: none;
+  }
+
+  .teacher-nav {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .teacher-sidebar,
   .teacher-sidebar--collapsed {
     width: 100%;
     min-height: auto;
-    padding: 1rem 1rem 0.75rem;
+    padding: 0.4rem 0.5rem max(0.4rem, env(safe-area-inset-bottom));
     border-right: 0;
     border-bottom: 1px solid rgba(251, 146, 60, 0.12);
   }
 
   .teacher-sidebar__brand {
-    justify-content: center;
-    padding: 0 0 0.9rem;
+    display: none;
   }
 
   .teacher-sidebar__nav {
@@ -343,15 +367,16 @@ function toggleCollapsed() {
     flex-direction: row;
     gap: 0.35rem;
     overflow-x: auto;
-    padding-bottom: 0.35rem;
+    padding-bottom: 0;
   }
 
   .teacher-nav,
   .teacher-sidebar--collapsed .teacher-nav {
-    min-width: 120px;
-    min-height: 54px;
+    min-width: 48px;
+    min-height: 48px;
+    flex: 1 0 48px;
     justify-content: center;
-    padding: 0.55rem 0.75rem;
+    padding: 0.5rem;
   }
 
   .teacher-nav__copy,

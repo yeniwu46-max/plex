@@ -1,4 +1,5 @@
 import { http, type ApiEnvelope } from './http'
+import { resolveApiAssetUrl } from './assetUrl'
 import type { CurrentStudent } from './studentOverview'
 
 export interface UpdateProfilePayload {
@@ -25,10 +26,7 @@ export async function uploadMyAvatar(file: File) {
 
 export function resolveAvatarUrl(url: string | null | undefined, apiBase?: string) {
   if (!url) return ''
-  if (url.startsWith('http') || url.startsWith('data:')) return url
-  if (url.startsWith('/api/')) return url
-  const base = apiBase ?? import.meta.env.VITE_API_BASE_URL ?? '/api'
-  return `${base.replace(/\/$/, '')}${url.startsWith('/') ? url : `/${url}`}`
+  return resolveApiAssetUrl(url, apiBase)
 }
 
 export type { CurrentStudent }

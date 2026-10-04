@@ -1,4 +1,5 @@
 import { formatHttpError, http, type ApiEnvelope } from './http'
+import { resolveApiAssetUrl } from './assetUrl'
 
 export interface ClassSharedFile {
   id: string
@@ -71,12 +72,7 @@ export async function saveClassFileScore(filepath: string, score: number, commen
 
 export function resolveUploadFileUrl(url: string) {
   const trimmed = (url || '').trim()
-  if (!trimmed) return trimmed
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed
-  if (trimmed.startsWith('/api/')) return trimmed
-  const base = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
-  if (trimmed.startsWith('/v1/')) return `${base}${trimmed}`
-  return `${base}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`
+  return resolveApiAssetUrl(trimmed)
 }
 
 /** 将列表里的 file.url 转为 axios 相对 baseURL 的请求路径 */

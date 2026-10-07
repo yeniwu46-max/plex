@@ -74,9 +74,12 @@ def _python_requirements(path: Path, scope: str) -> list[dict]:
                 "installed": False,
             })
             continue
-        match = re.match(r"^([A-Za-z0-9_.-]+)==([^\s;]+)", line)
+        match = re.match(
+            r"^([A-Za-z0-9_.-]+)(?:\[[^\]]+\])?\s*(==|>=|<=|~=|!=|>|<)\s*([^\s;]+)",
+            line,
+        )
         name = match.group(1) if match else line
-        declared_version = match.group(2) if match else None
+        declared_version = match.group(3) if match and match.group(2) == "==" else None
         try:
             installed_version = metadata.version(name)
         except metadata.PackageNotFoundError:

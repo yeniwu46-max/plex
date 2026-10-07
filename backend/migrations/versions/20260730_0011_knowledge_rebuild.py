@@ -86,12 +86,34 @@ def upgrade():
         if 'needs_review' in cols_now and 'ix_problems_needs_review' not in index_names:
             op.create_index('ix_problems_needs_review', 'problems', ['needs_review'])
 
+        if bind.dialect.name == 'mysql' and 'kg_node_id' in cols_now:
+            foreign_keys = sa.inspect(bind).get_foreign_keys('problems')
+            has_node_fk = any(
+                fk.get('referred_table') == 'knowledge_nodes'
+                and 'kg_node_id' in fk.get('constrained_columns', [])
+                for fk in foreign_keys
+            )
+            if not has_node_fk:
+                op.create_foreign_key(
+                    'fk_problems_kg_node_id_knowledge_nodes',
+                    'problems', 'knowledge_nodes', ['kg_node_id'], ['id'],
+                )
+
 
 def downgrade():
     bind = op.get_bind()
     tables = set(sa.inspect(bind).get_table_names())
 
     if 'problems' in tables:
+        if bind.dialect.name == 'mysql':
+            for fk in sa.inspect(bind).get_foreign_keys('problems'):
+                if (
+                    fk.get('referred_table') == 'knowledge_nodes'
+                    and 'kg_node_id' in fk.get('constrained_columns', [])
+                    and fk.get('name')
+                ):
+                    op.drop_constraint(fk['name'], 'problems', type_='foreignkey')
+
         index_names = {idx['name'] for idx in sa.inspect(bind).get_indexes('problems')}
         for name in (
             'ix_problems_needs_review',

@@ -35,6 +35,13 @@ def upgrade():
             'personalized_learning_resources',
             sa.Column('ai_review', sa.JSON(), nullable=True),
         )
+    indexes = {idx['name'] for idx in sa.inspect(op.get_bind()).get_indexes('personalized_learning_resources')}
+    if 'ix_personalized_learning_resources_is_anomaly' not in indexes:
+        op.create_index(
+            'ix_personalized_learning_resources_is_anomaly',
+            'personalized_learning_resources',
+            ['is_anomaly'],
+        )
 
 
 def downgrade():
@@ -43,6 +50,12 @@ def downgrade():
     if 'personalized_learning_resources' not in tables:
         return
     columns = {col['name'] for col in inspector.get_columns('personalized_learning_resources')}
+    indexes = {idx['name'] for idx in inspector.get_indexes('personalized_learning_resources')}
+    if 'ix_personalized_learning_resources_is_anomaly' in indexes:
+        op.drop_index(
+            'ix_personalized_learning_resources_is_anomaly',
+            table_name='personalized_learning_resources',
+        )
     if 'ai_review' in columns:
         op.drop_column('personalized_learning_resources', 'ai_review')
     if 'student_warning' in columns:

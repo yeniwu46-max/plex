@@ -2,6 +2,14 @@
 
 PLEX Universe 是一个面向编程学习场景的个性化学习平台，项目代号 A3。它把学生端、教师端和管理端拆成清晰的三类工作台：学生完成每日委托和试炼，教师观察班级学习状态并发布试炼，管理员维护平台策略与系统配置。
 
+## 体验与下载
+
+- [Android APK 与三分钟演示视频](https://github.com/yeniwu46-max/plex/releases/tag/v1.0.0)：下载 `PLEX-1.0.0.apk` 安装体验。
+- [网页版](https://106.15.77.40/)：手机、平板和桌面浏览器均可访问。
+- [小 E 数字原型资料](https://github.com/yeniwu46-max/plex/releases/tag/hardware-2026-10-07)：完整模型压缩包；[设计源码与使用说明](hardware-prototypes/README.md) 在仓库内。
+
+APK 连接线上服务，需要联网。小 E 模型为数字原型，尚未完成实物验证。
+
 当前仓库采用前后端分离架构：
 
 - 前端：Vue 3 + Vite + Naive UI + Pinia + Axios

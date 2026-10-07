@@ -121,18 +121,29 @@ def run(output: Path) -> dict:
                 ),
             },
         ), 201))
-        pending_resource = next(
+        pending_resource = next((
             item for item in task['resources']
             if item['review_status'] == 'pending_review'
-        )
+        ), None)
+        auto_approved_resource = next((
+            item for item in task['resources']
+            if item['review_status'] == 'approved'
+        ), None)
+        if pending_resource is None and auto_approved_resource is None:
+            raise RuntimeError(f'round {index}: no generated resource available for review')
+        resource_key = (pending_resource or auto_approved_resource)['knowledge_key']
         visible_before_review = require(client.get(
-            f'/api/v1/student/personalized-resources?knowledge_key={knowledge_key}',
+            f'/api/v1/student/personalized-resources?knowledge_key={resource_key}',
             headers=student_headers,
         ))
-        if pending_resource['id'] in {
+        if pending_resource is not None and pending_resource['id'] in {
             item['id'] for item in visible_before_review['items']
         }:
             raise RuntimeError('pending resource leaked to student listing')
+        if pending_resource is None and auto_approved_resource['id'] not in {
+            item['id'] for item in visible_before_review['items']
+        }:
+            raise RuntimeError('auto-approved resource missing from student listing')
 
         require(client.post(
             '/api/v1/student/code-trial/runs',
@@ -238,16 +249,22 @@ def run(output: Path) -> dict:
         if after_reject['profile_version'] != version_before_reject:
             raise RuntimeError(f'round {index}: reject changed profile version')
 
-        approved, timings['teacher_review_ms'] = timed(lambda: require(client.put(
-            f"/api/v1/teacher/personalized-resources/{pending_resource['id']}/review",
-            headers=teacher_headers,
-            json={
-                'review_status': 'approved',
-                'reason': f'反馈闭环第 {index} 轮教师核验通过',
-            },
-        )))
+        if pending_resource is not None:
+            approved, timings['teacher_review_ms'] = timed(lambda: require(client.put(
+                f"/api/v1/teacher/personalized-resources/{pending_resource['id']}/review",
+                headers=teacher_headers,
+                json={
+                    'review_status': 'approved',
+                    'reason': f'反馈闭环第 {index} 轮教师核验通过',
+                },
+            )))
+            review_mode = 'teacher_review'
+        else:
+            approved = auto_approved_resource
+            timings['teacher_review_ms'] = 0
+            review_mode = 'auto_approved'
         visible_after_review = require(client.get(
-            f'/api/v1/student/personalized-resources?knowledge_key={knowledge_key}',
+            f'/api/v1/student/personalized-resources?knowledge_key={resource_key}',
             headers=student_headers,
         ))
         history = require(client.get(
@@ -272,6 +289,7 @@ def run(output: Path) -> dict:
             'suggestion_rejected_id': pending['items'][0]['id'],
             'task_id': task['task_id'],
             'task_backend': task['backend'],
+            'review_mode': review_mode,
             'task_persisted': any(
                 item['task_id'] == task['task_id'] for item in history['items']
             ),

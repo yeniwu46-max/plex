@@ -8,8 +8,7 @@ from app.services.code_execution import CodeExecutionService
 
 class CodeExecutionServiceTests(unittest.TestCase):
     def setUp(self):
-        self.app = create_app()
-        self.app.config['TESTING'] = True
+        self.app = create_app('testing')
         self.ctx = self.app.app_context()
         self.ctx.push()
 

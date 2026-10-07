@@ -1,0 +1,56 @@
+{
+  "artifact": "XiaoE_v01_160mm_print-study.stl",
+  "units": "mm",
+  "target_height_mm": 160.0,
+  "actual_dimensions_mm": [
+    100.29508972167969,
+    91.52930450439453,
+    159.99998474121094
+  ],
+  "vertices": 846596,
+  "triangles": 1693200,
+  "connected_components": 1,
+  "components_before_cleanup": 3,
+  "removed_voxel_artifacts": [
+    {
+      "vertices": 8,
+      "bounds_mm": [
+        [
+          15.243953704833984,
+          8.045156478881836,
+          68.04072570800781
+        ],
+        [
+          15.37219524383545,
+          8.156649589538574,
+          68.16084289550781
+        ]
+      ],
+      "reason": "Tiny isolated voxel remeshing artifact, below 0.9 mm diagonal."
+    },
+    {
+      "vertices": 8,
+      "bounds_mm": [
+        [
+          -15.372270584106445,
+          8.045157432556152,
+          68.04072570800781
+        ],
+        [
+          -15.243948936462402,
+          8.156684875488281,
+          68.16117095947266
+        ]
+      ],
+      "reason": "Tiny isolated voxel remeshing artifact, below 0.9 mm diagonal."
+    }
+  ],
+  "component_vertex_counts": [
+    846596
+  ],
+  "non_manifold_edges": 0,
+  "signed_volume_mm3": 441021.4785036884,
+  "voxel_union_mm": 0.3,
+  "status": "Digital geometry checked; machine/material/support/physical printing NOT validated.",
+  "source_parts": 50
+}

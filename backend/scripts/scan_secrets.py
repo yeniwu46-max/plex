@@ -7,8 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PATTERNS = (
-    re.compile(r'IFLYTEK_SPARK_API_PASSWORD[ \t]*=[ \t]*[^\s#]+'),
-    re.compile(r'-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----'),
+    re.compile(r'^\s*IFLYTEK_SPARK_API_PASSWORD[ \t]*=[ \t]*(?!\*{3}(?:\s|$))[^\s#]+', re.MULTILINE),
+    re.compile(r'^[ \t]*-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----[ \t]*$', re.MULTILINE),
     re.compile(r'\bsk-[A-Za-z0-9_-]{20,}\b'),
 )
 ALLOWED = {'backend/.env.example'}

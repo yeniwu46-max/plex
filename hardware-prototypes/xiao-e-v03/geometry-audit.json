@@ -1,0 +1,22 @@
+{
+  "parameters": {
+    "shell_wall": 3.0,
+    "bearing_bore": 16.2,
+    "shaft_clearance": 5.2,
+    "m3_clearance": 3.4,
+    "m3_nut_af": 5.8,
+    "shell_seam_gap": 0.4,
+    "pitch_axis_z": 174.0,
+    "head_center_z": 178.0,
+    "status": "GENERIC MANUAL ASSEMBLY TRIAL / NOT MOTOR-READY / MACHINE PROFILE UNKNOWN"
+  },
+  "part_types": 31,
+  "print_files_passed": true,
+  "neutral_intersections": [],
+  "reference_hardware_intersections": [],
+  "reference_hardware_pair_intersections": [],
+  "sampled_motion_intersections": [],
+  "head_pose_samples": 171,
+  "shoulder_pose_samples_each": 13,
+  "scope": "Mesh geometry and rigid-part intersections at 5 degree samples, including simplified bearings, shafts, collars and retainer screws. No physical hardware fit, continuous collision, strength, thermal, cable or printer validation."
+}

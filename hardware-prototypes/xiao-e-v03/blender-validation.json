@@ -1,0 +1,8 @@
+{
+  "result": "PASS",
+  "assembled_print_parts": 25,
+  "units": "millimeters",
+  "neutral_mesh_placements": "match CAD export within 0.001 mm",
+  "four_joint_controls": "evaluated correctly",
+  "saved_file_mutated": false
+}

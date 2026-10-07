@@ -1,0 +1,320 @@
+{
+  "result": "PASS",
+  "stl_files": 31,
+  "three_mf_files": 31,
+  "units": "mm; 3MF explicitly declares millimeters, STL requires mm on import",
+  "checks": "Reopened: one connected solid, watertight, consistent winding, positive volume, minimum Z zero, XML units and bounds/volume agreement. All modeled collision lists empty.",
+  "not_checked": "Printer profile, actual slicing, support removal, real hardware fit, continuous motion, stiffness, durability, electronics or safety certification.",
+  "parts": [
+    {
+      "id": "01_base_tray",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        124.0,
+        124.0,
+        26.0
+      ],
+      "stl_sha256": "a850bdb9e980ef44044a94a01d0c77168198ff6b772238e0891b407013735724"
+    },
+    {
+      "id": "02_base_lid",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        124.0,
+        124.0,
+        5.799999237060547
+      ],
+      "stl_sha256": "f79d9d57303aaf494d92bc49b4ee160e03fd5604c11328b0cacd36ce4a999ce6"
+    },
+    {
+      "id": "03_electronics_plate",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        90.0,
+        54.0,
+        2.6000003814697266
+      ],
+      "stl_sha256": "20171727a21379e39d56699b21b9f4229b6993655e0750c0ce7f0d88a53c3df9"
+    },
+    {
+      "id": "04_leg_L",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        30.0,
+        30.0,
+        26.0
+      ],
+      "stl_sha256": "81353d65996ce2aad13d8c87141b647f8709d7ecba7329766e41e1839717c77f"
+    },
+    {
+      "id": "04_leg_R",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        30.0,
+        30.0,
+        26.0
+      ],
+      "stl_sha256": "207afbb94f558583fe9bc391cc737d0bcdf648d4938682b038b5060624973ea4"
+    },
+    {
+      "id": "05_torso_front",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        78.0,
+        66.0,
+        30.799999237060547
+      ],
+      "stl_sha256": "1a5a6889060f91b937452436bec5d03144aa841ec9867b68b1c66ae5db079c1f"
+    },
+    {
+      "id": "06_torso_back",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        78.0,
+        66.0,
+        30.799999237060547
+      ],
+      "stl_sha256": "c472440db04172e84974fc3c094d6980feca0ab964cb29860145d1396c62ff5f"
+    },
+    {
+      "id": "07_load_chassis",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        70.0,
+        38.0,
+        54.0
+      ],
+      "stl_sha256": "8f02c5990a8b4c1e8a632cbd5ee8662d1e456e22c71a73e3b04a4e0bac4fc9f3"
+    },
+    {
+      "id": "08_yaw_fork",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        96.0,
+        84.19999694824219,
+        24.0
+      ],
+      "stl_sha256": "e3918afa35c39c6a637060b0991a084f7cffa88bc8a03f064390a57ab0954c19"
+    },
+    {
+      "id": "09_head_cradle",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        76.0,
+        26.0,
+        44.5
+      ],
+      "stl_sha256": "4058d4c5e489882ed61762c907a087bfe3f10c110bac6d564e958542af8b0dfe"
+    },
+    {
+      "id": "10_head_front",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        120.0,
+        89.98414611816406,
+        43.79999923706055
+      ],
+      "stl_sha256": "2f92dbc741485b1706f45c8e73a9d4c94e9428de3c1d9ea8b6e441c8b936e5ea"
+    },
+    {
+      "id": "11_head_back",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        120.0,
+        99.48414611816406,
+        43.79999923706055
+      ],
+      "stl_sha256": "caf15525c4c7e346660bebdc14f60d7cf7418c11bf6dc0b18a3f2b0ae7416526"
+    },
+    {
+      "id": "12_open_face_bezel",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        101.0,
+        79.0,
+        4.0
+      ],
+      "stl_sha256": "335b719cb098ae20990c7653a0baaa2800e39cf529e534e08b33a0d373921cd4"
+    },
+    {
+      "id": "13_screen_carrier",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        100.0,
+        78.0,
+        4.0
+      ],
+      "stl_sha256": "b6bd20f8a58df1cc28b93df1f935a3f8488b71553d61e284e1ca05a3e26260e2"
+    },
+    {
+      "id": "14_pitch_retainer_L",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        38.0,
+        22.0,
+        2.0
+      ],
+      "stl_sha256": "b84017012a6d1a29fb4c6a745a592ff332593a13f21a9427d29c0eb7671aca98"
+    },
+    {
+      "id": "14_pitch_retainer_R",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        38.0,
+        22.0,
+        2.0
+      ],
+      "stl_sha256": "b84017012a6d1a29fb4c6a745a592ff332593a13f21a9427d29c0eb7671aca98"
+    },
+    {
+      "id": "15_shoulder_fork_L",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        31.0,
+        28.0,
+        40.0
+      ],
+      "stl_sha256": "d253e3135130547b5c271eac8e83638da8488e3006fc5fda5fd40f81b1f373d8"
+    },
+    {
+      "id": "16_arm_L",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        19.0,
+        14.0,
+        53.4803466796875
+      ],
+      "stl_sha256": "ec35e93817ec4de101107be73c2e7c8e1f3c89c5a80c39dd7d6436a789cdafd1"
+    },
+    {
+      "id": "17_shoulder_retainer_L_front",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        22.0,
+        38.0,
+        2.0
+      ],
+      "stl_sha256": "8d2dd803a84785b98aca31ac6854c61eb5b83a5a3fc740b2eaddfe694cd4e1af"
+    },
+    {
+      "id": "17_shoulder_retainer_L_back",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        22.0,
+        38.0,
+        2.0
+      ],
+      "stl_sha256": "8d2dd803a84785b98aca31ac6854c61eb5b83a5a3fc740b2eaddfe694cd4e1af"
+    },
+    {
+      "id": "15_shoulder_fork_R",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        31.0,
+        28.0,
+        40.0
+      ],
+      "stl_sha256": "a2b9e14be9e05a91f1ce73856d4a1b8231aeb931791d77e219db7b6585c7d2ce"
+    },
+    {
+      "id": "16_arm_R",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        19.0,
+        14.0,
+        53.4803466796875
+      ],
+      "stl_sha256": "ec35e93817ec4de101107be73c2e7c8e1f3c89c5a80c39dd7d6436a789cdafd1"
+    },
+    {
+      "id": "17_shoulder_retainer_R_front",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        22.0,
+        38.0,
+        2.0
+      ],
+      "stl_sha256": "8d2dd803a84785b98aca31ac6854c61eb5b83a5a3fc740b2eaddfe694cd4e1af"
+    },
+    {
+      "id": "17_shoulder_retainer_R_back",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        22.0,
+        38.0,
+        2.0
+      ],
+      "stl_sha256": "8d2dd803a84785b98aca31ac6854c61eb5b83a5a3fc740b2eaddfe694cd4e1af"
+    },
+    {
+      "id": "18_cape",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        96.0,
+        49.0,
+        11.0
+      ],
+      "stl_sha256": "fbb0e3408bd8618790ef3ce5a917bdb13326ecdaa87bafadbad36556ce923056"
+    },
+    {
+      "id": "19_motor_adapter_template",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        48.0,
+        46.0,
+        4.0
+      ],
+      "stl_sha256": "aff1cb3e9c4b6b37801f0e2b5ce9df92f7963cad452235a4c22ce183b150c8df"
+    },
+    {
+      "id": "20_screen_spacer_3mm",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        8.0,
+        8.0,
+        3.0
+      ],
+      "stl_sha256": "f19ab25a450690d1169eb412ef79c7addcecd30a426e440f686ac04a031ed460"
+    },
+    {
+      "id": "20_screen_spacer_6mm",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        8.0,
+        8.0,
+        6.0
+      ],
+      "stl_sha256": "b4d0f36b0e2e80a1e8ac4abac922cb59381de7f28076912567b715feb5e2642d"
+    },
+    {
+      "id": "20_screen_spacer_9mm",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        8.0,
+        8.0,
+        9.0
+      ],
+      "stl_sha256": "81ec013f01841adbec565cca30c2813d5702254ad6d8f285b147920942eef11a"
+    },
+    {
+      "id": "21_bearing_fit_coupon",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        106.0,
+        40.0,
+        6.0
+      ],
+      "stl_sha256": "8d08026c92d815fe9d788e329b3f0324bbb668cbdc0edec4465c9c39fa191625"
+    },
+    {
+      "id": "22_shaft_fit_coupon",
+      "stl_and_3mf": "PASS",
+      "dimensions_mm": [
+        72.0,
+        30.0,
+        6.0
+      ],
+      "stl_sha256": "65f66c141adcfc8834301b7336c4fee8038e36419c7ae1108ad1dc9881912dd0"
+    }
+  ]
+}

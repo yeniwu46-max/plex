@@ -1,0 +1,17 @@
+{
+  "file": "XiaoE_v01_160mm_print-study.stl",
+  "file_bytes": 84660084,
+  "triangle_count": 1693200,
+  "unique_vertices": 846596,
+  "dimensions_mm": [
+    100.29508972167969,
+    91.52930450439453,
+    159.99998474121094
+  ],
+  "z_min_mm": 0.0,
+  "edges_not_shared_by_exactly_two_triangles": 0,
+  "zero_area_triangles": 0,
+  "finite_coordinates": true,
+  "binary_stl_size_valid": true,
+  "passed": true
+}

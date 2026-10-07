@@ -1,0 +1,434 @@
+[
+  {
+    "id": "625_yaw_96.6",
+    "group": "fixed",
+    "label": "625 轴承 / 购买件",
+    "assembled": true
+  },
+  {
+    "id": "625_yaw_107.4",
+    "group": "fixed",
+    "label": "625 轴承 / 购买件",
+    "assembled": true
+  },
+  {
+    "id": "yaw_shaft_5x38",
+    "group": "yaw",
+    "label": "5×38 钢轴 / 下料参考",
+    "assembled": true
+  },
+  {
+    "id": "yaw_collar",
+    "group": "yaw",
+    "label": "5 mm 内径轴环 / 示意包络",
+    "assembled": true
+  },
+  {
+    "id": "yaw_thrust_shim",
+    "group": "yaw",
+    "label": "轴承内圈垫片 / 厚度待实配",
+    "assembled": true
+  },
+  {
+    "id": "pitch_shaft_5x116",
+    "group": "head",
+    "label": "5×116 钢轴 / 下料参考",
+    "assembled": true
+  },
+  {
+    "id": "625_pitch_L",
+    "group": "yaw",
+    "label": "625 轴承 / 购买件",
+    "assembled": true
+  },
+  {
+    "id": "pitch_collar_L",
+    "group": "head",
+    "label": "5 mm 内径轴环 / 示意包络",
+    "assembled": true
+  },
+  {
+    "id": "pitch_M3x8_L_160",
+    "group": "yaw",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "pitch_M3x8_L_188",
+    "group": "yaw",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_shaft_5x44_L",
+    "group": "arm_L",
+    "label": "5×44 钢轴 / 下料参考",
+    "assembled": true
+  },
+  {
+    "id": "625_shoulder_L_front",
+    "group": "fixed",
+    "label": "625 轴承 / 购买件",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_collar_L_front",
+    "group": "arm_L",
+    "label": "5 mm 内径轴环 / 示意包络",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_M3x8_L_front_74",
+    "group": "fixed",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_M3x8_L_front_102",
+    "group": "fixed",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "625_shoulder_L_back",
+    "group": "fixed",
+    "label": "625 轴承 / 购买件",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_collar_L_back",
+    "group": "arm_L",
+    "label": "5 mm 内径轴环 / 示意包络",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_M3x8_L_back_74",
+    "group": "fixed",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_M3x8_L_back_102",
+    "group": "fixed",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "625_pitch_R",
+    "group": "yaw",
+    "label": "625 轴承 / 购买件",
+    "assembled": true
+  },
+  {
+    "id": "pitch_collar_R",
+    "group": "head",
+    "label": "5 mm 内径轴环 / 示意包络",
+    "assembled": true
+  },
+  {
+    "id": "pitch_M3x8_R_160",
+    "group": "yaw",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "pitch_M3x8_R_188",
+    "group": "yaw",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_shaft_5x44_R",
+    "group": "arm_R",
+    "label": "5×44 钢轴 / 下料参考",
+    "assembled": true
+  },
+  {
+    "id": "625_shoulder_R_front",
+    "group": "fixed",
+    "label": "625 轴承 / 购买件",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_collar_R_front",
+    "group": "arm_R",
+    "label": "5 mm 内径轴环 / 示意包络",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_M3x8_R_front_74",
+    "group": "fixed",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_M3x8_R_front_102",
+    "group": "fixed",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "625_shoulder_R_back",
+    "group": "fixed",
+    "label": "625 轴承 / 购买件",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_collar_R_back",
+    "group": "arm_R",
+    "label": "5 mm 内径轴环 / 示意包络",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_M3x8_R_back_74",
+    "group": "fixed",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_M3x8_R_back_102",
+    "group": "fixed",
+    "label": "M3×8 低头螺钉 / 外形示意",
+    "assembled": true
+  },
+  {
+    "id": "screen_M3x20_-44_150",
+    "group": "head",
+    "label": "M3×20 低头面框螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "screen_nut_-44_150",
+    "group": "head",
+    "label": "M3 屏幕托架螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "screen_M3x20_-44_206",
+    "group": "head",
+    "label": "M3×20 低头面框螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "screen_nut_-44_206",
+    "group": "head",
+    "label": "M3 屏幕托架螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "screen_M3x20_44_150",
+    "group": "head",
+    "label": "M3×20 低头面框螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "screen_nut_44_150",
+    "group": "head",
+    "label": "M3 屏幕托架螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "screen_M3x20_44_206",
+    "group": "head",
+    "label": "M3×20 低头面框螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "screen_nut_44_206",
+    "group": "head",
+    "label": "M3 屏幕托架螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "body_M3x45_-28_70",
+    "group": "fixed",
+    "label": "M3×45 躯干贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "body_nut_-28_70",
+    "group": "fixed",
+    "label": "M3 躯干螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "body_M3x45_-28_107.5",
+    "group": "fixed",
+    "label": "M3×45 躯干贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "body_nut_-28_107.5",
+    "group": "fixed",
+    "label": "M3 躯干螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "body_M3x45_28_70",
+    "group": "fixed",
+    "label": "M3×45 躯干贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "body_nut_28_70",
+    "group": "fixed",
+    "label": "M3 躯干螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "body_M3x45_28_107.5",
+    "group": "fixed",
+    "label": "M3×45 躯干贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "body_nut_28_107.5",
+    "group": "fixed",
+    "label": "M3 躯干螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_mount_M3x14_L_74",
+    "group": "fixed",
+    "label": "M3×14 肩叉固定螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_mount_nut_L_74",
+    "group": "fixed",
+    "label": "M3 肩叉螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_mount_M3x14_L_102",
+    "group": "fixed",
+    "label": "M3×14 肩叉固定螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_mount_nut_L_102",
+    "group": "fixed",
+    "label": "M3 肩叉螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_mount_M3x14_R_74",
+    "group": "fixed",
+    "label": "M3×14 肩叉固定螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_mount_nut_R_74",
+    "group": "fixed",
+    "label": "M3 肩叉螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_mount_M3x14_R_102",
+    "group": "fixed",
+    "label": "M3×14 肩叉固定螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "shoulder_mount_nut_R_102",
+    "group": "fixed",
+    "label": "M3 肩叉螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_M3x40_-29_-10",
+    "group": "fixed",
+    "label": "M3×40 腿部贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_nut_-29_-10",
+    "group": "fixed",
+    "label": "M3 腿部螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_M3x40_-29_10",
+    "group": "fixed",
+    "label": "M3×40 腿部贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_nut_-29_10",
+    "group": "fixed",
+    "label": "M3 腿部螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_M3x40_-9_-10",
+    "group": "fixed",
+    "label": "M3×40 腿部贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_nut_-9_-10",
+    "group": "fixed",
+    "label": "M3 腿部螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_M3x40_-9_10",
+    "group": "fixed",
+    "label": "M3×40 腿部贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_nut_-9_10",
+    "group": "fixed",
+    "label": "M3 腿部螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_M3x40_9_-10",
+    "group": "fixed",
+    "label": "M3×40 腿部贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_nut_9_-10",
+    "group": "fixed",
+    "label": "M3 腿部螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_M3x40_9_10",
+    "group": "fixed",
+    "label": "M3×40 腿部贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_nut_9_10",
+    "group": "fixed",
+    "label": "M3 腿部螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_M3x40_29_-10",
+    "group": "fixed",
+    "label": "M3×40 腿部贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_nut_29_-10",
+    "group": "fixed",
+    "label": "M3 腿部螺母 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_M3x40_29_10",
+    "group": "fixed",
+    "label": "M3×40 腿部贯穿螺钉 / 示意",
+    "assembled": true
+  },
+  {
+    "id": "leg_nut_29_10",
+    "group": "fixed",
+    "label": "M3 腿部螺母 / 示意",
+    "assembled": true
+  }
+]

@@ -1,0 +1,1273 @@
+[
+  {
+    "id": "01_base_tray",
+    "label": "底座电子仓",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "底面向下；通用电源开口 14×9，后续需匹配接头。",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      124.0,
+      124.0,
+      26.0
+    ],
+    "volume_mm3": 71671.57823735818,
+    "triangles": 5048,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -0.0
+    ],
+    "assembly_bounds": [
+      [
+        -62.0,
+        -62.0,
+        0.0
+      ],
+      [
+        62.0,
+        62.0,
+        26.0
+      ]
+    ]
+  },
+  {
+    "id": "02_base_lid",
+    "label": "底座上盖",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "定位圈径向间隙约 0.5 mm；四角 M3 固定。",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      124.0,
+      124.0,
+      5.799999237060547
+    ],
+    "volume_mm3": 47686.941271087584,
+    "triangles": 5160,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -24.200000762939453
+    ],
+    "assembly_bounds": [
+      [
+        -62.0,
+        -62.0,
+        24.200000762939453
+      ],
+      [
+        62.0,
+        62.0,
+        30.0
+      ]
+    ]
+  },
+  {
+    "id": "03_electronics_plate",
+    "label": "通用电子安装板",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "扎带 / M3 长孔固定；需按选定电路板增补绝缘支座。",
+    "color": "teal",
+    "assembled": true,
+    "dimensions_mm": [
+      90.0,
+      54.0,
+      2.6000003814697266
+    ],
+    "volume_mm3": 11589.606354893627,
+    "triangles": 3388,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -6.0
+    ],
+    "assembly_bounds": [
+      [
+        -45.0,
+        -27.0,
+        6.0
+      ],
+      [
+        45.0,
+        27.0,
+        8.600000381469727
+      ]
+    ]
+  },
+  {
+    "id": "04_leg_L",
+    "label": "固定空心腿 L",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "M3 贯穿螺栓；中孔可走线；本版不作为运动关节。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      30.0,
+      30.0,
+      26.0
+    ],
+    "volume_mm3": 10067.14544681724,
+    "triangles": 2470,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      19.0,
+      -0.0,
+      -30.0
+    ],
+    "assembly_bounds": [
+      [
+        -34.0,
+        -15.0,
+        30.0
+      ],
+      [
+        -4.0,
+        15.0,
+        56.0
+      ]
+    ]
+  },
+  {
+    "id": "04_leg_R",
+    "label": "固定空心腿 R",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "M3 贯穿螺栓；中孔可走线；本版不作为运动关节。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      30.0,
+      30.0,
+      26.0
+    ],
+    "volume_mm3": 10067.145445091415,
+    "triangles": 2470,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -19.0,
+      -0.0,
+      -30.0
+    ],
+    "assembly_bounds": [
+      [
+        4.0,
+        -15.0,
+        30.0
+      ],
+      [
+        34.0,
+        15.0,
+        56.0
+      ]
+    ]
+  },
+  {
+    "id": "05_torso_front",
+    "label": "躯干前壳",
+    "group": "fixed",
+    "orientation": [
+      90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "开口面放置；根据切片预览添加可拆支撑。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      78.0,
+      66.0,
+      30.799999997019768
+    ],
+    "volume_mm3": 25530.517054321066,
+    "triangles": 5722,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      83.0,
+      31.0
+    ],
+    "assembly_bounds": [
+      [
+        -39.0,
+        -31.0,
+        50.0
+      ],
+      [
+        39.0,
+        -0.20000000298023224,
+        116.0
+      ]
+    ]
+  },
+  {
+    "id": "06_torso_back",
+    "label": "躯干后壳",
+    "group": "fixed",
+    "orientation": [
+      -90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "后方披风螺母从内侧装入后合壳。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      78.0,
+      66.0,
+      30.799999997019768
+    ],
+    "volume_mm3": 25433.331756480085,
+    "triangles": 7320,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -83.0,
+      31.0
+    ],
+    "assembly_bounds": [
+      [
+        -39.0,
+        0.20000000298023224,
+        50.0
+      ],
+      [
+        39.0,
+        31.0,
+        116.0
+      ]
+    ]
+  },
+  {
+    "id": "07_load_chassis",
+    "label": "承重骨架与转头轴承座",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "625 轴承位 16.20；上下轴承组合；打印配合试片后再决定孔径。",
+    "color": "teal",
+    "assembled": true,
+    "dimensions_mm": [
+      70.0,
+      38.0,
+      54.0
+    ],
+    "volume_mm3": 40222.51684368333,
+    "triangles": 6740,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -56.0
+    ],
+    "assembly_bounds": [
+      [
+        -35.0,
+        -19.0,
+        56.0
+      ],
+      [
+        35.0,
+        19.0,
+        110.0
+      ]
+    ]
+  },
+  {
+    "id": "08_yaw_fork",
+    "label": "转头平台与点头 U 架",
+    "group": "yaw",
+    "orientation": [
+      90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "5 mm 钢轴夹紧；U 架两侧装 625 轴承；姿态范围仍须台架验证。",
+    "color": "teal",
+    "assembled": true,
+    "dimensions_mm": [
+      96.0,
+      84.19999694824219,
+      24.0
+    ],
+    "volume_mm3": 34019.90172244478,
+    "triangles": 4426,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      152.9000015258789,
+      12.0
+    ],
+    "assembly_bounds": [
+      [
+        -48.0,
+        -12.0,
+        110.80000305175781
+      ],
+      [
+        48.0,
+        12.0,
+        195.0
+      ]
+    ]
+  },
+  {
+    "id": "09_head_cradle",
+    "label": "头部承重托架",
+    "group": "head",
+    "orientation": [
+      180,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "倒置平放；5 mm 横轴与夹紧螺栓；显示屏不承受头部重量。",
+    "color": "teal",
+    "assembled": true,
+    "dimensions_mm": [
+      76.0,
+      26.0,
+      44.5
+    ],
+    "volume_mm3": 22249.32322276362,
+    "triangles": 3716,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      208.0
+    ],
+    "assembly_bounds": [
+      [
+        -38.0,
+        -13.0,
+        163.5
+      ],
+      [
+        38.0,
+        13.0,
+        208.0
+      ]
+    ]
+  },
+  {
+    "id": "10_head_front",
+    "label": "空心头壳前半",
+    "group": "head",
+    "orientation": [
+      90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "无实心面罩、无眼睛；后续以窗口和内部空间校核实际屏幕。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      120.0,
+      89.98414611816406,
+      43.79999999701977
+    ],
+    "volume_mm3": 61647.052370508994,
+    "triangles": 10584,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      180.00792694091797,
+      44.0
+    ],
+    "assembly_bounds": [
+      [
+        -60.0,
+        -44.0,
+        135.01585388183594
+      ],
+      [
+        60.0,
+        -0.20000000298023224,
+        225.0
+      ]
+    ]
+  },
+  {
+    "id": "11_head_back",
+    "label": "空心头壳后半",
+    "group": "head",
+    "orientation": [
+      -90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "螺钉维护后盖；有通风孔；装入 M3 螺母后合壳。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      120.0,
+      99.48414611816406,
+      43.79999999701977
+    ],
+    "volume_mm3": 65092.23595891083,
+    "triangles": 9626,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -184.75792694091797,
+      44.0
+    ],
+    "assembly_bounds": [
+      [
+        -60.0,
+        0.20000000298023224,
+        135.01585388183594
+      ],
+      [
+        60.0,
+        44.0,
+        234.5
+      ]
+    ]
+  },
+  {
+    "id": "12_open_face_bezel",
+    "label": "开窗面框",
+    "group": "head",
+    "orientation": [
+      -90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "窗口 62×47；这是通用试样窗口，不保证适配未选定的屏幕。",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      101.0,
+      79.0,
+      4.0
+    ],
+    "volume_mm3": 19393.86205266903,
+    "triangles": 2488,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -178.0,
+      -44.0
+    ],
+    "assembly_bounds": [
+      [
+        -50.5,
+        -48.0,
+        138.5
+      ],
+      [
+        50.5,
+        -44.0,
+        217.5
+      ]
+    ]
+  },
+  {
+    "id": "13_screen_carrier",
+    "label": "独立屏幕承托框",
+    "group": "head",
+    "orientation": [
+      -90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "由 M3 螺杆、螺母及软垫调节深度；真实显示模块不可导出打印。",
+    "color": "teal",
+    "assembled": true,
+    "dimensions_mm": [
+      100.0,
+      78.0,
+      4.0
+    ],
+    "volume_mm3": 19083.242390275933,
+    "triangles": 1464,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -178.0,
+      -30.0
+    ],
+    "assembly_bounds": [
+      [
+        -50.0,
+        -34.0,
+        139.0
+      ],
+      [
+        50.0,
+        -30.0,
+        217.0
+      ]
+    ]
+  },
+  {
+    "id": "14_pitch_retainer_L",
+    "label": "点头轴承压盖 L",
+    "group": "yaw",
+    "orientation": [
+      0,
+      90,
+      0
+    ],
+    "quantity": 1,
+    "notes": "",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      38.0,
+      22.0,
+      2.0
+    ],
+    "volume_mm3": 1445.9802686070714,
+    "triangles": 792,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -174.0,
+      -0.0,
+      -48.0
+    ],
+    "assembly_bounds": [
+      [
+        -50.0,
+        -11.0,
+        155.0
+      ],
+      [
+        -48.0,
+        11.0,
+        193.0
+      ]
+    ]
+  },
+  {
+    "id": "14_pitch_retainer_R",
+    "label": "点头轴承压盖 R",
+    "group": "yaw",
+    "orientation": [
+      0,
+      90,
+      0
+    ],
+    "quantity": 1,
+    "notes": "",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      38.0,
+      22.0,
+      2.0
+    ],
+    "volume_mm3": 1445.98026860707,
+    "triangles": 792,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -174.0,
+      -0.0,
+      50.0
+    ],
+    "assembly_bounds": [
+      [
+        48.0,
+        -11.0,
+        155.0
+      ],
+      [
+        50.0,
+        11.0,
+        193.0
+      ]
+    ]
+  },
+  {
+    "id": "15_shoulder_fork_L",
+    "label": "肩部固定叉架 L",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "两侧 625 轴承承托 5 mm 肩轴；接口留给后续电机转接。",
+    "color": "teal",
+    "assembled": true,
+    "dimensions_mm": [
+      31.0,
+      28.0,
+      40.0
+    ],
+    "volume_mm3": 15361.254978378296,
+    "triangles": 3252,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      48.5,
+      -0.0,
+      -68.0
+    ],
+    "assembly_bounds": [
+      [
+        -64.0,
+        -14.0,
+        68.0
+      ],
+      [
+        -33.0,
+        14.0,
+        108.0
+      ]
+    ]
+  },
+  {
+    "id": "16_arm_L",
+    "label": "空心活动臂 L",
+    "group": "arm_L",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "5 mm 钢轴夹紧；本版肘腕固定；使用动作范围试验，不安装未知舵机。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      19.0,
+      14.0,
+      53.4803466796875
+    ],
+    "volume_mm3": 8107.376313945555,
+    "triangles": 1592,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      51.0,
+      -0.0,
+      -44.0
+    ],
+    "assembly_bounds": [
+      [
+        -60.5,
+        -7.0,
+        44.0
+      ],
+      [
+        -41.5,
+        7.0,
+        97.4803466796875
+      ]
+    ]
+  },
+  {
+    "id": "17_shoulder_retainer_L_front",
+    "label": "肩部轴承压盖 L front",
+    "group": "fixed",
+    "orientation": [
+      90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      22.0,
+      38.0,
+      2.0
+    ],
+    "volume_mm3": 1445.980365976342,
+    "triangles": 792,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      51.0,
+      88.0,
+      16.0
+    ],
+    "assembly_bounds": [
+      [
+        -62.0,
+        -16.0,
+        69.0
+      ],
+      [
+        -40.0,
+        -14.0,
+        107.0
+      ]
+    ]
+  },
+  {
+    "id": "17_shoulder_retainer_L_back",
+    "label": "肩部轴承压盖 L back",
+    "group": "fixed",
+    "orientation": [
+      90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      22.0,
+      38.0,
+      2.0
+    ],
+    "volume_mm3": 1445.980365976342,
+    "triangles": 792,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      51.0,
+      88.0,
+      -14.0
+    ],
+    "assembly_bounds": [
+      [
+        -62.0,
+        14.0,
+        69.0
+      ],
+      [
+        -40.0,
+        16.0,
+        107.0
+      ]
+    ]
+  },
+  {
+    "id": "15_shoulder_fork_R",
+    "label": "肩部固定叉架 R",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "两侧 625 轴承承托 5 mm 肩轴；接口留给后续电机转接。",
+    "color": "teal",
+    "assembled": true,
+    "dimensions_mm": [
+      31.0,
+      28.0,
+      40.0
+    ],
+    "volume_mm3": 15361.254978378298,
+    "triangles": 3252,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -48.5,
+      -0.0,
+      -68.0
+    ],
+    "assembly_bounds": [
+      [
+        33.0,
+        -14.0,
+        68.0
+      ],
+      [
+        64.0,
+        14.0,
+        108.0
+      ]
+    ]
+  },
+  {
+    "id": "16_arm_R",
+    "label": "空心活动臂 R",
+    "group": "arm_R",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "5 mm 钢轴夹紧；本版肘腕固定；使用动作范围试验，不安装未知舵机。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      19.0,
+      14.0,
+      53.4803466796875
+    ],
+    "volume_mm3": 8107.376313945567,
+    "triangles": 1592,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -51.0,
+      -0.0,
+      -44.0
+    ],
+    "assembly_bounds": [
+      [
+        41.5,
+        -7.0,
+        44.0
+      ],
+      [
+        60.5,
+        7.0,
+        97.4803466796875
+      ]
+    ]
+  },
+  {
+    "id": "17_shoulder_retainer_R_front",
+    "label": "肩部轴承压盖 R front",
+    "group": "fixed",
+    "orientation": [
+      90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      22.0,
+      38.0,
+      2.0
+    ],
+    "volume_mm3": 1445.980365976342,
+    "triangles": 792,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -51.0,
+      88.0,
+      16.0
+    ],
+    "assembly_bounds": [
+      [
+        40.0,
+        -16.0,
+        69.0
+      ],
+      [
+        62.0,
+        -14.0,
+        107.0
+      ]
+    ]
+  },
+  {
+    "id": "17_shoulder_retainer_R_back",
+    "label": "肩部轴承压盖 R back",
+    "group": "fixed",
+    "orientation": [
+      90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "",
+    "color": "dark",
+    "assembled": true,
+    "dimensions_mm": [
+      22.0,
+      38.0,
+      2.0
+    ],
+    "volume_mm3": 1445.980365976342,
+    "triangles": 792,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -51.0,
+      88.0,
+      -14.0
+    ],
+    "assembly_bounds": [
+      [
+        40.0,
+        14.0,
+        69.0
+      ],
+      [
+        62.0,
+        16.0,
+        107.0
+      ]
+    ]
+  },
+  {
+    "id": "18_cape",
+    "label": "可拆披风",
+    "group": "fixed",
+    "orientation": [
+      -90,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "后置结构，避开肩臂活动区；两颗 M3 螺钉和支座固定。",
+    "color": "white",
+    "assembled": true,
+    "dimensions_mm": [
+      96.0,
+      49.0,
+      11.0
+    ],
+    "volume_mm3": 11051.197752978465,
+    "triangles": 1214,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -79.5,
+      42.0
+    ],
+    "assembly_bounds": [
+      [
+        -48.0,
+        31.0,
+        55.0
+      ],
+      [
+        48.0,
+        42.0,
+        104.0
+      ]
+    ]
+  },
+  {
+    "id": "19_motor_adapter_template",
+    "label": "电机转接空白模板",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 4,
+    "notes": "仅为转接模板，不是已适配的舵机支架；器件冻结后再加工。",
+    "color": "teal",
+    "assembled": false,
+    "dimensions_mm": [
+      48.0,
+      46.0,
+      4.0
+    ],
+    "volume_mm3": 7182.573823986735,
+    "triangles": 2040,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      2.0
+    ],
+    "assembly_bounds": [
+      [
+        -24.0,
+        -23.0,
+        -2.0
+      ],
+      [
+        24.0,
+        23.0,
+        2.0
+      ]
+    ]
+  },
+  {
+    "id": "20_screen_spacer_3mm",
+    "label": "屏幕调距垫柱 3 mm",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 4,
+    "notes": "试装用；按真实模块厚度选配，不压玻璃。",
+    "color": "teal",
+    "assembled": false,
+    "dimensions_mm": [
+      8.0,
+      8.0,
+      3.0
+    ],
+    "volume_mm3": 123.36044908305036,
+    "triangles": 512,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -0.0
+    ],
+    "assembly_bounds": [
+      [
+        -4.0,
+        -4.0,
+        0.0
+      ],
+      [
+        4.0,
+        4.0,
+        3.0
+      ]
+    ]
+  },
+  {
+    "id": "20_screen_spacer_6mm",
+    "label": "屏幕调距垫柱 6 mm",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 4,
+    "notes": "试装用；按真实模块厚度选配，不压玻璃。",
+    "color": "teal",
+    "assembled": false,
+    "dimensions_mm": [
+      8.0,
+      8.0,
+      6.0
+    ],
+    "volume_mm3": 246.7208981661007,
+    "triangles": 512,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -0.0
+    ],
+    "assembly_bounds": [
+      [
+        -4.0,
+        -4.0,
+        0.0
+      ],
+      [
+        4.0,
+        4.0,
+        6.0
+      ]
+    ]
+  },
+  {
+    "id": "20_screen_spacer_9mm",
+    "label": "屏幕调距垫柱 9 mm",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 4,
+    "notes": "试装用；按真实模块厚度选配，不压玻璃。",
+    "color": "teal",
+    "assembled": false,
+    "dimensions_mm": [
+      8.0,
+      8.0,
+      9.0
+    ],
+    "volume_mm3": 370.08134724915107,
+    "triangles": 512,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -0.0
+    ],
+    "assembly_bounds": [
+      [
+        -4.0,
+        -4.0,
+        0.0
+      ],
+      [
+        4.0,
+        4.0,
+        9.0
+      ]
+    ]
+  },
+  {
+    "id": "21_bearing_fit_coupon",
+    "label": "轴承配合测试片",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "从左到右 16.0 / 16.1 / 16.2 / 16.3 / 16.4 mm；刻痕 1–5 对应。",
+    "color": "white",
+    "assembled": false,
+    "dimensions_mm": [
+      106.0,
+      40.0,
+      6.0
+    ],
+    "volume_mm3": 19183.023061036736,
+    "triangles": 1744,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -0.0
+    ],
+    "assembly_bounds": [
+      [
+        -53.0,
+        -20.0,
+        0.0
+      ],
+      [
+        53.0,
+        20.0,
+        6.0
+      ]
+    ]
+  },
+  {
+    "id": "22_shaft_fit_coupon",
+    "label": "钢轴配合测试片",
+    "group": "fixed",
+    "orientation": [
+      0,
+      0,
+      0
+    ],
+    "quantity": 1,
+    "notes": "刻痕 1–5 对应 5.0 / 5.1 / 5.2 / 5.3 / 5.4 mm。",
+    "color": "white",
+    "assembled": false,
+    "dimensions_mm": [
+      72.0,
+      30.0,
+      6.0
+    ],
+    "volume_mm3": 12247.799393141948,
+    "triangles": 1744,
+    "watertight": true,
+    "winding_consistent": true,
+    "components": 1,
+    "print_translation": [
+      -0.0,
+      -0.0,
+      -0.0
+    ],
+    "assembly_bounds": [
+      [
+        -36.0,
+        -15.0,
+        0.0
+      ],
+      [
+        36.0,
+        15.0,
+        6.0
+      ]
+    ]
+  }
+]

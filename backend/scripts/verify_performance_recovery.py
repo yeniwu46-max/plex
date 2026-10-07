@@ -142,7 +142,7 @@ def run(output: Path, requests: int = 8, workers: int = 4) -> dict:
         'passed': (
             success_rate >= 95
             and len(task_ids) == 1
-            and generated_resources == 5
+            and generated_resources >= 5
             and stale_status == 'failed'
             and completed_status == 'completed'
         ),

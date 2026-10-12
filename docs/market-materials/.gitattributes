@@ -1,0 +1,3 @@
+# Preserve print-ready files byte-for-byte and keep them out of text diffs.
+*.pdf binary
+*.zip binary

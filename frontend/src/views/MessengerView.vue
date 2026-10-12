@@ -14,6 +14,7 @@ import {
   TrendingUpOutline,
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
+import xiaoEComic from '../assets/xiao-e-comic.svg'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import PlexAgentTracePanel from '../components/agent/PlexAgentTracePanel.vue'
 import MessengerKnowledgeCard from '../components/student/MessengerKnowledgeCard.vue'
@@ -515,7 +516,7 @@ async function runToolAction(key: string) {
     search-placeholder=""
     hide-search
   >
-    <main class="messenger-main">
+    <main class="messenger-main plex-comic-chat">
       <section class="messenger-stage" aria-label="驿站使者">
         <div class="station-bg" aria-hidden="true">
           <span class="station-bg__planet" />
@@ -530,7 +531,7 @@ async function runToolAction(key: string) {
         <aside class="analysis-panel" aria-label="与小E对话反馈">
           <header class="analysis-panel__head">
             <div class="analysis-panel__title-row">
-              <h2>小E 对话反馈 <span aria-hidden="true">▮▮</span></h2>
+              <h2>小E 对话反馈 <span aria-hidden="true">✦</span></h2>
             </div>
             <div class="messenger-box">
               <button
@@ -600,11 +601,15 @@ async function runToolAction(key: string) {
           </header>
           <div ref="chatThreadEl" class="chat-thread" aria-label="与小E对话">
             <div v-if="!chatMessages.length" class="chat-thread__empty">
-              <strong>向小E提一个 Python 或学习问题</strong>
-              <p>探索之路固然艰难，有什么疑惑我帮你解决！</p>
+              <img class="comic-chat-mascot" :src="xiaoEComic" alt="小E" />
+              <div class="comic-welcome-bubble">
+                <strong>向小E提一个 Python 或学习问题</strong>
+                <p>探索之路固然艰难，有什么疑惑我帮你解决！</p>
+              </div>
             </div>
             <article v-for="(msg, idx) in chatMessages" :key="idx" :class="`chat-thread__item chat-thread__item--${msg.role}`">
               <template v-if="msg.role === 'assistant'">
+                <img class="comic-message-avatar" :src="xiaoEComic" alt="小E" />
                 <PlexAgentTracePanel
                   v-if="msg.thinking?.length || msg.streaming"
                   mode="freeform"

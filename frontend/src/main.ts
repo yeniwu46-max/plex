@@ -9,6 +9,7 @@ import './styles/admin-theme.css'
 import './styles/upload.css'
 import './styles/driver-theme.css'
 import './styles/local-search.css'
+import './styles/student-comic.css'
 
 const app = createApp(App)
 app.use(createPinia())

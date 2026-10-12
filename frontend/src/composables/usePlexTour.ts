@@ -167,10 +167,15 @@ export function usePlexTour() {
         nextBtnText: '下一步',
         prevBtnText: '上一步',
         doneBtnText: '完成',
+        popoverClass: role === 'student' ? 'plex-comic-tour' : '',
         showButtons: ['next', 'previous', 'close'],
         onPopoverRender: (popover) => {
           popover.closeButton.setAttribute('aria-label', '关闭导览')
           popover.closeButton.setAttribute('title', '关闭导览')
+          if (role === 'student') {
+            const progress = popover.description.querySelector('.driver-step-progress')
+            if (progress) popover.title.appendChild(progress)
+          }
         },
         steps: validSteps.map((step, idx) => ({
           element: step.element,

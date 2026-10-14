@@ -1,0 +1,46 @@
+{
+  "status": "passed",
+  "checked_date": "2026-10-12",
+  "media_mm": [
+    0.0,
+    0.0,
+    810.0,
+    1810.0
+  ],
+  "trim_mm": [
+    5.0,
+    5.0,
+    805.0,
+    1805.0
+  ],
+  "page_count": 1,
+  "rotation": 0,
+  "fonts": [
+    {
+      "name": "/AAAAAA+PLEXBahnschrift-Bold",
+      "embedded": true
+    },
+    {
+      "name": "/AAAAAA+PLEXNotoSansSC-ExtraBold",
+      "embedded": true
+    },
+    {
+      "name": "/AAAAAA+PLEXNotoSansSC-Regular",
+      "embedded": true
+    }
+  ],
+  "expected_copy_missing": [],
+  "preview_pixels": [
+    1600,
+    3600
+  ],
+  "decoded_from_final_pdf_preview": [
+    "https://106.15.77.40/"
+  ],
+  "live_svg_text_objects": 64,
+  "min_illustration_ppi": 150.2,
+  "unsafe_text_count": 0,
+  "pdf_sha256": "10e0f39bae23141a55bfb62942f19cf0c4c71a4c416e6dab57ee2e36ec8a7a30",
+  "visual_review": "Final PDF header, four comic panels, QR ticket, technical diagram and footer inspected after rendering. No text/illustration overlap or missing glyph observed.",
+  "remaining_vendor_check": "Confirm X-stand mounting holes, bleed template and color profile with the production vendor before printing."
+}

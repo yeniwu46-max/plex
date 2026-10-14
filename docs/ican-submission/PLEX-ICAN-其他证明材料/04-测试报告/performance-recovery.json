@@ -1,0 +1,74 @@
+{
+  "run_at": "2026-06-12T05:45:19+00:00",
+  "configuration": {
+    "requests": 8,
+    "workers": 4,
+    "database": "isolated SQLite"
+  },
+  "metrics": {
+    "success_rate": 100.0,
+    "p50_ms": 104.82,
+    "p95_ms": 173.79,
+    "idempotency_rate": 100.0,
+    "unique_task_count": 1,
+    "resource_count": 5,
+    "fallback_count": 8
+  },
+  "recovery": {
+    "failed_stale": 1,
+    "resubmitted_pending": 1,
+    "stale_running_status": "failed",
+    "completed_status": "completed"
+  },
+  "passed": true,
+  "requests": [
+    {
+      "status": 201,
+      "elapsed_ms": 173.79,
+      "task_id": "rg_de5887c2514745fbbe66",
+      "backend": "local_rules"
+    },
+    {
+      "status": 201,
+      "elapsed_ms": 36.75,
+      "task_id": "rg_de5887c2514745fbbe66",
+      "backend": "local_rules"
+    },
+    {
+      "status": 201,
+      "elapsed_ms": 131.97,
+      "task_id": "rg_de5887c2514745fbbe66",
+      "backend": "local_rules"
+    },
+    {
+      "status": 201,
+      "elapsed_ms": 70.25,
+      "task_id": "rg_de5887c2514745fbbe66",
+      "backend": "local_rules"
+    },
+    {
+      "status": 201,
+      "elapsed_ms": 104.82,
+      "task_id": "rg_de5887c2514745fbbe66",
+      "backend": "local_rules"
+    },
+    {
+      "status": 201,
+      "elapsed_ms": 108.13,
+      "task_id": "rg_de5887c2514745fbbe66",
+      "backend": "local_rules"
+    },
+    {
+      "status": 201,
+      "elapsed_ms": 50.33,
+      "task_id": "rg_de5887c2514745fbbe66",
+      "backend": "local_rules"
+    },
+    {
+      "status": 201,
+      "elapsed_ms": 53.8,
+      "task_id": "rg_de5887c2514745fbbe66",
+      "backend": "local_rules"
+    }
+  ]
+}

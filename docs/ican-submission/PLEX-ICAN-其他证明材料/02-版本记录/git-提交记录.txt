@@ -1,0 +1,31 @@
+2026-05-11	0439dbf	wuyeni0806	初始化项目：搭建Flask后端框架，完成认证、权限、用户、班级、成就等核心模块
+2026-05-14	067e19e	wuyeni0806	feat(frontend): add Vue app with PLEX theme tokens and Naive overrides
+2026-05-19	5221219	wuyeni0806	docs: update project progress - add trial arena page status and module documentation
+2026-05-25	b3f972b	wuyeni0806	feat: complete student demo loop
+2026-05-26	17de11e	吉彦庆	feat: polish game UI layouts and extend daily quest stack
+2026-05-26	80c3571	wuyeni0806	feat: build teacher workspace dashboards
+2026-05-26	ed6cae0	wuyeni0806	feat(teacher): 工作台三页联调、统一工具栏与测试种子数据
+2026-05-26	cc6ea97	wuyeni0806	feat: complete trial flows and split role portals
+2026-05-27	3014373	wuyeni0806	docs: add project README
+2026-05-27	f977ba3	吉彦庆	feat(teacher): unify quad layout and fix header overlap
+2026-05-27	51513a9	吉彦庆	feat(student): Python trials, star-path mapping, and messenger recommendations
+2026-05-27	2c40ef7	wuyeni0806	feat(student): trial assignments, emergency missions, and star-path domains
+2026-05-29	66f2f43	wuyeni0806	feat: integrate Monaco Editor, AntV G6, ECharts, Vue Flow and mock backend services
+2026-05-29	a3c9509	wuyeni0806	feat: connect real stats APIs, fix sync gaps, and add phase-2 summary doc
+2026-06-08	3937a43	wuyeni0806	index on codex/pre-sprint-baseline-20260608: a3c9509 feat: connect real stats APIs, fix sync gaps, and add phase-2 summary doc
+2026-06-08	c4e281e	wuyeni0806	On codex/pre-sprint-baseline-20260608: pre-sprint tracked snapshot 2026-06-08
+2026-06-09	cf8505f	wuyeni0806	feat: establish PLEX sprint core baseline
+2026-06-09	70ec2dc	wuyeni0806	feat: harden PLEX personalization workflow
+2026-06-09	b303386	wuyeni0806	docs: summarize 2026-06-09 development
+2026-06-25	e9f1c06	wuyeni0806	优化学生端质量闭环体验
+2026-06-26	8523d4d	wuyeni0806	feat: complete A3 multi-agent learning platform
+2026-06-27	4c75508	wuyeni0806	Refactor A3 learning flows and API handling
+2026-07-06	7309af7	吉彦庆97-ui	chore: archive pre-data-import baseline
+2026-07-17	73755c9	wuyeni0806	feat: 星轨学习 UI 闭环、题库智能命名与 AC 进度宝石
+2026-07-18	a4c65e6	wuyeni0806	feat(star-path): 星轨内嵌试炼与启动迁移修复
+2026-07-19	e10b990	wuyeni0806	Refine A3 learning workflows and teacher/student UI
+2026-07-20	eaeda76	wuyeni0806	feat: refine multi-agent UI and admin orchestration panels
+2026-07-20	0e1196c	wuyeni0806	chore: add submission package builder script
+2026-07-29	2cea66f	wuyeni0806	docs: 沉淀 2026-07-29 流式体验与资源自动审批技术文档
+2026-07-29	895ae4e	wuyeni0806	docs: 沉淀 2026-07-29 日终总结并闭环学生/教师/管理端体验
+2026-08-26	73b4bec	wuyeni0806	feat: 冻结主工程题库、知识重建与学生教师体验闭环

@@ -40,3 +40,24 @@ backend/_home_vite.js
 backend/tmp-inv.json
 docs/test.py
 docs/test2.py
+
+# Local review intermediates and editor autosaves, not project deliverables.
+/_qa*/
+/tmp/
+*.blend1
+
+# Published assets: restore and verify with scripts/restore_team_assets.py.
+/3min演示视频.mp4
+/hardware-prototypes/xiao-e-v01/PLEX-XiaoE-v01.zip
+/hardware-prototypes/xiao-e-v01/*.blend
+/hardware-prototypes/xiao-e-v01/*.stl
+/hardware-prototypes/xiao-e-v03/XiaoE_v03_EDITABLE_SOURCE.zip
+/hardware-prototypes/xiao-e-v03/XiaoE_v03_PRINT_PACKAGE.zip
+/hardware-prototypes/xiao-e-v03/*.blend
+/hardware-prototypes/xiao-e-v03/assembly_meshes/
+/hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/
+/hardware-prototypes/xiao-e-v03/stl/
+/hardware-prototypes/xiao-e-v03/3mf/*.3mf
+# These two local revisions differ from the published package.
+!/hardware-prototypes/xiao-e-v03/3mf/01_base_tray.3mf
+!/hardware-prototypes/xiao-e-v03/3mf/21_bearing_fit_coupon.3mf

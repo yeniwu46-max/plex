@@ -4,6 +4,8 @@ PLEX Universe 是一个面向编程学习场景的个性化学习平台，项目
 
 ## 体验与下载
 
+队友更新本地工程请先看 [团队同步说明](docs/team-sync/README.md)：以 `master` 为准，包含双主题切换方法、完整设计资料和大型模型/演示文件的校验恢复命令。
+
 - [Android APK 与三分钟演示视频](https://github.com/yeniwu46-max/plex/releases/tag/v1.0.0)：下载 `PLEX-1.0.0.apk` 安装体验。
 - [网页版](https://106.15.77.40/)：手机、平板和桌面浏览器均可访问。
 - [小 E 数字原型资料](https://github.com/yeniwu46-max/plex/releases/tag/hardware-2026-10-07)：完整模型压缩包；[设计源码与使用说明](hardware-prototypes/README.md) 在仓库内。

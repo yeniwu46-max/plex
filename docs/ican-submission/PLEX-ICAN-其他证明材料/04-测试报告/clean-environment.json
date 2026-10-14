@@ -1,0 +1,47 @@
+{
+  "run_at": "2026-08-28T11:45:31+00:00",
+  "passed": true,
+  "checks": {
+    "python": {
+      "passed": true,
+      "version": "3.14.3"
+    },
+    "node": {
+      "passed": true,
+      "version": "v24.14.1"
+    },
+    "npm": {
+      "passed": true,
+      "version": "11.11.0"
+    },
+    "database": {
+      "passed": true,
+      "backend": "mysql",
+      "version": "26.7.0",
+      "version_comment": "MySQL Community Server - GPL"
+    },
+    "mysql_8": {
+      "passed": false,
+      "required": "MySQL 8.x",
+      "observed_backend": "mysql",
+      "observed_version": "26.7.0"
+    },
+    "health": {
+      "passed": true,
+      "response_code": 0
+    },
+    "demo_accounts": {
+      "passed": true,
+      "accounts": {
+        "student001": true,
+        "teacher001": true,
+        "admin": true
+      }
+    }
+  },
+  "external_conditions": {
+    "docker": "available",
+    "github_cli": "authenticated",
+    "iflytek_spark": "blocked_credential_missing"
+  }
+}

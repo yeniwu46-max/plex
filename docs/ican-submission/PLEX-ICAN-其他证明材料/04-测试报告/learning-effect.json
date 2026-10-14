@@ -1,0 +1,56 @@
+{
+  "run_at": "2026-06-12T05:45:16+00:00",
+  "scenario": "three incorrect attempts -> personalized resources -> three correct attempts",
+  "passed": true,
+  "result": {
+    "status": "sufficient",
+    "minimum_samples_per_period": 3,
+    "task": {
+      "task_id": "learning-effect-deterministic",
+      "knowledge_key": "loop",
+      "profile_version": 3,
+      "resource_types": [
+        "lesson_document",
+        "exercise_set"
+      ],
+      "backend": "local_rules",
+      "intervention_at": "2026-06-12T05:45:16.194619"
+    },
+    "before": {
+      "correct_rate": 0.0,
+      "answered_count": 3,
+      "correct_count": 0,
+      "mastery_rate": 0.0,
+      "mistake_count": 3,
+      "risk_tags": [
+        "low_accuracy",
+        "mistakes_concentrated"
+      ],
+      "evidence_ids": [
+        3,
+        2,
+        1
+      ]
+    },
+    "after": {
+      "correct_rate": 100.0,
+      "answered_count": 3,
+      "correct_count": 3,
+      "mastery_rate": 100.0,
+      "mistake_count": 0,
+      "risk_tags": [],
+      "evidence_ids": [
+        4,
+        5,
+        6
+      ]
+    },
+    "delta": {
+      "correct_rate": 100.0,
+      "answered_count": 0,
+      "mastery_rate": 100.0,
+      "mistake_count": -3
+    },
+    "evidence_count": 6
+  }
+}

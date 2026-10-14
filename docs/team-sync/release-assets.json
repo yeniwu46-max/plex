@@ -1,0 +1,871 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "url": "https://github.com/yeniwu46-max/plex/releases/download/hardware-2026-10-07/PLEX-XiaoE-v01.zip",
+      "path": "hardware-prototypes/xiao-e-v01/PLEX-XiaoE-v01.zip",
+      "sha256": "85cf0aacb403c3636bf8b8935fc334214b74cb11e9915fc5c09a85632e657b5e",
+      "extract": [
+        {
+          "member": "XiaoE_v01_editable.blend",
+          "path": "hardware-prototypes/xiao-e-v01/XiaoE_v01_editable.blend",
+          "sha256": "4e0ecb63bf997e7b510e2539b2136949f1b2118e2ec98f35d971e17615bcbf39"
+        },
+        {
+          "member": "XiaoE_v01_print-study.blend",
+          "path": "hardware-prototypes/xiao-e-v01/XiaoE_v01_print-study.blend",
+          "sha256": "68806b63637bc53797f4f768395d04318d5b6e717cc25ce44a6b9507867acb6a"
+        },
+        {
+          "member": "XiaoE_v01_160mm_print-study.stl",
+          "path": "hardware-prototypes/xiao-e-v01/XiaoE_v01_160mm_print-study.stl",
+          "sha256": "79d17ebc6c5bc102525809784f94d5b50a9452717ceaddade0173bf4b6554093"
+        }
+      ]
+    },
+    {
+      "url": "https://github.com/yeniwu46-max/plex/releases/download/hardware-2026-10-07/XiaoE_v03_EDITABLE_SOURCE.zip",
+      "path": "hardware-prototypes/xiao-e-v03/XiaoE_v03_EDITABLE_SOURCE.zip",
+      "sha256": "ff963173bf6ded31aecc7b0e64f84fe5bdbd391d540bc00ee1defe21ee58dc2d",
+      "extract": [
+        {
+          "member": "stl/01_base_tray.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/01_base_tray.stl",
+          "sha256": "a850bdb9e980ef44044a94a01d0c77168198ff6b772238e0891b407013735724"
+        },
+        {
+          "member": "stl/02_base_lid.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/02_base_lid.stl",
+          "sha256": "f79d9d57303aaf494d92bc49b4ee160e03fd5604c11328b0cacd36ce4a999ce6"
+        },
+        {
+          "member": "stl/03_electronics_plate.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/03_electronics_plate.stl",
+          "sha256": "20171727a21379e39d56699b21b9f4229b6993655e0750c0ce7f0d88a53c3df9"
+        },
+        {
+          "member": "stl/04_leg_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/04_leg_L.stl",
+          "sha256": "81353d65996ce2aad13d8c87141b647f8709d7ecba7329766e41e1839717c77f"
+        },
+        {
+          "member": "stl/04_leg_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/04_leg_R.stl",
+          "sha256": "207afbb94f558583fe9bc391cc737d0bcdf648d4938682b038b5060624973ea4"
+        },
+        {
+          "member": "stl/05_torso_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/05_torso_front.stl",
+          "sha256": "1a5a6889060f91b937452436bec5d03144aa841ec9867b68b1c66ae5db079c1f"
+        },
+        {
+          "member": "stl/06_torso_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/06_torso_back.stl",
+          "sha256": "c472440db04172e84974fc3c094d6980feca0ab964cb29860145d1396c62ff5f"
+        },
+        {
+          "member": "stl/07_load_chassis.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/07_load_chassis.stl",
+          "sha256": "8f02c5990a8b4c1e8a632cbd5ee8662d1e456e22c71a73e3b04a4e0bac4fc9f3"
+        },
+        {
+          "member": "stl/08_yaw_fork.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/08_yaw_fork.stl",
+          "sha256": "e3918afa35c39c6a637060b0991a084f7cffa88bc8a03f064390a57ab0954c19"
+        },
+        {
+          "member": "stl/09_head_cradle.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/09_head_cradle.stl",
+          "sha256": "4058d4c5e489882ed61762c907a087bfe3f10c110bac6d564e958542af8b0dfe"
+        },
+        {
+          "member": "stl/10_head_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/10_head_front.stl",
+          "sha256": "2f92dbc741485b1706f45c8e73a9d4c94e9428de3c1d9ea8b6e441c8b936e5ea"
+        },
+        {
+          "member": "stl/11_head_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/11_head_back.stl",
+          "sha256": "caf15525c4c7e346660bebdc14f60d7cf7418c11bf6dc0b18a3f2b0ae7416526"
+        },
+        {
+          "member": "stl/12_open_face_bezel.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/12_open_face_bezel.stl",
+          "sha256": "335b719cb098ae20990c7653a0baaa2800e39cf529e534e08b33a0d373921cd4"
+        },
+        {
+          "member": "stl/13_screen_carrier.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/13_screen_carrier.stl",
+          "sha256": "b6bd20f8a58df1cc28b93df1f935a3f8488b71553d61e284e1ca05a3e26260e2"
+        },
+        {
+          "member": "stl/14_pitch_retainer_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/14_pitch_retainer_L.stl",
+          "sha256": "b84017012a6d1a29fb4c6a745a592ff332593a13f21a9427d29c0eb7671aca98"
+        },
+        {
+          "member": "stl/14_pitch_retainer_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/14_pitch_retainer_R.stl",
+          "sha256": "b84017012a6d1a29fb4c6a745a592ff332593a13f21a9427d29c0eb7671aca98"
+        },
+        {
+          "member": "stl/15_shoulder_fork_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/15_shoulder_fork_L.stl",
+          "sha256": "d253e3135130547b5c271eac8e83638da8488e3006fc5fda5fd40f81b1f373d8"
+        },
+        {
+          "member": "stl/15_shoulder_fork_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/15_shoulder_fork_R.stl",
+          "sha256": "a2b9e14be9e05a91f1ce73856d4a1b8231aeb931791d77e219db7b6585c7d2ce"
+        },
+        {
+          "member": "stl/16_arm_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/16_arm_L.stl",
+          "sha256": "ec35e93817ec4de101107be73c2e7c8e1f3c89c5a80c39dd7d6436a789cdafd1"
+        },
+        {
+          "member": "stl/16_arm_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/16_arm_R.stl",
+          "sha256": "ec35e93817ec4de101107be73c2e7c8e1f3c89c5a80c39dd7d6436a789cdafd1"
+        },
+        {
+          "member": "stl/17_shoulder_retainer_L_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/17_shoulder_retainer_L_back.stl",
+          "sha256": "8d2dd803a84785b98aca31ac6854c61eb5b83a5a3fc740b2eaddfe694cd4e1af"
+        },
+        {
+          "member": "stl/17_shoulder_retainer_L_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/17_shoulder_retainer_L_front.stl",
+          "sha256": "8d2dd803a84785b98aca31ac6854c61eb5b83a5a3fc740b2eaddfe694cd4e1af"
+        },
+        {
+          "member": "stl/17_shoulder_retainer_R_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/17_shoulder_retainer_R_back.stl",
+          "sha256": "8d2dd803a84785b98aca31ac6854c61eb5b83a5a3fc740b2eaddfe694cd4e1af"
+        },
+        {
+          "member": "stl/17_shoulder_retainer_R_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/17_shoulder_retainer_R_front.stl",
+          "sha256": "8d2dd803a84785b98aca31ac6854c61eb5b83a5a3fc740b2eaddfe694cd4e1af"
+        },
+        {
+          "member": "stl/18_cape.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/18_cape.stl",
+          "sha256": "fbb0e3408bd8618790ef3ce5a917bdb13326ecdaa87bafadbad36556ce923056"
+        },
+        {
+          "member": "stl/19_motor_adapter_template.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/19_motor_adapter_template.stl",
+          "sha256": "aff1cb3e9c4b6b37801f0e2b5ce9df92f7963cad452235a4c22ce183b150c8df"
+        },
+        {
+          "member": "stl/20_screen_spacer_3mm.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/20_screen_spacer_3mm.stl",
+          "sha256": "f19ab25a450690d1169eb412ef79c7addcecd30a426e440f686ac04a031ed460"
+        },
+        {
+          "member": "stl/20_screen_spacer_6mm.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/20_screen_spacer_6mm.stl",
+          "sha256": "b4d0f36b0e2e80a1e8ac4abac922cb59381de7f28076912567b715feb5e2642d"
+        },
+        {
+          "member": "stl/20_screen_spacer_9mm.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/20_screen_spacer_9mm.stl",
+          "sha256": "81ec013f01841adbec565cca30c2813d5702254ad6d8f285b147920942eef11a"
+        },
+        {
+          "member": "stl/21_bearing_fit_coupon.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/21_bearing_fit_coupon.stl",
+          "sha256": "8d08026c92d815fe9d788e329b3f0324bbb668cbdc0edec4465c9c39fa191625"
+        },
+        {
+          "member": "stl/22_shaft_fit_coupon.stl",
+          "path": "hardware-prototypes/xiao-e-v03/stl/22_shaft_fit_coupon.stl",
+          "sha256": "65f66c141adcfc8834301b7336c4fee8038e36419c7ae1108ad1dc9881912dd0"
+        },
+        {
+          "member": "3mf/02_base_lid.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/02_base_lid.3mf",
+          "sha256": "5a844f841d0371565e271293ab780b896a4ddfc5a884d35749b31cf9e0f630ef"
+        },
+        {
+          "member": "3mf/03_electronics_plate.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/03_electronics_plate.3mf",
+          "sha256": "6752fe5bc809979c4912c0baf45ca4570dd2d33d39d7d249808f7531d6a851b3"
+        },
+        {
+          "member": "3mf/04_leg_L.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/04_leg_L.3mf",
+          "sha256": "1574d0238deeb812d4da3befc856d27dcdb5b1ad136b7b01bebec69b8a8a493e"
+        },
+        {
+          "member": "3mf/04_leg_R.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/04_leg_R.3mf",
+          "sha256": "8848c87a9d997c2733122d8fd30b095ba790455c37458fdf31c3b80ac0f2584c"
+        },
+        {
+          "member": "3mf/05_torso_front.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/05_torso_front.3mf",
+          "sha256": "105ed4262477018e363a535da8a352fa8770f3ec974f6305bb0327139a5b4368"
+        },
+        {
+          "member": "3mf/06_torso_back.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/06_torso_back.3mf",
+          "sha256": "e0b63cbc4f4710e389e0246b2df179ceb18b86d18327108493f585dd045d7568"
+        },
+        {
+          "member": "3mf/07_load_chassis.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/07_load_chassis.3mf",
+          "sha256": "a88a46481e658f7837a51bbac233caca3f415345e256875504574c7bba00b6f3"
+        },
+        {
+          "member": "3mf/08_yaw_fork.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/08_yaw_fork.3mf",
+          "sha256": "a2b43c63324555c501f7edf8d6826b376a2d7bcfc7d7aa8c82da38649dce650d"
+        },
+        {
+          "member": "3mf/09_head_cradle.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/09_head_cradle.3mf",
+          "sha256": "81758d8c88ee2b8470a7be7ded43eca165fc483f3d35815ebd0fcdb9816c5325"
+        },
+        {
+          "member": "3mf/10_head_front.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/10_head_front.3mf",
+          "sha256": "3be98683c86ada27e4e5da2eefb1991d1766d0a27546dea692364b99ad657557"
+        },
+        {
+          "member": "3mf/11_head_back.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/11_head_back.3mf",
+          "sha256": "a10656c32c1656240aaf91dbf0fd5b8b5fa2190bbf8102dac4fd4111bc188ca4"
+        },
+        {
+          "member": "3mf/12_open_face_bezel.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/12_open_face_bezel.3mf",
+          "sha256": "9639ab1f5a68481f62728fe5773fe6524e4b82845d6fae494cb6a5707ea0a881"
+        },
+        {
+          "member": "3mf/13_screen_carrier.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/13_screen_carrier.3mf",
+          "sha256": "6fe66759812fdd2ffadb2776b8171bbea64b271e0730ed00280d793aa7359e66"
+        },
+        {
+          "member": "3mf/14_pitch_retainer_L.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/14_pitch_retainer_L.3mf",
+          "sha256": "66641829bca64b9d2043a4c765dcf0b418f71531cc5ba0fbd2d974e5034c3481"
+        },
+        {
+          "member": "3mf/14_pitch_retainer_R.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/14_pitch_retainer_R.3mf",
+          "sha256": "0697738f87353ac24f23438bbb2088a344f31e65884bc2e6bbd9f19f046f5cac"
+        },
+        {
+          "member": "3mf/15_shoulder_fork_L.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/15_shoulder_fork_L.3mf",
+          "sha256": "d8a2ed42df7c09a0a8c44a514185603219ddb7e986aebcdd167c71820d46994d"
+        },
+        {
+          "member": "3mf/15_shoulder_fork_R.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/15_shoulder_fork_R.3mf",
+          "sha256": "95c2dd82ead1101f6b016aa861be05fdd4193109ab3b06c606ce777590d25d3a"
+        },
+        {
+          "member": "3mf/16_arm_L.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/16_arm_L.3mf",
+          "sha256": "bd1d6c30f5fdefc105289c6e171c7a1bc0616168d0cf2510ec242e86dfb6f20c"
+        },
+        {
+          "member": "3mf/16_arm_R.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/16_arm_R.3mf",
+          "sha256": "d5f9829b6d578f69f4c72bfa870a8db130d3b4f3a782626db29bd97d228615e0"
+        },
+        {
+          "member": "3mf/17_shoulder_retainer_L_back.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/17_shoulder_retainer_L_back.3mf",
+          "sha256": "b899fb44183babc09b47cbfb271d2ef5e0a397f7d945cfbce79e267fb0b9634a"
+        },
+        {
+          "member": "3mf/17_shoulder_retainer_L_front.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/17_shoulder_retainer_L_front.3mf",
+          "sha256": "e089c03d362a345848c2dfd6a87c347481c54c933eb8c4ff1a83a05758a6e577"
+        },
+        {
+          "member": "3mf/17_shoulder_retainer_R_back.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/17_shoulder_retainer_R_back.3mf",
+          "sha256": "05039bc1e1da7e936cf68bbbe328984af57ef80abace5ce49963e7c84b00c8b1"
+        },
+        {
+          "member": "3mf/17_shoulder_retainer_R_front.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/17_shoulder_retainer_R_front.3mf",
+          "sha256": "59e97550b5cf6cce12690c4b567334bac028d40b5139bcc81b9aca08cfae3626"
+        },
+        {
+          "member": "3mf/18_cape.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/18_cape.3mf",
+          "sha256": "4cfc8b3410130291f6fe689dd545fd1185462cd28c8b0cf4fc452d6b4e8df54c"
+        },
+        {
+          "member": "3mf/19_motor_adapter_template.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/19_motor_adapter_template.3mf",
+          "sha256": "6e9e2783acbe4350e20d4c98ab212ff651101526c9ea4e925aeb2fd9c43162eb"
+        },
+        {
+          "member": "3mf/20_screen_spacer_3mm.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/20_screen_spacer_3mm.3mf",
+          "sha256": "6bd028da492c6586bab88b65a7fd0b4d47ffdcdaf970ec60a1e2dc97ee99c383"
+        },
+        {
+          "member": "3mf/20_screen_spacer_6mm.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/20_screen_spacer_6mm.3mf",
+          "sha256": "a79b4503feae87fd96216f485468260196d3a4fe66de83b1c96fc765d0807b52"
+        },
+        {
+          "member": "3mf/20_screen_spacer_9mm.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/20_screen_spacer_9mm.3mf",
+          "sha256": "c36f2ebf4f0f05c413d89bf453c103c916d1981fc742676cdb3d0bf264a35fae"
+        },
+        {
+          "member": "3mf/22_shaft_fit_coupon.3mf",
+          "path": "hardware-prototypes/xiao-e-v03/3mf/22_shaft_fit_coupon.3mf",
+          "sha256": "967fa48888e14f0ea2847873b53a14bba7d78845d4080b6195cf20b3ca549183"
+        },
+        {
+          "member": "XiaoE_v03_assembly.blend",
+          "path": "hardware-prototypes/xiao-e-v03/XiaoE_v03_assembly.blend",
+          "sha256": "4046c96fe13fa83415eb009bb1aeadd7f564d5969798d57112304334ce62dff3"
+        },
+        {
+          "member": "XiaoE_v03_exploded.blend",
+          "path": "hardware-prototypes/xiao-e-v03/XiaoE_v03_exploded.blend",
+          "sha256": "a7b9adf7424f76dbe553642605e85cdc9d39aa661ca5e3f7dad9713b35338619"
+        },
+        {
+          "member": "assembly_meshes/01_base_tray.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/01_base_tray.stl",
+          "sha256": "a850bdb9e980ef44044a94a01d0c77168198ff6b772238e0891b407013735724"
+        },
+        {
+          "member": "assembly_meshes/02_base_lid.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/02_base_lid.stl",
+          "sha256": "7dd62584c66e400c23647404255c0782641247fa0245f7f6b6f2defb2ec066d0"
+        },
+        {
+          "member": "assembly_meshes/03_electronics_plate.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/03_electronics_plate.stl",
+          "sha256": "f47ab5dd97d86bac79c612aa4ca0650c424edfd28ad34e765bf1a6fd378b5a97"
+        },
+        {
+          "member": "assembly_meshes/04_leg_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/04_leg_L.stl",
+          "sha256": "da5855b69aa151be9bfb2dd34cb77eda3a53c6a1145ee7a2e5f9db4378a00f79"
+        },
+        {
+          "member": "assembly_meshes/04_leg_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/04_leg_R.stl",
+          "sha256": "1c907962508087e583f02d32cca298f49fc9250ad794ffaaa3d0360b7783d82f"
+        },
+        {
+          "member": "assembly_meshes/05_torso_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/05_torso_front.stl",
+          "sha256": "13a034f0d0b1e61b6315c7bd394e4b92f7bcc35afa5bf21ccc769bbfbeb7f5cc"
+        },
+        {
+          "member": "assembly_meshes/06_torso_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/06_torso_back.stl",
+          "sha256": "6ec3dd7c7b4784094e571ed11593730b169e70a09c2fc95e117adb2aa93f03cf"
+        },
+        {
+          "member": "assembly_meshes/07_load_chassis.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/07_load_chassis.stl",
+          "sha256": "213a1f892b9597f34fcb85507c294b4e4dac0f4d031cde49814fa6ea45abdd81"
+        },
+        {
+          "member": "assembly_meshes/08_yaw_fork.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/08_yaw_fork.stl",
+          "sha256": "23659709b3cc38bfeb07791ea76c1292511297b26c26eb5546ec4f1ab000f03a"
+        },
+        {
+          "member": "assembly_meshes/09_head_cradle.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/09_head_cradle.stl",
+          "sha256": "7dd23e03b6590e5fa2106c38b2a6e36cc1d9da651f5782cb1b401a363c5d121b"
+        },
+        {
+          "member": "assembly_meshes/10_head_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/10_head_front.stl",
+          "sha256": "eb7936de8acf6caf2675d78bacba4463b76f875830c63278bf436a2f80a9917c"
+        },
+        {
+          "member": "assembly_meshes/11_head_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/11_head_back.stl",
+          "sha256": "d323d765120a0bc33450a631990542a2555423b5eaa8016f3b44d15dfabf5e61"
+        },
+        {
+          "member": "assembly_meshes/12_open_face_bezel.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/12_open_face_bezel.stl",
+          "sha256": "35874ef40dc9ef47a0fc2c75440567b634355062fe13acdca14f49422eb07e65"
+        },
+        {
+          "member": "assembly_meshes/13_screen_carrier.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/13_screen_carrier.stl",
+          "sha256": "4d8f1e6fd67033c267fe702cda0bc983b0b45f4ebb68cf4d882f0d8decaab603"
+        },
+        {
+          "member": "assembly_meshes/14_pitch_retainer_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/14_pitch_retainer_L.stl",
+          "sha256": "21c59c4498f016ddd0631b28d63b3928facf2a6caca597a693746b6981aa02c9"
+        },
+        {
+          "member": "assembly_meshes/14_pitch_retainer_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/14_pitch_retainer_R.stl",
+          "sha256": "d5cbe8642f4675eb28d276abad544bbb6ffe624fbae67960ce85e84f406e458a"
+        },
+        {
+          "member": "assembly_meshes/15_shoulder_fork_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/15_shoulder_fork_L.stl",
+          "sha256": "932d9984a0f33133f2e0951bf68f57164086f01f87124f9b4cf5e1adfbb23c88"
+        },
+        {
+          "member": "assembly_meshes/15_shoulder_fork_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/15_shoulder_fork_R.stl",
+          "sha256": "32e385b2511d5569936be699aed2836f4e858c0b1ca9220cec47fd7fbf944ee1"
+        },
+        {
+          "member": "assembly_meshes/16_arm_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/16_arm_L.stl",
+          "sha256": "8e25c8e1850567c4098b6144ea1db2afe2460b355ad82254833be0de6128d52d"
+        },
+        {
+          "member": "assembly_meshes/16_arm_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/16_arm_R.stl",
+          "sha256": "fb3551e191193a3d23dca17277d209419c8d6582a4d07f65d3abe139c624fc5b"
+        },
+        {
+          "member": "assembly_meshes/17_shoulder_retainer_L_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/17_shoulder_retainer_L_back.stl",
+          "sha256": "5fab58019847f140b987a42130f2fc40364b5503538c7994a7bbd229e2544bab"
+        },
+        {
+          "member": "assembly_meshes/17_shoulder_retainer_L_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/17_shoulder_retainer_L_front.stl",
+          "sha256": "dd8eb685f0931b87cc17e9048ad95a0047c9b19e0f833fe0e6767914892a4af0"
+        },
+        {
+          "member": "assembly_meshes/17_shoulder_retainer_R_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/17_shoulder_retainer_R_back.stl",
+          "sha256": "1e832df9dd2582ffdde2d8a005c182d7332c2ce97af34ed399575a93465b12c3"
+        },
+        {
+          "member": "assembly_meshes/17_shoulder_retainer_R_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/17_shoulder_retainer_R_front.stl",
+          "sha256": "e7ddf46a48e17bbf2920dc367e0126f2b6a183eb1a4caef6442cae9847818567"
+        },
+        {
+          "member": "assembly_meshes/18_cape.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/18_cape.stl",
+          "sha256": "4d545e5450ea8141d60131d7a630c76230a3e96c0c17d215926ab6f959798834"
+        },
+        {
+          "member": "assembly_meshes/19_motor_adapter_template.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/19_motor_adapter_template.stl",
+          "sha256": "85f2bac788bc4b9756c9e135dcacb2bcc1e5a8517e262ee18fb55f6631efab29"
+        },
+        {
+          "member": "assembly_meshes/20_screen_spacer_3mm.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/20_screen_spacer_3mm.stl",
+          "sha256": "f19ab25a450690d1169eb412ef79c7addcecd30a426e440f686ac04a031ed460"
+        },
+        {
+          "member": "assembly_meshes/20_screen_spacer_6mm.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/20_screen_spacer_6mm.stl",
+          "sha256": "b4d0f36b0e2e80a1e8ac4abac922cb59381de7f28076912567b715feb5e2642d"
+        },
+        {
+          "member": "assembly_meshes/20_screen_spacer_9mm.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/20_screen_spacer_9mm.stl",
+          "sha256": "81ec013f01841adbec565cca30c2813d5702254ad6d8f285b147920942eef11a"
+        },
+        {
+          "member": "assembly_meshes/21_bearing_fit_coupon.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/21_bearing_fit_coupon.stl",
+          "sha256": "8d08026c92d815fe9d788e329b3f0324bbb668cbdc0edec4465c9c39fa191625"
+        },
+        {
+          "member": "assembly_meshes/22_shaft_fit_coupon.stl",
+          "path": "hardware-prototypes/xiao-e-v03/assembly_meshes/22_shaft_fit_coupon.stl",
+          "sha256": "65f66c141adcfc8834301b7336c4fee8038e36419c7ae1108ad1dc9881912dd0"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/625_pitch_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/625_pitch_L.stl",
+          "sha256": "8770f4207ae38be867b2704e372abf76b345d8e622196e28da1eae177c0949ae"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/625_pitch_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/625_pitch_R.stl",
+          "sha256": "5cf31dccdbf92978fb5e91fcecc7af3cbcfb6850228bba02e61aadf8cc5146d7"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/625_shoulder_L_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/625_shoulder_L_back.stl",
+          "sha256": "10faab5d2434a41a9947faad906d0da7190c2279e5cd01165d1ef84593951c39"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/625_shoulder_L_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/625_shoulder_L_front.stl",
+          "sha256": "08e57f4f37f7010bdb181fda02c41ead87ffba3150d70f4fb8b9aa48fc4f5d79"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/625_shoulder_R_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/625_shoulder_R_back.stl",
+          "sha256": "71557469fa4d7b2b0ae1f77c93b12ed2f8a174310ca95d15fb27ac23fb331cee"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/625_shoulder_R_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/625_shoulder_R_front.stl",
+          "sha256": "feca60ab6bdb9c77f5385070dfbaab4cc10578e0875e5476964aca7b3785291c"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/625_yaw_107.4.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/625_yaw_107.4.stl",
+          "sha256": "79fb37517bda7182a1c0d7e9a4362df30e3c26aa88655413a0a8fc589b160caf"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/625_yaw_96.6.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/625_yaw_96.6.stl",
+          "sha256": "c6b179a2f1361fab2fcf9823d118d69c1e55af44e89e7740420bbc0ca9a07f4a"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/body_M3x45_-28_107.5.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/body_M3x45_-28_107.5.stl",
+          "sha256": "4d85e07f3620be5f91409498f18db42bcb3a6560fa45b6a2a8d095d9e04fb700"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/body_M3x45_-28_70.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/body_M3x45_-28_70.stl",
+          "sha256": "6df20a8f85579192486c4b72390209947056c53a63773985fb8231f6fa18bfe4"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/body_M3x45_28_107.5.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/body_M3x45_28_107.5.stl",
+          "sha256": "9c460f8cff44ceb4e17b2a4a5334fbdd67dd6a5dbb58b196cc89b8895371d8b3"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/body_M3x45_28_70.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/body_M3x45_28_70.stl",
+          "sha256": "0cb263b4d3e18ac8a3592656854e4c228b43836946d2b6c0228f85eb08d1a692"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/body_nut_-28_107.5.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/body_nut_-28_107.5.stl",
+          "sha256": "9eb93c95958bffaa2cf7a03cf20442de88927571391b9d58e5e7f35ab52036f2"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/body_nut_-28_70.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/body_nut_-28_70.stl",
+          "sha256": "65d5a1185052a090d03811fd816d38a098ba11ebc71cf545a91fa5d3d686e294"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/body_nut_28_107.5.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/body_nut_28_107.5.stl",
+          "sha256": "c7ccc3293c4603317fa621c07a70cb61cdb18fddce7a8111762af4ca80d2e93b"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/body_nut_28_70.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/body_nut_28_70.stl",
+          "sha256": "b182ebe564786add8adf4ca257a1d9238774eb2d1f3bd8736b7d710e659ba06e"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_M3x40_-29_-10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_M3x40_-29_-10.stl",
+          "sha256": "753b4cc0d5d99c03924320f8825a60fb2f86da59087e1dc6cf4b93e6e3b6ff0e"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_M3x40_-29_10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_M3x40_-29_10.stl",
+          "sha256": "3f0753079e23c030c1e163f181e46b8a2000f75bd2bbd50fc52d02a67087efbe"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_M3x40_-9_-10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_M3x40_-9_-10.stl",
+          "sha256": "c4be97e710774cefb0e98714258cddaf1b5d1a2cbde2e1229f3f7c87aca7df36"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_M3x40_-9_10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_M3x40_-9_10.stl",
+          "sha256": "e74c9665e07c2a968d77a98e1f2333610ef39a074e9e1c80734c3bd5af7f98a3"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_M3x40_29_-10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_M3x40_29_-10.stl",
+          "sha256": "4458e0ffd81f67896d34d777acfe701ab001fa9db17552131b51394c431fa101"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_M3x40_29_10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_M3x40_29_10.stl",
+          "sha256": "ed7fecc869c61b50dd4844a4e6f700d3961e94240571287681eda8f2e27cbf07"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_M3x40_9_-10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_M3x40_9_-10.stl",
+          "sha256": "87463c67faf58b7243dc374ce245773f7ae8921346e2c0500ab2e4e75913c0ce"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_M3x40_9_10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_M3x40_9_10.stl",
+          "sha256": "dbc3e2f21a459a1079a7f10ec72ce4136275d3992906dbd5c6b96570ca153d93"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_nut_-29_-10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_nut_-29_-10.stl",
+          "sha256": "a17e0259da4e3298128e772de3f577d9ca3f3e26533fc094b58e3d175b2051a9"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_nut_-29_10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_nut_-29_10.stl",
+          "sha256": "b27480ad8b1ec801c2fb9d03390db50c46ebf6df4069830197c9ab3ce6cf7a17"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_nut_-9_-10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_nut_-9_-10.stl",
+          "sha256": "f6002cc83ba76d11a5fa21dd0ae81fa7824784e50d2411974c9f1b080d8097a8"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_nut_-9_10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_nut_-9_10.stl",
+          "sha256": "62b761ab5f6ea076ebdd34a38c73b9d6597255edef4564c7016173e42d3f291d"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_nut_29_-10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_nut_29_-10.stl",
+          "sha256": "73e81430f33c3dfcad642fc03a672df0641bdf2dd92b0f9823e82a8eb26e476c"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_nut_29_10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_nut_29_10.stl",
+          "sha256": "596d160c0a90011cf788c51ff041a4cf87b55e5ee8282ccf160cab0c82ab3c2f"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_nut_9_-10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_nut_9_-10.stl",
+          "sha256": "1d49500989850a25c9c1562e20c72be17ac3d2d69fa027604a42e8cceb4e70e0"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/leg_nut_9_10.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/leg_nut_9_10.stl",
+          "sha256": "f667bc8576060b1e0d725ccb597ce774514284c0dfa19e45a4805c5e4d03e728"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/pitch_collar_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/pitch_collar_L.stl",
+          "sha256": "fbe8fae42f11273ef2916b90dd2d7db7c9fa32d09c63a00d9f034a066358f1c2"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/pitch_collar_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/pitch_collar_R.stl",
+          "sha256": "64767b15e0377b33341118aa69586168b191f181eaa02148715c1f36f860d4e4"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/pitch_M3x8_L_160.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/pitch_M3x8_L_160.stl",
+          "sha256": "8bc4173f287edf42586f8bbcf92e777ad301fc416f27337df776cca1c96907f1"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/pitch_M3x8_L_188.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/pitch_M3x8_L_188.stl",
+          "sha256": "bbec449938a4c68d64aeeb330a1cb8acb7869de0531573439f4c9efcad7f4b15"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/pitch_M3x8_R_160.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/pitch_M3x8_R_160.stl",
+          "sha256": "1ec91618ea3d21185e051d930ed9eea79a2f046fb3904c1feb5ddaef608c4981"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/pitch_M3x8_R_188.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/pitch_M3x8_R_188.stl",
+          "sha256": "3962949d126c118d202d8456803273e483752d2ae3dc797da62fb32f1a175512"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/pitch_shaft_5x116.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/pitch_shaft_5x116.stl",
+          "sha256": "7dd797917143b3417b7c0d6f2bed9e8ccfaab6ec6a218ee5e844bf4cc1c05150"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/screen_M3x20_-44_150.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/screen_M3x20_-44_150.stl",
+          "sha256": "0e5bdce2672c7290b9f127c216e5f2d58ecc1687621a135742dd06ac3c9cc5b1"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/screen_M3x20_-44_206.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/screen_M3x20_-44_206.stl",
+          "sha256": "c98abea1784cbeebf9e8c64a20b755298a1114b7b964a24031d4532b19455f05"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/screen_M3x20_44_150.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/screen_M3x20_44_150.stl",
+          "sha256": "d530f4b4752a7a178978a7d81298f552e42a15fb193718d4e89b46379a2a2583"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/screen_M3x20_44_206.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/screen_M3x20_44_206.stl",
+          "sha256": "d1eaaa4b05de8c986d40bd109b4b692c8014c178336fd7c693776769c3dd152e"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/screen_nut_-44_150.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/screen_nut_-44_150.stl",
+          "sha256": "e5522667133e7e4f57672c9a9587f58f417533ff7c3f2f7f8e5d2cf61a25a35b"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/screen_nut_-44_206.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/screen_nut_-44_206.stl",
+          "sha256": "07c10f269002cdb4b251c54dcbabacb178429be25b46f444e1fbf9f615dd6ffb"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/screen_nut_44_150.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/screen_nut_44_150.stl",
+          "sha256": "532e63120ca931dd142029f6689b053257bd6c4d43375198abb6f741d8313351"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/screen_nut_44_206.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/screen_nut_44_206.stl",
+          "sha256": "c6837171a2b18a95464e8c2d91510d43fdf5f5ac13ddfc9380c1636c08c66f3e"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_collar_L_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_collar_L_back.stl",
+          "sha256": "a147a910c4d83ba8f1a5524051418231bf46965f88f3dda83e358c7888af56f5"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_collar_L_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_collar_L_front.stl",
+          "sha256": "0e7593dd10a2f51227d66bb425e93edac10de859bff1af8732d933ad3d4ef512"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_collar_R_back.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_collar_R_back.stl",
+          "sha256": "88ffbf4bd963763ac35d2a1572865df252942b1199868ae3b268a760781cd690"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_collar_R_front.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_collar_R_front.stl",
+          "sha256": "2649c990954e8cf801134a1d92dcc1d8ceee107dba26220fc0fa65979184d089"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_M3x8_L_back_102.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_M3x8_L_back_102.stl",
+          "sha256": "c33106b8b3219ed69716dca0060240dba5bbc73ea20dbaccc0cf0ba4621e0892"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_M3x8_L_back_74.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_M3x8_L_back_74.stl",
+          "sha256": "401d6e40a3e85c0a6f1a4e7b60cbce0baaf3232399f6d1cafc579aa83ff2dd42"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_M3x8_L_front_102.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_M3x8_L_front_102.stl",
+          "sha256": "59aad739f0dc88e2869c2eb2248f5478733d1d87762b40088abad7bcc6bb1e0d"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_M3x8_L_front_74.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_M3x8_L_front_74.stl",
+          "sha256": "bf072b8182d225aefd16a05937c2ec9cf83e85e324f68c34d6aa39cbfb1542d1"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_M3x8_R_back_102.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_M3x8_R_back_102.stl",
+          "sha256": "83033078b8b92512c638f51f5f6af5622ce8265e922151e7bb513590d69e4ad3"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_M3x8_R_back_74.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_M3x8_R_back_74.stl",
+          "sha256": "c32169a03f93774f75bda65ac3d77c7871e1ebf2f02c1445a416e7dd6f838097"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_M3x8_R_front_102.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_M3x8_R_front_102.stl",
+          "sha256": "c17fe313afaec7ce9c955732c377d46121401cc8a220e59b5e243fa112570d94"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_M3x8_R_front_74.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_M3x8_R_front_74.stl",
+          "sha256": "63bfc0bd0581c4bee532bf7ba8ba4cc27546825ab6331651e14996e0236c5c8c"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_mount_M3x14_L_102.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_mount_M3x14_L_102.stl",
+          "sha256": "0eccb21b02abd91960b42eb4006158876f919cc14b178f556b980433c129833a"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_mount_M3x14_L_74.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_mount_M3x14_L_74.stl",
+          "sha256": "8f67ce4b1ed278b0352c5219f64dabd510f4bc477903cc2855336c1dd7ee24ea"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_mount_M3x14_R_102.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_mount_M3x14_R_102.stl",
+          "sha256": "8c3ca2f5ad8ba5d6261b1c64ddbb4a2101b1c1fe14195874dfad97a4c7064027"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_mount_M3x14_R_74.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_mount_M3x14_R_74.stl",
+          "sha256": "9594b0683b66d5f672c26488d7ec53ccbb56eae1dd045e6574cda9c88ff631a9"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_mount_nut_L_102.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_mount_nut_L_102.stl",
+          "sha256": "77c749680423539b5bb63b54a8a5248fa3ba6452ccde42b9b684de985bdae838"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_mount_nut_L_74.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_mount_nut_L_74.stl",
+          "sha256": "19a75e3e67cf180792eeb6542ab2fdb8c64b35fd4cd0a536a7efd581f0a6d471"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_mount_nut_R_102.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_mount_nut_R_102.stl",
+          "sha256": "abdbce2fbc35a2cadd371987512eb3285ce4c3c878e235b87bc01a422271b7e5"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_mount_nut_R_74.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_mount_nut_R_74.stl",
+          "sha256": "37c228f39fbd07570e28e51e54cb80a5ddcac5f73213d04e056d14a67866f817"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_shaft_5x44_L.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_shaft_5x44_L.stl",
+          "sha256": "468a2052ce5758183e65a6675c878303c409489ec414840ff59f8389c1dd14a5"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/shoulder_shaft_5x44_R.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/shoulder_shaft_5x44_R.stl",
+          "sha256": "4c2acb78404a452c00eea9783e91169b7b42aa8ceaaedf9fcb33f5d8677e8d4c"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/yaw_collar.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/yaw_collar.stl",
+          "sha256": "fd6081756178c33eb63f3abe904e50c5f057e95b41f91f857325b872a3331748"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/yaw_shaft_5x38.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/yaw_shaft_5x38.stl",
+          "sha256": "187c283c7aa787bfc9ea37a6b286115543e440829abce4e412e0976c10b93a43"
+        },
+        {
+          "member": "reference_only_DO_NOT_PRINT/yaw_thrust_shim.stl",
+          "path": "hardware-prototypes/xiao-e-v03/reference_only_DO_NOT_PRINT/yaw_thrust_shim.stl",
+          "sha256": "74106d8dfcd6c9c536f7ccc3df4cd54214c83bcb119590c307ad94e9a69507c6"
+        }
+      ]
+    },
+    {
+      "url": "https://github.com/yeniwu46-max/plex/releases/download/hardware-2026-10-07/XiaoE_v03_PRINT_PACKAGE.zip",
+      "path": "hardware-prototypes/xiao-e-v03/XiaoE_v03_PRINT_PACKAGE.zip",
+      "sha256": "c63a5fb399aef4ecf45ddb60cc057adc8f420801bd9a7ba81d4fe59875552501",
+      "extract": []
+    },
+    {
+      "url": "https://github.com/yeniwu46-max/plex/releases/download/v1.0.0/3min.mp4",
+      "path": "3min演示视频.mp4",
+      "sha256": "896abd106a794ef95df2fc234d365b9960c290a641106143709d0fb0e3774b02",
+      "extract": []
+    }
+  ]
+}

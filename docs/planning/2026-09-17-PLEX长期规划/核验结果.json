@@ -1,0 +1,20 @@
+{
+  "worksheets": [
+    "01目标路线",
+    "02教材软硬件",
+    "03科研模型",
+    "04商业公益",
+    "05执行证据"
+  ],
+  "formula_count": 147,
+  "formula_errors": [],
+  "missing_caches": [],
+  "tasks": 32,
+  "pdf_pages": 14,
+  "text_not_exactly_matched": [],
+  "base_case_net_receipts": 11324,
+  "base_case_cash_balance": -4147.52,
+  "zero_sales_check": "passed",
+  "full_refund_check": "passed",
+  "file_bytes": 58866
+}

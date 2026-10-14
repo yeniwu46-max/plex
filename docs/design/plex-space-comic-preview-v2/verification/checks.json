@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-13",
+  "browser": "Codex in-app browser",
+  "viewports": [
+    {
+      "images": [],
+      "overflows": [],
+      "pageWidth": 1440,
+      "scrollWidth": 1440,
+      "textShadows": [
+        "none"
+      ],
+      "width": 1440
+    },
+    {
+      "images": [],
+      "overflows": [],
+      "pageWidth": 1009,
+      "scrollWidth": 1009,
+      "textShadows": [
+        "none"
+      ],
+      "width": 1024
+    },
+    {
+      "images": [],
+      "overflows": [],
+      "pageWidth": 753,
+      "scrollWidth": 753,
+      "textShadows": [
+        "none"
+      ],
+      "width": 768
+    },
+    {
+      "images": [],
+      "overflows": [],
+      "pageWidth": 375,
+      "scrollWidth": 375,
+      "textShadows": [
+        "none"
+      ],
+      "width": 390
+    }
+  ],
+  "interactions": {
+    "dropdownPointer": true,
+    "dropdownKeyboardEnter": true,
+    "dropdownEscape": true,
+    "dropdownOutsideClick": true,
+    "keyboardFocusVisible": true,
+    "primaryHoverTranslateY": -2,
+    "viewModeSwitch": true,
+    "mobileDropdownContained": true
+  },
+  "errors": [],
+  "reducedMotion": "CSS and browser CSSOM checked; OS preference emulation unavailable"
+}

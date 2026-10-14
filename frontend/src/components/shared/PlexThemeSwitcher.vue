@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, h } from 'vue'
-import { NDropdown, NIcon } from 'naive-ui'
-import { MoonOutline, SunnyOutline, PartlySunnyOutline } from '@vicons/ionicons5'
+import { NDropdown, NIcon, type DropdownOption } from 'naive-ui'
+import { MoonOutline, SunnyOutline, PartlySunnyOutline, PlanetOutline, SparklesOutline } from '@vicons/ionicons5'
 import { useThemeStore, type ColorMode } from '../../stores/theme'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     compact?: boolean
+    allowVisualStyle?: boolean
   }>(),
-  { compact: true },
+  { compact: true, allowVisualStyle: false },
 )
 
 const themeStore = useThemeStore()
@@ -25,7 +26,9 @@ const currentLabel = computed(() => {
   return '跟随系统'
 })
 
-const options = [
+const visualLabel = computed(() => themeStore.visualStyle === 'comic' ? '太空漫画' : '经典太空')
+const appearanceLabel = computed(() => props.allowVisualStyle ? `${visualLabel.value}，${currentLabel.value}` : currentLabel.value)
+const colorOptions: DropdownOption[] = [
   {
     key: 'dark',
     label: '深色模式',
@@ -43,8 +46,24 @@ const options = [
   },
 ]
 
+const options = computed<DropdownOption[]>(() => {
+  if (!props.allowVisualStyle) return colorOptions
+  return [
+    { key: 'style-heading', type: 'group', label: '界面风格', children: [
+      { key: 'style-space', label: `经典太空${themeStore.visualStyle === 'space' ? ' ✓' : ''}`, icon: () => h(NIcon, { component: PlanetOutline }) },
+      { key: 'style-comic', label: `太空漫画${themeStore.visualStyle === 'comic' ? ' ✓' : ''}`, icon: () => h(NIcon, { component: SparklesOutline }) },
+    ] },
+    { key: 'style-divider', type: 'divider' },
+    { key: 'mode-heading', type: 'group', label: '明暗模式', children: colorOptions },
+  ]
+})
+
 function handleSelect(key: string) {
-  themeStore.setMode(key as ColorMode)
+  if (props.allowVisualStyle && (key === 'style-space' || key === 'style-comic')) {
+    themeStore.setVisualStyle(key === 'style-comic' ? 'comic' : 'space')
+  } else if (key === 'dark' || key === 'light' || key === 'auto') {
+    themeStore.setMode(key as ColorMode)
+  }
 }
 </script>
 
@@ -58,7 +77,8 @@ function handleSelect(key: string) {
     <button
       type="button"
       class="plex-theme-switcher"
-      :aria-label="`当前外观：${currentLabel}，点击切换`"
+      :aria-label="`当前外观：${appearanceLabel}，点击切换`"
+      :title="props.allowVisualStyle ? '切换界面风格与明暗模式' : '切换明暗模式'"
     >
       <n-icon :component="currentIcon" :size="22" />
       <span v-if="!compact" class="plex-theme-switcher__label">{{ currentLabel }}</span>
@@ -82,6 +102,11 @@ function handleSelect(key: string) {
 
 .plex-theme-switcher:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.plex-theme-switcher:focus-visible {
+  outline: 2px solid var(--plex-primary, #55eee9);
+  outline-offset: 3px;
 }
 
 html[data-theme='light'] .plex-theme-switcher {

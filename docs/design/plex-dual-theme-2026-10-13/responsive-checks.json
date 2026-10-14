@@ -1,0 +1,183 @@
+[
+  {
+    "color": "dark",
+    "heroBorder": "rgb(85, 238, 233)",
+    "overflow": false,
+    "overflowPanels": [],
+    "page": "/student",
+    "style": "comic",
+    "width": 1440
+  },
+  {
+    "color": "dark",
+    "heroBorder": "rgb(85, 238, 233)",
+    "overflow": false,
+    "overflowPanels": [],
+    "page": "/student",
+    "style": "comic",
+    "width": 1024
+  },
+  {
+    "color": "dark",
+    "heroBorder": "rgb(85, 238, 233)",
+    "overflow": false,
+    "overflowPanels": [],
+    "page": "/student",
+    "style": "comic",
+    "width": 768
+  },
+  {
+    "color": "dark",
+    "heroBorder": "rgb(85, 238, 233)",
+    "overflow": false,
+    "overflowPanels": [],
+    "page": "/student",
+    "style": "comic",
+    "width": 390
+  },
+  {
+    "color": "dark",
+    "overflow": false,
+    "page": "/student",
+    "style": "space",
+    "width": 1024
+  },
+  {
+    "color": "dark",
+    "overflow": false,
+    "page": "/student",
+    "style": "space",
+    "width": 768
+  },
+  {
+    "color": "dark",
+    "overflow": false,
+    "page": "/student",
+    "style": "space",
+    "width": 390
+  },
+  {
+    "chatOverflow": [
+      "chat-thread__item chat-thread__item--user"
+    ],
+    "overflow": false,
+    "page": "/student/messenger",
+    "style": "comic",
+    "width": 1440
+  },
+  {
+    "chatOverflow": [
+      "chat-thread__item chat-thread__item--user"
+    ],
+    "overflow": false,
+    "page": "/student/messenger",
+    "style": "comic",
+    "width": 1024
+  },
+  {
+    "chatOverflow": [
+      "chat-thread__item chat-thread__item--user"
+    ],
+    "overflow": false,
+    "page": "/student/messenger",
+    "style": "comic",
+    "width": 768
+  },
+  {
+    "chatOverflow": [
+      "chat-thread__item chat-thread__item--user"
+    ],
+    "overflow": false,
+    "page": "/student/messenger",
+    "style": "comic",
+    "width": 390
+  },
+  {
+    "overflow": false,
+    "page": "/student/star-path/resources",
+    "panels": [],
+    "style": "comic",
+    "width": 1440
+  },
+  {
+    "overflow": false,
+    "page": "/student/star-path/resources",
+    "panels": [],
+    "style": "comic",
+    "width": 1024
+  },
+  {
+    "overflow": false,
+    "page": "/student/star-path/resources",
+    "panels": [],
+    "style": "comic",
+    "width": 768
+  },
+  {
+    "overflow": false,
+    "page": "/student/star-path/resources",
+    "panels": [],
+    "style": "comic",
+    "width": 390
+  },
+  {
+    "overflow": false,
+    "page": "/student/trials",
+    "panels": [],
+    "style": "comic",
+    "width": 1440
+  },
+  {
+    "overflow": false,
+    "page": "/student/trials",
+    "panels": [],
+    "style": "comic",
+    "width": 1024
+  },
+  {
+    "overflow": false,
+    "page": "/student/trials",
+    "panels": [],
+    "style": "comic",
+    "width": 768
+  },
+  {
+    "overflow": false,
+    "page": "/student/trials",
+    "panels": [],
+    "style": "comic",
+    "width": 390
+  },
+  {
+    "overflow": false,
+    "overlap": false,
+    "page": "arena",
+    "panels": [],
+    "style": "comic",
+    "width": 1440
+  },
+  {
+    "overflow": false,
+    "overlap": false,
+    "page": "arena",
+    "panels": [],
+    "style": "comic",
+    "width": 1024
+  },
+  {
+    "overflow": false,
+    "overlap": false,
+    "page": "arena",
+    "panels": [],
+    "style": "comic",
+    "width": 768
+  },
+  {
+    "overflow": false,
+    "overlap": false,
+    "page": "arena",
+    "panels": [],
+    "style": "comic",
+    "width": 390
+  }
+]

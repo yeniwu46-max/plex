@@ -1,0 +1,49 @@
+{
+  "benchmark": "iflytek-990-learning-path-replanning-e2e",
+  "backend": "local_rules",
+  "passed": true,
+  "checks": {
+    "mistake_created": true,
+    "due_queue_contains_mistake": true,
+    "sm2_review_saved": true,
+    "profile_updated": true,
+    "graph_mastery_updated": true,
+    "path_replanned": true,
+    "path_plan_remains_valid": true
+  },
+  "details": {
+    "before_next_best_action": {
+      "node_id": "loop-for",
+      "reason": "前置已满足，掌握度 0%，建议进入难度带 [0.4, 0.6]",
+      "action": "practice"
+    },
+    "after_next_best_action": {
+      "node_id": "loop-while",
+      "reason": "前置已满足，掌握度 0%，建议进入难度带 [0.4, 0.6]",
+      "action": "practice"
+    },
+    "before_node_count": 100,
+    "after_node_count": 100,
+    "review_schedule": {
+      "algorithm": "SM-2",
+      "due_at": "2026-08-29T07:51:13.670181Z",
+      "ease_factor": 2.6,
+      "interval_days": 1,
+      "last_quality": 5,
+      "last_reviewed_at": "2026-08-28T07:51:13.670181Z",
+      "repetitions": 1,
+      "review_count": 1
+    },
+    "learning_path_update": {
+      "active_node_id": "lang-print",
+      "next_best_action": {
+        "action": "practice",
+        "node_id": "lang-print",
+        "reason": "前置已满足，掌握度 0%，建议进入难度带 [0.4, 0.6]"
+      },
+      "replanned": true,
+      "trigger": "sm2_review"
+    }
+  },
+  "note": "本报告证明本地闭环行为，不替代真实讯飞模型或真实课堂效果证据。"
+}

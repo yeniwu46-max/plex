@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { advanceDailyQuest } from '../api/studentOverview'
 import { NIcon } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
+import { useThemeStore } from '../stores/theme'
 import {
   ChevronForwardOutline,
   ExtensionPuzzleOutline,
@@ -12,6 +13,7 @@ import {
 import StarFieldMap from '../components/discovery/StarFieldMap.vue'
 import ClassArenaHub from '../components/discovery/ClassArenaHub.vue'
 import DashboardShell from '../components/layout/DashboardShell.vue'
+import xiaoEComic from '../assets/xiao-e-comic.svg'
 import type { CurrentStudent } from '../api/studentOverview'
 import { fetchStudentAssignments } from '../api/studentAssignments'
 import { useStudentNotificationSync } from '../composables/useStudentNotificationSync'
@@ -19,6 +21,7 @@ import { fetchEmergencyTodayStatus } from '../api/emergencyMission'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 
 const auth = useAuthStore()
+const themeStore = useThemeStore()
 const workspace = useStudentWorkspaceStore()
 const profile = ref<CurrentStudent | null>(null)
 const mapMode = ref<'starfield' | 'trial'>('starfield')
@@ -184,9 +187,10 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <footer v-if="mapMode === 'starfield'" class="cabin-status" aria-label="探索者资源">
+      <footer v-if="mapMode === 'starfield'" class="cabin-status" :class="{ 'plex-comic-board': themeStore.isComic }" aria-label="探索者资源">
         <section class="status-profile">
           <div class="level-ring" :style="{ '--level-progress': xpRatio }">
+            <img v-if="themeStore.isComic" class="comic-profile-mascot" :src="xiaoEComic" alt="" aria-hidden="true" />
             <span>Lv.{{ userLevel }}</span>
           </div>
           <div class="status-profile__copy">
@@ -202,7 +206,7 @@ onBeforeUnmount(() => {
         </section>
 
         <section class="resource-bank">
-          <h2>| 我的资源</h2>
+          <h2>{{ themeStore.isComic ? '我的资源' : '| 我的资源' }}</h2>
           <div class="resource-bank__list">
             <div v-for="item in resources" :key="item.key" class="resource-item" :style="{ '--resource-color': item.color }">
               <span class="resource-item__orb">

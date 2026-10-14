@@ -1,0 +1,12 @@
+# Preserve document, media and model bytes across platforms.
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.xlsx binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.3mf binary
+*.blend binary
+*.stl binary

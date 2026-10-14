@@ -1,0 +1,81 @@
+{
+  "pdf": "xiao-e-explorer-card-print-61x91mm.pdf",
+  "page_count": 2,
+  "color": "RGB",
+  "pages": [
+    {
+      "page": 1,
+      "side": "front",
+      "png": "xiao-e-explorer-front.png",
+      "pixels": [
+        1027,
+        1531
+      ],
+      "effective_ppi": [
+        427.64,
+        427.33
+      ],
+      "media_mm": [
+        61,
+        91
+      ],
+      "bleed_mm_each_edge": 3,
+      "trim_mm": [
+        55,
+        85
+      ],
+      "trim_box_mm": [
+        3,
+        3,
+        58,
+        88
+      ],
+      "safe_box_mm": [
+        6,
+        6,
+        55,
+        85
+      ],
+      "rotation": 0,
+      "embedded_rgb_pixels_identical": true,
+      "sha256_png": "eed0d7dc3cbd156e44232ba8406600cef2030eeaf2ea3e502b153b38311c7ce8"
+    },
+    {
+      "page": 2,
+      "side": "back",
+      "png": "xiao-e-explorer-back.png",
+      "pixels": [
+        1027,
+        1531
+      ],
+      "effective_ppi": [
+        427.64,
+        427.33
+      ],
+      "media_mm": [
+        61,
+        91
+      ],
+      "bleed_mm_each_edge": 3,
+      "trim_mm": [
+        55,
+        85
+      ],
+      "trim_box_mm": [
+        3,
+        3,
+        58,
+        88
+      ],
+      "safe_box_mm": [
+        6,
+        6,
+        55,
+        85
+      ],
+      "rotation": 0,
+      "embedded_rgb_pixels_identical": true,
+      "sha256_png": "e7ad23b4fbd2b70b800ea037587ecdff554f96a005b407f156bcab57d67eeb57"
+    }
+  ]
+}

@@ -12,6 +12,8 @@ import {
 } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import { useAuthStore } from '../stores/auth'
+import { useThemeStore } from '../stores/theme'
+import xiaoEWave from '../assets/xiao-e-comic-wave.png'
 import { claimDailyQuestBonus, fetchStatDetails, type StatDetailsResult, type StudentOverview } from '../api/studentOverview'
 import { DAILY_QUESTS } from '../data/dailyQuests'
 import TeacherAssignmentPanel from '../components/student/TeacherAssignmentPanel.vue'
@@ -21,6 +23,7 @@ import { scrollToHashAnchor } from '../utils/navigation'
 const route = useRoute()
 
 const auth = useAuthStore()
+const themeStore = useThemeStore()
 const workspace = useStudentWorkspaceStore()
 const message = useMessage()
 const overview = ref<StudentOverview | null>(null)
@@ -321,6 +324,11 @@ watch(
             </div>
           </div>
           <div class="hero-band__meter" aria-label="等级进度">
+            <template v-if="themeStore.isComic">
+              <img class="comic-home-mascot" :src="xiaoEWave" alt="" aria-hidden="true" />
+              <span class="comic-home-spark comic-home-spark--one" aria-hidden="true">✦</span>
+              <span class="comic-home-spark comic-home-spark--two" aria-hidden="true">✦</span>
+            </template>
             <div class="meter-hud" :style="{ '--progress': `${xpRatio}%` }">
               <span class="meter-hud__ticks" aria-hidden="true" />
               <span class="meter-ring">
@@ -353,6 +361,7 @@ watch(
             tabindex="0"
             @click="openStatModal(item.key)"
             @keydown.enter.prevent="openStatModal(item.key)"
+            @keydown.space.prevent="openStatModal(item.key)"
           >
             <n-icon :component="item.icon" class="stat-card__icon" />
             <span>{{ item.label }}</span>

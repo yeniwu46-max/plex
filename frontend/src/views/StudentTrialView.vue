@@ -2,7 +2,8 @@
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon, NSelect, NTag, useMessage, type SelectOption } from 'naive-ui'
-import { CheckmarkCircleOutline, ChevronForwardOutline, CodeSlashOutline } from '@vicons/ionicons5'
+import { CheckmarkCircleOutline, ChevronForwardOutline, CodeSlashOutline, HourglassOutline, LocateOutline, PlanetOutline, StarOutline } from '@vicons/ionicons5'
+import { useThemeStore } from '../stores/theme'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import {
   fetchStudentTrialStats,
@@ -34,6 +35,7 @@ import { formatQuestionLabel } from '../utils/questionNaming'
 import { ensurePracticeQuestionsLoaded, practiceCacheVersion } from '../utils/practiceQuestionCache'
 
 const message = useMessage()
+const themeStore = useThemeStore()
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
@@ -307,24 +309,29 @@ onActivated(() => {
         <template v-else-if="trialStats">
           <div class="student-trial__stats-grid">
             <article class="student-trial__stat-card">
+              <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="CheckmarkCircleOutline" aria-hidden="true" />
               <span class="student-trial__stat-label">已完成</span>
               <strong>{{ visibleTrialStats?.summary.completed_count ?? trialStats.summary.completed_count }}</strong>
             </article>
             <article class="student-trial__stat-card">
+              <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="HourglassOutline" aria-hidden="true" />
               <span class="student-trial__stat-label">进行中</span>
               <strong>{{ trialStats.summary.active_count }}</strong>
             </article>
             <article class="student-trial__stat-card">
+              <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="LocateOutline" aria-hidden="true" />
               <span class="student-trial__stat-label">均分</span>
               <strong>{{ visibleTrialStats?.summary.avg_score ?? trialStats.summary.avg_score }}</strong>
             </article>
             <article class="student-trial__stat-card">
+              <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="PlanetOutline" aria-hidden="true" />
               <span class="student-trial__stat-label">累计参与</span>
               <strong>{{ trialStats.summary.total_participations }}</strong>
             </article>
           </div>
           <ul v-if="visibleTrialStats?.recent_completions.length" class="student-trial__recent">
             <li v-for="item in visibleTrialStats.recent_completions" :key="`${item.trial_id}-${item.completed_at}`">
+              <n-icon v-if="themeStore.isComic" class="comic-record-star" :component="StarOutline" aria-hidden="true" />
               <span>{{ item.title }}</span>
               <em>{{ item.score }} 分</em>
             </li>

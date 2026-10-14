@@ -18,6 +18,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s ../scripts/tests -p test_restore_team_assets.py -v
       - run: python -m pytest -q
       - run: python manage.py knowledge-check
       - run: python scripts/verify_knowledge_base.py --json-output reports/a3-personalization-local/knowledge-base-validation.json

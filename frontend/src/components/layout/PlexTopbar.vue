@@ -14,6 +14,7 @@ import {
 import { ChevronDownOutline, ExitOutline, NotificationsOutline, RefreshOutline, RocketOutline } from '@vicons/ionicons5'
 import { usePlexTour, type TourRole } from '../../composables/usePlexTour'
 import { useAuthStore } from '../../stores/auth'
+import { useThemeStore } from '../../stores/theme'
 import { useNotificationStore } from '../../stores/notifications'
 import { useTeacherNotificationStore } from '../../stores/teacherNotifications'
 import PlexThemeSwitcher from '../shared/PlexThemeSwitcher.vue'
@@ -21,6 +22,7 @@ import PlexLocalSearch from '../search/PlexLocalSearch.vue'
 import QuestionSearchPopover from '../search/QuestionSearchPopover.vue'
 import TeacherPersonalProfileModal from '../teacher/TeacherPersonalProfileModal.vue'
 import { useSearchScope } from '../../composables/useSearchScope'
+import xiaoEComic from '../../assets/xiao-e-comic.svg'
 
 withDefaults(
   defineProps<{
@@ -44,6 +46,8 @@ const emit = defineEmits<{
 const scope = useSearchScope()
 
 const auth = useAuthStore()
+const themeStore = useThemeStore()
+const isComicStudent = computed(() => isStudent.value && themeStore.isComic)
 const studentNotifications = useNotificationStore()
 const teacherNotifications = useTeacherNotificationStore()
 const router = useRouter()
@@ -169,7 +173,7 @@ async function handleUserSelect(key: string) {
 </script>
 
 <template>
-  <header class="plex-topbar" :class="{ 'plex-topbar--compact': hideSearch }">
+  <header class="plex-topbar" :class="{ 'plex-topbar--compact': hideSearch, 'plex-topbar--comic': isComicStudent }">
     <div class="plex-topbar__heading">
       <h1>{{ title }}<span aria-hidden="true" /></h1>
       <p>{{ subtitle }}</p>
@@ -196,6 +200,7 @@ async function handleUserSelect(key: string) {
         placement="bottom-end"
         :show="showNotifications"
         class="plex-notif-popover"
+        :class="{ 'plex-comic-notifications': isComicStudent }"
         @update:show="onNotificationOpen"
       >
         <template #trigger>
@@ -239,11 +244,22 @@ async function handleUserSelect(key: string) {
           <n-icon :component="NotificationsOutline" :size="25" />
         </button>
       </n-badge>
-      <plex-theme-switcher />
+      <plex-theme-switcher :allow-visual-style="isStudent" />
       <span class="plex-topbar__divider" />
-      <n-dropdown trigger="click" :options="userOptions" @select="handleUserSelect">
+      <n-dropdown
+        trigger="click"
+        :options="userOptions"
+        :theme-overrides="isComicStudent ? {
+          borderRadius: '12px', padding: '8px', color: 'var(--comic-panel)',
+          optionTextColor: 'var(--comic-text)', optionTextColorHover: 'var(--comic-text)',
+          optionColorHover: 'var(--comic-hover)',
+          peers: { Popover: { boxShadow: '4px 4px 0 #07131f' } },
+        } : undefined"
+        @select="handleUserSelect"
+      >
         <button type="button" class="plex-topbar__user" aria-label="打开个人信息菜单">
-          <n-avatar round :size="52" class="plex-topbar__avatar">
+          <img v-if="isComicStudent" class="comic-topbar-mascot" :src="xiaoEComic" alt="" />
+          <n-avatar v-else round :size="52" class="plex-topbar__avatar">
             <span class="plex-avatar-bot" aria-hidden="true">
               <span class="plex-avatar-bot__head" />
             </span>

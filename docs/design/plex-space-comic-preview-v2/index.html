@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>PLEX · 太空漫画视觉交互预览</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="preview.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <symbol id="star" viewBox="0 0 32 32"><path d="m16 2 4 10 10 4-10 4-4 10-4-10L2 16l10-4Z"/></symbol>
+      <symbol id="rocket" viewBox="0 0 32 32"><path d="M11 21 8 24l-1-7 5-3M11 21l7-1-3 5-7-1M11 21c1-10 8-16 17-17 0 9-6 17-17 17Z"/><circle cx="21" cy="11" r="3"/><path d="M7 22c-3 0-4 3-3 6 3 1 6-1 6-3"/></symbol>
+      <symbol id="flame" viewBox="0 0 32 32"><path d="M17 2c1 7 9 10 9 18a10 10 0 0 1-20 0c0-4 3-8 5-10 0 5 2 5 2 5 3-4 4-7 4-13Z"/><path d="M17 15c0 5 5 6 4 10-1 6-10 5-10 0 0-3 4-6 6-10Z"/></symbol>
+      <symbol id="calendar" viewBox="0 0 32 32"><rect x="4" y="7" width="24" height="22" rx="3"/><path d="M10 3v7M22 3v7M4 14h24M10 19h1M16 19h1M22 19h1M10 24h1M16 24h1M22 24h1"/></symbol>
+      <symbol id="trophy" viewBox="0 0 32 32"><path d="M9 4h14v10a7 7 0 0 1-14 0ZM9 8H3v5a6 6 0 0 0 7 6M23 8h6v5a6 6 0 0 1-7 6M16 21v7M10 29h12"/></symbol>
+      <symbol id="bolt" viewBox="0 0 32 32"><path d="m19 2-14 17h10l-2 11 14-17H17Z"/></symbol>
+      <symbol id="document" viewBox="0 0 32 32"><path d="M7 3h12l7 7v19H7ZM18 3v9h8M12 18h9M12 23h9"/></symbol>
+      <symbol id="people" viewBox="0 0 32 32"><circle cx="16" cy="10" r="4"/><path d="M9 27v-4a7 7 0 0 1 14 0v4ZM7 7a3 3 0 0 0 0 6M25 7a3 3 0 0 1 0 6M7 18c-4 0-5 3-5 6h3M25 18c4 0 5 3 5 6h-3"/></symbol>
+      <symbol id="pulse" viewBox="0 0 32 32"><path d="M2 17h6l4-12 6 24 4-12h8"/></symbol>
+      <symbol id="book" viewBox="0 0 32 32"><path d="M16 29c-3-4-8-5-13-4V4c5-1 10 0 13 4 3-4 8-5 13-4v21c-5-1-10 0-13 4ZM16 8v21M7 10l5 2M7 16l5 2M21 12l4-2M21 18l4-2"/></symbol>
+      <symbol id="layers" viewBox="0 0 32 32"><path d="m16 3 14 7-14 7L2 10ZM3 17l13 7 13-7M3 24l13 7 13-7"/></symbol>
+      <symbol id="check" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><path d="m9 16 5 5 10-11"/></symbol>
+      <symbol id="warning" viewBox="0 0 32 32"><path d="M14 4a2 2 0 0 1 4 0l12 22a2 2 0 0 1-2 3H4a2 2 0 0 1-2-3ZM16 11v8M16 24h.01"/></symbol>
+      <symbol id="hourglass" viewBox="0 0 32 32"><path d="M7 3h18M7 29h18M9 3v5c0 4 7 6 7 8s-7 4-7 8v5M23 3v5c0 4-7 6-7 8s7 4 7 8v5"/></symbol>
+      <symbol id="target" viewBox="0 0 32 32"><circle cx="15" cy="17" r="12"/><circle cx="15" cy="17" r="6"/><path d="m15 17 14-14M23 3h6v6"/></symbol>
+      <symbol id="orbit" viewBox="0 0 32 32"><circle cx="16" cy="16" r="9"/><ellipse cx="16" cy="16" rx="17" ry="5" transform="rotate(-30 16 16)"/></symbol>
+      <symbol id="chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="preview-header">
+    <a class="brand" href="#home" aria-label="PLEX 预览首页"><svg class="icon"><use href="#star"/></svg><b>PLEX</b><span>视觉交互预览</span></a>
+    <div class="view-switch" role="group" aria-label="预览模式">
+      <button type="button" id="live-mode" aria-pressed="true">交互预览</button>
+      <button type="button" id="image-mode" aria-pressed="false">五张效果图</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="preview-intro"><p>深色太空漫画 <span>／</span> 五个区域</p><span>悬停、按压与展开，感受一点轻互动。</span></div>
+    <nav class="region-nav" aria-label="预览区域"><a href="#home">首页横幅</a><a href="#stats">四项统计</a><a href="#arena">试炼场</a><a href="#resources">资源生成</a><a href="#records">试炼战绩</a></nav>
+
+    <section class="preview-section" id="home" aria-labelledby="home-label">
+      <div class="section-label"><h2 id="home-label"><span>01</span> 首页横幅</h2><small>航行仪表 · 任务开场</small></div>
+      <div class="live-surface hero panel" data-capture="home">
+        <div class="hero-planet" aria-hidden="true"></div>
+        <div class="hero-copy"><p class="explorer">Explorer · 学生1</p><h1>今天从一条清晰的学习主线开始</h1><p class="hero-description">你当前累计 24000 XP，今日委托已开启 0/5，完成全部可获得 150 XP 反馈。</p><button class="primary-button tactile" type="button">进入探索舱</button></div>
+        <div class="hero-art">
+          <img class="mascot" src="assets/xiao-e-wave.png" alt="小 E 正挥手欢迎你" width="512" height="576">
+          <div class="instrument" aria-label="等级进度 100%，传奇 Explorer，24000 / 24000 XP，本周增加 0">
+            <span class="spark spark-a" aria-hidden="true">✦</span><span class="spark spark-b" aria-hidden="true">✦</span><span class="spark spark-c" aria-hidden="true">✦</span>
+            <div class="meter"><div class="meter-core"><strong>100</strong><span>%</span></div></div>
+            <div class="rank-ribbon">传奇 Explorer</div><p>24000 / 24000 XP · 本周 +0</p>
+          </div>
+        </div>
+      </div>
+      <figure class="image-surface" hidden><img src="01-home.png" alt="首页横幅太空漫画效果图"><figcaption>首页横幅 · imagegen 视觉概念</figcaption></figure>
+    </section>
+
+    <section class="preview-section" id="stats" aria-labelledby="stats-label">
+      <div class="section-label"><h2 id="stats-label"><span>02</span> 四项统计</h2><small>图标徽章 · 四格仪表</small></div>
+      <div class="live-surface stat-grid" data-capture="stats">
+        <button class="stat-card panel tactile" type="button"><span class="badge"><svg class="icon"><use href="#rocket"/></svg></span><span class="stat-copy"><span>当前等级</span><strong>Lv.10</strong></span></button>
+        <button class="stat-card panel tactile gold" type="button"><span class="badge"><svg class="icon"><use href="#flame"/></svg></span><span class="stat-copy"><span>累计 XP</span><strong>24000</strong></span></button>
+        <button class="stat-card panel tactile blue" type="button"><span class="badge"><svg class="icon"><use href="#calendar"/></svg></span><span class="stat-copy"><span>连续探索</span><strong>30 天</strong></span></button>
+        <button class="stat-card panel tactile violet" type="button"><span class="badge"><svg class="icon"><use href="#trophy"/></svg></span><span class="stat-copy"><span>班级排名</span><strong>第1名</strong></span></button>
+      </div>
+      <figure class="image-surface" hidden><img src="02-stats.png" alt="四项统计太空漫画效果图"><figcaption>四项统计 · imagegen 视觉概念</figcaption></figure>
+    </section>
+
+    <section class="preview-section" id="arena" aria-labelledby="arena-label">
+      <div class="section-label"><h2 id="arena-label"><span>03</span> 试炼场</h2><small>班级太空站 · 双任务分镜</small></div>
+      <div class="live-surface arena" data-capture="arena">
+        <div class="arena-header panel"><div class="arena-copy"><p class="eyebrow">TRIAL ARENA · 试炼场</p><h3>火星轨站·探索一班</h3><p>同班对战或模拟考试套卷，进入后在代码区编写并运行 Python。</p><div class="station-lines" aria-hidden="true"></div></div>
+          <div class="arena-status"><div class="mini-panel"><span><svg class="icon"><use href="#people"/></svg>同班在线</span><strong>0 人</strong></div><div class="mini-panel"><span><svg class="icon"><use href="#bolt"/></svg>对战模式</span><strong>ACM·3 题</strong></div><div class="mini-panel rank-status"><span><svg class="icon"><use href="#pulse"/></svg>我的班排</span><strong>第1名</strong><button type="button" class="outline-button tactile">查看详情</button></div></div>
+        </div>
+        <div class="mission-grid">
+          <button type="button" class="mission panel tactile"><span class="badge"><svg class="icon"><use href="#bolt"/></svg></span><span class="mission-copy"><span class="mission-title"><strong>学生对战</strong><span class="status-tag">已开放</span><span class="tag">ACM</span></span><span class="english">Student vs Student</span><span class="mission-description">随机 3 道编程题，ACM 赛制：先通过全部用例者获胜。</span><span class="tags"><span class="tag">随机 3 题</span><span class="tag">同班匹配</span><span class="tag">先 AC 获胜</span></span></span></button>
+          <button type="button" class="mission panel tactile violet"><span class="badge"><svg class="icon"><use href="#document"/></svg></span><span class="mission-copy"><span class="mission-title"><strong>模拟考试</strong><span class="status-tag">已开放</span><span class="tag">套卷</span></span><span class="english">Mock Exam</span><span class="mission-description">6 道编程题套卷，限时完成并统计得分。</span><span class="tags"><span class="tag">6 题</span><span class="tag">限时</span><span class="tag">综合测评</span></span></span></button>
+        </div>
+      </div>
+      <figure class="image-surface" hidden><img src="03-arena.png" alt="试炼场太空漫画效果图"><figcaption>试炼场 · imagegen 视觉概念</figcaption></figure>
+    </section>
+
+    <section class="preview-section" id="resources" aria-labelledby="resources-label">
+      <div class="section-label"><h2 id="resources-label"><span>04</span> 资源生成</h2><small>学习工作台 · 清晰操作区</small></div>
+      <div class="live-surface resources" data-capture="resources">
+        <div class="resource-generator panel"><div class="generator-copy"><svg class="icon book-icon" aria-hidden="true"><use href="#book"/></svg><div><h3>生成个性化学习资源</h3><p>选择知识点与资源类型，生成讲解、导图、练习、实操和语音资料。</p></div></div>
+          <div class="generator-controls">
+            <details class="dropdown"><summary aria-label="知识点：循环结构" aria-expanded="false">循环结构<svg class="icon"><use href="#chevron"/></svg></summary><div class="dropdown-menu"><button type="button" class="selected-option" aria-label="选择循环结构">循环结构<span aria-hidden="true">✓</span></button></div></details>
+            <details class="dropdown"><summary aria-label="资源类型：完整学习包·含语音" aria-expanded="false">完整学习包·含语音<svg class="icon"><use href="#chevron"/></svg></summary><div class="dropdown-menu"><button type="button" class="selected-option" aria-label="选择完整学习包·含语音">完整学习包·含语音<span aria-hidden="true">✓</span></button></div></details>
+            <button type="button" class="primary-button tactile">生成学习资源</button><button type="button" class="outline-button tactile">生成题目</button>
+          </div>
+        </div>
+        <div class="stat-grid resource-stats">
+          <button type="button" class="stat-card panel tactile"><span class="simple-badge"><svg class="icon"><use href="#book"/></svg></span><span class="stat-copy"><span>知识点</span><strong>9</strong></span></button>
+          <button type="button" class="stat-card panel tactile"><span class="simple-badge"><svg class="icon"><use href="#layers"/></svg></span><span class="stat-copy"><span>可学习资源</span><strong>49</strong></span></button>
+          <article class="stat-card panel"><span class="simple-badge"><svg class="icon"><use href="#check"/></svg></span><span class="stat-copy"><span>最新任务</span><strong>已完成</strong></span></article>
+          <button type="button" class="stat-card panel tactile gold"><span class="simple-badge"><svg class="icon"><use href="#warning"/></svg></span><span class="stat-copy"><span>异常待关注</span><strong>43</strong></span></button>
+        </div>
+      </div>
+      <figure class="image-surface" hidden><img src="04-resources.png" alt="资源生成太空漫画效果图"><figcaption>资源生成 · imagegen 视觉概念</figcaption></figure>
+    </section>
+
+    <section class="preview-section" id="records" aria-labelledby="records-label">
+      <div class="section-label"><h2 id="records-label"><span>05</span> 试炼战绩</h2><small>成长徽章 · 成绩票据</small></div>
+      <div class="live-surface records" data-capture="records">
+        <div class="stat-grid record-stats">
+          <article class="stat-card panel"><span class="simple-badge"><svg class="icon"><use href="#check"/></svg></span><span class="stat-copy"><span>已完成</span><strong>2</strong></span></article>
+          <article class="stat-card panel"><span class="simple-badge"><svg class="icon"><use href="#hourglass"/></svg></span><span class="stat-copy"><span>进行中</span><strong>1</strong></span></article>
+          <article class="stat-card panel"><span class="simple-badge"><svg class="icon"><use href="#target"/></svg></span><span class="stat-copy"><span>均分</span><strong>100</strong></span></article>
+          <article class="stat-card panel"><span class="simple-badge"><svg class="icon"><use href="#orbit"/></svg></span><span class="stat-copy"><span>累计参与</span><strong>3</strong></span></article>
+        </div>
+        <ul class="score-list"><li class="score-ticket panel"><span class="score-title"><svg class="icon"><use href="#star"/></svg>Python 入门班级训练</span><strong>100 分</strong></li><li class="score-ticket panel"><span class="score-title"><svg class="icon"><use href="#star"/></svg>栈与队列、树与二叉树、图的表示·个人挑战</span><strong>100 分</strong></li></ul>
+      </div>
+      <figure class="image-surface" hidden><img src="05-records.png" alt="试炼战绩太空漫画效果图"><figcaption>试炼战绩 · imagegen 视觉概念</figcaption></figure>
+    </section>
+    <footer class="preview-footer"><span>PLEX · 太空漫画视觉探索</span><p>独立视觉样稿 · 仅演示外观与轻互动，数值保持截图状态。</p><a href="README.md">交付说明</a></footer>
+  </main>
+</body>
+</html>

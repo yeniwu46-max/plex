@@ -505,7 +505,8 @@ onUnmounted(() => {
           :key="mod.key"
           type="button"
           class="module-card"
-          :class="{ 'module-card--active': activeModule === mod.key }"
+          :class="{ 'module-card--active': activeModule === mod.key, 'module-card--exam': mod.key === 'mock_exam' }"
+          :aria-pressed="activeModule === mod.key"
           @click="selectModule(mod.key)"
         >
           <span class="module-card__icon"><n-icon :component="moduleIcon[mod.key]" /></span>

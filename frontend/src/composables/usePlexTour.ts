@@ -6,6 +6,7 @@ import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useThemeStore } from '../stores/theme'
 import { studentTour, teacherTour, adminTour } from '../config/tour'
 import type { TourStepConfig } from '../config/tour'
 
@@ -89,6 +90,7 @@ async function runStepPrepare(
 
 export function usePlexTour() {
   const router = useRouter()
+  const themeStore = useThemeStore()
 
   function hasSeenTour(role: TourRole): boolean {
     return lsGet(LS_KEYS[role]) === 'true'
@@ -167,12 +169,12 @@ export function usePlexTour() {
         nextBtnText: '下一步',
         prevBtnText: '上一步',
         doneBtnText: '完成',
-        popoverClass: role === 'student' ? 'plex-comic-tour' : '',
+        popoverClass: role === 'student' && themeStore.isComic ? 'plex-comic-tour' : '',
         showButtons: ['next', 'previous', 'close'],
         onPopoverRender: (popover) => {
           popover.closeButton.setAttribute('aria-label', '关闭导览')
           popover.closeButton.setAttribute('title', '关闭导览')
-          if (role === 'student') {
+          if (role === 'student' && themeStore.isComic) {
             const progress = popover.description.querySelector('.driver-step-progress')
             if (progress) popover.title.appendChild(progress)
           }

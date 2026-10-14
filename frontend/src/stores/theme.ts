@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia'
-import { computed, watch } from 'vue'
-import { useColorMode, usePreferredDark } from '@vueuse/core'
+import { computed, ref, watch } from 'vue'
+import { useColorMode, usePreferredDark, useStorage } from '@vueuse/core'
 
 export type ColorMode = 'dark' | 'light' | 'auto'
 export type PlexPersona = 'student' | 'teacher' | 'admin' | 'default'
+export type VisualStyle = 'space' | 'comic'
 
 const STORAGE_KEY = 'plex-color-mode'
+const VISUAL_STYLE_KEY = 'plex-visual-style'
 const TRANSITION_CLASS = 'theme-transition'
 const TRANSITION_MS = 160
 
@@ -34,11 +36,25 @@ export const useThemeStore = defineStore('theme', () => {
 
   const isDark = computed(() => resolvedTheme.value === 'dark')
 
-  // 角色标记 (由 App.vue 路由监听来写入，此处只读)
-  const persona = computed<PlexPersona>(() => {
-    const attr = document.documentElement.dataset.plexPersona
-    return (attr as PlexPersona) || 'default'
-  })
+  // 风格与明暗分别持久化；老用户默认保留经典太空。
+  const savedVisualStyle = useStorage<string>(VISUAL_STYLE_KEY, 'space')
+  const visualStyle = computed<VisualStyle>(() => savedVisualStyle.value === 'comic' ? 'comic' : 'space')
+  const persona = ref<PlexPersona>('default')
+  const isComic = computed(() => persona.value === 'student' && visualStyle.value === 'comic')
+
+  function setVisualStyle(style: VisualStyle) {
+    savedVisualStyle.value = style
+  }
+
+  function setPersona(next: PlexPersona) {
+    persona.value = next
+  }
+
+  // 根节点门控也覆盖挂载到 body 的菜单与引导，离开学生端后立即还原。
+  watch([persona, isComic], ([role, comic]) => {
+    document.documentElement.dataset.plexPersona = role
+    document.documentElement.dataset.plexStyle = comic ? 'comic' : 'space'
+  }, { immediate: true, flush: 'sync' })
 
   function setMode(m: ColorMode) {
     applyTransition()
@@ -78,6 +94,10 @@ export const useThemeStore = defineStore('theme', () => {
     resolvedTheme,
     isDark,
     persona,
+    visualStyle,
+    isComic,
+    setVisualStyle,
+    setPersona,
     setMode,
     toggle,
   }

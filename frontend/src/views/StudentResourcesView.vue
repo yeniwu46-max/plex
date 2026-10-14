@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue'
-import { NButton, NCollapse, NCollapseItem, NInput, NModal, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
+import { NButton, NCollapse, NCollapseItem, NIcon, NInput, NModal, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
+import { BookOutline, LayersOutline, CheckmarkCircleOutline, WarningOutline } from '@vicons/ionicons5'
+import { useThemeStore } from '../stores/theme'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
@@ -29,6 +31,7 @@ import {
 } from '../utils/resourceListFilters'
 
 const message = useMessage()
+const themeStore = useThemeStore()
 const knowledgeKey = ref<ModuleCategoryValue>('loop')
 /** 生成时默认学习阶段（UI 不再展示阶段选择） */
 const DEFAULT_LEARNING_STAGE = '学习'
@@ -560,19 +563,23 @@ onActivated(() => {
       </section>
 
       <section class="resource-summary" aria-label="资源概览">
-        <article role="button" tabindex="0" @click="openResourceStatModal('knowledge')" @keydown.enter.prevent="openResourceStatModal('knowledge')">
+        <article role="button" tabindex="0" @click="openResourceStatModal('knowledge')" @keydown.enter.prevent="openResourceStatModal('knowledge')" @keydown.space.prevent="openResourceStatModal('knowledge')">
+          <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="BookOutline" aria-hidden="true" />
           <span>知识点</span>
           <strong>{{ overviewGroupCount }}</strong>
         </article>
-        <article role="button" tabindex="0" @click="openResourceStatModal('resources')" @keydown.enter.prevent="openResourceStatModal('resources')">
+        <article role="button" tabindex="0" @click="openResourceStatModal('resources')" @keydown.enter.prevent="openResourceStatModal('resources')" @keydown.space.prevent="openResourceStatModal('resources')">
+          <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="LayersOutline" aria-hidden="true" />
           <span>可学习资源</span>
           <strong>{{ overviewResourceCount }}</strong>
         </article>
         <article>
+          <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="CheckmarkCircleOutline" aria-hidden="true" />
           <span>最新任务</span>
           <strong>{{ latestTaskStatus }}</strong>
         </article>
-        <article role="button" tabindex="0" @click="openResourceStatModal('anomaly')" @keydown.enter.prevent="openResourceStatModal('anomaly')">
+        <article role="button" tabindex="0" @click="openResourceStatModal('anomaly')" @keydown.enter.prevent="openResourceStatModal('anomaly')" @keydown.space.prevent="openResourceStatModal('anomaly')">
+          <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="WarningOutline" aria-hidden="true" />
           <span>异常待关注</span>
           <strong>{{ anomalyCount }}</strong>
         </article>

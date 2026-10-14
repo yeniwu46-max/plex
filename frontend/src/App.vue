@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { destroyActiveTour } from './composables/usePlexTour'
 import { NConfigProvider, NMessageProvider, darkTheme, zhCN, dateZhCN } from 'naive-ui'
 import { getPlexNaiveOverrides } from './theme/plexTokens'
-import { useThemeStore } from './stores/theme'
+import { useThemeStore, type PlexPersona } from './stores/theme'
 
 const route = useRoute()
 const themeStore = useThemeStore()
@@ -36,14 +36,16 @@ watch(
     if (previous && prevArea !== nextArea) {
       destroyActiveTour()
     }
-    let persona = 'default'
+    let persona: PlexPersona = 'default'
     if (path.startsWith('/student')) persona = 'student'
     else if (path.startsWith('/teacher')) persona = 'teacher'
     else if (path.startsWith('/admin') || path === '/trial-arena') persona = 'admin'
-    document.documentElement.dataset.plexPersona = persona
+    themeStore.setPersona(persona)
   },
   { immediate: true },
 )
+
+watch(() => themeStore.visualStyle, () => destroyActiveTour())
 
 </script>
 

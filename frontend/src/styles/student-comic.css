@@ -1,5 +1,5 @@
-/* Shared palette; visual rules are limited to the four approved student surfaces. */
-:root {
+/* Comic-only palette and the original four approved student surfaces. */
+html[data-plex-style='comic'][data-plex-persona='student'] {
   --comic-space: #07131f;
   --comic-panel: #11263a;
   --comic-raised: #19364b;
@@ -13,7 +13,7 @@
   --comic-shadow: 4px 4px 0 var(--comic-ink);
 }
 
-html[data-theme='light'] {
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] {
   --comic-space: #e9f4f7;
   --comic-panel: #f7fcff;
   --comic-raised: #deeff3;
@@ -26,7 +26,7 @@ html[data-theme='light'] {
 }
 
 /* Resource strip: identity panel followed by three real resource counters. */
-.cabin-main .cabin-status.plex-comic-board {
+html[data-plex-style='comic'][data-plex-persona='student'] .cabin-main .cabin-status.plex-comic-board {
   position: relative;
   grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.3fr);
   gap: 1.4rem;
@@ -38,13 +38,13 @@ html[data-theme='light'] {
   color: var(--comic-text);
   backdrop-filter: none;
 }
-.plex-comic-board.cabin-status .status-profile {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .status-profile {
   gap: 1rem;
   min-width: 0;
   padding-right: 1.25rem;
   border-right: 2px solid var(--comic-line);
 }
-.plex-comic-board.cabin-status .level-ring {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .level-ring {
   position: relative;
   flex-shrink: 0;
   width: 94px;
@@ -55,7 +55,7 @@ html[data-theme='light'] {
   background: radial-gradient(circle, var(--comic-space) 59%, transparent 61%), conic-gradient(var(--comic-accent) calc(var(--level-progress) * 1turn), var(--comic-raised) 0);
   color: var(--comic-text);
 }
-.comic-profile-mascot {
+html[data-plex-style='comic'][data-plex-persona='student'] .comic-profile-mascot {
   position: absolute;
   width: 70px;
   height: 63px;
@@ -63,19 +63,19 @@ html[data-theme='light'] {
   top: -39px;
   pointer-events: none;
 }
-.plex-comic-board.cabin-status .status-profile__copy { min-width: 0; }
-.plex-comic-board.cabin-status .status-profile__copy > strong {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .status-profile__copy { min-width: 0; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .status-profile__copy > strong {
   color: var(--comic-text);
   font-size: 1.15rem;
   overflow-wrap: anywhere;
 }
-.plex-comic-board.cabin-status .status-profile__copy p {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .status-profile__copy p {
   color: var(--comic-muted);
   line-height: 1.6;
 }
-.plex-comic-board.cabin-status .status-profile__copy p span { color: var(--comic-accent); }
-.plex-comic-board.cabin-status .xp-track { flex-wrap: wrap; gap: 0.45rem 0.65rem; }
-.plex-comic-board.cabin-status .xp-track__bar {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .status-profile__copy p span { color: var(--comic-accent); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .xp-track { flex-wrap: wrap; gap: 0.45rem 0.65rem; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .xp-track__bar {
   position: relative;
   width: 160px;
   max-width: 100%;
@@ -84,33 +84,33 @@ html[data-theme='light'] {
   border-radius: 4px;
   background: var(--comic-space);
 }
-.plex-comic-board.cabin-status .xp-track__bar::after {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .xp-track__bar::after {
   content: '';
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(90deg, transparent 0 17px, var(--comic-ink) 17px 20px);
   pointer-events: none;
 }
-.plex-comic-board.cabin-status .xp-track__bar > span { background: #55eee9; box-shadow: none; }
-.plex-comic-board.cabin-status .xp-track em { color: var(--comic-muted); font-variant-numeric: tabular-nums; }
-.plex-comic-board.cabin-status .resource-bank {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .xp-track__bar > span { background: #55eee9; box-shadow: none; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .xp-track em { color: var(--comic-muted); font-variant-numeric: tabular-nums; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-bank {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.65rem 1rem;
   min-width: 0;
 }
-.plex-comic-board.cabin-status .resource-bank h2 {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-bank h2 {
   margin: 0;
   color: var(--comic-accent);
   font-size: 0.85rem;
   letter-spacing: 0.06em;
 }
-.plex-comic-board.cabin-status .resource-bank__list {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-bank__list {
   grid-column: 1 / -1;
   grid-row: 2;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
 }
-.plex-comic-board.cabin-status .resource-item {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-item {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
   grid-template-rows: auto auto;
@@ -123,7 +123,7 @@ html[data-theme='light'] {
   background: var(--comic-space);
   text-align: left;
 }
-.plex-comic-board.cabin-status .resource-item__orb {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-item__orb {
   grid-row: 1 / 3;
   width: 42px;
   height: 42px;
@@ -133,19 +133,19 @@ html[data-theme='light'] {
   font-size: 1.4rem;
   filter: none;
 }
-.plex-comic-board.cabin-status .resource-item__label {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-item__label {
   color: var(--comic-muted);
   font-size: 0.75rem;
   white-space: normal;
 }
-.plex-comic-board.cabin-status .resource-item > strong {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-item > strong {
   color: var(--comic-text);
   font-size: 1.3rem;
   line-height: 1.1;
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
-.plex-comic-board.cabin-status .resource-bank__more {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-bank__more {
   grid-column: 2;
   grid-row: 1;
   color: var(--comic-muted);
@@ -153,8 +153,8 @@ html[data-theme='light'] {
 }
 
 /* Chat: restrained panel art and readable speech bubbles. */
-.messenger-main.plex-comic-chat .analysis-panel,
-.messenger-main.plex-comic-chat .prompt-dock {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .analysis-panel,
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-dock {
   border: 2px solid var(--comic-line);
   border-radius: 18px 12px 18px 12px;
   background: var(--comic-panel);
@@ -162,14 +162,14 @@ html[data-theme='light'] {
   backdrop-filter: none;
   color: var(--comic-text);
 }
-.messenger-main.plex-comic-chat .analysis-panel__head h2 {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .analysis-panel__head h2 {
   color: var(--comic-text);
   font-size: 1.05rem;
   letter-spacing: 0.02em;
 }
-.messenger-main.plex-comic-chat .analysis-panel__head h2 span { color: var(--comic-yellow); }
-.messenger-main.plex-comic-chat .messenger-box { width: min(340px, 100%); }
-.messenger-main.plex-comic-chat .messenger-box__toggle {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .analysis-panel__head h2 span { color: var(--comic-yellow); }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-box { width: min(340px, 100%); }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-box__toggle {
   border: 2px solid var(--comic-line);
   border-bottom-width: 3px;
   border-radius: 10px 10px 3px 3px;
@@ -177,20 +177,20 @@ html[data-theme='light'] {
   color: var(--comic-text);
   min-height: 39px;
 }
-.messenger-main.plex-comic-chat .messenger-box__label {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-box__label {
   border: 0;
   background: #55eee9;
   color: #07131f;
   font-weight: 800;
 }
-.messenger-main.plex-comic-chat .messenger-box__panel {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-box__panel {
   border: 2px solid var(--comic-line);
   background: var(--comic-panel);
   box-shadow: var(--comic-shadow);
 }
-.messenger-main.plex-comic-chat .messenger-session-meta { color: var(--comic-muted); }
-.messenger-main.plex-comic-chat .messenger-session-tab.is-active { background: var(--comic-hover); }
-.messenger-main.plex-comic-chat .chat-thread {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-session-meta { color: var(--comic-muted); }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-session-tab.is-active { background: var(--comic-hover); }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread {
   position: relative;
   isolation: isolate;
   padding: 1.15rem 1.25rem;
@@ -201,13 +201,13 @@ html[data-theme='light'] {
     var(--comic-space);
   scrollbar-gutter: stable;
 }
-.messenger-main.plex-comic-chat .chat-thread__empty {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__empty {
   position: relative;
   justify-items: center;
   gap: 0;
   padding: 0.8rem 0;
 }
-.messenger-main.plex-comic-chat .chat-thread__empty::before {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__empty::before {
   content: '';
   position: absolute;
   right: 0;
@@ -219,19 +219,19 @@ html[data-theme='light'] {
   mask-image: linear-gradient(225deg, #000, transparent 75%);
   pointer-events: none;
 }
-.comic-chat-mascot { width: clamp(90px, 12vw, 150px); height: auto; z-index: 1; margin-bottom: -12px; }
-.comic-welcome-bubble {
+html[data-plex-style='comic'][data-plex-persona='student'] .comic-chat-mascot { width: clamp(90px, 12vw, 150px); height: auto; z-index: 1; margin-bottom: -12px; }
+html[data-plex-style='comic'][data-plex-persona='student'] .comic-welcome-bubble {
   max-width: 470px;
   padding: 1.1rem 1.5rem;
   border: 3px solid #07131f;
   border-radius: 16px 16px 16px 5px;
   background: #eef7ff;
   box-shadow: 5px 5px 0 var(--comic-line);
-  transform: rotate(-1deg);
+  transform: none;
 }
-.messenger-main.plex-comic-chat .comic-welcome-bubble strong { color: #11263a; font-size: 1rem; line-height: 1.7; }
-.messenger-main.plex-comic-chat .comic-welcome-bubble p { color: #466175; font-size: 0.85rem; line-height: 1.6; margin: 0.45rem 0 0; }
-.messenger-main.plex-comic-chat .chat-thread__item {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .comic-welcome-bubble strong { color: #11263a; font-size: 1rem; line-height: 1.7; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .comic-welcome-bubble p { color: #466175; font-size: 0.85rem; line-height: 1.6; margin: 0.45rem 0 0; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item {
   position: relative;
   min-width: 0;
   max-width: min(760px, calc(100% - 60px));
@@ -244,13 +244,13 @@ html[data-theme='light'] {
   font-size: 0.93rem;
   line-height: 1.7;
 }
-.messenger-main.plex-comic-chat .chat-thread__item--assistant {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item--assistant {
   margin-left: 48px;
   background: var(--comic-panel);
   color: var(--comic-text);
 }
-.comic-message-avatar { position: absolute; width: 42px; height: 42px; left: -51px; top: 0; }
-.messenger-main.plex-comic-chat .chat-thread__item::before {
+html[data-plex-style='comic'][data-plex-persona='student'] .comic-message-avatar { position: absolute; width: 42px; height: 42px; left: -51px; top: 0; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item::before {
   content: '';
   position: absolute;
   top: 15px;
@@ -262,33 +262,33 @@ html[data-theme='light'] {
   background: inherit;
   transform: rotate(45deg);
 }
-.messenger-main.plex-comic-chat .chat-thread__item--user {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item--user {
   background: #55eee9;
   border-color: #07131f;
   border-radius: 14px 14px 4px 14px;
   color: #07131f;
   margin-right: 7px;
 }
-.messenger-main.plex-comic-chat .chat-thread__item--user::before {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item--user::before {
   left: auto;
   right: -7px;
   transform: rotate(225deg);
   border-color: #07131f;
 }
-.messenger-main.plex-comic-chat .chat-thread__item--user > p { color: #07131f; }
-.messenger-main.plex-comic-chat .chat-thread__item--assistant > p { color: var(--comic-text); }
-.messenger-main.plex-comic-chat .markdown-body { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-.messenger-main.plex-comic-chat .markdown-body pre { max-width: 100%; overflow-x: auto; }
-.messenger-main.plex-comic-chat .markdown-body table { display: block; max-width: 100%; overflow-x: auto; }
-.messenger-main.plex-comic-chat .prompt-dock { padding: 0.8rem 1rem 1rem; overflow: visible; }
-.messenger-main.plex-comic-chat .prompt-line { border-color: var(--comic-line); padding-bottom: 0.65rem; }
-.messenger-main.plex-comic-chat .prompt-input { background: var(--comic-space); border-radius: 9px; }
-.messenger-main.plex-comic-chat .prompt-input.n-input {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item--user > p { color: #07131f; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item--assistant > p { color: var(--comic-text); }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .markdown-body { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .markdown-body pre { max-width: 100%; overflow-x: auto; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .markdown-body table { display: block; max-width: 100%; overflow-x: auto; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-dock { padding: 0.8rem 1rem 1rem; overflow: visible; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-line { border-color: var(--comic-line); padding-bottom: 0.65rem; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-input { background: var(--comic-space); border-radius: 9px; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-input.n-input {
   --n-color: var(--comic-space) !important;
   --n-text-color: var(--comic-text) !important;
   --n-placeholder-color: var(--comic-muted) !important;
 }
-.messenger-main.plex-comic-chat .prompt-line button {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-line button {
   flex-shrink: 0;
   border: 1px solid var(--comic-line);
   border-radius: 10px;
@@ -296,8 +296,8 @@ html[data-theme='light'] {
   background: var(--comic-space);
   box-shadow: 2px 2px 0 var(--comic-ink);
 }
-.messenger-main.plex-comic-chat .prompt-line .prompt-send { color: #07131f; background: #55eee9; border: 2px solid #07131f; }
-.messenger-main.plex-comic-chat .prompt-actions button {
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-line .prompt-send { color: #07131f; background: #55eee9; border: 2px solid #07131f; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-actions button {
   border: 2px solid var(--comic-line);
   border-radius: 9px;
   color: var(--comic-text);
@@ -306,17 +306,17 @@ html[data-theme='light'] {
   min-height: 44px;
   padding: 0.45rem;
 }
-.messenger-main.plex-comic-chat .prompt-actions button::before { display: none; }
-.messenger-main.plex-comic-chat .prompt-actions button .n-icon { color: var(--comic-accent); }
-.messenger-main.plex-comic-chat .prompt-actions button:hover:not(:disabled) { background: var(--comic-hover); transform: translateY(-1px); }
-.plex-comic-chat button:disabled { opacity: 0.5; cursor: not-allowed; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-actions button::before { display: none; }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-actions button .n-icon { color: var(--comic-accent); }
+html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-actions button:hover:not(:disabled) { background: var(--comic-hover); transform: translateY(-1px); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-chat button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Student-only header controls; the existing teacher/admin header stays independent. */
-.plex-topbar.plex-topbar--comic .plex-topbar__userbar { gap: 0.85rem; padding: 4px 5px 6px 0; }
-.plex-topbar.plex-topbar--comic .plex-topbar__heading h1 { color: var(--comic-text); }
-.plex-topbar.plex-topbar--comic .plex-topbar__heading p { color: var(--comic-muted); }
-.plex-topbar.plex-topbar--comic .plex-topbar__icon-btn,
-.plex-topbar.plex-topbar--comic .plex-theme-switcher {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__userbar { gap: 0.85rem; padding: 4px 5px 6px 0; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__heading h1 { color: var(--comic-text); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__heading p { color: var(--comic-muted); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__icon-btn,
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-theme-switcher {
   width: 44px;
   height: 44px;
   padding: 0;
@@ -327,10 +327,10 @@ html[data-theme='light'] {
   color: var(--comic-text);
   box-shadow: 3px 3px 0 var(--comic-ink);
 }
-.plex-topbar.plex-topbar--comic .plex-topbar__icon-btn:hover,
-.plex-topbar.plex-topbar--comic .plex-theme-switcher:hover { background: var(--comic-hover); }
-.plex-topbar.plex-topbar--comic .plex-topbar__divider { display: none; }
-.plex-topbar.plex-topbar--comic .plex-topbar__user {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__icon-btn:hover,
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-theme-switcher:hover { background: var(--comic-hover); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__divider { display: none; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__user {
   min-width: 150px;
   max-width: 280px;
   gap: 0.65rem;
@@ -341,7 +341,7 @@ html[data-theme='light'] {
   box-shadow: var(--comic-shadow);
   color: var(--comic-text);
 }
-.plex-topbar.plex-topbar--comic .plex-topbar__avatar {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__avatar {
   width: 46px;
   height: 46px;
   border: 0;
@@ -349,10 +349,10 @@ html[data-theme='light'] {
   box-shadow: none;
   overflow: visible;
 }
-.comic-topbar-mascot { width: 52px; height: 47px; object-fit: contain; }
-.plex-topbar.plex-topbar--comic .plex-topbar__copy { min-width: 0; gap: 5px; }
-.plex-topbar.plex-topbar--comic .plex-topbar__copy strong { color: var(--comic-text); overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
-.plex-topbar.plex-topbar--comic .plex-topbar__copy em {
+html[data-plex-style='comic'][data-plex-persona='student'] .comic-topbar-mascot { width: 52px; height: 47px; object-fit: contain; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__copy { min-width: 0; gap: 5px; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__copy strong { color: var(--comic-text); overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__copy em {
   align-self: flex-start;
   border: 1px solid #07131f;
   border-radius: 4px;
@@ -363,84 +363,84 @@ html[data-theme='light'] {
   line-height: 1.4;
   transform: rotate(-3deg);
 }
-.plex-topbar.plex-topbar--comic .n-badge-sup {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .n-badge-sup {
   border: 2px solid #07131f;
   min-height: 23px;
   min-width: 23px;
   font-weight: 800;
   transform: translate(50%, -50%) rotate(9deg);
 }
-.plex-comic-notifications.n-popover {
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-notifications.n-popover {
   border: 2px solid var(--comic-line);
   border-radius: 12px;
   background: var(--comic-panel);
   box-shadow: var(--comic-shadow);
   color: var(--comic-text);
 }
-.plex-comic-notifications .plex-notif-panel { max-width: calc(100vw - 64px); }
-.plex-comic-notifications .plex-notif-item { border: 1px solid var(--comic-line); border-radius: 8px; }
-.plex-comic-notifications .plex-notif-item__title { color: var(--comic-text); }
-.plex-comic-notifications .plex-notif-panel__head { color: var(--comic-text); }
-.plex-comic-notifications .plex-notif-item__body,
-.plex-comic-notifications .plex-notif-item__time { color: var(--comic-muted); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-notifications .plex-notif-panel { max-width: calc(100vw - 64px); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-notifications .plex-notif-item { border: 1px solid var(--comic-line); border-radius: 8px; }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-notifications .plex-notif-item__title { color: var(--comic-text); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-notifications .plex-notif-panel__head { color: var(--comic-text); }
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-notifications .plex-notif-item__body,
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-notifications .plex-notif-item__time { color: var(--comic-muted); }
 
-:is(.plex-comic-chat, .plex-comic-board, .plex-topbar--comic) :is(button, a):focus-visible {
+html[data-plex-style='comic'][data-plex-persona='student'] :is(.plex-comic-chat, .plex-comic-board, .plex-topbar--comic) :is(button, a):focus-visible {
   outline: 3px solid var(--comic-yellow);
   outline-offset: 4px;
 }
 
 /* Override the earlier legacy light-theme !important rules within these surfaces. */
-html[data-theme='light'] .plex-comic-chat :is(.analysis-panel, .prompt-dock, .messenger-box__panel) {
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat :is(.analysis-panel, .prompt-dock, .messenger-box__panel) {
   background: var(--comic-panel) !important;
   border-color: var(--comic-line) !important;
   box-shadow: var(--comic-shadow) !important;
 }
-html[data-theme='light'] .plex-comic-chat :is(.chat-thread, .messenger-box__toggle) { background: var(--comic-space) !important; border-color: var(--comic-line) !important; }
-html[data-theme='light'] .plex-comic-chat .messenger-box__label { color: #07131f !important; }
-html[data-theme='light'] .plex-comic-chat .chat-thread__item--user { background: #55eee9 !important; }
-html[data-theme='light'] .plex-comic-chat .chat-thread__item--user p { color: #07131f !important; }
-html[data-theme='light'] .plex-comic-chat .chat-thread__item--assistant { background: var(--comic-panel) !important; }
-html[data-theme='light'] .plex-comic-board .resource-item__orb { color: #087f83; }
-html[data-theme='light'] .plex-comic-chat .kcard { background: var(--comic-raised); border-color: var(--comic-line); }
-html[data-theme='light'] .plex-comic-chat :is(.kcard__head strong, .kcard__next button, .kcard__sources button, .kchip) { color: var(--comic-text); }
-html[data-theme='light'] .plex-comic-chat :is(.kcard__head small, .kcard__label, .kchip i, .kcard__next small, .kcard__sources .meta) { color: var(--comic-muted); }
-html[data-theme='light'] .plex-comic-chat :is(.kcard__next em, .kcard__sources .idx) { color: var(--comic-accent); }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat :is(.chat-thread, .messenger-box__toggle) { background: var(--comic-space) !important; border-color: var(--comic-line) !important; }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat .messenger-box__label { color: #07131f !important; }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat .chat-thread__item--user { background: #55eee9 !important; }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat .chat-thread__item--user p { color: #07131f !important; }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat .chat-thread__item--assistant { background: var(--comic-panel) !important; }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-board .resource-item__orb { color: #087f83; }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat .kcard { background: var(--comic-raised); border-color: var(--comic-line); }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat :is(.kcard__head strong, .kcard__next button, .kcard__sources button, .kchip) { color: var(--comic-text); }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat :is(.kcard__head small, .kcard__label, .kchip i, .kcard__next small, .kcard__sources .meta) { color: var(--comic-muted); }
+html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .plex-comic-chat :is(.kcard__next em, .kcard__sources .idx) { color: var(--comic-accent); }
 
 @media (max-width: 1280px) {
-  .cabin-main .cabin-status.plex-comic-board { grid-template-columns: 1fr; gap: 1rem; }
-  .plex-comic-board.cabin-status .status-profile { border-right: 0; border-bottom: 2px solid var(--comic-line); padding: 0.7rem 0 1.1rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .cabin-main .cabin-status.plex-comic-board { grid-template-columns: 1fr; gap: 1rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .status-profile { border-right: 0; border-bottom: 2px solid var(--comic-line); padding: 0.7rem 0 1.1rem; }
 }
 @media (max-width: 900px) {
-  .plex-topbar.plex-topbar--comic .plex-topbar__userbar { overflow: visible; flex-wrap: wrap; justify-self: start; gap: 0.75rem; }
-  .messenger-main.plex-comic-chat .messenger-stage { height: calc(100dvh - 205px); min-height: 550px; padding-bottom: 1.5rem; }
-  .messenger-main.plex-comic-chat .analysis-panel { padding: 0.85rem; }
-  .messenger-main.plex-comic-chat .chat-thread { padding: 1rem 0.8rem; }
-  .messenger-main.plex-comic-chat .prompt-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__userbar { overflow: visible; flex-wrap: wrap; justify-self: start; gap: 0.75rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-stage { height: calc(100dvh - 205px); min-height: 550px; padding-bottom: 1.5rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .analysis-panel { padding: 0.85rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread { padding: 1rem 0.8rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 520px) {
-  .cabin-main .cabin-status.plex-comic-board { padding: 1rem; margin: 0 1rem 1.5rem; }
-  .plex-comic-board.cabin-status .resource-bank__list { gap: 0.5rem; }
-  .plex-comic-board.cabin-status .resource-item { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 0.6rem 0.2rem; }
-  .plex-comic-board.cabin-status .resource-item__orb { grid-row: auto; width: 35px; height: 35px; }
-  .plex-comic-board.cabin-status .resource-item > strong { font-size: 1.1rem; }
-  .plex-comic-board.cabin-status .level-ring { width: 76px; height: 76px; }
-  .plex-comic-board.cabin-status .comic-profile-mascot { left: 1px; }
-  .plex-comic-board.cabin-status .status-profile__copy > strong { font-size: 1rem; }
-  .plex-topbar.plex-topbar--comic .plex-topbar__user { min-width: 138px; max-width: 200px; }
-  .plex-topbar.plex-topbar--comic .plex-topbar__copy strong { max-width: 90px; }
-  .messenger-main.plex-comic-chat .chat-thread { padding: 0.9rem 0.55rem; }
-  .messenger-main.plex-comic-chat .messenger-stage { padding-inline: 1rem; }
-  .messenger-main.plex-comic-chat .chat-thread__item { max-width: calc(100% - 35px); padding: 0.65rem; font-size: 0.9rem; }
-  .messenger-main.plex-comic-chat .chat-thread__item--assistant { margin-left: 28px; }
-  .messenger-main.plex-comic-chat .comic-message-avatar { width: 28px; height: 30px; left: -34px; }
-  .comic-welcome-bubble { padding: 0.8rem; transform: none; }
-  .messenger-main.plex-comic-chat .comic-welcome-bubble strong { font-size: 0.9rem; }
-  .messenger-main.plex-comic-chat .prompt-dock { padding: 0.65rem; }
-  .messenger-main.plex-comic-chat .prompt-line { gap: 0.35rem; flex-wrap: wrap; }
-  .messenger-main.plex-comic-chat .prompt-input { order: -1; flex-basis: 100%; }
-  .messenger-main.plex-comic-chat .prompt-send { margin-left: auto; }
-  .messenger-main.plex-comic-chat .prompt-actions { gap: 0.5rem; }
-  .messenger-main.plex-comic-chat .kcard__sources button { grid-template-columns: auto minmax(0, 1fr); }
-  .messenger-main.plex-comic-chat .kcard__sources .meta { grid-column: 2; }
-  .messenger-main.plex-comic-chat .kcard__head { flex-wrap: wrap; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .cabin-main .cabin-status.plex-comic-board { padding: 1rem; margin: 0 1rem 1.5rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-bank__list { gap: 0.5rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-item { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 0.6rem 0.2rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-item__orb { grid-row: auto; width: 35px; height: 35px; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .resource-item > strong { font-size: 1.1rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .level-ring { width: 76px; height: 76px; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .comic-profile-mascot { left: 1px; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-comic-board.cabin-status .status-profile__copy > strong { font-size: 1rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__user { min-width: 138px; max-width: 200px; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__copy strong { max-width: 90px; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread { padding: 0.9rem 0.55rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-stage { padding-inline: 1rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item { max-width: calc(100% - 35px); padding: 0.65rem; font-size: 0.9rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread__item--assistant { margin-left: 28px; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .comic-message-avatar { width: 28px; height: 30px; left: -34px; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .comic-welcome-bubble { padding: 0.8rem; transform: none; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .comic-welcome-bubble strong { font-size: 0.9rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-dock { padding: 0.65rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-line { gap: 0.35rem; flex-wrap: wrap; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-input { order: -1; flex-basis: 100%; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-send { margin-left: auto; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-actions { gap: 0.5rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .kcard__sources button { grid-template-columns: auto minmax(0, 1fr); }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .kcard__sources .meta { grid-column: 2; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .kcard__head { flex-wrap: wrap; }
 }

@@ -1394,3 +1394,8 @@ curl -X POST http://localhost:5000/api/v1/classes \
 新增需JWT的 `POST /api/v1/agents/tutor-guidance/plan`、`ask`、`acknowledge`。
 请求字段、模式推荐、递进条件及迁移见 [小E模式推荐与递进提示](docs/2026-10-20-tutor-guidance.md)。
 这组接口不改写旧 `/agents/trial-coach` 契约，不写入学习成绩。
+
+课程证据增量：`ask` 返回 `evidenceStatus` 与安全引用元数据 `citations`；
+`POST /api/v1/agents/tutor-guidance/read` 用本人 `requestId` 核验历史回答；
+`POST /api/v1/agents/tutor-guidance/source` 用本人 `requestId` 与引用 `label` 核验并展开片段。
+这两个接口及重试、展示确认都会检查该回答使用过的全部课程材料；材料失效时拒绝旧结果。

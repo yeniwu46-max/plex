@@ -420,6 +420,7 @@ export interface TutorGuidancePayload {
   exerciseId: string
   trialQuestionId?: number
   questionTitle?: string
+  topic?: string
   questionPrompt?: string
   code: string
   stderr?: string
@@ -438,6 +439,8 @@ export interface TutorGuidanceResult {
   canDeepen: boolean
   needsContext: boolean
   backend: string
+  evidenceStatus?: 'grounded' | 'general' | 'available' | 'insufficient' | 'unavailable'
+  citations?: Array<{ label: string; title: string; chapter: string }>
 }
 export function planTutorGuidance(payload: Omit<TutorGuidancePayload, 'requestId' | 'mode'>) {
   return postAgent<{ recommendation: TutorRecommendation; stage: number }>(
@@ -449,6 +452,16 @@ export function askTutorGuidance(payload: TutorGuidancePayload) {
 }
 export function acknowledgeTutorGuidance(requestId: string) {
   return postAgent<{ displayed: boolean }>('/v1/agents/tutor-guidance/acknowledge', { requestId })
+}
+
+export function readTutorGuidance(requestId: string) {
+  return postAgent<TutorGuidanceResult>('/v1/agents/tutor-guidance/read', { requestId })
+}
+
+export function fetchTutorSource(requestId: string, label: string) {
+  return postAgent<{ label: string; title: string; chapter: string; excerpt: string }>(
+    '/v1/agents/tutor-guidance/source', { requestId, label },
+  )
 }
 
 /** 学生端 · 代码题提示，只返回注释式提示，不直接给答案 */

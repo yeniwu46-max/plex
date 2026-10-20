@@ -118,6 +118,10 @@ def tutor_guidance(action):
             result = service.ask(_user_id(), body)
         elif action == 'acknowledge':
             result = service.acknowledge(_user_id(), body.get('requestId'))
+        elif action == 'read':
+            result = service.read(_user_id(), body.get('requestId'))
+        elif action == 'source':
+            result = service.source(_user_id(), body.get('requestId'), body.get('label'))
         else:
             return error_response('不存在的辅导操作', 40401, None, 404)
         return success_response(result)

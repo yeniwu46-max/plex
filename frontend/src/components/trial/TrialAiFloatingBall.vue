@@ -11,6 +11,8 @@ import { xiaoECleanProse, xiaoEThinkingMessage, XIAO_E_PERSONA_INTRO } from '../
 import { trimTrialCoachKnowledge } from '../../utils/trialCoachPresentation'
 import { askTutorGuidance, planTutorGuidance, acknowledgeTutorGuidance, type TutorMode, type TutorRecommendation, type TutorGuidanceResult } from '../../api/agentService'
 import { TutorGuidanceSession } from '../../utils/tutorGuidanceSession'
+import { readTutorGuidance } from '../../api/agentService'
+import TutorEvidenceCard from './TutorEvidenceCard.vue'
 import { useAuthStore } from '../../stores/auth'
 
 export type TrialCoachContext = {
@@ -37,6 +39,7 @@ type ChatMessage = {
   questionPick?: { code: string; id: string; title: string }
   knowledge?: MessengerKnowledge | null
   stale?: boolean
+  guidance?: TutorGuidanceResult
 }
 
 const props = defineProps<{
@@ -372,6 +375,7 @@ function guidanceContext() {
     exerciseId: props.context.exerciseId,
     trialQuestionId: props.context.trialQuestionId,
     questionTitle: props.context.questionTitle,
+    topic: props.context.topic,
     questionPrompt: props.context.questionPrompt,
     code: props.context.code,
     stderr: props.context.stderr,
@@ -446,11 +450,19 @@ async function sendGuidance(furtherHelp = false, retry = false) {
     displayConfirmed.value = false
     recommendation.value = result.recommendation
     pushMessage('assistant', `${result.stageLabel} · ${result.modeLabel}\n\n${result.response}\n\n下一步：${result.nextAction}`, '小E')
+    messages.value[messages.value.length - 1]!.guidance = result
     await scrollToBottom()
     await confirmGuidance()
   } catch (error) {
     if (request.epoch === guidance.epoch) {
       retryAvailable.value = true
+      if (error instanceof Error && error.message.includes('课程依据已更新')) {
+        guidance.reset()
+        guidanceResult.value = null
+        displayConfirmed.value = false
+        retryAvailable.value = false
+        loading.value = false
+      }
       messageApi.error(error instanceof Error ? error.message : '辅导请求失败，可重试原请求；不会增加提示层级。')
     }
   } finally {
@@ -462,6 +474,33 @@ function chooseHelpMode(mode: TutorMode | 'auto') {
   if (loading.value) return
   selectedMode.value = mode
   void sendGuidance()
+}
+
+function invalidateGuidance(msg: ChatMessage) {
+  msg.content = '这条辅导的课程依据暂时无法核验，请重新提问。'
+  if (msg.guidance) msg.guidance = { ...msg.guidance, citations: [], evidenceStatus: 'unavailable' }
+  if (guidance.latest?.requestId === msg.guidance?.requestId) {
+    guidance.reset()
+    guidanceResult.value = null
+    displayConfirmed.value = false
+    retryAvailable.value = false
+    loading.value = false
+  }
+}
+
+async function revalidateGuidance() {
+  if (!dialogOpen.value || document.visibilityState !== 'visible') return
+  const epoch = guidance.epoch
+  for (const msg of messages.value.filter(item => item.guidance && !item.stale)) {
+    try {
+      const result = await readTutorGuidance(msg.guidance!.requestId)
+      if (epoch !== guidance.epoch || !messages.value.includes(msg)) return
+      msg.guidance = result
+      msg.content = `${result.stageLabel} · ${result.modeLabel}\n\n${result.response}\n\n下一步：${result.nextAction}`
+    } catch {
+      if (epoch === guidance.epoch && messages.value.includes(msg)) invalidateGuidance(msg)
+    }
+  }
 }
 
 function resetGuidance(clearMessages: boolean) {
@@ -509,6 +548,7 @@ watch(dialogOpen, (open) => {
   }
   queueRecommendation()
   if (open) void confirmGuidance()
+  if (open) void revalidateGuidance()
 })
 
 watch([
@@ -528,6 +568,7 @@ onMounted(() => {
   dialogHeight.value = size.height
   window.addEventListener('resize', onWindowResize)
   document.addEventListener('visibilitychange', confirmGuidance)
+  document.addEventListener('visibilitychange', revalidateGuidance)
 })
 
 onBeforeUnmount(() => {
@@ -536,6 +577,7 @@ onBeforeUnmount(() => {
   ++planSequence
   clearTimeout(planTimer)
   document.removeEventListener('visibilitychange', confirmGuidance)
+  document.removeEventListener('visibilitychange', revalidateGuidance)
   dragging.value = false
   resizing.value = false
   window.removeEventListener('resize', onWindowResize)
@@ -633,6 +675,10 @@ onBeforeUnmount(() => {
               <template v-if="msg.role === 'assistant'">
                 <small v-if="msg.stale">对应修改前的代码，仅供回顾</small>
                 <MarkdownRenderer :content="msg.content" />
+                <TutorEvidenceCard v-if="!msg.stale && msg.guidance?.citations?.length"
+                  :request-id="msg.guidance.requestId" :citations="msg.guidance.citations"
+                  @invalid="invalidateGuidance(msg)" />
+                <small v-else-if="msg.guidance && !msg.guidance.needsContext">通用编程提示 · 未采用可核验的课程引用</small>
                 <MessengerKnowledgeCard v-if="msg.knowledge" :knowledge="msg.knowledge" />
               </template>
               <p v-else>{{ msg.content }}</p>

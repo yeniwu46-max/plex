@@ -273,3 +273,139 @@ def test_migration_upgrade_downgrade_preserves_existing_tables(env):
         assert 'users' in inspect(connection).get_table_names()
         migration.upgrade()
     assert ask(env)['stage'] == 1
+
+
+@pytest.fixture()
+def course(env, monkeypatch):
+    from app.models import KnowledgeDocument, KnowledgeChunk
+    from app.services import tutor_guidance as service
+    from app.services.knowledge import KnowledgeService
+    document = KnowledgeDocument(title='循环课程', source='builtin', status='READY',
+                                 teacher_verified=True, version=1, course_id='python-basics')
+    db.session.add(document)
+    db.session.flush()
+    chunk = KnowledgeChunk(document_id=document.id, content='range 的 stop 不包含在生成的序列中。',
+                           title='for 与 range', status='active', version=1, teacher_verified=True,
+                           knowledge_type='concept_explanation', course_id='python-basics')
+    db.session.add(chunk)
+    db.session.commit()
+    retrieval_calls = []
+    def retrieve(*args, **kwargs):
+        retrieval_calls.append((args, kwargs))
+        return {'knowledge_grounded': True, 'reranked': [{'chunk_id': chunk.chunk_id}]}
+    monkeypatch.setattr(KnowledgeService, 'retrieve', retrieve)
+    monkeypatch.setattr(service, 'llm_provider', lambda: ('test', 'test', 'test'))
+    monkeypatch.setattr(service, 'chat_text', lambda **kwargs: '观察 range 的结束边界，检查最后一次访问。[S1]')
+    monkeypatch.setattr(service, 'chat_json', lambda **kwargs: {'approved': True})
+    return document, chunk, retrieval_calls
+
+
+@pytest.mark.parametrize('mode', ['next_step', 'thought_check', 'error_explanation', 'local_pseudocode'])
+def test_course_evidence_is_mode_scoped_and_student_safe(env, course, mode):
+    _, _, calls = course
+    result = ask(env, mode=mode, thought='先累加再输出', stderr='IndexError: out of range')
+    assert result['evidenceStatus'] == 'grounded'
+    assert result['citations'][0]['label'] == 'S1'
+    assert '_evidence' not in result
+    assert 'contentHash' not in str(result)
+    assert 'solution' not in calls[0][1]['knowledge_types']
+    assert 'example' not in calls[0][1]['knowledge_types']
+    detail = call(env, 'source', {'requestId': result['requestId'], 'label': 'S1'})
+    assert detail.status_code == 200
+    assert 'stop' in detail.json['data']['excerpt']
+    assert call(env, 'source', {'requestId': result['requestId'], 'label': 'S99'}).status_code == 400
+    assert call(env, 'source', {'requestId': result['requestId'], 'label': 'S1'}, user=1).status_code == 400
+
+
+@pytest.mark.parametrize('mutation', ['withdraw', 'version', 'content', 'unverify', 'stale', 'private'])
+def test_changed_material_invalidates_replay_read_source_ack_and_parent(env, course, mutation):
+    document, chunk, _ = course
+    body = payload()
+    response = call(env, 'ask', body)
+    result = response.json['data']
+    confirm(env, result)
+    if mutation == 'withdraw': document.status = 'FAILED'
+    elif mutation == 'version': document.version = 2
+    elif mutation == 'content': chunk.content = 'Updated course content'
+    elif mutation == 'unverify': document.teacher_verified = False
+    elif mutation == 'stale': chunk.status = 'stale'
+    else: document.source = 'upload'
+    db.session.commit()
+    assert call(env, 'ask', body).status_code == 400
+    for action in ['read', 'source', 'acknowledge']:
+        assert call(env, action, {'requestId': result['requestId'], 'label': 'S1'}).status_code == 400
+    assert call(env, 'ask', payload(previousRequestId=result['requestId'], furtherHelp=True)).status_code == 400
+
+
+@pytest.mark.parametrize('candidate', ['没有引用的课程结论', '引用不存在的材料[S99]'])
+def test_missing_or_invented_citation_uses_general_fallback(env, course, monkeypatch, candidate):
+    from app.services import tutor_guidance as service
+    monkeypatch.setattr(service, 'chat_text', lambda **kwargs: candidate)
+    result = ask(env)
+    assert result['backend'] == 'pedagogical_rules'
+    assert result['evidenceStatus'] == 'general'
+    assert result['citations'] == []
+    assert result['response'] != candidate
+
+
+def test_material_revoked_during_generation_never_enters_response(env, course, monkeypatch):
+    from app.services import tutor_guidance as service
+    document, _, _ = course
+    def review(**kwargs):
+        document.status = 'FAILED'
+        db.session.commit()
+        return {'approved': True}
+    monkeypatch.setattr(service, 'chat_json', review)
+    response = call(env, 'ask', payload())
+    assert response.status_code == 400
+    assert 'range' not in str(response.json)
+    assert TutorGuidanceTurn.query.one().result is None
+
+
+def test_uploaded_private_document_not_used_as_course_evidence(env, course):
+    document, _, _ = course
+    document.source = 'upload'
+    db.session.commit()
+    result = ask(env)
+    assert result['evidenceStatus'] == 'insufficient'
+    assert not result['citations']
+
+
+def test_uncited_material_also_revalidated(env, course, monkeypatch):
+    from app.models import KnowledgeDocument, KnowledgeChunk
+    from app.services.knowledge import KnowledgeService
+    document, chunk, _ = course
+    extra = KnowledgeDocument(title='其他课程片段', source='builtin', status='READY', teacher_verified=True)
+    db.session.add(extra)
+    db.session.flush()
+    extra_chunk = KnowledgeChunk(document_id=extra.id, content='循环的相关概念', status='active', teacher_verified=True)
+    db.session.add(extra_chunk)
+    db.session.commit()
+    monkeypatch.setattr(KnowledgeService, 'retrieve', lambda *args, **kwargs: {
+        'knowledge_grounded': True, 'reranked': [{'chunk_id': chunk.chunk_id}, {'chunk_id': extra_chunk.chunk_id}],
+    })
+    result = ask(env)
+    assert len(result['citations']) == 1
+    extra.status = 'FAILED'
+    db.session.commit()
+    assert call(env, 'read', {'requestId': result['requestId']}).status_code == 400
+
+
+def test_low_confidence_material_not_passed_to_model(env, course, monkeypatch):
+    from app.services.knowledge import KnowledgeService
+    monkeypatch.setattr(KnowledgeService, 'retrieve', lambda *args, **kwargs: {
+        'knowledge_grounded': False, 'reranked': [{'chunk_id': course[1].chunk_id}],
+    })
+    result = ask(env)
+    assert result['evidenceStatus'] == 'insufficient'
+    assert result['citations'] == []
+
+
+def test_retrieval_outage_returns_labeled_general_help(env, course, monkeypatch):
+    from app.services.knowledge import KnowledgeService
+    def fail(*args, **kwargs):
+        raise RuntimeError('retrieval unavailable')
+    monkeypatch.setattr(KnowledgeService, 'retrieve', fail)
+    result = ask(env)
+    assert result['evidenceStatus'] == 'unavailable'
+    assert result['citations'] == []

@@ -59,6 +59,13 @@ const helpModes: Array<{ mode: TutorMode; label: string }> = [
   { mode: 'next_step', label: '只提示下一步' },
   { mode: 'local_pseudocode', label: '局部伪代码' },
 ]
+const helpModeRequests: Record<TutorMode | 'auto', string> = {
+  auto: '请根据我当前的情况，选择合适的方式帮助我。',
+  error_explanation: '请帮我解释报错原因。',
+  thought_check: '请帮我检查解题思路。',
+  next_step: '请只提示我下一步该做什么。',
+  local_pseudocode: '请用局部伪代码帮我梳理这一步。',
+}
 let planTimer: ReturnType<typeof setTimeout> | undefined
 let planSequence = 0
 let legacySequence = 0
@@ -426,7 +433,9 @@ async function sendGuidance(furtherHelp = false, retry = false) {
   loading.value = true
   retryAvailable.value = false
   if (!retry) {
-    pushMessage('user', furtherHelp ? '我仍卡在这一步，请再具体一点。' : inputText.value.trim() || '请按所选模式帮助我。')
+    const requestText = helpModeRequests[selectedMode.value]
+    const studentText = inputText.value.trim()
+    pushMessage('user', furtherHelp ? '我仍卡在这一步，请再具体一点。' : studentText ? `${requestText}\n${studentText}` : requestText)
     inputText.value = ''
   }
   try {

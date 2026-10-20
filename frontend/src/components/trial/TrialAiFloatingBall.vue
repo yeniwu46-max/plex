@@ -143,6 +143,18 @@ const runStatusLabel = computed(() => {
   return `${passed}/${props.context.caseResults.length} 通过`
 })
 
+const activeModeHint = computed(() => {
+  if (selectedMode.value === 'auto') return ''
+  const label = helpModes.find(item => item.mode === selectedMode.value)?.label ?? '当前模式'
+  const hints: Record<TutorMode, string> = {
+    error_explanation: '结合运行报错或未通过的测试结果，定位当前问题。',
+    thought_check: '围绕你写出的解题步骤，检查其中的疑点。',
+    next_step: '给出一个可以马上验证的小步骤。',
+    local_pseudocode: '只梳理当前局部步骤，由你补全处理逻辑。',
+  }
+  return `当前模式：${label}。${hints[selectedMode.value]}`
+})
+
 const shortcuts: Array<{ intent: TrialCoachIntent; label: string }> = [
   { intent: 'error_diagnosis', label: '询问报错原因' },
   { intent: 'code_quality', label: '分析代码质量' },
@@ -371,6 +383,9 @@ async function sendQuestion(question: string, intent: TrialCoachIntent = activeI
 }
 
 function guidanceContext() {
+  const testFeedback = (props.context.failedCases ?? []).slice(0, 3).map(item =>
+    `${item.label}：${item.error ? `运行错误 ${item.error}` : `实际输出「${item.actual}」，预期输出「${item.expected}」`}`,
+  ).join('\n')
   return {
     exerciseId: props.context.exerciseId,
     trialQuestionId: props.context.trialQuestionId,
@@ -379,6 +394,7 @@ function guidanceContext() {
     questionPrompt: props.context.questionPrompt,
     code: props.context.code,
     stderr: props.context.stderr,
+    testFeedback,
     userQuestion: inputText.value,
     thought: selectedMode.value === 'thought_check' ? inputText.value : undefined,
     previousRequestId: guidance.previousRequestId,
@@ -633,7 +649,8 @@ onBeforeUnmount(() => {
             </button>
           </div>
           <div class="trial-ai-float__guidance" aria-live="polite">
-            <p v-if="recommendation">建议：{{ recommendation.label }}。{{ recommendation.reason }}</p>
+            <p v-if="activeModeHint">{{ activeModeHint }}</p>
+            <p v-else-if="recommendation">建议：{{ recommendation.label }}。{{ recommendation.reason }}</p>
             <p v-else-if="recommendationError">{{ recommendationError }}</p>
             <p v-else>可以手动选择帮助模式。</p>
             <small>先观察，再验证，最后展开局部步骤。修改代码后重新判断；运行信息仅作为自测参考。</small>

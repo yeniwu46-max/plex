@@ -43,6 +43,7 @@ def _context(payload):
     context = {}
     for key, limit in [('exerciseId', 160), ('questionPrompt', 12000),
                        ('questionTitle', 200), ('code', 16000), ('stderr', 4000),
+                       ('testFeedback', 2000),
                        ('userQuestion', 1000), ('thought', 2000)]:
         value = payload.get(key, '')
         if value is None:
@@ -72,6 +73,8 @@ def _focus(context):
     error = re.search(r'\b([A-Za-z]+Error)\b', context['stderr'])
     if error:
         return error.group(1)
+    if context['testFeedback'].strip():
+        return 'output'
     # Explicit student concerns take precedence over the general code shape.
     text = context['userQuestion'] + context['thought']
     if any(word in text for word in ('输出', '格式', '空格', '换行')):
@@ -184,7 +187,8 @@ def _guidance(context, mode, stage, focus):
     if mode == 'thought_check' and not (context['thought'].strip() or context['userQuestion'].strip()):
         return {'response': '先用一两句话写出你的解题步骤，我再帮你检查其中的疑点。',
                 'needsContext': True, 'nextAction': '补充你的解题思路。'}
-    if mode == 'error_explanation' and not context['stderr'].strip() and focus != 'SyntaxError':
+    if (mode == 'error_explanation' and not context['stderr'].strip()
+            and not context['testFeedback'].strip() and focus != 'SyntaxError'):
         return {'response': '请先运行当前代码并提供完整报错；目前不能确认错误类型。',
                 'needsContext': True, 'nextAction': '运行当前代码，附上报错信息。'}
     if not context['code'].strip() and mode != 'thought_check':
@@ -194,8 +198,12 @@ def _guidance(context, mode, stage, focus):
     action = validations.get(focus, validations['general'])
     prefix = ''
     if mode == 'error_explanation':
-        prefix = (f'你提供的报错类型是 {focus}。' if context['stderr'].strip()
-                  else '静态语法检查发现代码尚不能解析。')
+        if context['stderr'].strip():
+            prefix = f'你提供的报错类型是 {focus}。'
+        elif context['testFeedback'].strip():
+            prefix = '测试结果与预期不一致。'
+        else:
+            prefix = '静态语法检查发现代码尚不能解析。'
     elif mode == 'thought_check':
         prefix = '先核对你的思路是否覆盖这一处：'
     if stage == 1:
@@ -221,7 +229,8 @@ def _model_hint(context, mode, stage, parent, evidence, fallback):
     inputs = json.dumps({'mode': MODES[mode], 'stage': STAGES[stage],
                          'question': context['questionPrompt'], 'code': context['code'],
                          'studentQuestion': context['userQuestion'], 'thought': context['thought'],
-                         'reportedError': context['stderr'], 'previousHint': previous,
+                         'reportedError': context['stderr'], 'testFeedback': context['testFeedback'],
+                         'previousHint': previous,
                          'courseEvidence': [{k: s[k] for k in ('label', 'title', 'chapter', 'excerpt')}
                                             for s in evidence['sources']]}, ensure_ascii=False)
     system = (

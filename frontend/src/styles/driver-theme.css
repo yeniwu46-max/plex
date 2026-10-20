@@ -84,6 +84,13 @@
   outline: 3px solid #f6cd68 !important;
   outline-offset: 3px !important;
 }
+.driver-popover .driver-popover-close-btn:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: #ffffff !important;
+}
 .driver-popover button.driver-popover-btn-disabled { cursor: not-allowed !important; }
 
 /* The student guide is a speech panel; the other two roles retain their theme. */
@@ -171,9 +178,10 @@ html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .
   outline: 3px solid #55eee9 !important;
   outline-offset: 3px !important;
   box-shadow:
+    inset 0 0 0 999px rgba(85, 238, 233, 0.16),
     0 0 0 6px rgba(85, 238, 233, 0.22),
     0 0 26px rgba(85, 238, 233, 0.78) !important;
-  filter: brightness(1.7) saturate(1.12);
+  filter: brightness(1.8) saturate(1.16);
 }
 
 /* ─── 角色主色：学生（绿色）─── */

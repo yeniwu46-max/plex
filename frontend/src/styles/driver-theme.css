@@ -5,7 +5,7 @@
 
 /* ─── 遮罩层 ─── */
 .driver-overlay {
-  background: rgba(3, 10, 18, 0.72) !important;
+  fill: #030a12 !important;
 }
 
 /* ─── 弹窗基础 ─── */
@@ -164,9 +164,16 @@ html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .
 }
 
 /* ─── 高亮边框 ─── */
-.driver-active-element {
+.driver-active-element.plex-tour-active-highlight {
+  position: relative !important;
+  z-index: 10001 !important;
   border-radius: 8px !important;
-  outline-offset: 4px !important;
+  outline: 3px solid #55eee9 !important;
+  outline-offset: 3px !important;
+  box-shadow:
+    0 0 0 6px rgba(85, 238, 233, 0.22),
+    0 0 26px rgba(85, 238, 233, 0.78) !important;
+  filter: brightness(1.25) saturate(1.12);
 }
 
 /* ─── 角色主色：学生（绿色）─── */
@@ -237,7 +244,7 @@ html[data-theme='light'] .driver-popover-close-btn {
   color: #94a3b8 !important;
 }
 html[data-theme='light'] .driver-overlay {
-  background: rgba(0, 0, 0, 0.45) !important;
+  fill: #000000 !important;
 }
 
 /* ─── 移动端兜底 ─── */

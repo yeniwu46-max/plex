@@ -47,6 +47,9 @@ function delay(ms: number) {
 }
 
 function cleanupDriverDom() {
+  document.querySelectorAll('.plex-tour-active-highlight').forEach((el) => {
+    el.classList.remove('plex-tour-active-highlight')
+  })
   document.querySelectorAll('.driver-overlay, .driver-popover, #driver-dummy-element').forEach((el) => {
     el.remove()
   })
@@ -163,8 +166,8 @@ export function usePlexTour() {
         animate: true,
         showProgress: false,
         allowClose: true,
-        overlayOpacity: 0.72,
-        stagePadding: 6,
+        overlayOpacity: 0.62,
+        stagePadding: 10,
         stageRadius: 8,
         nextBtnText: '下一步',
         prevBtnText: '上一步',
@@ -197,6 +200,12 @@ export function usePlexTour() {
         onHighlightStarted: async (_element, _step, options) => {
           const idx = options.state.activeIndex ?? 0
           await runStepPrepare(router, validSteps[idx])
+        },
+        onHighlighted: (element) => {
+          element?.classList.add('plex-tour-active-highlight')
+        },
+        onDeselected: (element) => {
+          element?.classList.remove('plex-tour-active-highlight')
         },
         onDestroyed: () => {
           activeDriver = null

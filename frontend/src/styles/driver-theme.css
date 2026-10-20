@@ -5,7 +5,7 @@
 
 /* ─── 遮罩层 ─── */
 .driver-overlay {
-  fill: #030a12 !important;
+  background: rgba(3, 10, 18, 0.72) !important;
 }
 
 /* ─── 弹窗基础 ─── */
@@ -244,7 +244,7 @@ html[data-theme='light'] .driver-popover-close-btn {
   color: #94a3b8 !important;
 }
 html[data-theme='light'] .driver-overlay {
-  fill: #000000 !important;
+  background: rgba(0, 0, 0, 0.45) !important;
 }
 
 /* ─── 移动端兜底 ─── */

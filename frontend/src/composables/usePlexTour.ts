@@ -166,7 +166,7 @@ export function usePlexTour() {
         animate: true,
         showProgress: false,
         allowClose: true,
-        overlayOpacity: 0.62,
+        overlayOpacity: 0.72,
         stagePadding: 10,
         stageRadius: 8,
         nextBtnText: '下一步',

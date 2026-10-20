@@ -449,6 +449,12 @@ async function sendGuidance(furtherHelp = false, retry = false) {
   }
 }
 
+function chooseHelpMode(mode: TutorMode | 'auto') {
+  if (loading.value) return
+  selectedMode.value = mode
+  void sendGuidance()
+}
+
 function resetGuidance(clearMessages: boolean) {
   guidance.reset()
   ++legacySequence
@@ -561,7 +567,7 @@ onBeforeUnmount(() => {
               class="trial-ai-float__chip"
               :class="{ 'is-active': selectedMode === 'auto' }"
               :disabled="loading"
-              @click="selectedMode = 'auto'"
+              @click="chooseHelpMode('auto')"
             >自动推荐</button>
             <button
               v-for="opt in helpModes"
@@ -570,7 +576,7 @@ onBeforeUnmount(() => {
               class="trial-ai-float__chip"
               :class="{ 'is-active': selectedMode === opt.mode }"
               :disabled="loading"
-              @click="selectedMode = opt.mode"
+              @click="chooseHelpMode(opt.mode)"
             >
               {{ opt.label }}
             </button>
@@ -580,7 +586,6 @@ onBeforeUnmount(() => {
             <p v-else-if="recommendationError">{{ recommendationError }}</p>
             <p v-else>可以手动选择帮助模式。</p>
             <small>先观察，再验证，最后展开局部步骤。修改代码后重新判断；运行信息仅作为自测参考。</small>
-            <button type="button" class="trial-ai-float__chip" :disabled="loading" @click="sendGuidance()">按此模式帮助我</button>
             <div v-if="guidanceResult?.canDeepen || (guidanceResult && !guidanceResult.needsContext && !displayConfirmed) || retryAvailable" class="trial-ai-float__guidance-actions">
               <button v-if="guidanceResult?.canDeepen" type="button" class="trial-ai-float__chip"
                 :disabled="loading || !displayConfirmed" @click="sendGuidance(true)">再具体一点</button>

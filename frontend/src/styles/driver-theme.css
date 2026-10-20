@@ -173,7 +173,7 @@ html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .
   box-shadow:
     0 0 0 6px rgba(85, 238, 233, 0.22),
     0 0 26px rgba(85, 238, 233, 0.78) !important;
-  filter: brightness(1.25) saturate(1.12);
+  filter: brightness(1.7) saturate(1.12);
 }
 
 /* ─── 角色主色：学生（绿色）─── */

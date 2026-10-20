@@ -406,6 +406,51 @@ export function trialCoach(payload: TrialCoachPayload) {
   return postAgent<TrialCoachResult>('/v1/agents/trial-coach', payload as unknown as Record<string, unknown>, TRIAL_COACH_TIMEOUT_MS)
 }
 
+export type TutorMode = 'error_explanation' | 'thought_check' | 'next_step' | 'local_pseudocode'
+export interface TutorRecommendation {
+  mode: TutorMode
+  label: string
+  reason: string
+}
+export interface TutorGuidancePayload {
+  requestId: string
+  previousRequestId?: string
+  furtherHelp?: boolean
+  mode: TutorMode | 'auto'
+  exerciseId: string
+  trialQuestionId?: number
+  questionTitle?: string
+  questionPrompt?: string
+  code: string
+  stderr?: string
+  userQuestion?: string
+  thought?: string
+}
+export interface TutorGuidanceResult {
+  requestId: string
+  mode: TutorMode
+  modeLabel: string
+  recommendation: TutorRecommendation
+  stage: number
+  stageLabel: string
+  response: string
+  nextAction: string
+  canDeepen: boolean
+  needsContext: boolean
+  backend: string
+}
+export function planTutorGuidance(payload: Omit<TutorGuidancePayload, 'requestId' | 'mode'>) {
+  return postAgent<{ recommendation: TutorRecommendation; stage: number }>(
+    '/v1/agents/tutor-guidance/plan', payload as unknown as Record<string, unknown>,
+  )
+}
+export function askTutorGuidance(payload: TutorGuidancePayload) {
+  return postAgent<TutorGuidanceResult>('/v1/agents/tutor-guidance/ask', payload as unknown as Record<string, unknown>, TRIAL_COACH_TIMEOUT_MS)
+}
+export function acknowledgeTutorGuidance(requestId: string) {
+  return postAgent<{ displayed: boolean }>('/v1/agents/tutor-guidance/acknowledge', { requestId })
+}
+
 /** 学生端 · 代码题提示，只返回注释式提示，不直接给答案 */
 export async function codeHint(payload: CodeHintPayload) {
   try {

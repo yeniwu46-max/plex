@@ -126,6 +126,7 @@ async function copyAttemptCode() {
 
 const floatingBallContext = computed(() => ({
   exerciseId: props.question.id,
+  trialQuestionId: props.trialQuestionId,
   questionTitle: props.question.title,
   questionPrompt: props.question.description,
   topic: props.question.topic,
@@ -223,8 +224,9 @@ sys.stdout = StringIO()
   }
 }
 
-function applyRunResults(results: CaseResult[], backend: 'api' | 'pyodide') {
+function applyRunResults(results: CaseResult[], backend: 'api' | 'pyodide', source: string, exerciseId: string, accountId: number | undefined) {
   if (aborted || !isMounted.value) return
+  if (code.value !== source || props.question.id !== exerciseId || auth.profile?.id !== accountId) return
   caseResults.value = results
   executionBackend.value = backend
   const userId = auth.profile?.id ?? 'guest'
@@ -317,6 +319,8 @@ async function onRun() {
   runStartedAt = Date.now()
   caseResults.value = []
   executionBackend.value = null
+  const exerciseId = props.question.id
+  const accountId = auth.profile?.id
   try {
     const normalized = normalizePythonSource(code.value)
     const source = normalized.code
@@ -327,14 +331,14 @@ async function onRun() {
     try {
       const results = await runViaApi(source)
       if (aborted || !isMounted.value) return
-      applyRunResults(results, 'api')
+      applyRunResults(results, 'api', source, exerciseId, accountId)
       return
     } catch {
       /* fall back to Pyodide */
     }
     const results = await runViaPyodide(source)
     if (aborted || !isMounted.value) return
-    applyRunResults(results, 'pyodide')
+    applyRunResults(results, 'pyodide', source, exerciseId, accountId)
   } catch {
     if (!aborted && isMounted.value) {
       message.error(pyodideError.value || '运行失败，请检查网络后重试')
@@ -401,6 +405,11 @@ onBeforeUnmount(() => {
 })
 
 const showSlotNav = computed(() => props.slotIds.length > 1)
+
+watch(code, () => {
+  caseResults.value = []
+  executionBackend.value = null
+}, { flush: 'sync' })
 
 watch(
   () => props.question.id,

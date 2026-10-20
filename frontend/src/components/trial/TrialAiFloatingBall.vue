@@ -9,9 +9,13 @@ import type { MessengerKnowledge } from '../../api/rag'
 import { useSpeechRecognitionInput } from '../../composables/useSpeechRecognitionInput'
 import { xiaoECleanProse, xiaoEThinkingMessage, XIAO_E_PERSONA_INTRO } from '../../utils/xiaoEPersona'
 import { trimTrialCoachKnowledge } from '../../utils/trialCoachPresentation'
+import { askTutorGuidance, planTutorGuidance, acknowledgeTutorGuidance, type TutorMode, type TutorRecommendation, type TutorGuidanceResult } from '../../api/agentService'
+import { TutorGuidanceSession } from '../../utils/tutorGuidanceSession'
+import { useAuthStore } from '../../stores/auth'
 
 export type TrialCoachContext = {
   exerciseId: string
+  trialQuestionId?: number
   questionTitle: string
   questionPrompt?: string
   topic?: string
@@ -32,6 +36,7 @@ type ChatMessage = {
   agentName?: string
   questionPick?: { code: string; id: string; title: string }
   knowledge?: MessengerKnowledge | null
+  stale?: boolean
 }
 
 const props = defineProps<{
@@ -39,6 +44,24 @@ const props = defineProps<{
 }>()
 
 const messageApi = useMessage()
+const auth = useAuthStore()
+const guidance = new TutorGuidanceSession()
+const selectedMode = ref<TutorMode | 'auto'>('auto')
+const recommendation = ref<TutorRecommendation | null>(null)
+const recommendationError = ref('')
+const guidanceResult = ref<TutorGuidanceResult | null>(null)
+const retryAvailable = ref(false)
+const acknowledgementPending = ref(false)
+const displayConfirmed = ref(false)
+const helpModes: Array<{ mode: TutorMode; label: string }> = [
+  { mode: 'error_explanation', label: '报错解释' },
+  { mode: 'thought_check', label: '思路检查' },
+  { mode: 'next_step', label: '只提示下一步' },
+  { mode: 'local_pseudocode', label: '局部伪代码' },
+]
+let planTimer: ReturnType<typeof setTimeout> | undefined
+let planSequence = 0
+let legacySequence = 0
 
 const { listening: voiceListening, toggle: toggleVoiceInput } = useSpeechRecognitionInput({
   getText: () => inputText.value,
@@ -65,12 +88,6 @@ const messages = ref<ChatMessage[]>([])
 const messagesEl = ref<HTMLElement | null>(null)
 const activeIntent = ref<TrialCoachIntent>('custom')
 const hintLevel = ref(2)
-const hintLevelOptions = [
-  { label: 'L1 思路', value: 1 },
-  { label: 'L2 定位', value: 2 },
-  { label: 'L3 片段', value: 3 },
-  { label: 'L4 解析', value: 4 },
-]
 
 const dialogWidth = ref(DEFAULT_DIALOG_WIDTH)
 const dialogHeight = ref(DEFAULT_DIALOG_HEIGHT)
@@ -79,6 +96,8 @@ const resizeStart = { x: 0, y: 0, width: 0, height: 0 }
 
 const posX = ref(0)
 const posY = ref(0)
+const viewportWidth = ref(window.innerWidth)
+const viewportHeight = ref(window.innerHeight)
 const dragging = ref(false)
 const dragMoved = ref(false)
 const dragOffset = { x: 0, y: 0 }
@@ -88,22 +107,22 @@ const floatStyle = computed(() => ({
   top: `${posY.value}px`,
 }))
 
-const maxDialogWidth = computed(() => window.innerWidth - MARGIN * 2)
-const maxDialogHeight = computed(() => window.innerHeight - MARGIN * 2)
+const maxDialogWidth = computed(() => viewportWidth.value - MARGIN * 2)
+const maxDialogHeight = computed(() => viewportHeight.value - MARGIN * 2)
 
 const dialogStyle = computed(() => {
   const width = Math.min(dialogWidth.value, maxDialogWidth.value)
   const height = Math.min(dialogHeight.value, maxDialogHeight.value)
-  const preferAbove = posY.value > window.innerHeight * 0.42
-  const alignLeft = posX.value + BALL_SIZE < width + MARGIN
+  const panelX = Math.max(MARGIN, Math.min(posX.value + BALL_SIZE - width, viewportWidth.value - width - MARGIN))
+  const below = posY.value + BALL_SIZE + DIALOG_GAP
+  const preferredY = below + height <= viewportHeight.value - MARGIN ? below : posY.value - DIALOG_GAP - height
+  const panelY = Math.max(MARGIN, Math.min(preferredY, viewportHeight.value - height - MARGIN))
 
   return {
     width: `${width}px`,
     height: `${height}px`,
-    ...(alignLeft ? { left: '0', right: 'auto' } : { right: '0', left: 'auto' }),
-    ...(preferAbove
-      ? { bottom: `calc(100% + ${DIALOG_GAP}px)`, top: 'auto' }
-      : { top: `calc(100% + ${DIALOG_GAP}px)`, bottom: 'auto' }),
+    left: `${panelX - posX.value}px`,
+    top: `${panelY - posY.value}px`,
   }
 })
 
@@ -147,6 +166,8 @@ function syncDefaultPosition() {
 }
 
 function onWindowResize() {
+  viewportWidth.value = window.innerWidth
+  viewportHeight.value = window.innerHeight
   const clamped = clampPosition(posX.value, posY.value)
   posX.value = clamped.x
   posY.value = clamped.y
@@ -245,7 +266,7 @@ function buildPayload(intent: TrialCoachIntent, userQuestion: string) {
     userQuestion,
     hintLevel: hintLevel.value,
     conversationHistory: messages.value
-      .filter((item) => item.content.trim())
+      .filter((item) => !item.stale && item.content.trim())
       .slice(-8)
       .map((item) => ({ role: item.role, content: item.content })),
   }
@@ -310,16 +331,18 @@ async function sendQuestion(question: string, intent: TrialCoachIntent = activeI
 
   activeIntent.value = intent
   loading.value = true
+  const sequence = ++legacySequence
+  const payloadSnapshot = buildPayload(intent, text)
   pushMessage('user', text)
   inputText.value = ''
   await scrollToBottom()
 
   try {
-    const result: TrialCoachResult = await trialCoach(buildPayload(intent, text))
+    const result: TrialCoachResult = await trialCoach(payloadSnapshot)
+    if (sequence !== legacySequence) return
     if (typeof result.hintLevel === 'number' && result.hintLevel >= 1 && result.hintLevel <= 4) {
       hintLevel.value = result.hintLevel
     }
-    const payloadSnapshot = buildPayload(intent, text)
     const knowledge = trimTrialCoachKnowledge(result.knowledge ?? null, {
       topic: payloadSnapshot.topic,
       stderr: payloadSnapshot.stderr,
@@ -328,12 +351,122 @@ async function sendQuestion(question: string, intent: TrialCoachIntent = activeI
     })
     pushMessage('assistant', xiaoECleanProse(result.response), result.agentName, undefined, knowledge)
   } catch (error) {
+    if (sequence !== legacySequence) return
     const msg = error instanceof Error ? error.message : 'AI 辅导请求失败'
     pushMessage('assistant', msg.includes('404') ? '辅导服务未就绪，请确认后端已重启。' : msg)
   } finally {
-    loading.value = false
+    if (sequence === legacySequence) loading.value = false
     await scrollToBottom()
   }
+}
+
+function guidanceContext() {
+  return {
+    exerciseId: props.context.exerciseId,
+    trialQuestionId: props.context.trialQuestionId,
+    questionTitle: props.context.questionTitle,
+    questionPrompt: props.context.questionPrompt,
+    code: props.context.code,
+    stderr: props.context.stderr,
+    userQuestion: inputText.value,
+    thought: selectedMode.value === 'thought_check' ? inputText.value : undefined,
+    previousRequestId: guidance.previousRequestId,
+  }
+}
+
+async function refreshRecommendation() {
+  const sequence = ++planSequence
+  recommendation.value = null
+  recommendationError.value = ''
+  if (!dialogOpen.value || !auth.isAuthenticated) return
+  try {
+    const result = await planTutorGuidance(guidanceContext())
+    if (sequence === planSequence) recommendation.value = result.recommendation
+  } catch {
+    if (sequence === planSequence) recommendationError.value = '暂时无法推荐模式，你仍可手动选择。'
+  }
+}
+
+function queueRecommendation() {
+  ++planSequence
+  clearTimeout(planTimer)
+  planTimer = setTimeout(() => void refreshRecommendation(), 300)
+}
+
+async function confirmGuidance() {
+  const result = guidance.latest
+  const epoch = guidance.epoch
+  if (!result || result.needsContext || guidance.previousRequestId === result.requestId ||
+      document.visibilityState !== 'visible' || !dialogOpen.value || acknowledgementPending.value) return
+  acknowledgementPending.value = true
+  try {
+    const receipt = await acknowledgeTutorGuidance(result.requestId)
+    if (receipt.displayed && guidance.confirm(epoch, result.requestId)) {
+      displayConfirmed.value = true
+      queueRecommendation()
+    }
+  } catch {
+    if (epoch === guidance.epoch) messageApi.warning('提示已显示，确认失败；可点击“确认展示”重试。')
+  } finally {
+    if (epoch === guidance.epoch) acknowledgementPending.value = false
+  }
+}
+
+async function sendGuidance(furtherHelp = false, retry = false) {
+  if (loading.value) return
+  const currentContext = guidanceContext()
+  if (furtherHelp && !currentContext.userQuestion.trim()) {
+    currentContext.userQuestion = guidance.latestPayload?.userQuestion || ''
+    currentContext.thought = guidance.latestPayload?.thought
+  }
+  const request = retry ? guidance.retry() : guidance.start({
+    ...currentContext, requestId: crypto.randomUUID(), mode: selectedMode.value, furtherHelp,
+  })
+  if (!request) return
+  loading.value = true
+  retryAvailable.value = false
+  if (!retry) {
+    pushMessage('user', furtherHelp ? '我仍卡在这一步，请再具体一点。' : inputText.value.trim() || '请按所选模式帮助我。')
+    inputText.value = ''
+  }
+  try {
+    const result = await askTutorGuidance(request.payload)
+    if (!guidance.accept(request.epoch, result)) return
+    ++planSequence
+    guidanceResult.value = result
+    displayConfirmed.value = false
+    recommendation.value = result.recommendation
+    pushMessage('assistant', `${result.stageLabel} · ${result.modeLabel}\n\n${result.response}\n\n下一步：${result.nextAction}`, '小E')
+    await scrollToBottom()
+    await confirmGuidance()
+  } catch (error) {
+    if (request.epoch === guidance.epoch) {
+      retryAvailable.value = true
+      messageApi.error(error instanceof Error ? error.message : '辅导请求失败，可重试原请求；不会增加提示层级。')
+    }
+  } finally {
+    if (request.epoch === guidance.epoch) loading.value = false
+  }
+}
+
+function resetGuidance(clearMessages: boolean) {
+  guidance.reset()
+  ++legacySequence
+  loading.value = false
+  guidanceResult.value = null
+  retryAvailable.value = false
+  acknowledgementPending.value = false
+  displayConfirmed.value = false
+  selectedMode.value = 'auto'
+  if (clearMessages) {
+    messages.value = []
+    inputText.value = ''
+    contextLoaded.value = false
+    if (dialogOpen.value && auth.isAuthenticated) void loadPracticeContext()
+  } else {
+    messages.value.forEach((item) => { item.stale = true })
+  }
+  queueRecommendation()
 }
 
 function onShortcut(intent: TrialCoachIntent, label: string) {
@@ -341,7 +474,7 @@ function onShortcut(intent: TrialCoachIntent, label: string) {
 }
 
 function onSend() {
-  void sendQuestion(inputText.value, 'custom')
+  void sendGuidance()
 }
 
 function onInputKeydown(event: KeyboardEvent) {
@@ -359,7 +492,19 @@ watch(dialogOpen, (open) => {
   if (open && !messages.value.length) {
     void loadPracticeContext()
   }
+  queueRecommendation()
+  if (open) void confirmGuidance()
 })
+
+watch([
+  () => auth.profile?.id,
+  () => auth.isAuthenticated,
+  () => props.context.exerciseId,
+  () => props.context.trialQuestionId,
+  () => props.context.questionPrompt,
+], () => resetGuidance(true))
+watch(() => props.context.code, () => resetGuidance(false), { flush: 'sync' })
+watch(() => [props.context.stderr, inputText.value], queueRecommendation)
 
 onMounted(() => {
   syncDefaultPosition()
@@ -367,9 +512,15 @@ onMounted(() => {
   dialogWidth.value = size.width
   dialogHeight.value = size.height
   window.addEventListener('resize', onWindowResize)
+  document.addEventListener('visibilitychange', confirmGuidance)
 })
 
 onBeforeUnmount(() => {
+  guidance.reset()
+  ++legacySequence
+  ++planSequence
+  clearTimeout(planTimer)
+  document.removeEventListener('visibilitychange', confirmGuidance)
   dragging.value = false
   resizing.value = false
   window.removeEventListener('resize', onWindowResize)
@@ -384,10 +535,10 @@ onBeforeUnmount(() => {
       <Transition name="trial-ai-dialog">
         <div
           v-if="dialogOpen"
+          role="dialog"
+          aria-label="小E编程辅导窗口"
           class="trial-ai-float__dialog"
           :class="{ 'is-resizing': resizing }"
-          role="dialog"
-          aria-label="AI 编程辅导"
           :style="dialogStyle"
         >
           <header class="trial-ai-float__head">
@@ -404,20 +555,44 @@ onBeforeUnmount(() => {
           </header>
 
           <div class="trial-ai-float__hint-row">
-            <span>提示层级</span>
+            <span>帮助模式</span>
             <button
-              v-for="opt in hintLevelOptions"
-              :key="opt.value"
               type="button"
               class="trial-ai-float__chip"
-              :class="{ 'is-active': hintLevel === opt.value }"
+              :class="{ 'is-active': selectedMode === 'auto' }"
               :disabled="loading"
-              @click="hintLevel = opt.value"
+              @click="selectedMode = 'auto'"
+            >自动推荐</button>
+            <button
+              v-for="opt in helpModes"
+              :key="opt.mode"
+              type="button"
+              class="trial-ai-float__chip"
+              :class="{ 'is-active': selectedMode === opt.mode }"
+              :disabled="loading"
+              @click="selectedMode = opt.mode"
             >
               {{ opt.label }}
             </button>
           </div>
-          <div class="trial-ai-float__shortcuts">
+          <div class="trial-ai-float__guidance" aria-live="polite">
+            <p v-if="recommendation">建议：{{ recommendation.label }}。{{ recommendation.reason }}</p>
+            <p v-else-if="recommendationError">{{ recommendationError }}</p>
+            <p v-else>可以手动选择帮助模式。</p>
+            <small>先观察，再验证，最后展开局部步骤。修改代码后重新判断；运行信息仅作为自测参考。</small>
+            <button type="button" class="trial-ai-float__chip" :disabled="loading" @click="sendGuidance()">按此模式帮助我</button>
+            <div v-if="guidanceResult?.canDeepen || (guidanceResult && !guidanceResult.needsContext && !displayConfirmed) || retryAvailable" class="trial-ai-float__guidance-actions">
+              <button v-if="guidanceResult?.canDeepen" type="button" class="trial-ai-float__chip"
+                :disabled="loading || !displayConfirmed" @click="sendGuidance(true)">再具体一点</button>
+              <button v-if="guidanceResult && !guidanceResult.needsContext && !displayConfirmed" type="button"
+                class="trial-ai-float__chip" :disabled="loading || acknowledgementPending" @click="confirmGuidance">确认展示</button>
+              <button v-if="retryAvailable" type="button" class="trial-ai-float__chip"
+                :disabled="loading" @click="sendGuidance(false, true)">重试原请求</button>
+            </div>
+          </div>
+          <details class="trial-ai-float__other-help">
+            <summary>其他辅导</summary>
+            <div class="trial-ai-float__shortcuts">
             <button
               v-for="item in shortcuts"
               :key="item.intent"
@@ -428,7 +603,8 @@ onBeforeUnmount(() => {
             >
               {{ item.label }}
             </button>
-          </div>
+            </div>
+          </details>
 
           <div ref="messagesEl" class="trial-ai-float__messages">
             <article
@@ -441,6 +617,7 @@ onBeforeUnmount(() => {
                 <small>{{ msg.agentName }}</small>
               </header>
               <template v-if="msg.role === 'assistant'">
+                <small v-if="msg.stale">对应修改前的代码，仅供回顾</small>
                 <MarkdownRenderer :content="msg.content" />
                 <MessengerKnowledgeCard v-if="msg.knowledge" :knowledge="msg.knowledge" />
               </template>
@@ -473,10 +650,13 @@ onBeforeUnmount(() => {
                 @keydown="onInputKeydown"
               />
             </div>
+            <div class="trial-ai-float__composer-actions">
             <n-button type="primary" :loading="loading" :disabled="!inputText.trim()" @click="onSend">
               <template #icon><n-icon :component="SendOutline" /></template>
               发送
             </n-button>
+            <n-button :disabled="loading || !inputText.trim()" @click="sendQuestion(inputText, 'custom')">自由问答</n-button>
+            </div>
           </footer>
 
           <button
@@ -493,6 +673,8 @@ onBeforeUnmount(() => {
         class="trial-ai-float__ball"
         :class="{ 'is-open': dialogOpen, 'is-dragging': dragging }"
         aria-label="小E 编程辅导"
+        :aria-expanded="dialogOpen"
+        @click="(event: MouseEvent) => { if (event.detail === 0) dialogOpen = !dialogOpen }"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
@@ -506,6 +688,22 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.trial-ai-float__guidance {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.trial-ai-float__guidance p { margin: 0 0 0.35rem; }
+.trial-ai-float__guidance small { opacity: 0.8; }
+.trial-ai-float__guidance-actions, .trial-ai-float__composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+.trial-ai-float__composer-actions { justify-content: flex-end; }
+.trial-ai-float__other-help { padding: 0.35rem 1rem; font-size: 0.8rem; }
+.trial-ai-float__other-help summary { cursor: pointer; }
 .trial-ai-float {
   position: fixed;
   z-index: 2000;
@@ -850,5 +1048,9 @@ onBeforeUnmount(() => {
       0 10px 28px rgba(0, 242, 255, 0.12),
       0 0 0 8px rgba(0, 242, 255, 0);
   }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trial-ai-float__ball { animation: none !important; }
+  .trial-ai-dialog-enter-active, .trial-ai-dialog-leave-active { transition: none; }
 }
 </style>

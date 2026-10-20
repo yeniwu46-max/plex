@@ -103,6 +103,28 @@ def trial_coach():
         return error_response(str(exc), 40001, None, 400)
 
 
+@agent_bp.post('/agents/tutor-guidance/<action>')
+@jwt_required()
+def tutor_guidance(action):
+    from app.services import tutor_guidance as service
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return error_response('请求必须为对象', 40001, None, 400)
+    try:
+        if action == 'plan':
+            result = service.plan(_user_id(), body)
+        elif action == 'ask':
+            result = service.ask(_user_id(), body)
+        elif action == 'acknowledge':
+            result = service.acknowledge(_user_id(), body.get('requestId'))
+        else:
+            return error_response('不存在的辅导操作', 40401, None, 404)
+        return success_response(result)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+
+
 @agent_bp.post('/agents/code-hint')
 @jwt_required()
 def code_hint():

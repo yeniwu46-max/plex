@@ -1,5 +1,6 @@
 """数据库模型"""
 from .base import BaseModel, db
+from .tutor_guidance import TutorGuidanceTurn
 
 from .user import User
 from .role import Role

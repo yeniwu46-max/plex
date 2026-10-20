@@ -1389,3 +1389,8 @@ curl -X POST http://localhost:5000/api/v1/classes \
 画像对话、资源生成、驿站问答和知识库查询被拒绝时，`data.reason_code` 使用稳定枚举：`prompt_injection`、`out_of_course_scope`、`sensitive_content`、`invalid_knowledge_key`、`invalid_resource_type` 或 `invalid_request`。
 
 知识库上传、文档列表、状态和解析接口仅允许 `teacher` 或 `admin`。通用上传服务同时检查角色、场景、扩展名、大小和文件签名。
+# 2026-10-20 小E辅导接口增量
+
+新增需JWT的 `POST /api/v1/agents/tutor-guidance/plan`、`ask`、`acknowledge`。
+请求字段、模式推荐、递进条件及迁移见 [小E模式推荐与递进提示](docs/2026-10-20-tutor-guidance.md)。
+这组接口不改写旧 `/agents/trial-coach` 契约，不写入学习成绩。

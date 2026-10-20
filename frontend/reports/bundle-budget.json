@@ -2,22 +2,22 @@
   "passed": true,
   "checks": {
     "initial_gzip": {
-      "actual_bytes": 130310,
+      "actual_bytes": 130298,
       "budget_bytes": 153600,
       "passed": true
     },
     "largest_lazy_gzip": {
-      "actual_bytes": 442866,
+      "actual_bytes": 442861,
       "budget_bytes": 460800,
       "passed": true,
-      "file": "assets/MarkdownRenderer-BSh-YGqL.js"
+      "file": "assets/MarkdownRenderer-RNpPdL4B.js"
     }
   },
   "initial_assets": [
     {
       "key": "index.html",
-      "file": "assets/index-Cl5MCaND.js",
-      "gzip_bytes": 42545
+      "file": "assets/index-Dx8ByQwL.js",
+      "gzip_bytes": 42533
     },
     {
       "key": "__plugin-vue_export-helper-RZyU0fFc.js",
@@ -87,9 +87,9 @@
   ],
   "largest_lazy_assets": [
     {
-      "key": "_MarkdownRenderer-BSh-YGqL.js",
-      "file": "assets/MarkdownRenderer-BSh-YGqL.js",
-      "gzip_bytes": 442866,
+      "key": "_MarkdownRenderer-RNpPdL4B.js",
+      "file": "assets/MarkdownRenderer-RNpPdL4B.js",
+      "gzip_bytes": 442861,
       "dynamic_entry": false
     },
     {
@@ -124,26 +124,26 @@
     },
     {
       "key": "src/components/admin/AdminAgentOrchestrationPanel.vue",
-      "file": "assets/AdminAgentOrchestrationPanel-DnoiZ6dY.js",
-      "gzip_bytes": 59256,
+      "file": "assets/AdminAgentOrchestrationPanel-BfCKdxc1.js",
+      "gzip_bytes": 59258,
       "dynamic_entry": true
     },
     {
       "key": "src/views/TeacherTrialCreateView.vue",
-      "file": "assets/TeacherTrialCreateView-BWS1Qn32.js",
-      "gzip_bytes": 42020,
+      "file": "assets/TeacherTrialCreateView-CR28a3Ke.js",
+      "gzip_bytes": 42018,
       "dynamic_entry": true
     },
     {
       "key": "node_modules/mermaid/dist/chunks/mermaid.core/architectureDiagram-ZJ3FMSHR.mjs",
-      "file": "assets/architectureDiagram-ZJ3FMSHR-CuRXvR8r.js",
-      "gzip_bytes": 40860,
+      "file": "assets/architectureDiagram-ZJ3FMSHR-Cw70d_Vw.js",
+      "gzip_bytes": 40861,
       "dynamic_entry": true
     },
     {
       "key": "node_modules/mermaid/dist/chunks/mermaid.core/swimlanes-5IMT3BWC.mjs",
-      "file": "assets/swimlanes-5IMT3BWC-D2IaX8_q.js",
-      "gzip_bytes": 38696,
+      "file": "assets/swimlanes-5IMT3BWC-BCGn7X8c.js",
+      "gzip_bytes": 38697,
       "dynamic_entry": true
     }
   ]

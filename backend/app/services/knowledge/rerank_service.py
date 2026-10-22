@@ -13,6 +13,7 @@ from typing import Any
 
 from .schemas import GraphContext, LearnerContext, QueryUnderstanding, RetrievedChunk
 from .settings import retrieval_config
+from .context_selection import select_context
 
 _TYPE_PREFERENCE_BY_INTENT = {
     'concept_explain': {'concept_explanation': 1.0, 'example': 0.8, 'summary': 0.7, 'misconception': 0.5, 'extension': 0.4, 'exercise': 0.3, 'solution': 0.3, 'teacher_note': 0.5},
@@ -73,17 +74,8 @@ class RerankService:
             )
             chunk.final_score = round(final, 4)
 
-        ranked = sorted(candidates, key=lambda c: -c.final_score)
-        selected: list[RetrievedChunk] = []
-        doc_counts: dict[str, int] = {}
-        for chunk in ranked:
-            count = doc_counts.get(chunk.document_id, 0)
-            if count >= per_doc:
-                continue
-            doc_counts[chunk.document_id] = count + 1
-            selected.append(chunk)
-            if len(selected) >= final_k:
-                break
+        ranked = sorted(candidates, key=lambda c: (-c.final_score, c.chunk_id))
+        selected = select_context(ranked, limit=final_k, per_document=per_doc, config=cfg)
         for index, chunk in enumerate(selected, 1):
             chunk.rank = index
         return selected
@@ -128,9 +120,9 @@ class RerankService:
         if not learner or not learner.available:
             return 0.5 * type_score + 0.5 * 0.6
         concept = chunk.primary_concept_id or (chunk.concept_ids[0] if chunk.concept_ids else None)
-        mastery = learner.mastery_of(concept, 0.3)
+        mastery = learner.mastery.get(concept)
         # 目标难度：掌握度低 → 1-2；中 → 2-3；高 → 3-4
-        target = 1.5 if mastery < 0.4 else (2.5 if mastery < 0.75 else 3.5)
+        target = 2.0 if mastery is None else 1.5 if mastery < 0.4 else (2.5 if mastery < 0.75 else 3.5)
         diff_fit = max(0.0, 1.0 - abs(chunk.difficulty - target) / 3.0)
         pref_bonus = 0.0
         if learner.explanation_preference == 'example_first' and chunk.knowledge_type == 'example':

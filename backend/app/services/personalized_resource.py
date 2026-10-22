@@ -1,13 +1,14 @@
 """Personalized five-resource generation with progress and review controls."""
 from __future__ import annotations
 
+from copy import deepcopy
+
 import os
 import hashlib
 import json
 import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
 from datetime import datetime, timedelta
 
 from flask import current_app
@@ -33,7 +34,13 @@ from app.services.pedagogical_resource import (
     validate_bundle_risks,
 )
 from app.services.resource_audit import ResourceAuditService
+from app.services.resource_executor import submit_resource_task
 from app.services.student_profile import StudentProfileService
+from app.services.resource_learning_context import ResourceLearningContext
+from app.services.resource_course_evidence import ResourceCourseEvidence
+from app.services import model_accounting, resource_runtime
+from app.services.ai_admission import admission_lock
+from app.services.tutor_context import TutorContextError
 from app.utils.time import utc_now
 
 LEGACY_RESOURCE_TYPES = (
@@ -65,7 +72,7 @@ PIPELINE_STEPS = (
     ('quality_reviewer', 90),
     ('path_planner', 100),
 )
-AGENT_CONTRACT_VERSION = 'resource-pipeline-v2'
+AGENT_CONTRACT_VERSION = 'resource-pipeline-v3'
 AGENT_LABELS = {
     'profile_interpreter': '画像解释智能体',
     'knowledge_retriever': '知识检索智能体',
@@ -74,9 +81,7 @@ AGENT_LABELS = {
     'quality_reviewer': 'AI审核智能体',
     'path_planner': '路径规划智能体',
 }
-_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix='plex-resource')
 _MEDIA_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix='plex-resource-media')
-_CREATE_LOCK = Lock()
 
 POINTS = catalog_points()
 DOCUMENT_IDS = document_ids()
@@ -220,23 +225,16 @@ class PersonalizedResourceService:
 
     @staticmethod
     def recover_stale_tasks(app=None):
-        cutoff = utc_now() - timedelta(minutes=10)
-        rows = ResourceGenerationTask.query.filter(
-            ResourceGenerationTask.status == 'running',
-            ResourceGenerationTask.updated_at < cutoff,
-        ).all()
-        for row in rows:
-            row.status = 'failed'
-            row.error = '任务因服务重启或超时中断，可重新生成'
-            row.current_agent = None
-            row.recoverable = True
-        if rows:
-            db.session.commit()
+        cutoff = utc_now() - timedelta(seconds=resource_runtime.STALE_SECONDS)
+        failed=ResourceGenerationTask.query.filter(ResourceGenerationTask.status=='running',
+            ResourceGenerationTask.updated_at<cutoff).update({'status':'failed',
+                'error':'任务因服务重启或超时中断，可重新生成','current_agent':None,'recoverable':True},synchronize_session=False)
+        db.session.commit()
         pending = ResourceGenerationTask.query.filter_by(status='pending').all()
         if app and not app.config.get('TESTING'):
             for row in pending:
-                _EXECUTOR.submit(PersonalizedResourceService.run_task, app, row.task_id)
-        return {'failed_stale': len(rows), 'resubmitted_pending': len(pending) if app else 0}
+                submit_resource_task(PersonalizedResourceService.run_task, app, row.task_id)
+        return {'failed_stale': failed, 'resubmitted_pending': len(pending) if app else 0}
 
     @staticmethod
     def _pedagogical_context_from_payload(payload: dict, profile: dict) -> dict:
@@ -256,6 +254,7 @@ class PersonalizedResourceService:
         knowledge_key: str,
         resource_types: list[str],
         pedagogical_context: dict | None = None,
+        context_hash: str | None = None,
     ) -> str:
         raw = json.dumps({
             'user_id': user_id,
@@ -263,78 +262,95 @@ class PersonalizedResourceService:
             'knowledge_key': knowledge_key,
             'resource_types': sorted(resource_types),
             'pedagogical_context': pedagogical_context or {},
+            'learning_context_hash': context_hash,
         }, sort_keys=True, ensure_ascii=True)
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
     @staticmethod
-    def create_task(user_id: int, payload: dict) -> dict:
-        PersonalizedResourceService.recover_stale_tasks()
-        knowledge_key = PersonalizedResourceService.normalize_knowledge_key(
-            str(payload.get('knowledge_key') or '').strip()
-        )
-        # 默认保留语音，不再生成视频；历史视频仍允许读取和审核。
+    def create_task(user_id: int, payload: dict, *, retry_context: dict | None = None, retry_task_id: str | None = None) -> dict:
+        if not isinstance(payload,dict):raise TutorContextError('请求体必须是 JSON 对象')
+        if payload.get('retry_of') is not None:raise TutorContextError('请使用任务重试入口')
+        knowledge_key = PersonalizedResourceService.normalize_knowledge_key(str(payload.get('knowledge_key') or '').strip())
         resource_types = payload.get('resource_types') or list(DEFAULT_RESOURCE_TYPES)
+        if not isinstance(resource_types,list) or any(not isinstance(x,str) for x in resource_types):
+            raise TutorContextError('资源类型必须是字符串列表')
         resource_types = list(dict.fromkeys(resource_types))
         CourseSafetyService.ensure_safe(str(payload), enforce_course_scope=True)
         PersonalizedResourceService._validate_request(knowledge_key, resource_types)
-
-        profile_row = StudentProfileService.get_or_create(user_id)
-        profile_version = profile_row.version if profile_row.id else 0
-        profile = {
-            key: value.get('value')
-            for key, value in (profile_row.to_dict().get('dimensions') or {}).items()
-            if value.get('value')
-        }
-        pedagogical_context = PersonalizedResourceService._pedagogical_context_from_payload(
-            payload, profile
-        )
-        fingerprint = PersonalizedResourceService._fingerprint(
-            user_id, profile_version, knowledge_key, resource_types, pedagogical_context
-        )
-        idempotency_key = str(payload.get('idempotency_key') or '').strip()[:100] or None
-
-        with _CREATE_LOCK:
-            if not payload.get('force_regenerate'):
-                active = ResourceGenerationTask.query.filter(
-                    ResourceGenerationTask.user_id == user_id,
-                    ResourceGenerationTask.status.in_(('pending', 'running', 'completed')),
-                    ResourceGenerationTask.created_at >= utc_now() - timedelta(minutes=15),
-                    (
-                        (ResourceGenerationTask.idempotency_key == idempotency_key)
-                        if idempotency_key
-                        else (ResourceGenerationTask.request_fingerprint == fingerprint)
-                    ),
-                ).order_by(ResourceGenerationTask.id.desc()).first()
-                if active:
-                    return PersonalizedResourceService.get_task(user_id, active.task_id)
-
-            steps = PersonalizedResourceService._steps()
-            steps[0]['input_summary'] = {
-                'pedagogical_context': pedagogical_context,
-                'require_real_api': bool(payload.get('require_real_api')),
-            }
-            row = ResourceGenerationTask(
-                task_id='rg_' + uuid.uuid4().hex[:20],
-                user_id=user_id,
-                knowledge_key=knowledge_key,
-                requested_types=resource_types,
-                steps=steps,
-                retry_of=payload.get('retry_of'),
-                profile_version=profile_version,
-                request_fingerprint=fingerprint,
-                idempotency_key=idempotency_key,
-                recoverable=True,
-            )
-            db.session.add(row)
-            db.session.commit()
-
-        app = current_app._get_current_object()
-        if app.config.get('TESTING') or os.getenv('RESOURCE_TASK_SYNC', '').lower() == 'true':
-            PersonalizedResourceService.run_task(app, row.task_id)
-            db.session.expire_all()
+        key = payload.get('idempotency_key')
+        if key is not None and (not isinstance(key,str) or not key.strip() or len(key)>100):
+            raise TutorContextError('请求编号须为 1–100 字符')
+        idempotency_key = key.strip() if key else None
+        for flag in ('force_regenerate','require_real_api'):
+            if flag in payload and not isinstance(payload[flag],bool):raise TutorContextError(flag+' 必须为布尔值')
+        body_hash=model_accounting.digest({'knowledge_key':knowledge_key,'resource_types':sorted(resource_types),
+            **{key:payload.get(key) for key in ('target','learning_stage','learning_style','require_real_api')}})
+        if retry_context is not None:
+            context=deepcopy(retry_context)
+            if context['user_id']!=user_id or context['knowledge_key']!=knowledge_key or context['requested_types']!=sorted(resource_types):
+                raise ValueError('重试依据不属于当前任务')
         else:
-            _EXECUTOR.submit(PersonalizedResourceService.run_task, app, row.task_id)
-        return PersonalizedResourceService.get_task(user_id, row.task_id)
+            context=ResourceLearningContext.capture(user_id,knowledge_key)
+            context=ResourceLearningContext.bind(context,
+                PersonalizedResourceService._pedagogical_context_from_payload(payload,context['profile']),
+                resource_types,payload.get('require_real_api'))
+        ResourceLearningContext.authorize(context)
+        profile_version=context['profile_version'];pedagogical_context=context['pedagogical_context']
+        context_hash=ResourceLearningContext.digest(context)
+        fingerprint=PersonalizedResourceService._fingerprint(user_id,profile_version,knowledge_key,resource_types,pedagogical_context,context_hash)
+        PersonalizedResourceService.recover_stale_tasks()
+        with admission_lock('resource'):
+            # An explicit identity always wins over force_regenerate and cache age.
+            if idempotency_key:
+                existing=ResourceGenerationTask.query.filter_by(user_id=user_id,idempotency_key=idempotency_key).order_by(ResourceGenerationTask.id.desc()).first()
+                if existing:
+                    if (existing.knowledge_key!=knowledge_key or sorted(existing.requested_types)!=sorted(resource_types)
+                        or (existing.request_body_hash and existing.request_body_hash!=body_hash)):
+                        raise TutorContextError('请求编号已被不同内容使用，请重新发起任务',409)
+                    existing_id=existing.task_id;db.session.rollback()
+                    return PersonalizedResourceService.get_task(user_id,existing_id)
+            parent=None
+            if retry_task_id:
+                parent=ResourceGenerationTask.query.filter_by(user_id=user_id,task_id=retry_task_id).first()
+                if not parent:raise LookupError('任务不存在')
+                child=ResourceGenerationTask.query.filter_by(user_id=user_id,retry_of=retry_task_id).order_by(ResourceGenerationTask.id).first()
+                if child:
+                    child_id=child.task_id;db.session.rollback()
+                    return PersonalizedResourceService.get_task(user_id,child_id)
+                if parent.status!='failed':raise TutorContextError('仅失败任务可以重试',409)
+                if not resource_runtime.retry_remaining(parent):raise TutorContextError('该任务已达到重试上限',429)
+            if not payload.get('force_regenerate') and not idempotency_key:
+                active=ResourceGenerationTask.query.filter(ResourceGenerationTask.user_id==user_id,
+                    ResourceGenerationTask.status.in_(('pending','running','completed')),
+                    ResourceGenerationTask.created_at>=utc_now()-timedelta(minutes=15),
+                    ResourceGenerationTask.request_fingerprint==fingerprint).order_by(ResourceGenerationTask.id.desc()).first()
+                if active:
+                    active_id=active.task_id;db.session.rollback()
+                    return PersonalizedResourceService.get_task(user_id,active_id)
+            resource_runtime.check_capacity(user_id,context['class_id'])
+            steps=PersonalizedResourceService._steps()
+            steps[0]['input_summary']={'pedagogical_context':pedagogical_context,'require_real_api':bool(payload.get('require_real_api'))}
+            task_id='rg_'+uuid.uuid4().hex[:20]
+            row=ResourceGenerationTask(task_id=task_id,user_id=user_id,class_id=context['class_id'],knowledge_key=knowledge_key,
+                requested_types=resource_types,steps=steps,retry_of=retry_task_id,
+                retry_root_id=(parent.retry_root_id or parent.task_id) if parent else task_id,
+                profile_version=profile_version,context_snapshot=context,context_hash=context_hash,
+                request_fingerprint=fingerprint,request_body_hash=body_hash,idempotency_key=idempotency_key,recoverable=True)
+            db.session.add(row);db.session.commit()
+        app=current_app._get_current_object()
+        if app.config.get('RESOURCE_TASK_SYNC', bool(app.config.get('TESTING'))) or os.getenv('RESOURCE_TASK_SYNC','').lower()=='true':
+            PersonalizedResourceService.run_task(app,task_id)
+            db.session.rollback();db.session.expire_all()
+        else:
+            try:submit_resource_task(PersonalizedResourceService.run_task,app,task_id)
+            except Exception:
+                # Admission succeeded. Keep the durable task visible and recoverable;
+                # never report a missing submission that invites a duplicate payment.
+                ResourceGenerationTask.query.filter_by(task_id=task_id,status='pending').update({
+                    'status':'failed','error':'任务已创建，但执行队列暂不可用；请从任务历史重试',
+                    'recoverable':True,'completed_at':utc_now()},synchronize_session=False)
+                db.session.commit()
+        return PersonalizedResourceService.get_task(user_id,task_id)
 
     @staticmethod
     def _set_step(
@@ -349,11 +365,13 @@ class PersonalizedResourceService:
         output_summary=None,
         error=None,
     ):
+        if status != 'failed':resource_runtime.ensure_running(row.task_id)
         steps = [dict(item) for item in (row.steps or PersonalizedResourceService._steps())]
         step = steps[index]
         step['status'] = status
         step['latency_ms'] = latency_ms
         if status == 'running':
+            model_accounting.update_scope(stage=step['agent'])
             step['started_at'] = utc_now().isoformat() + 'Z'
         if status in ('completed', 'failed'):
             step['completed_at'] = utc_now().isoformat() + 'Z'
@@ -385,11 +403,13 @@ class PersonalizedResourceService:
         }
 
     @staticmethod
-    def _run_profile_interpreter(profile: dict, knowledge_key: str) -> tuple[dict, str, str]:
+    def _run_profile_interpreter(profile: dict, knowledge_key: str, learning_guidance: dict | None = None) -> tuple[dict, str, str]:
         from agents.resource_pipeline_agents import interpret_profile
 
         knowledge_key = PersonalizedResourceService.normalize_knowledge_key(knowledge_key)
         baseline = PersonalizedResourceService._profile_strategy(profile, knowledge_key)
+        if learning_guidance:
+            baseline['learning_guidance'] = deepcopy(learning_guidance)
         return interpret_profile(
             profile=profile,
             knowledge_key=knowledge_key,
@@ -412,12 +432,14 @@ class PersonalizedResourceService:
             'difficulty_target': profile_strategy['difficulty_target'],
             'knowledge_node': node,
             'citations': [citation],
+            **({'learning_guidance': deepcopy(profile_strategy['learning_guidance'])} if profile_strategy.get('learning_guidance') else {}),
         }
 
     @staticmethod
     def _run_knowledge_retriever(
         knowledge_key: str,
         profile_strategy: dict,
+        frozen_context: dict | None = None,
     ) -> tuple[dict, str, str]:
         from agents.resource_pipeline_agents import retrieve_knowledge
 
@@ -426,6 +448,16 @@ class PersonalizedResourceService:
         section = knowledge_section(knowledge_key)
         citation = PersonalizedResourceService._citation(knowledge_key)
         node = baseline.get('knowledge_node') or build_knowledge_node(knowledge_key)
+        if frozen_context is not None:
+            manifest, passages = ResourceCourseEvidence.retrieve(frozen_context, POINTS[knowledge_key], citation)
+            baseline.update({
+                'course_evidence': {'status': manifest['status'], 'passages': passages,
+                                    'prerequisite_gaps': manifest['prerequisite_gaps']},
+                'evidence_manifest': manifest, 'citations': ResourceCourseEvidence.citations(manifest),
+                'citation_count': 1 + len(passages), 'retrieved_passages': passages,
+                'retrieval_rationale': '按固定学习上下文检索，原文片段与教学动作分别传递。',
+            })
+            return baseline, 'knowledge_service', 'hybrid_retrieval'
         return retrieve_knowledge(
             knowledge_key=knowledge_key,
             knowledge_label=POINTS[knowledge_key],
@@ -462,6 +494,7 @@ class PersonalizedResourceService:
             'explanation_style': profile_strategy['explanation_style'],
             'interest_context': profile_strategy['interest_context'],
             'learning_pace': profile_strategy['learning_pace'],
+            **({'learning_guidance': deepcopy(profile_strategy['learning_guidance'])} if profile_strategy.get('learning_guidance') else {}),
             'sequence': [
                 item for item in RESOURCE_TYPES if item in requested_types
             ] + [
@@ -486,13 +519,16 @@ class PersonalizedResourceService:
             pedagogical_context,
             profile,
         )
-        return design_instruction(
+        result, backend, model = design_instruction(
             requested_types=requested_types,
             profile_strategy=profile_strategy,
             knowledge_context=knowledge_context,
             pedagogical_context=pedagogical_context,
             baseline_analysis=baseline,
         )
+        if knowledge_context.get('course_evidence'):
+            result['course_evidence'] = deepcopy(knowledge_context['course_evidence'])
+        return result, backend, model
 
     @staticmethod
     def _audit_risk_codes(audit_report: dict | None) -> list[str]:
@@ -667,6 +703,9 @@ class PersonalizedResourceService:
 
         knowledge_key = PersonalizedResourceService.normalize_knowledge_key(knowledge_key)
         baseline = PersonalizedResourceService._path_plan(knowledge_key, quality_report)
+        if (profile_strategy or {}).get('learning_guidance'):
+            baseline['learning_guidance'] = deepcopy(profile_strategy['learning_guidance'])
+            baseline['recommendation_reason'] = profile_strategy['learning_guidance']['reason']
         return plan_learning_path(
             knowledge_key=knowledge_key,
             knowledge_label=POINTS[knowledge_key],
@@ -760,11 +799,8 @@ class PersonalizedResourceService:
 
     @staticmethod
     def _citations_are_valid(citations: list[dict]) -> bool:
-        return bool(citations) and all(
-            isinstance(item, dict)
-            and item.get('document_id') in VALID_DOCUMENT_IDS
-            for item in citations
-        )
+        from app.services.resource_audit.report_builder import _citations_are_valid
+        return _citations_are_valid(citations)
 
     @staticmethod
     def _risk_reasons(item: dict, knowledge_key: str) -> list[str]:
@@ -780,8 +816,9 @@ class PersonalizedResourceService:
         if (
             not PersonalizedResourceService._citations_are_valid(citations)
             or any(
-                citation.get('document_id') != expected_document
-                or citation.get('section') != knowledge_key
+                citation.get('kind') != 'course_chunk' and (
+                    citation.get('document_id') != expected_document
+                    or citation.get('section') != knowledge_key)
                 for citation in citations
             )
         ):
@@ -846,32 +883,24 @@ class PersonalizedResourceService:
         bundle = None
         backend = 'local_rules'
 
-        # 优先 DeepSeek/OpenAI（本机可用），再试讯飞星火。由学生端发起的
-        # 正式生成会要求真实 API 成功，不能用本地模板伪装成 AI 生成结果。
-        try:
-            from agents.llm_client import llm_provider
-
-            provider = llm_provider()
-            if provider:
-                bundle = llm_bundle(
-                    knowledge_key,
-                    node=node,
-                    analysis=analysis,
-                    profile=profile,
-                    case_candidates=case_candidates,
-                    timeout=25.0,
-                )
+        # Try only configured providers, once each, and record the actual backend.
+        from agents.llm_client import llm_provider, openai_provider, LLMCallError
+        providers = []
+        for candidate in (llm_provider(), openai_provider()):
+            if candidate and candidate not in providers:
+                providers.append(candidate)
+        selected_model = None
+        for provider in providers:
+            try:
+                bundle = llm_bundle(knowledge_key, node=node, analysis=analysis, profile=profile,
+                    case_candidates=case_candidates, timeout=25.0, provider=provider)
                 endpoint = provider[1].lower()
-                if 'deepseek.com' in endpoint:
-                    backend = 'deepseek'
-                elif 'openrouter.ai' in endpoint:
-                    backend = 'openrouter'
-                elif 'openai.com' in endpoint:
-                    backend = 'openai'
-                else:
-                    backend = 'llm'
-        except Exception as exc:
-            errors.append(f'llm:{exc}')
+                backend = ('deepseek' if 'deepseek.com' in endpoint else 'openrouter' if 'openrouter.ai' in endpoint
+                           else 'openai' if 'openai.com' in endpoint else 'llm')
+                selected_model = provider[2]
+                break
+            except Exception as exc:
+                errors.append(str(exc) if isinstance(exc, LLMCallError) else type(exc).__name__)
 
         if bundle is None and IflytekSparkService.configured():
             try:
@@ -897,6 +926,9 @@ class PersonalizedResourceService:
                 # 留给任务记录，前端可提示「云端不可用」
                 bundle.setdefault('_fallback_errors', errors[:3])
 
+        bundle['_generation_meta'] = {'model': selected_model, 'fallback_codes': errors}
+        if analysis.get('learning_guidance'):
+            bundle.setdefault('analysis', {})['learning_guidance'] = deepcopy(analysis['learning_guidance'])
         split_rows = split_bundle_to_legacy_types(bundle, knowledge_key)
         interest = str(profile.get('interest_direction') or '').strip()
         if interest:
@@ -971,6 +1003,15 @@ class PersonalizedResourceService:
                 PersonalizedLearningResource.resource_type.in_(OPTIONAL_RESOURCE_TYPES),
             ).all()
             for row in rows:
+                ResourceCourseEvidence.require_resource(row)
+                # Static media URLs cannot enforce later course revocation yet.
+                manifest = ResourceCourseEvidence.for_resource(row)
+                if manifest and manifest.get('sources'):
+                    content = dict(row.content or {})
+                    content['media_status'] = 'source_protected'
+                    row.content, row.content_url = content, None
+                    db.session.commit()
+                    continue
                 content = dict(row.content or {})
                 media_url = None
                 try:
@@ -1008,6 +1049,8 @@ class PersonalizedResourceService:
 
     @staticmethod
     def _extract_pedagogical_context(row: ResourceGenerationTask) -> dict:
+        if row.context_snapshot:
+            return ResourceLearningContext.read(row)['pedagogical_context']
         steps = row.steps or []
         if steps and isinstance(steps[0].get('input_summary'), dict):
             ctx = steps[0]['input_summary'].get('pedagogical_context')
@@ -1017,6 +1060,8 @@ class PersonalizedResourceService:
 
     @staticmethod
     def _requires_real_api(row: ResourceGenerationTask) -> bool:
+        if row.context_snapshot:
+            return ResourceLearningContext.read(row)['require_real_api']
         steps = row.steps or []
         if not steps or not isinstance(steps[0].get('input_summary'), dict):
             return False
@@ -1036,14 +1081,31 @@ class PersonalizedResourceService:
                 return
             row = ResourceGenerationTask.query.filter_by(task_id=task_id).first()
             active_index = None
+            scope_token = None
             step_backend = 'in_process'
             step_model = 'deterministic_contract'
             try:
-                profile = PersonalizedResourceService._profile_snapshot(row.user_id)
-                pedagogical_context = PersonalizedResourceService._extract_pedagogical_context(row)
-                require_real_api = PersonalizedResourceService._requires_real_api(row)
+                if row.context_snapshot is None:
+                    # Only old queued tasks are bound now; never fabricate historical completed snapshots.
+                    context = ResourceLearningContext.capture(row.user_id, row.knowledge_key, origin='legacy_execution')
+                    context = ResourceLearningContext.bind(context,
+                        PersonalizedResourceService._extract_pedagogical_context(row), row.requested_types,
+                        PersonalizedResourceService._requires_real_api(row))
+                    row.context_snapshot, row.context_hash = context, ResourceLearningContext.digest(context)
+                    row.profile_version = context['profile_version']
+                    db.session.commit()
+                context = ResourceLearningContext.read(row)
+                scope_token = model_accounting.begin(workflow='resource',user_id=row.user_id,request_id=row.task_id,
+                    attempt_id=row.task_id,class_id=context['class_id'],policy_version=AGENT_CONTRACT_VERSION,
+                    state_version=(context.get('learner_state') or {}).get('state_version',0))
+                profile = context['profile']
+                pedagogical_context = context['pedagogical_context']
+                require_real_api = context['require_real_api']
+                learning_guidance = ResourceLearningContext.guidance(context)
                 artifacts = {}
                 for index, (agent, progress) in enumerate(PIPELINE_STEPS):
+                    ResourceLearningContext.authorize(context)
+                    ResourceCourseEvidence.require(row.user_id, row.evidence_manifest)
                     active_index = index
                     started = utc_now()
                     step_backend = 'in_process'
@@ -1053,6 +1115,10 @@ class PersonalizedResourceService:
                         'requested_types': row.requested_types,
                         'depends_on': PIPELINE_STEPS[index - 1][0] if index else None,
                         'require_real_api': require_real_api,
+                        'learning_context_hash': row.context_hash,
+                        'state_source': context['state_source'],
+                        'state_version': learning_guidance['state_version'],
+                        'profile_version': context['profile_version'],
                     }
                     if index:
                         previous_agent = PIPELINE_STEPS[index - 1][0]
@@ -1071,7 +1137,7 @@ class PersonalizedResourceService:
                     if agent == 'profile_interpreter':
                         output, step_backend, step_model = (
                             PersonalizedResourceService._run_profile_interpreter(
-                                profile, row.knowledge_key
+                                profile, row.knowledge_key, learning_guidance
                             )
                         )
                     elif agent == 'knowledge_retriever':
@@ -1079,8 +1145,11 @@ class PersonalizedResourceService:
                             PersonalizedResourceService._run_knowledge_retriever(
                                 row.knowledge_key,
                                 artifacts['profile_interpreter'],
+                                frozen_context=context,
                             )
                         )
+                        row.evidence_manifest = deepcopy(output['evidence_manifest'])
+                        db.session.commit()
                     elif agent == 'instructional_designer':
                         output, step_backend, step_model = (
                             PersonalizedResourceService._run_instructional_designer(
@@ -1116,6 +1185,10 @@ class PersonalizedResourceService:
                             else:
                                 row.fallback_reason = row.fallback_reason or 'llm_and_spark_unavailable'
                                 step_model = 'pedagogical-v2'
+                            generation_meta = bundle.pop('_generation_meta', {}) if isinstance(bundle, dict) else {}
+                            step_model = generation_meta.get('model') or step_model
+                            if generation_meta.get('fallback_codes'):
+                                row.fallback_reason = ';'.join(generation_meta['fallback_codes'])[:255]
                         except Exception as exc:
                             if require_real_api:
                                 raise
@@ -1138,6 +1211,14 @@ class PersonalizedResourceService:
                             row.fallback_reason = str(exc)[:255]
                             step_backend = 'local_rules'
                             step_model = 'pedagogical-v2'
+                        ResourceCourseEvidence.require(row.user_id, row.evidence_manifest)
+                        for item in generated:
+                            if isinstance(item.get('content'), dict):
+                                item['content'].pop('_generation_meta', None)
+                            item['citations'] = ResourceCourseEvidence.citations(row.evidence_manifest)
+                        # Do not persist a model-supplied evidence packet in its analysis.
+                        if isinstance(bundle, dict):
+                            bundle.setdefault('analysis', {}).pop('course_evidence', None)
                         artifacts['_bundle'] = bundle
                         output = {
                             'resource_count': len(generated),
@@ -1186,6 +1267,9 @@ class PersonalizedResourceService:
                         step_backend = str(ai_meta.get('backend') or step_backend)
                         if isinstance(audit_report_dict, dict):
                             row.audit_report = audit_report_dict
+                        ResourceLearningContext.authorize(context)
+                        ResourceCourseEvidence.require(row.user_id, row.evidence_manifest)
+                        resource_runtime.ensure_running(row.task_id)
                         PersonalizedResourceService._store_generated_resources(
                             row, generated, profile, output
                         )
@@ -1215,7 +1299,7 @@ class PersonalizedResourceService:
                         output_summary = {
                             key: value
                             for key, value in output.items()
-                            if key not in {'knowledge_node', 'course_section'}
+                            if key not in {'knowledge_node', 'course_section', 'course_evidence', 'evidence_manifest'}
                         }
                         if agent == 'knowledge_retriever':
                             output_summary['has_course_section'] = bool(output.get('course_section'))
@@ -1238,6 +1322,7 @@ class PersonalizedResourceService:
                         input_summary=input_summary,
                         output_summary=output_summary,
                     )
+                resource_runtime.ensure_running(row.task_id)
                 row.status = 'completed'
                 row.progress = 100
                 row.current_agent = None
@@ -1256,6 +1341,7 @@ class PersonalizedResourceService:
             except Exception as exc:
                 db.session.rollback()
                 row = ResourceGenerationTask.query.filter_by(task_id=task_id).first()
+                if not row or row.status != 'running':return
                 if active_index is not None:
                     PersonalizedResourceService._set_step(
                         row,
@@ -1268,6 +1354,8 @@ class PersonalizedResourceService:
                 row.current_agent = None
                 row.recoverable = True
                 db.session.commit()
+            finally:
+                if scope_token is not None:model_accounting.end(scope_token)
 
     @staticmethod
     def get_task(user_id: int, task_id: str) -> dict:
@@ -1275,7 +1363,7 @@ class PersonalizedResourceService:
         if not row:
             raise LookupError('任务不存在')
         resources = PersonalizedLearningResource.query.filter_by(
-            generation_task_id=task_id
+            generation_task_id=task_id, deleted_at=None
         ).order_by(PersonalizedLearningResource.id).all()
         return row.to_dict([item.to_dict() for item in resources])
 
@@ -1290,9 +1378,9 @@ class PersonalizedResourceService:
             'knowledge_key': row.knowledge_key,
             'resource_types': row.requested_types,
             'force_regenerate': True,
-            'retry_of': row.task_id,
             'require_real_api': PersonalizedResourceService._requires_real_api(row),
-        })
+            **PersonalizedResourceService._extract_pedagogical_context(row),
+        }, retry_context=ResourceLearningContext.read(row) if row.context_snapshot else None, retry_task_id=row.task_id)
 
     @staticmethod
     def list_tasks(user_id: int, page: int = 1, page_size: int = 20) -> dict:
@@ -1334,6 +1422,8 @@ class PersonalizedResourceService:
             if pending:
                 now = utc_now()
                 for row in pending:
+                    if not ResourceCourseEvidence.resource_current(row):
+                        continue
                     row.review_status = 'approved'
                     row.review_reason = (
                         row.review_reason
@@ -1344,6 +1434,7 @@ class PersonalizedResourceService:
 
         query = PersonalizedLearningResource.query.filter(
             PersonalizedLearningResource.user_id == user_id,
+            PersonalizedLearningResource.deleted_at.is_(None),
             PersonalizedLearningResource.review_status.in_(('approved', 'pending_review')),
         )
         if args.get('knowledge_key'):
@@ -1363,6 +1454,7 @@ class PersonalizedResourceService:
                 -(row.id or 0),
             ),
         )
+        rows = [row for row in rows if ResourceCourseEvidence.resource_current(row)]
         return {'items': [row.to_dict() for row in rows], 'total': len(rows)}
 
     @staticmethod
@@ -1378,10 +1470,12 @@ class PersonalizedResourceService:
             PersonalizedLearningResource.is_anomaly.desc(),
             PersonalizedLearningResource.created_at.desc(),
         ).all()
+        rows = [row for row in rows if ResourceCourseEvidence.resource_current(row)]
         return {'items': [row.to_dict() for row in rows], 'total': len(rows)}
 
     @staticmethod
     def _resolve_bundle_for_resource(row: PersonalizedLearningResource) -> dict | None:
+        ResourceCourseEvidence.require_resource(row)
         if row.resource_type == 'learning_bundle' and isinstance(row.content, dict):
             if row.content.get('format') == 'pedagogical_v2':
                 return row.content
@@ -1399,6 +1493,7 @@ class PersonalizedResourceService:
         row = db.session.get(PersonalizedLearningResource, resource_id)
         if not row:
             raise LookupError('资源不存在')
+        ResourceCourseEvidence.require_resource(row)
         task = ResourceGenerationTask.query.filter_by(task_id=row.generation_task_id).first()
         if task and task.audit_report:
             return {
@@ -1418,6 +1513,7 @@ class PersonalizedResourceService:
             citations=row.citations or [],
         )
         audit = ResourceAuditService.enrich_with_crewai_notes(audit, bundle, row.knowledge_key)
+        ResourceCourseEvidence.require_resource(row)
         report = audit.to_dict()
         if task:
             task.audit_report = report
@@ -1445,6 +1541,7 @@ class PersonalizedResourceService:
             citations=row.citations or [],
         )
         audit = ResourceAuditService.enrich_with_crewai_notes(audit, bundle, row.knowledge_key)
+        ResourceCourseEvidence.require_resource(row)
         report = audit.to_dict()
         task = ResourceGenerationTask.query.filter_by(task_id=row.generation_task_id).first()
         if task:
@@ -1541,6 +1638,9 @@ class PersonalizedResourceService:
         # 按生成任务复用审核结果，避免同包重复调用 OpenAI
         cache: dict[str, dict] = {}
         for row in rows:
+            if not ResourceCourseEvidence.resource_current(row, reviewer_id):
+                flagged += 1
+                continue
             task_id = row.generation_task_id
             if task_id not in cache:
                 task = ResourceGenerationTask.query.filter_by(task_id=task_id).first()
@@ -1561,6 +1661,9 @@ class PersonalizedResourceService:
                     audit_report['metadata'] = metadata
                     task.audit_report = audit_report
 
+            if not ResourceCourseEvidence.resource_current(row, reviewer_id):
+                flagged += 1
+                continue
             ai_review = cache[task_id]
             row.ai_review = ai_review
             item_risks = [
@@ -1628,6 +1731,9 @@ class PersonalizedResourceService:
         approved = 0
         kept = 0
         for row in rows:
+            if not ResourceCourseEvidence.resource_current(row, reviewer_id):
+                kept += 1
+                continue
             risks = [
                 r for r in (row.risk_reasons or [])
                 if r not in ('ai_anomaly',)
@@ -1660,6 +1766,8 @@ class PersonalizedResourceService:
         ).all()
         approved = 0
         for row in rows:
+            if not ResourceCourseEvidence.resource_current(row, reviewer_id):
+                continue
             row.review_status = 'approved'
             row.review_reason = (
                 row.review_reason
@@ -1689,6 +1797,7 @@ class PersonalizedResourceService:
         row = db.session.get(PersonalizedLearningResource, resource_id)
         if not row:
             raise LookupError('资源不存在')
+        ResourceCourseEvidence.require_resource(row, reviewer_id)
         row.review_status = status
         row.review_reason = note[:500]
         row.reviewed_by = reviewer_id

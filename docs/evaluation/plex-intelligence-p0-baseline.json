@@ -1,0 +1,121 @@
+{
+  "recorded_at": "2026-10-15",
+  "scope": "P0 engineering baseline before learner-state and tutor/RAG changes",
+  "quality_evaluation_complete": false,
+  "notes": [
+    "Working tree includes authorized uncommitted auth/onboarding changes; git HEAD alone does not describe this baseline.",
+    "These hashes identify current code/config, not a model quality or classroom effectiveness result.",
+    "Teacher-labelled retrieval and tutoring evaluation sets are still pending."
+  ],
+  "git_head": "a10576f8a52f8dcbb764febde14d7a145b4c7e6e",
+  "files": {
+    "backend/app/services/knowledge/config/retrieval.json": {
+      "sha256": "6b465d7682d67be07750ba729cf2d7b1be343d81f7bc72c1572a1fd58b702474"
+    },
+    "backend/app/services/knowledge/config/strategy.json": {
+      "sha256": "3457e7f9ab2bb9d75550e3ea39011d9ae8a54b8cd64444aeb33bc1f03755131e"
+    },
+    "backend/app/services/knowledge/rag_service.py": {
+      "sha256": "ef783870413a7fdbf16feaa22a268a7fd3764374a2111a5760670e6a9e85f6c6"
+    },
+    "backend/app/services/knowledge/rerank_service.py": {
+      "sha256": "7871f4cc0d0043e58e979c8c52922075e22463648b64f2d18b857be385554c47"
+    },
+    "backend/app/services/knowledge/strategy_service.py": {
+      "sha256": "f64d036e7b7db255e29279770b2e183797db069f4a47ed3c7e830d1758dce592"
+    },
+    "backend/app/services/messenger_chat.py": {
+      "sha256": "ddc104b6d2397cde3ad9244ab027e5839bdb9a6f68aa2fb974db378b96c3afb1"
+    }
+  },
+  "retrieval_config": {
+    "$comment": "Knowledge Intelligence Layer 检索/重排/置信度配置。可用环境变量 KNOWLEDGE_CONFIG_DIR 指向覆盖目录。",
+    "course_id": "python-basics",
+    "graph": {
+      "prerequisite_hops": 1,
+      "prerequisite_hops_when_weak": 2,
+      "max_expanded_nodes": 12,
+      "include_relations": [
+        "PREREQUISITE_OF",
+        "RELATED_TO",
+        "MISCONCEPTION_OF",
+        "NEXT_RECOMMENDED",
+        "EXAMPLE_OF",
+        "EXERCISE_FOR",
+        "REMEDIATES"
+      ],
+      "role_weights": {
+        "focus": 1.0,
+        "prerequisite": 0.8,
+        "misconception": 0.75,
+        "related": 0.55,
+        "next": 0.45,
+        "example": 0.6,
+        "exercise": 0.5,
+        "resource": 0.5
+      }
+    },
+    "query_understanding": {
+      "max_concepts": 4,
+      "min_lexical_score": 0.18,
+      "use_llm": false,
+      "llm_timeout_seconds": 6
+    },
+    "vector": {
+      "top_k": 20,
+      "lexical_top_k": 20,
+      "hybrid_alpha": 0.6,
+      "min_candidates_for_grounding": 1
+    },
+    "metadata_filter": {
+      "difficulty_band": 1,
+      "prefer_verified": true,
+      "allowed_status": [
+        "active"
+      ],
+      "exclude_knowledge_types_in_practice": [
+        "solution"
+      ]
+    },
+    "rerank": {
+      "weights": {
+        "semantic_similarity": 0.4,
+        "concept_relevance": 0.25,
+        "learner_fit": 0.2,
+        "teacher_verified": 0.1,
+        "resource_quality": 0.05
+      },
+      "final_top_k": 6,
+      "max_context_chars": 3200,
+      "diversity_per_document": 3
+    },
+    "confidence": {
+      "grounded_threshold": 0.42,
+      "high_threshold": 0.68,
+      "min_supporting_chunks": 1,
+      "lexical_evidence_floor": 0.22,
+      "lexical_evidence_saturation": 0.5,
+      "vector_evidence_floor": 0.42,
+      "vector_evidence_saturation": 0.7,
+      "no_evidence_answer": "我在课程知识库里没有找到足够可靠的依据来回答这个问题。你可以换个说法、指出具体知识点，或先看看下面的相关知识点。"
+    },
+    "logging": {
+      "query_preview_chars": 120,
+      "store_chunk_scores": true
+    },
+    "index": {
+      "max_chunk_chars": 1400,
+      "min_chunk_chars": 120,
+      "merge_short_paragraph_chars": 260,
+      "embedding_batch_size": 32,
+      "sync_in_tests": true
+    }
+  },
+  "verified_checks": {
+    "execution_and_audit_including_real_docker": 47,
+    "auth_oauth_onboarding": 31,
+    "knowledge_layer_and_course_knowledge": 20,
+    "frontend_auth_session": 10,
+    "frontend_build": "passed"
+  }
+}

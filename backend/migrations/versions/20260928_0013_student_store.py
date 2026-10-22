@@ -16,8 +16,19 @@ branch_labels = None
 depends_on = None
 
 
+def _create_table_if_missing(name, *columns, **kwargs):
+    if name not in set(sa.inspect(op.get_bind()).get_table_names()):
+        op.create_table(name, *columns, **kwargs)
+
+
+def _create_index_if_missing(name, table_name, columns, **kwargs):
+    indexes = {item['name'] for item in sa.inspect(op.get_bind()).get_indexes(table_name)}
+    if name not in indexes:
+        op.create_index(name, table_name, columns, **kwargs)
+
+
 def upgrade():
-    op.create_table(
+    _create_table_if_missing(
         'store_products',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('code', sa.String(64), nullable=False),
@@ -32,11 +43,11 @@ def upgrade():
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
     )
-    op.create_index('ix_store_products_code', 'store_products', ['code'], unique=True)
-    op.create_index('ix_store_products_product_type', 'store_products', ['product_type'])
-    op.create_index('ix_store_products_is_active', 'store_products', ['is_active'])
+    _create_index_if_missing('ix_store_products_code', 'store_products', ['code'], unique=True)
+    _create_index_if_missing('ix_store_products_product_type', 'store_products', ['product_type'])
+    _create_index_if_missing('ix_store_products_is_active', 'store_products', ['is_active'])
 
-    op.create_table(
+    _create_table_if_missing(
         'store_product_problems',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('product_id', sa.Integer(), sa.ForeignKey('store_products.id', ondelete='CASCADE'), nullable=False),
@@ -44,10 +55,10 @@ def upgrade():
         sa.Column('sort_order', sa.Integer(), nullable=False, server_default='0'),
         sa.UniqueConstraint('product_id', 'problem_id', name='uq_store_product_problem'),
     )
-    op.create_index('ix_store_product_problems_product_id', 'store_product_problems', ['product_id'])
-    op.create_index('ix_store_product_problems_problem_id', 'store_product_problems', ['problem_id'])
+    _create_index_if_missing('ix_store_product_problems_product_id', 'store_product_problems', ['product_id'])
+    _create_index_if_missing('ix_store_product_problems_problem_id', 'store_product_problems', ['problem_id'])
 
-    op.create_table(
+    _create_table_if_missing(
         'user_entitlements',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
@@ -57,11 +68,11 @@ def upgrade():
         sa.Column('expires_at', sa.DateTime()),
         sa.Column('created_at', sa.DateTime(), nullable=False),
     )
-    op.create_index('ix_user_entitlements_user_id', 'user_entitlements', ['user_id'])
-    op.create_index('ix_user_entitlements_product_id', 'user_entitlements', ['product_id'])
-    op.create_index('ix_user_entitlements_starts_at', 'user_entitlements', ['starts_at'])
-    op.create_index('ix_user_entitlements_expires_at', 'user_entitlements', ['expires_at'])
-    op.create_index('ix_user_entitlements_created_at', 'user_entitlements', ['created_at'])
+    _create_index_if_missing('ix_user_entitlements_user_id', 'user_entitlements', ['user_id'])
+    _create_index_if_missing('ix_user_entitlements_product_id', 'user_entitlements', ['product_id'])
+    _create_index_if_missing('ix_user_entitlements_starts_at', 'user_entitlements', ['starts_at'])
+    _create_index_if_missing('ix_user_entitlements_expires_at', 'user_entitlements', ['expires_at'])
+    _create_index_if_missing('ix_user_entitlements_created_at', 'user_entitlements', ['created_at'])
 
     products = sa.table(
         'store_products',
@@ -73,13 +84,28 @@ def upgrade():
         sa.column('created_at', sa.DateTime()), sa.column('updated_at', sa.DateTime()),
     )
     now = datetime.utcnow()
-    op.bulk_insert(products, [
+    product_rows = [
         {'id': 1, 'code': 'explorer_monthly', 'name': '探索月卡', 'description': '30 天会员权益：当前主题挑战包与进阶阶段报告。', 'product_type': 'membership', 'price_cents': 990, 'duration_days': 30, 'benefits_json': ['member_challenge_pack', 'phase_report'], 'is_active': True, 'sort_order': 10, 'created_at': now, 'updated_at': now},
         {'id': 2, 'code': 'explorer_annual', 'name': '探索年卡', 'description': '365 天会员权益：当前主题挑战包与进阶阶段报告。', 'product_type': 'membership', 'price_cents': 6800, 'duration_days': 365, 'benefits_json': ['member_challenge_pack', 'phase_report'], 'is_active': True, 'sort_order': 20, 'created_at': now, 'updated_at': now},
         {'id': 3, 'code': 'challenge_pack_algorithms_01', 'name': '算法基础 · 星轨挑战包', 'description': '10 道精选编程题组成的额外挑战，不影响免费学习主线。', 'product_type': 'challenge_pack', 'price_cents': 600, 'duration_days': None, 'benefits_json': ['challenge_pack_algorithms_01'], 'is_active': True, 'sort_order': 30, 'created_at': now, 'updated_at': now},
-    ])
-
+    ]
     bind = op.get_bind()
+    existing_codes = set(bind.execute(sa.select(products.c.code)).scalars())
+    existing_ids = set(bind.execute(sa.select(products.c.id)).scalars())
+    next_id = max(existing_ids, default=0) + 1
+    missing_products = []
+    for row in product_rows:
+        if row['code'] in existing_codes:
+            continue
+        if row['id'] in existing_ids:
+            row['id'] = next_id
+            next_id += 1
+        existing_ids.add(row['id'])
+        existing_codes.add(row['code'])
+        missing_products.append(row)
+    if missing_products:
+        op.bulk_insert(products, missing_products)
+
     tables = set(sa.inspect(bind).get_table_names())
     if 'problems' in tables:
         problem_columns = {col['name'] for col in sa.inspect(bind).get_columns('problems')}
@@ -105,10 +131,20 @@ def upgrade():
                     'store_product_problems', sa.column('product_id', sa.Integer()),
                     sa.column('problem_id', sa.Integer()), sa.column('sort_order', sa.Integer()),
                 )
-                op.bulk_insert(links, [
-                    {'product_id': 3, 'problem_id': problem_id, 'sort_order': index}
-                    for index, problem_id in enumerate(ids)
-                ])
+                product_id = bind.execute(
+                    sa.select(products.c.id).where(products.c.code == 'challenge_pack_algorithms_01')
+                ).scalar_one_or_none()
+                if product_id is not None:
+                    existing_links = set(bind.execute(sa.select(
+                        links.c.product_id, links.c.problem_id,
+                    )).all())
+                    missing_links = [
+                        {'product_id': product_id, 'problem_id': problem_id, 'sort_order': index}
+                        for index, problem_id in enumerate(ids)
+                        if (product_id, problem_id) not in existing_links
+                    ]
+                    if missing_links:
+                        op.bulk_insert(links, missing_links)
 
 
 def downgrade():

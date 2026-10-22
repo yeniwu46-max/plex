@@ -67,7 +67,7 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
             ],
         )
         self.assertTrue(all(step['status'] == 'completed' for step in task['steps']))
-        self.assertTrue(all(step['contract_version'] == 'resource-pipeline-v2' for step in task['steps']))
+        self.assertTrue(all(step['contract_version'] == 'resource-pipeline-v3' for step in task['steps']))
         self.assertTrue(all(step['input_summary'] for step in task['steps']))
         self.assertTrue(all(step['output_summary'] for step in task['steps']))
         self.assertEqual(task['steps'][1]['depends_on'], 'profile_interpreter')
@@ -82,7 +82,9 @@ class PersonalizedResourceApiTestCase(unittest.TestCase):
             0,
         )
         serialized_steps = str(task['steps'])
-        self.assertNotIn('evidence', serialized_steps)
+        self.assertNotIn('learner_state', serialized_steps)
+        self.assertNotIn('question_title', serialized_steps)
+        self.assertNotIn('profile_snapshot', serialized_steps)
         self.assertNotIn('assistant_reply', serialized_steps)
         self.assertEqual({item['resource_type'] for item in task['resources']}, {
             'learning_bundle',

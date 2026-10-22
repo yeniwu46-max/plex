@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-import os
 import unittest
+from unittest.mock import patch
 
 from app import create_app
 from app.services.code_execution import CodeExecutionService
@@ -11,8 +11,18 @@ class CodeExecutionServiceTests(unittest.TestCase):
         self.app = create_app('testing')
         self.ctx = self.app.app_context()
         self.ctx.push()
+        self.app.config['CODE_EXECUTION_BACKEND'] = 'docker'
+        # Real execution is covered by the opt-in sandbox integration test.
+        self.adapter = patch('app.services.docker_execution.run_container', side_effect=self.fake_runner)
+        self.adapter.start()
+
+    @staticmethod
+    def fake_runner(code, stdin, *, image):
+        output = '8' if 'a = 3' in code else '（中文标点）' if '中文' in code else 'Hello, PLEX!'
+        return {'status': {'id': 3}, 'stdout': output, 'time': None, 'memory': None}
 
     def tearDown(self):
+        self.adapter.stop()
         self.ctx.pop()
 
     def test_wrap_python_expression(self):
@@ -54,9 +64,9 @@ class CodeExecutionServiceTests(unittest.TestCase):
         self.assertTrue(payload['all_passed'])
         self.assertEqual(payload['passed_count'], 1)
 
-    def test_backend_defaults_mock_without_env(self):
-        os.environ.pop('JUDGE0_API_URL', None)
-        self.assertEqual(CodeExecutionService.backend_name(), 'mock')
+    def test_backend_defaults_disabled_without_provider(self):
+        self.app.config.update(CODE_EXECUTION_BACKEND='auto', JUDGE0_API_URL='')
+        self.assertEqual(CodeExecutionService.backend_name(), 'disabled')
 
 
 if __name__ == '__main__':

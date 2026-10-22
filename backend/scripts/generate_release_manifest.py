@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,7 +66,7 @@ def _include(path: Path) -> bool:
         return False
     if any(part.startswith(EXCLUDED_PREFIXES) for part in relative.parts):
         return False
-    if path.name in SECRET_NAMES:
+    if path.name in SECRET_NAMES or (path.name.startswith('.env.') and not path.name.endswith('.example')):
         return False
     if path.name in POST_MANIFEST_REPORTS and "a3-submission" in relative.parts:
         return False
@@ -75,11 +76,20 @@ def _include(path: Path) -> bool:
 
 
 def _candidate_files() -> list[Path]:
-    return [
-        path
-        for path in sorted(REPO_ROOT.rglob("*"))
-        if _include(path)
-    ]
+    # Respect Git exclusions: restored assets and local SMTP/provider credentials
+    # must not become release candidates merely because they exist on disk.
+    try:
+        names = subprocess.check_output(
+            ['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+            cwd=REPO_ROOT, stderr=subprocess.DEVNULL,
+        ).decode('utf-8').split('\0')
+        paths = {REPO_ROOT / name for name in names if name}
+    except (OSError, subprocess.CalledProcessError):
+        paths = set()
+        for directory, children, files in os.walk(REPO_ROOT):
+            children[:] = [name for name in children if name not in EXCLUDED_PARTS and not name.startswith(EXCLUDED_PREFIXES)]
+            paths.update(Path(directory) / name for name in files)
+    return sorted(path for path in paths if _include(path))
 
 
 def verify_manifest(report: dict) -> dict:

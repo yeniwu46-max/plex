@@ -1,0 +1,30 @@
+.plex-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+
+/* The reading shell owns vertical scrolling; code and wide tables keep rails. */
+html[data-plex-persona='student'] :is(.main-body,.student-trial,.resource-page,.chat-thread,.messenger-stage,.class-arena,.class-arena__top5,.knowledge-map,.content-rendered,.content-markdown,.content-raw,.resource-list,.resource-stat-modal__body,.trash-list,.resource-detail,.plex-reading-modal>.n-card-content,.resource-material-modal>.n-card-content,.n-drawer-body-content-wrapper,[data-student-scroll]){scrollbar-width:none}
+html[data-plex-persona='student'] :is(.main-body,.student-trial,.resource-page,.chat-thread,.messenger-stage,.class-arena,.class-arena__top5,.knowledge-map,.content-rendered,.content-markdown,.content-raw,.resource-list,.resource-stat-modal__body,.trash-list,.resource-detail,.plex-reading-modal>.n-card-content,.resource-material-modal>.n-card-content,.n-drawer-body-content-wrapper,[data-student-scroll])::-webkit-scrollbar{width:0;height:0}
+html[data-plex-persona='student'] :is(pre,.cm-scroller,.monaco-scrollable-element,.n-data-table-base-body,.n-scrollbar,.messenger-box__panel){scrollbar-width:thin;scrollbar-color:var(--plex-primary,#40b9bc) transparent}
+html[data-plex-persona='student'] :is(pre,.cm-scroller,.n-data-table-base-body)::-webkit-scrollbar{height:6px;width:6px}
+html[data-plex-persona='student'] :is(pre,.cm-scroller,.n-data-table-base-body)::-webkit-scrollbar-thumb{background:var(--plex-primary,#40b9bc);border-radius:8px}
+html[data-plex-persona='student'] .n-scrollbar-rail{--n-scrollbar-color:color-mix(in srgb,var(--plex-primary,#40b9bc) 45%,transparent);--n-scrollbar-color-hover:var(--plex-primary,#40b9bc)}
+html[data-plex-persona='student'] :is(.plex-reading-modal,.resource-material-modal)>.n-card-content>.n-scrollbar>.n-scrollbar-rail--vertical{display:none}
+.plex-reading-modal.n-card,.resource-material-modal.n-card{max-height:76dvh;display:flex;flex-direction:column;color:var(--plex-text)}
+.plex-reading-modal.n-card>.n-card-content,.resource-material-modal.n-card>.n-card-content{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.plex-reading-modal.n-card>:is(.n-card-header,.n-card__footer),.resource-material-modal.n-card>:is(.n-card-header,.n-card__footer){flex-shrink:0}
+html[data-plex-persona='student'] .resource-material-modal :is(.content-rendered,.content-markdown,.content-raw){max-height:none;overflow:visible}
+html[data-plex-persona='student'] .resource-material-modal .content-code{max-height:none;overflow-x:auto}
+html[data-plex-persona='student'] .resource-detail :is(.content-rendered,.content-markdown,.content-raw){max-height:none;overflow:visible}
+html[data-plex-persona='student'] .resource-detail .content-code{max-height:none;overflow-x:auto}
+.resource-trash-modal.n-card>.n-card-content{display:flex;flex-direction:column;overflow:hidden}
+.resource-trash-modal .trash-list{min-height:0;flex:1}
+.plex-reading-modal :focus-visible{outline-color:var(--plex-primary,#55eee9)}
+.plex-action-button.n-button{--n-color:transparent;--n-color-hover:color-mix(in srgb,var(--plex-primary,#55eee9) 10%,transparent);--n-color-pressed:color-mix(in srgb,var(--plex-primary,#55eee9) 18%,transparent);--n-text-color:var(--plex-text);--n-text-color-hover:var(--plex-text);--n-text-color-pressed:var(--plex-text);--n-border:1px solid var(--plex-border);--n-border-hover:1px solid var(--plex-primary,#55eee9);--n-border-pressed:1px solid var(--plex-primary,#55eee9);--n-border-radius:10px}
+.plex-action-button.is-selected{background:color-mix(in srgb,var(--plex-primary,#55eee9) 15%,transparent);color:var(--plex-primary,#55eee9)}
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-action-button.n-button{--n-border:2px solid var(--comic-line);--n-border-hover:2px solid var(--comic-line);--n-border-pressed:2px solid var(--comic-line);--n-border-radius:8px 12px 8px 12px;box-shadow:2px 2px 0 var(--comic-ink)}
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-reading-modal.n-card{border:2px solid var(--comic-line);box-shadow:5px 5px 0 var(--comic-ink);border-radius:14px;background:var(--comic-panel)}
+
+.plex-action-button.n-button{color:var(--plex-text)!important;background:color-mix(in srgb,var(--plex-bg-card) 85%,transparent);border:1px solid var(--plex-border)}
+.plex-action-button.n-button:hover{border-color:var(--plex-primary,#55eee9);background:color-mix(in srgb,var(--plex-primary,#55eee9) 12%,var(--plex-bg-card))}
+.plex-action-button.n-button:focus-visible{outline:2px solid var(--plex-primary,#55eee9);outline-offset:3px}
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-action-button.n-button{border:2px solid var(--comic-line);background:var(--comic-panel)}
+html[data-plex-style='comic'][data-plex-persona='student'] .plex-action-button.is-selected{background:color-mix(in srgb,var(--comic-cyan,#55eee9) 20%,var(--comic-panel))}

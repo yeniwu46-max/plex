@@ -32,7 +32,9 @@ export interface LearningPathOrderedNode {
   label: string
   order_index: number
   status: string
-  mastery_score: number
+  mastery_score: number | null
+  state_version?: number | null
+  state_source?: 'evidence' | 'legacy'
   locked: boolean
   prerequisites_met: boolean
   prerequisites?: string[]
@@ -49,6 +51,8 @@ export interface LearningPathOrderedNode {
 }
 
 export interface NextBestAction {
+  state_version?: number | null
+  evidence_ids?: number[]
   node_id: string | null
   reason: string
   action: string
@@ -76,13 +80,18 @@ export interface LearningPathResult {
 export interface ArchiveSkill {
   key: string
   label: string
-  percent: number
+  percent: number | null
+  observed_concepts?: number
+  total_concepts?: number
+  formal_attempts?: number
 }
 
 export type { EmergencyMissionArchiveRecord } from './emergencyMission'
 import type { EmergencyMissionArchiveRecord } from './emergencyMission'
 
 export interface ArchiveInsightsResult {
+  state_source?: 'evidence' | 'legacy'
+  state_version?: number | null
   tendency: { label: string; description: string }
   skills: ArchiveSkill[]
   stats: {

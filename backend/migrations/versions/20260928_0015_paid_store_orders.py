@@ -14,8 +14,19 @@ branch_labels = None
 depends_on = None
 
 
+def _create_table_if_missing(name, *columns, **kwargs):
+    if name not in set(sa.inspect(op.get_bind()).get_table_names()):
+        op.create_table(name, *columns, **kwargs)
+
+
+def _create_index_if_missing(name, table_name, columns, **kwargs):
+    indexes = {item['name'] for item in sa.inspect(op.get_bind()).get_indexes(table_name)}
+    if name not in indexes:
+        op.create_index(name, table_name, columns, **kwargs)
+
+
 def upgrade():
-    op.create_table(
+    _create_table_if_missing(
         'store_orders',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('order_no', sa.String(40), nullable=False),
@@ -34,12 +45,12 @@ def upgrade():
         sa.UniqueConstraint('order_no', name='uq_store_orders_order_no'),
         sa.UniqueConstraint('provider_trade_no', name='uq_store_orders_provider_trade_no'),
     )
-    op.create_index('ix_store_orders_user_id', 'store_orders', ['user_id'])
-    op.create_index('ix_store_orders_product_id', 'store_orders', ['product_id'])
-    op.create_index('ix_store_orders_status', 'store_orders', ['status'])
-    op.create_index('ix_store_orders_expires_at', 'store_orders', ['expires_at'])
-    op.create_index('ix_store_orders_paid_at', 'store_orders', ['paid_at'])
-    op.create_index('ix_store_orders_created_at', 'store_orders', ['created_at'])
+    _create_index_if_missing('ix_store_orders_user_id', 'store_orders', ['user_id'])
+    _create_index_if_missing('ix_store_orders_product_id', 'store_orders', ['product_id'])
+    _create_index_if_missing('ix_store_orders_status', 'store_orders', ['status'])
+    _create_index_if_missing('ix_store_orders_expires_at', 'store_orders', ['expires_at'])
+    _create_index_if_missing('ix_store_orders_paid_at', 'store_orders', ['paid_at'])
+    _create_index_if_missing('ix_store_orders_created_at', 'store_orders', ['created_at'])
 
 
 def downgrade():

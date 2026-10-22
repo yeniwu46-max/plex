@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useAuthStore } from '../../stores/auth'
+import LearnerEvidencePanel from '../student/LearnerEvidencePanel.vue'
 import { NButton, NModal, NSpin, NTag } from 'naive-ui'
 import {
   fetchStudentTrialHistory,
@@ -33,6 +35,10 @@ const visible = computed({
   set: (value: boolean) => emit('update:show', value),
 })
 
+const auth = useAuthStore()
+let historyRequest = 0
+onBeforeUnmount(() => { historyRequest += 1 })
+
 const history = ref<StudentTrialHistoryResult | null>(null)
 const loading = ref(false)
 
@@ -57,23 +63,29 @@ function formatDate(value?: string | null) {
   return value.slice(0, 10)
 }
 
-async function loadHistory(studentId: number) {
+async function loadHistory(studentId: number, request: number) {
   loading.value = true
-  history.value = null
   try {
-    history.value = await fetchStudentTrialHistory(studentId)
+    const result = await fetchStudentTrialHistory(studentId)
+    if (request === historyRequest) history.value = result
   } catch {
-    history.value = null
+    if (request === historyRequest) history.value = null
   } finally {
-    loading.value = false
+    if (request === historyRequest) loading.value = false
   }
 }
 
 watch(
-  () => [props.show, props.student?.id] as const,
-  ([open, studentId]) => {
-    if (open && studentId) void loadHistory(studentId)
+  () => [props.show, props.student?.id, auth.profile?.id, auth.profile?.role] as const,
+  ([open, studentId, accountId, role]) => {
+    const request = ++historyRequest
+    history.value = null
+    loading.value = false
+    if (open && studentId && accountId && (role === 'teacher' || role === 'admin')) {
+      void loadHistory(studentId, request)
+    }
   },
+  { immediate: true, flush: 'sync' },
 )
 </script>
 
@@ -85,7 +97,8 @@ watch(
     class="explorer-profile-card"
     :bordered="false"
     :z-index="5300"
-    style="width: min(420px, calc(100vw - 32px))"
+    style="width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 48px)"
+    :content-style="{ overflowY: 'auto', minHeight: '0' }"
   >
     <div v-if="student" class="profile-card">
       <div class="profile-card__identity">
@@ -135,6 +148,8 @@ watch(
         </n-spin>
       </section>
 
+      <LearnerEvidencePanel v-if="show && student" :key="student.id" :student-id="student.id" />
+
       <footer class="profile-card__actions">
         <n-button size="small" @click="visible = false">关闭</n-button>
       </footer>
@@ -164,13 +179,13 @@ watch(
 
 .profile-card__identity strong {
   display: block;
-  color: #fff7ed;
+  color: inherit;
   font-size: 1.05rem;
 }
 
 .profile-card__identity p {
   margin: 0.15rem 0 0;
-  color: rgba(203, 213, 225, 0.65);
+  opacity: .75;
   font-size: 0.82rem;
 }
 
@@ -184,32 +199,32 @@ watch(
 .profile-card__meta div {
   padding: 0.45rem 0.55rem;
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(251, 146, 60, 0.12);
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
 }
 
 .profile-card__meta dt {
   margin: 0 0 0.2rem;
-  color: rgba(253, 186, 116, 0.72);
+  opacity: .75;
   font-size: 0.72rem;
 }
 
 .profile-card__meta dd {
   margin: 0;
-  color: #fff7ed;
+  color: inherit;
   font-size: 0.88rem;
   word-break: break-all;
 }
 
 .profile-card__practice h3 {
   margin: 0 0 0.55rem;
-  color: #fed7aa;
+  color: inherit;
   font-size: 0.92rem;
 }
 
 .profile-card__practice-summary {
   margin: 0 0 0.65rem;
-  color: rgba(203, 213, 225, 0.7);
+  opacity: .75;
   font-size: 0.8rem;
 }
 
@@ -227,23 +242,23 @@ watch(
   gap: 0.15rem;
   padding: 0.5rem 0.6rem;
   border-radius: 10px;
-  background: rgba(2, 8, 16, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
 }
 
 .profile-card__practice-list strong {
-  color: #fff7ed;
+  color: inherit;
   font-size: 0.86rem;
 }
 
 .profile-card__practice-list span {
-  color: rgba(203, 213, 225, 0.62);
+  opacity: .75;
   font-size: 0.76rem;
 }
 
 .profile-card__empty {
   margin: 0;
-  color: rgba(148, 163, 184, 0.72);
+  opacity: .75;
   font-size: 0.84rem;
 }
 
@@ -256,11 +271,6 @@ watch(
 
 <style>
 .explorer-profile-card.n-card {
-  background: rgba(8, 14, 22, 0.98) !important;
-  border: 1px solid rgba(251, 146, 60, 0.22) !important;
-}
-
-.explorer-profile-card .n-card-header__main {
-  color: #fff7ed !important;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
 }
 </style>

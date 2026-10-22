@@ -2,6 +2,8 @@ import { http, type ApiEnvelope } from './http'
 import type { PythonRunMode, PythonTestCase, PythonTrialDifficulty } from '../data/pythonTrialQuestions'
 
 export interface PracticeQuestionPayload {
+  question_type?: 'coding' | 'mcq'
+  options?: string[]
   id: string
   code?: string
   title: string
@@ -30,6 +32,7 @@ export interface PracticeQuestionsResult {
 export async function fetchPracticeQuestions(knowledgeKey?: string, search?: string) {
   const { data } = await http.get<ApiEnvelope<PracticeQuestionsResult>>('/v1/student/practice-questions', {
     params: {
+      page_size: 500,
       ...(knowledgeKey ? { knowledge_key: knowledgeKey } : {}),
       ...(search?.trim() ? { q: search.trim() } : {}),
     },

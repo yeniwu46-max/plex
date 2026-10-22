@@ -88,6 +88,11 @@ export interface KnowledgeDocument {
   source: string
   audience_level: string
   uploaded_by: number | null
+  visibility: 'private' | 'class' | 'public'
+  class_id: number | null
+  published: boolean
+  can_manage?: boolean
+  may_publish_public?: boolean
   version: number
   status: IndexStatus
   stage_progress: number
@@ -238,6 +243,7 @@ export interface ConceptKnowledgeResult {
     teacher_verified: boolean
     content: string
     difficulty: number
+    can_manage?: boolean
   }>
   grounded: boolean
 }
@@ -311,6 +317,14 @@ export function fetchKnowledgeDocuments(params: { page?: number; per_page?: numb
 
 export function fetchKnowledgeDocument(id: string) {
   return guard(http.get<ApiEnvelope<KnowledgeDocument>>(`/v1/knowledge/documents/${id}`), '文档加载失败')
+}
+
+export function updateKnowledgeAccess(id: string, payload: Pick<KnowledgeDocument, 'visibility' | 'class_id' | 'published'>) {
+  return guard(http.patch<ApiEnvelope<KnowledgeDocument>>(`/v1/knowledge/documents/${id}/access`, payload), '保存发布范围失败')
+}
+
+export function fetchKnowledgePublicationClasses() {
+  return guard(http.get<ApiEnvelope<{ items: Array<{ id: number; name: string }> }>>('/v1/knowledge/publication-classes'), '班级列表加载失败')
 }
 
 export function reindexKnowledgeDocument(id: string) {

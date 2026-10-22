@@ -5,6 +5,9 @@ import { NInput, NCheckbox, NIcon, NModal, NButton, useMessage } from 'naive-ui'
 import { PersonOutline, LockClosedOutline, EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '../stores/auth'
+import { fetchAuthCapabilities, requestPasswordReset, type AuthCapabilities } from '../api/auth'
+import { formatHttpError } from '../api/http'
+import { safeAuthRedirect } from '../utils/authValidation'
 import { useNotificationStore } from '../stores/notifications'
 import {
   filterAccountSuggestions,
@@ -31,8 +34,24 @@ const accountHistory = ref<string[]>([])
 const showAccountSuggest = ref(false)
 const usernameFieldRef = ref<HTMLElement | null>(null)
 
-const ADMIN_RESET_EMAIL = '2720329167@qq.com'
-const adminMailto = `mailto:${ADMIN_RESET_EMAIL}?subject=${encodeURIComponent('密码重置申请')}`
+const capabilities = ref<AuthCapabilities | null>(null)
+const recoveryEmail = ref('')
+const recoveryBusy = ref(false)
+const recoveryStatus = ref('')
+const adminMailto = computed(() => `mailto:${capabilities.value?.support_email || ''}?subject=${encodeURIComponent('PLEX 密码重置申请')}`)
+
+onMounted(async () => {
+  try { capabilities.value = await fetchAuthCapabilities() } catch { /* password login remains usable */ }
+})
+
+async function sendRecovery() {
+  if (recoveryBusy.value) return
+  recoveryBusy.value = true
+  recoveryStatus.value = ''
+  try { recoveryStatus.value = await requestPasswordReset(recoveryEmail.value.trim()) }
+  catch (e) { recoveryStatus.value = formatHttpError(e, '申请失败，请稍后重试') }
+  finally { recoveryBusy.value = false }
+}
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
 const accountSuggestions = computed(() => {
@@ -94,6 +113,7 @@ onUnmounted(() => {
 
 async function onSubmit(e: Event) {
   e.preventDefault()
+  if (loading.value) return
   if (!username.value.trim() || !password.value) {
     message.warning('请填写用户名和密码')
     return
@@ -114,7 +134,7 @@ async function onSubmit(e: Event) {
     }
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     const fallback = auth.homePathForRole(auth.profile?.role)
-    await router.replace(redirect || fallback)
+    await router.replace(safeAuthRedirect(redirect, fallback))
   } catch (err) {
     message.error(err instanceof Error ? err.message : '登录失败')
   } finally {
@@ -123,7 +143,7 @@ async function onSubmit(e: Event) {
 }
 
 function startOAuth(provider: 'google' | 'github') {
-  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+  const redirect = safeAuthRedirect(route.query.redirect, '/')
   const params = new URLSearchParams({ redirect })
   window.location.assign(`${apiBase}/v1/auth/oauth/${provider}?${params.toString()}`)
 }
@@ -281,7 +301,7 @@ function goRegister() {
             <span>{{ isNativeApp ? '还没有账号？' : '或使用以下方式登录' }}</span>
           </div>
           <div class="social__row">
-            <button v-if="!isNativeApp" type="button" class="social__btn" aria-label="使用 Google 登录" @click="startOAuth('google')">
+            <button v-if="!isNativeApp && capabilities?.oauth_providers.includes('google')" type="button" class="social__btn" aria-label="使用 Google 登录" @click="startOAuth('google')">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
                 <path
                   fill="#EA4335"
@@ -301,7 +321,7 @@ function goRegister() {
                 />
               </svg>
             </button>
-            <button v-if="!isNativeApp" type="button" class="social__btn" aria-label="使用 GitHub 登录" @click="startOAuth('github')">
+            <button v-if="!isNativeApp && capabilities?.oauth_providers.includes('github')" type="button" class="social__btn" aria-label="使用 GitHub 登录" @click="startOAuth('github')">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
                 <path
                   d="M12 1C5.92 1 1 5.92 1 12c0 4.86 3.15 8.98 7.52 10.43.55.1.75-.24.75-.53 0-.26-.01-1.13-.01-2.05-3.06.67-3.71-1.47-3.71-1.47-.5-1.27-1.22-1.61-1.22-1.61-1-.68.08-.67.08-.67 1.1.08 1.68 1.13 1.68 1.13.98 1.68 2.56 1.2 3.19.92.1-.71.39-1.2.71-1.47-2.44-.28-5-1.22-5-5.45 0-1.2.43-2.19 1.13-2.96-.11-.28-.49-1.41.11-2.94 0 0 .92-.3 3.03 1.13a10.5 10.5 0 0 1 5.5 0c2.1-1.43 3.02-1.13 3.02-1.13.6 1.53.22 2.66.11 2.94.7.77 1.13 1.76 1.13 2.96 0 5.24-3.56 6.16-6.97 6.49.55.47 1.03 1.4 1.03 2.83 0 2.04-.02 3.69-.02 4.19 0 .41.28.89 1.05.74C19.85 20.98 23 16.86 23 12 23 5.92 18.08 1 12 1z"
@@ -333,17 +353,20 @@ function goRegister() {
       class="forgot-modal"
       :style="{ maxWidth: '420px' }"
     >
-      <p class="forgot-modal__lead">如需重置登录密码，可选择以下方式：</p>
-      <ol class="forgot-modal__list">
-        <li>通过下方按钮向管理员发送邮件，说明你的用户名与班级信息。</li>
-        <li>管理员核实身份后会为你重置密码。</li>
-      </ol>
-      <p class="forgot-modal__email">
-        管理员邮箱：<a :href="adminMailto">{{ ADMIN_RESET_EMAIL }}</a>
-      </p>
+      <template v-if="capabilities?.password_reset_enabled">
+        <p>输入注册邮箱，我们会向可用账号发送一次性重置链接。</p>
+        <form @submit.prevent="sendRecovery">
+          <n-input v-model:value="recoveryEmail" placeholder="注册邮箱" :maxlength="100" :input-props="{ type: 'email', autocomplete: 'email', 'aria-label': '注册邮箱' }" />
+          <p v-if="recoveryStatus" role="status">{{ recoveryStatus }}</p>
+          <n-button attr-type="submit" type="primary" :loading="recoveryBusy" style="margin-top: 16px">发送重置链接</n-button>
+        </form>
+      </template>
+      <template v-else>
+        <p>邮箱自助找回暂未开通。请联系为你开通试用的老师或管理员，核实身份后重置密码。</p>
+        <p v-if="capabilities?.support_email">联系邮箱：<a :href="adminMailto">{{ capabilities.support_email }}</a></p>
+      </template>
       <template #footer>
         <n-button quaternary @click="showForgotModal = false">返回登录</n-button>
-        <n-button type="primary" tag="a" :href="adminMailto">联系管理员重置</n-button>
       </template>
     </n-modal>
   </div>

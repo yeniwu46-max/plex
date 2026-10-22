@@ -3,7 +3,6 @@
 
 from agents.crew import backend_name, get_agents_status, run_learning_path_plan, run_student_diagnose, run_teacher_suggestion
 from app.data.knowledge_node_registry import kg_node_to_scope_map
-from app.services.iflytek_spark import IflytekSparkService
 from app.services.mistake import MistakeService
 
 _KG_NODE_TO_SCOPE = kg_node_to_scope_map()
@@ -102,126 +101,19 @@ class AgentOrchestrator:
         return run_learning_path_plan(body)
 
     @staticmethod
-    def _annotate_code(code: str, question_title: str, comments: list[str], focus_hint: str | None) -> str:
-        """Insert hint comments into the student's code without rewriting logic."""
-        header = [
-            '# AI 提示（不会直接给答案）',
-            f'# 题目：{question_title}',
-            *[f'# - {item}' for item in comments[:4]],
-            '',
-        ]
-        focus = focus_hint or '从这里开始检查变量、条件和输出是否符合题意'
-        lines = code.splitlines() or ['']
-        annotated_lines: list[str] = []
-        inserted_focus = False
-        for index, line in enumerate(lines):
-            stripped = line.strip()
-            if not inserted_focus and stripped and not stripped.startswith('#'):
-                annotated_lines.append(f'# TODO: {focus}')
-                inserted_focus = True
-            annotated_lines.append(line)
-            if not inserted_focus and index == len(lines) - 1:
-                annotated_lines.append(f'# TODO: {focus}')
-        return '\n'.join(header + annotated_lines).rstrip() + '\n'
-
-    @staticmethod
-    def _spark_code_hint(payload: dict, code: str, question_title: str) -> dict:
-        """Ask the real model for context-aware, hint-only feedback on the code."""
-        system = (
-            '你叫小E，是 A3 学习系统里陪学生做编程题的学习伙伴。你只能给启发式提示，'
-            '帮助学生自己找到问题，绝对不能给出完整答案或可以直接通过测试的代码。'
-            '请仔细阅读学生的真实代码、题目和失败用例，用温和具体的口吻给出针对性提示，'
-            '不要提及 AI、模型或接口。'
-            '只输出JSON对象：{"comments":["3到4条中文提示，针对当前代码的具体问题"],'
-            '"focus_hint":"一句话指出最该先检查的位置"}。'
-        )
-        user_payload = {
-            'question_title': question_title,
-            'topic': payload.get('topic') or '',
-            'student_code': code,
-            'expected_output': payload.get('expectedOutput') or '',
-            'actual_output': payload.get('stdout') or '',
-            'error': payload.get('stderr') or '',
-            'failed_cases': payload.get('failedCases') or [],
-        }
-        result = IflytekSparkService.chat_json(system, str(user_payload), timeout=8)
-        raw_comments = result.get('comments')
-        comments = [str(item).strip() for item in raw_comments if str(item).strip()] if isinstance(raw_comments, list) else []
-        if not comments:
-            raise ValueError('spark_code_hint_empty')
-        focus_hint = str(result.get('focus_hint') or '').strip() or None
-        comments = comments[:4]
-        return {
-            'annotated_code': AgentOrchestrator._annotate_code(code, question_title, comments, focus_hint),
-            'comments': comments,
-            'policy': 'hint_only_no_direct_answer',
-            'backend': 'iflytek_spark',
-        }
-
-    @staticmethod
-    def _rules_code_hint(payload: dict, code: str, question_title: str) -> dict:
-        topic = str(payload.get('topic') or '')
-        expected = str(payload.get('expectedOutput') or '').strip()
-        actual = str(payload.get('stdout') or '').strip()
-        stderr = str(payload.get('stderr') or '').strip()
-        failed_cases = payload.get('failedCases') or []
-
-        comments: list[str] = []
-        if stderr:
-            comments.append('先处理运行错误，定位报错行附近的变量名、缩进或类型。')
-        elif expected or actual:
-            comments.append('对比实际输出和预期输出，优先检查格式、边界条件和循环范围。')
-        else:
-            comments.append('先补齐核心思路，再运行测试收集更具体的反馈。')
-
-        if failed_cases:
-            label = failed_cases[0].get('label') if isinstance(failed_cases[0], dict) else str(failed_cases[0])
-            comments.append(f'重点复查未通过用例「{label}」覆盖的输入场景。')
-        if topic:
-            comments.append(f'本题关联「{topic}」，先确认这一知识点在代码里有对应实现。')
-        comments.append('不要直接改成固定输出，应该让代码能处理同类输入。')
-
-        comments = comments[:4]
-        return {
-            'annotated_code': AgentOrchestrator._annotate_code(code, question_title, comments, None),
-            'comments': comments,
-            'policy': 'hint_only_no_direct_answer',
-            'backend': AgentOrchestrator.backend_name(),
-        }
-
-    @staticmethod
     def trial_coach(payload: dict, *, user_id: int | None = None) -> dict:
-        """试炼编程页 · 三类辅导智能体（报错/质量/优化），禁止直接给答案。"""
-        from agents.trial_coach_agents import VALID_INTENTS, execute, infer_intent
-
-        intent = str(payload.get('intent') or '').strip()
-        if not intent:
-            intent = infer_intent(payload)
-        if intent not in VALID_INTENTS:
-            raise ValueError(f'unsupported intent: {intent}')
-        return execute(intent, payload, user_id=user_id)
+        from app.services.tutor_compat import TutorCompatibility
+        return TutorCompatibility.ask(user_id, payload, 'trial-coach')
 
     @staticmethod
-    def code_hint(payload: dict) -> dict:
-        code = str(payload.get('code') or '').rstrip()
-        question_title = str(payload.get('questionTitle') or payload.get('exerciseId') or '当前题目')
-
-        # Prefer real, model-grounded feedback when a Spark key is configured;
-        # otherwise fall back to a deterministic, still context-aware hint.
-        if IflytekSparkService.configured():
-            try:
-                return AgentOrchestrator._spark_code_hint(payload, code, question_title)
-            except Exception:
-                pass
-        return AgentOrchestrator._rules_code_hint(payload, code, question_title)
+    def code_hint(user_id: int, payload: dict) -> dict:
+        from app.services.tutor_compat import TutorCompatibility
+        return TutorCompatibility.ask(user_id, payload, 'code-hint')
 
     @staticmethod
-    def trial_feedback(user_id: int | None, payload: dict) -> dict:
-        """On-demand trial feedback with a bounded, lightweight diagnosis pipeline."""
-        code = str(payload.get('code') or '').strip()
-        if not code:
-            raise ValueError('code required')
-        return AgentOrchestrator.student_diagnose(user_id, payload, fast=True)
+    def trial_feedback(user_id: int, payload: dict) -> dict:
+        from app.services.tutor_compat import TutorCompatibility
+        return TutorCompatibility.ask(user_id, payload, 'trial-feedback')
 
     @staticmethod
     def messenger_quick_action(user_id: int, action: str) -> dict:
@@ -241,11 +133,17 @@ class AgentOrchestrator:
             'recent_growth': '小E，请总结我最近一周的学习成长情况，并指出 1-2 个需要关注的方向。',
         }
 
-        llm = MessengerChatService.chat(user_id, action_prompts[action], [])
+        from flask import current_app
+        state_snapshot = None
+        if current_app.config.get('LEARNER_STATE_READ_MODE', 'shadow') == 'evidence':
+            from app.services.learner_state import LearnerStateService
+            state_snapshot = LearnerStateService.snapshot(user_id)
+        llm = MessengerChatService.chat(user_id, action_prompts[action], [], state_snapshot=state_snapshot)
         result: dict = {'action': action, 'reply': llm.get('reply') or '小E 暂时无法生成回复，请稍后再试。'}
+        result.update(state_version=llm.get('state_version'), learning_decision=llm.get('learning_decision'))
 
         if action == 'next_trial':
-            pick = PracticeQuestionService.recommend_for_student(user_id)
+            pick = PracticeQuestionService.recommend_for_student(user_id, state_snapshot=state_snapshot)
             if pick:
                 result['question_pick'] = {
                     'code': pick['code'],
@@ -254,6 +152,7 @@ class AgentOrchestrator:
                     'topic': pick.get('topic'),
                     'knowledge_key': pick.get('knowledge_key'),
                     'practice_path': f'/student/trials/practice/{pick["id"]}',
+                    'state_version': pick.get('state_version'),
                 }
 
         return result

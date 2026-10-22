@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { setTutorHandoff } from '../../composables/tutorHandoff'
+import { submitPractice } from '../../api/studentPractice'
+import { createRequestId } from '../../utils/browserCrypto'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NIcon, NModal, NTag, useMessage } from 'naive-ui'
 import type { TrialAttemptRecord } from '../../utils/trialMistakeLog'
 import PlexCodeEditor from './PlexCodeEditor.vue'
+import PythonTracePanel from './PythonTracePanel.vue'
 import {
   ArrowBackOutline,
   ChatbubbleEllipsesOutline,
@@ -22,10 +26,11 @@ import { useNotificationStore } from '../../stores/notifications'
 import { getTrialAttemptHistory, recordTrialRun, resolveAttemptScore, resolveAttemptVerdict } from '../../utils/trialMistakeLog'
 import { submitTrialCodeAnswer } from '../../api/studentAssignments'
 import { advanceDailyQuest } from '../../api/studentOverview'
-import { requestTrialFeedback, type StudentDiagnoseResult } from '../../api/agentService'
+import { askTutor, cancelTutorTurn, type TutorRequest, type TutorResponse } from '../../api/tutoring'
+import { acknowledgeTutorDisplay } from '../../api/learnerState'
 import { submitCode } from '../../api/codeRunner'
 import { concisePythonError, normalizePythonSource } from '../../utils/pythonSourceNormalization'
-import PlexDiagnosisPanel from '../agent/PlexDiagnosisPanel.vue'
+import TutorResponseCard from '../student/TutorResponseCard.vue'
 import TrialCommentPanel from './TrialCommentPanel.vue'
 import TrialAiFloatingBall from './TrialAiFloatingBall.vue'
 import QuestionSlotGems from './QuestionSlotGems.vue'
@@ -53,6 +58,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   back: []
   passed: []
+  submitted: []
   changeQuestion: []
   selectSlot: [slot: number]
 }>()
@@ -68,9 +74,7 @@ const code = ref(EMPTY_STARTER)
 const running = ref(false)
 const submittingManual = ref(false)
 const leftPanel = ref<'problem' | 'history' | 'comments'>('problem')
-const pyodideReady = ref(false)
-const pyodideLoading = ref(false)
-const pyodideError = ref('')
+const executionError = ref('')
 const isMounted = ref(true)
 let aborted = false
 
@@ -86,9 +90,21 @@ type CaseResult = {
 }
 
 const caseResults = ref<CaseResult[]>([])
-const executionBackend = ref<'api' | 'pyodide' | null>(null)
+const lastRun = ref<{ id: string; code: string; version?: string } | null>(null)
+const runIsStale = computed(() => Boolean(lastRun.value && lastRun.value.code !== code.value))
+function onTraceRecorded(record: { id: string; code: string; version?: string }) {
+  if (!aborted && isMounted.value && record.code === code.value) lastRun.value = record
+}
+let runRequestId = 0
+const executionBackend = ref<'api' | null>(null)
 const agentLoading = ref(false)
-const agentResult = ref<StudentDiagnoseResult | null>(null)
+const cancellingFeedback = ref(false)
+const agentResult = ref<TutorResponse | null>(null)
+const feedbackRequest = ref<TutorRequest | null>(null)
+const feedbackCode = ref('')
+const feedbackSession = ref<string>()
+const feedbackIsStale = computed(() => Boolean(agentResult.value && feedbackCode.value !== code.value))
+const displayAcks = new Set<string>()
 const agentError = ref('')
 const submitAgentTrace = ref('')
 let agentRequestId = 0
@@ -126,6 +142,10 @@ async function copyAttemptCode() {
 
 const floatingBallContext = computed(() => ({
   exerciseId: props.question.id,
+  formalQuestionId: props.trialQuestionId,
+  runId: lastRun.value && !runIsStale.value ? lastRun.value.id : undefined,
+  questionVersion: lastRun.value?.version,
+  runIsStale: runIsStale.value,
   questionTitle: props.question.title,
   questionPrompt: props.question.description,
   topic: props.question.topic,
@@ -151,94 +171,21 @@ const floatingBallContext = computed(() => ({
 
 let runStartedAt = 0
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let pyodideInstance: any = null
-
-declare global {
-  interface Window {
-    loadPyodide?: (config: { indexURL: string }) => Promise<unknown>
-  }
-}
-
-const PYODIDE_INDEX = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
-
-async function ensurePyodide() {
-  if (pyodideInstance) return pyodideInstance
-  pyodideLoading.value = true
-  pyodideError.value = ''
-  try {
-    if (!window.loadPyodide) {
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement('script')
-        script.src = `${PYODIDE_INDEX}pyodide.js`
-        script.async = true
-        script.onload = () => resolve()
-        script.onerror = () => reject(new Error('Pyodide 脚本加载失败'))
-        document.head.appendChild(script)
-      })
-    }
-    if (!window.loadPyodide) throw new Error('Pyodide 不可用')
-    pyodideInstance = await window.loadPyodide({ indexURL: PYODIDE_INDEX })
-    pyodideReady.value = true
-    return pyodideInstance
-  } catch (error) {
-    pyodideError.value = error instanceof Error ? error.message : 'Python 运行环境加载失败'
-    throw error
-  } finally {
-    pyodideLoading.value = false
-  }
-}
-
-function normalizeOutput(value: unknown) {
-  return String(value ?? '')
-    .replace(/\r\n/g, '\n')
-    .trim()
-}
-
-async function runSingleCase(testCase: PythonTrialQuestion['testCases'][number], source: string) {
-  const py = await ensurePyodide()
-  const setup = testCase.setup ? `${testCase.setup}\n` : ''
-
-  await py.runPythonAsync(`
-import sys
-from io import StringIO
-sys.stdout = StringIO()
-`)
-
-  try {
-    if (props.question.runMode === 'expression' && testCase.invoke) {
-      await py.runPythonAsync(`${setup}\n${source}`)
-      const actual = normalizeOutput(await py.runPythonAsync(testCase.invoke))
-      return { actual, error: undefined }
-    }
-
-    await py.runPythonAsync(`${setup}\n${source}`)
-    const actual = normalizeOutput(await py.runPythonAsync('sys.stdout.getvalue()'))
-    return { actual, error: undefined }
-  } catch (error) {
-    return {
-      actual: '',
-      error: concisePythonError(error instanceof Error ? error.message : '运行出错'),
-    }
-  }
-}
-
-function applyRunResults(results: CaseResult[], backend: 'api' | 'pyodide') {
+function applyRunResults(results: CaseResult[], backend: 'api', source: string, requestId: number) {
   if (aborted || !isMounted.value) return
   caseResults.value = results
   executionBackend.value = backend
   const userId = auth.profile?.id ?? 'guest'
-  const allPass = results.every((item) => item.passed)
   const durationMs = runStartedAt > 0 ? Date.now() - runStartedAt : 0
   const snapshots = results.map((item) => ({ label: item.label, passed: item.passed, error: item.error }))
 
-  recordTrialRun(userId, props.question, snapshots, durationMs, code.value)
+  recordTrialRun(userId, props.question, snapshots, durationMs, source)
 
   if (props.trialQuestionId) {
-    void submitTrialCodeAnswer(props.trialQuestionId, code.value)
+    void submitTrialCodeAnswer(props.trialQuestionId, source)
       .then((result) => {
-        if (aborted || !isMounted.value) return
-        if (allPass) {
+        if (aborted || !isMounted.value || requestId !== runRequestId) return
+        if (result.code_passed) {
           message.success('编程题已提交并通过')
           emit('passed')
         } else {
@@ -249,7 +196,7 @@ function applyRunResults(results: CaseResult[], backend: 'api' | 'pyodide') {
         }
       })
       .catch((error) => {
-        if (!aborted && isMounted.value) {
+        if (!aborted && isMounted.value && requestId === runRequestId) {
           message.error(error instanceof Error ? error.message : '试炼提交失败')
         }
       })
@@ -269,10 +216,12 @@ function applyRunResults(results: CaseResult[], backend: 'api' | 'pyodide') {
   }
 }
 
-async function runViaApi(source: string): Promise<CaseResult[]> {
+async function runViaApi(source: string, requestId: number): Promise<CaseResult[]> {
   const payload = await submitCode({
     language: 'python',
     code: source,
+    question_ref: props.question.id,
+    formal_question_id: props.trialQuestionId,
     run_mode: props.question.runMode,
     test_cases: props.question.testCases.map((tc) => ({
       id: tc.id,
@@ -283,6 +232,9 @@ async function runViaApi(source: string): Promise<CaseResult[]> {
       invoke: tc.invoke,
     })),
   })
+  if (requestId === runRequestId && !aborted) {
+    lastRun.value = payload.run_id ? { id: payload.run_id, code: source, version: payload.question_version } : null
+  }
   return payload.results.map((item) => ({
     id: item.case_id || item.label,
     label: item.label,
@@ -290,33 +242,20 @@ async function runViaApi(source: string): Promise<CaseResult[]> {
     actual: item.actual,
     passed: item.passed,
     error: concisePythonError(item.error),
-    time: item.time,
-    memory: item.memory,
+    time: item.time ?? undefined,
+    memory: item.memory ?? undefined,
   }))
 }
 
-async function runViaPyodide(source: string): Promise<CaseResult[]> {
-  const results: CaseResult[] = []
-  for (const testCase of props.question.testCases) {
-    const { actual, error } = await runSingleCase(testCase, source)
-    results.push({
-      id: testCase.id,
-      label: testCase.label,
-      expected: testCase.expected,
-      actual: error ? '' : actual,
-      passed: !error && normalizeOutput(actual) === normalizeOutput(testCase.expected),
-      error,
-    })
-  }
-  return results
-}
-
 async function onRun() {
-  if (aborted || !isMounted.value) return
+  if (aborted || !isMounted.value || running.value || submittingManual.value) return
+  const requestId = ++runRequestId
   running.value = true
   runStartedAt = Date.now()
   caseResults.value = []
+  lastRun.value = null
   executionBackend.value = null
+  executionError.value = ''
   try {
     const normalized = normalizePythonSource(code.value)
     const source = normalized.code
@@ -324,31 +263,36 @@ async function onRun() {
       code.value = source
       message.info(`已自动将 ${normalized.replacements} 个全角代码符号转换为英文半角符号`)
     }
-    try {
-      const results = await runViaApi(source)
-      if (aborted || !isMounted.value) return
-      applyRunResults(results, 'api')
-      return
-    } catch {
-      /* fall back to Pyodide */
-    }
-    const results = await runViaPyodide(source)
-    if (aborted || !isMounted.value) return
-    applyRunResults(results, 'pyodide')
-  } catch {
-    if (!aborted && isMounted.value) {
-      message.error(pyodideError.value || '运行失败，请检查网络后重试')
+    const results = await runViaApi(source, requestId)
+    if (aborted || !isMounted.value || requestId !== runRequestId) return
+    applyRunResults(results, 'api', source, requestId)
+  } catch (error) {
+    if (!aborted && isMounted.value && requestId === runRequestId) {
+      executionError.value = error instanceof Error ? error.message : '隔离执行暂不可用，请稍后重试；本次未记录成绩。'
+      message.error(executionError.value)
     }
   } finally {
-    if (isMounted.value) running.value = false
+    if (isMounted.value && requestId === runRequestId) running.value = false
   }
 }
 
+let practiceRequest: {code:string; id:string} | null = null
 async function onManualSubmit() {
-  if (!props.trialQuestionId || submittingManual.value) return
+  if (submittingManual.value || running.value || aborted || !isMounted.value) return
+  if (!props.trialQuestionId) {
+    submittingManual.value = true
+    try { if(!practiceRequest||practiceRequest.code!==code.value)practiceRequest={code:code.value,id:createRequestId()}; const result = await submitPractice(props.question.id, code.value, practiceRequest.id); practiceRequest=null; message.success(result.result.all_passed ? '正式提交：全部通过' : '正式作答已记录'); emit('submitted') }
+    catch (e) { message.error(e instanceof Error ? e.message : '提交失败，请重试') }
+    finally { submittingManual.value = false }
+    return
+  }
+  const questionId = props.trialQuestionId, ownerId = auth.profile?.id, source = code.value
+  const current = () => !aborted && isMounted.value && auth.profile?.id === ownerId
+    && props.trialQuestionId === questionId && code.value === source
   submittingManual.value = true
   try {
-    const result = await submitTrialCodeAnswer(props.trialQuestionId, code.value)
+    const result = await submitTrialCodeAnswer(questionId, source)
+    if (!current()) return
     if (result.agent_trace?.items?.length) {
       submitAgentTrace.value = xiaoESubmitCheckSummary(
         result.agent_trace.items
@@ -357,29 +301,31 @@ async function onManualSubmit() {
           .join(' · '),
       )
     }
+    if (result.code_passed) message.success('代码已提交并通过')
+    else message.warning(`代码已提交，${result.passed_count}/${result.total} 个测试通过`)
     if (result.trial_complete) {
-      message.success(`代码已提交，试炼得分 ${result.trial_complete.participation.score}`)
-    } else {
-      message.success('代码已提交')
+      message.info(`试炼已完成，得分 ${result.trial_complete.participation.score}`)
     }
-    emit('passed')
+    emit('submitted')
   } catch {
-    message.error('提交失败，请重试')
+    if (current()) message.error('提交失败，请重试')
   } finally {
     submittingManual.value = false
   }
 }
 
 function onReset() {
+  ++runRequestId
+  running.value = false
+  lastRun.value = null
   code.value = EMPTY_STARTER
   caseResults.value = []
-  agentResult.value = null
-  agentError.value = ''
+  resetFeedback()
   submitAgentTrace.value = ''
 }
 
 function goBack() {
-  if (running.value || pyodideLoading.value) {
+  if (running.value) {
     message.info('正在运行或加载，请稍候…')
     return
   }
@@ -397,55 +343,85 @@ function goBack() {
 onBeforeUnmount(() => {
   aborted = true
   isMounted.value = false
+  ++agentRequestId
+  document.removeEventListener('visibilitychange', acknowledgeVisibleFeedback)
   running.value = false
 })
 
 const showSlotNav = computed(() => props.slotIds.length > 1)
 
 watch(
-  () => props.question.id,
+  [() => props.question.id, () => props.trialQuestionId, () => auth.profile?.id],
   () => {
+    ++runRequestId
+    running.value = false
+    lastRun.value = null
     code.value = EMPTY_STARTER
     caseResults.value = []
-    agentResult.value = null
-    agentError.value = ''
+    resetFeedback()
     leftPanel.value = 'problem'
   },
 )
 
-async function fetchAiFeedback() {
-  if (!code.value.trim() || agentLoading.value) return
+function resetFeedback() {
+  cancellingFeedback.value=false
+  ++agentRequestId
+  agentLoading.value = false
+  agentResult.value = null
+  agentError.value = ''
+  feedbackRequest.value = null
+  feedbackSession.value = undefined
+  feedbackCode.value = ''
+}
+
+function acknowledgeVisibleFeedback() {
+  const id = agentResult.value?.display_receipt_id
+  if (!isMounted.value || leftPanel.value !== 'problem' || document.visibilityState !== 'visible' || !id || displayAcks.has(id)) return
+  displayAcks.add(id)
+  void acknowledgeTutorDisplay(id).catch(() => displayAcks.delete(id))
+}
+onMounted(() => document.addEventListener('visibilitychange', acknowledgeVisibleFeedback))
+watch([agentResult, leftPanel], async () => { await nextTick(); acknowledgeVisibleFeedback() })
+
+async function cancelAiFeedback() {
+  const id=feedbackRequest.value?.request_id, epoch=agentRequestId
+  if(!id || !agentLoading.value || cancellingFeedback.value) return
+  cancellingFeedback.value=true
+  try {
+    const result=await cancelTutorTurn(id)
+    if(epoch!==agentRequestId) return
+    if(!result.cancelled) { message.info('回答已经完成，可以继续查看。'); return }
+    ++agentRequestId;agentLoading.value=false;feedbackRequest.value=null;agentResult.value=null;agentError.value='本次请求已取消。'
+  } catch(error) { if(epoch===agentRequestId) message.error(error instanceof Error?error.message:'取消未确认') }
+  finally { if(feedbackRequest.value?.request_id===id || !feedbackRequest.value) cancellingFeedback.value=false }
+}
+
+async function fetchAiFeedback(retry = false) {
+  if (agentLoading.value || (!retry && !code.value.trim())) return
+  const currentRun = lastRun.value?.code === code.value ? lastRun.value : null
+  const payload: TutorRequest = retry && feedbackRequest.value ? feedbackRequest.value : {
+    request_id: createRequestId(), session_id: feedbackSession.value,
+    mode: 'review_approach', question: '检查我的思路', hint_level: 2,
+    question_ref: props.question.id, formal_question_id: props.trialQuestionId,
+    code: code.value, run_id: currentRun?.id, question_version: currentRun?.version,
+  }
+  feedbackRequest.value = payload
   const requestId = ++agentRequestId
   agentLoading.value = true
   agentError.value = ''
   agentResult.value = null
-
-  const failedCase = caseResults.value.find((item) => !item.passed)
-  const attemptCount = answerHistory.value.length + 1
-
   try {
-    const result = await requestTrialFeedback({
-      exerciseId: props.question.id,
-      code: code.value,
-      stderr: failedCase?.error || caseResults.value.map((item) => item.error).filter(Boolean).join('\n'),
-      stdout: failedCase?.actual,
-      expectedOutput: failedCase?.expected,
-      knowledgePoints: [props.question.topic, ...props.question.tags],
-      attemptCount,
-      answerStatus: allPassed.value ? 'correct' : failedCase ? 'wrong' : 'partial',
-      questionTitle: props.question.title,
-      questionPrompt: props.question.description,
-    })
+    const result = await askTutor(payload)
     if (requestId !== agentRequestId || !isMounted.value) return
     agentResult.value = result
+    feedbackCode.value = payload.code || ''
+    feedbackSession.value = result.session_id
   } catch (error) {
     if (requestId !== agentRequestId || !isMounted.value) return
-    const msg = error instanceof Error ? error.message : 'AI 反馈获取失败'
+    const msg = error instanceof Error ? error.message : '小E 反馈获取失败'
     agentError.value = msg.includes('timeout') ? xiaoETimeoutMessage() : msg
   } finally {
-    if (requestId === agentRequestId && isMounted.value) {
-      agentLoading.value = false
-    }
+    if (requestId === agentRequestId && isMounted.value) agentLoading.value = false
   }
 }
 function formatDuration(ms: number) {
@@ -478,19 +454,20 @@ function formatDuration(ms: number) {
         @select="emit('selectSlot', $event)"
       />
       <div class="py-workspace__actions">
+        <n-button @click="setTutorHandoff(auth.profile!.id,{question_ref:question.id,formal_question_id:trialQuestionId,code:code}); router.push({path:'/student/messenger',query:{linked:'1'}})">关联作答问小E</n-button>
         <n-button v-if="embedded" quaternary :disabled="running" @click="emit('changeQuestion')">
           <template #icon><n-icon :component="ShuffleOutline" /></template>
           换一题
         </n-button>
         <n-button
-          v-if="embedded && props.trialQuestionId"
+          v-if="props.trialQuestionId || question.id.startsWith('bank-') || !embedded"
           type="success"
           :loading="submittingManual"
           :disabled="running"
           @click="onManualSubmit"
         >
           <template #icon><n-icon :component="CloudUploadOutline" /></template>
-          提交代码
+          正式提交
         </n-button>
       </div>
       <p v-if="submitAgentTrace" class="py-workspace__submit-trace">{{ submitAgentTrace }}</p>
@@ -572,7 +549,7 @@ function formatDuration(ms: number) {
               <header class="py-results__head">
                 <h2>运行结果</h2>
                 <span v-if="caseResults.length" :class="{ 'is-success': allPassed }">
-                  {{ passedCount }} / {{ caseResults.length }} 通过
+                  {{ passedCount }} / {{ caseResults.length }} 通过{{ runIsStale ? '（旧代码结果）' : '' }}
                 </span>
               </header>
 
@@ -615,7 +592,7 @@ function formatDuration(ms: number) {
                   ghost
                   :loading="agentLoading"
                   :disabled="!code.trim()"
-                  @click="fetchAiFeedback"
+                  @click="fetchAiFeedback(false)"
                 >
                   请小E 看看
                 </n-button>
@@ -625,17 +602,16 @@ function formatDuration(ms: number) {
               </p>
               <p v-else-if="agentLoading && !agentResult" class="py-ai-block__tip">{{ xiaoEThinkingMessage('diagnosis') }}</p>
               <p v-else-if="agentError" class="py-ai-block__error">{{ agentError }}</p>
-              <plex-diagnosis-panel
-                v-else-if="agentResult"
-                :result="agentResult"
-                :loading="false"
-              />
+              <n-button v-if="agentLoading" size="small" :disabled="cancellingFeedback" @click="cancelAiFeedback">{{ cancellingFeedback ? '正在确认…' : '取消本次请求' }}</n-button>
+              <n-button v-if="agentError && feedbackRequest" size="small" :loading="agentLoading" @click="fetchAiFeedback(true)">重试本次请求</n-button>
+              <template v-if="agentResult">
+                <p v-if="feedbackIsStale" class="py-ai-block__tip">这条反馈对应修改前的代码；再次提问将使用当前代码。</p>
+                <tutor-response-card :response="agentResult" />
+              </template>
             </section>
 
-            <p v-if="executionBackend === 'api'" class="py-workspace__ok">代码已由 PLEX 在线判题服务执行</p>
-            <p v-else-if="executionBackend === 'pyodide'" class="py-workspace__ok">已通过浏览器 Pyodide 离线运行</p>
-            <p v-else-if="pyodideError" class="py-workspace__warn">{{ pyodideError }}</p>
-            <p v-else-if="pyodideReady" class="py-workspace__ok">浏览器离线运行环境已就绪</p>
+            <p v-if="executionBackend === 'api'" class="py-workspace__ok">本次自测已在隔离环境执行</p>
+            <p v-else-if="executionError" class="py-workspace__warn" role="alert">{{ executionError }}</p>
           </template>
 
           <div v-else-if="leftPanel === 'history'" class="py-history__list">
@@ -686,7 +662,7 @@ function formatDuration(ms: number) {
               <template #icon><n-icon :component="RefreshOutline" /></template>
               重置代码
             </n-button>
-            <n-button type="primary" size="small" :loading="running || pyodideLoading" @click="onRun">
+            <n-button type="primary" size="small" :loading="running" @click="onRun">
               <template #icon><n-icon :component="PlayOutline" /></template>
               运行测试
             </n-button>
@@ -701,10 +677,12 @@ function formatDuration(ms: number) {
           />
         </div>
 
+        <python-trace-panel :code="code" :question-ref="question.id" :formal-question-id="trialQuestionId"
+          :account-id="auth.profile?.id" :disabled="running || submittingManual" @recorded="onTraceRecorded" />
         <footer class="py-editor__footer">
           <div v-if="caseResults.length" class="py-editor__summary" :class="{ 'is-success': allPassed }">
             <n-icon :component="allPassed ? CheckmarkCircleOutline : CloseCircleOutline" />
-            <span>{{ passedCount }} / {{ caseResults.length }} 测试通过</span>
+            <span>{{ passedCount }} / {{ caseResults.length }} 测试通过{{ runIsStale ? '（代码已修改，请重新运行）' : '' }}</span>
           </div>
           <p v-else class="py-editor__hint">编写代码后点击右上角「运行测试」，左侧面板会展示详细运行结果。</p>
         </footer>
@@ -742,6 +720,9 @@ function formatDuration(ms: number) {
 
 <style scoped>
 .py-workspace {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   display: flex;
   height: 100%;
   min-height: 0;
@@ -881,6 +862,7 @@ function formatDuration(ms: number) {
 }
 
 .py-workspace__body {
+  min-width: 0;
   display: grid;
   flex: 1;
   min-height: 0;
@@ -890,6 +872,7 @@ function formatDuration(ms: number) {
 }
 
 .py-workspace__panel {
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   border: 1px solid rgba(130, 212, 255, 0.12);
@@ -1414,7 +1397,7 @@ function formatDuration(ms: number) {
 
 @media (max-width: 1100px) {
   .py-workspace__body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(280px, auto) minmax(420px, 1fr);
     overflow: auto;
   }
@@ -1426,7 +1409,7 @@ function formatDuration(ms: number) {
 
 @media (max-width: 960px) {
   .py-workspace__body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     overflow: auto;
   }
 
@@ -1439,6 +1422,19 @@ function formatDuration(ms: number) {
     margin-left: 0;
     justify-content: flex-end;
   }
+}
+@media (max-width: 600px) {
+  .py-workspace { padding-inline: 0; }
+  .py-workspace__bar { grid-template-columns: minmax(0, 1fr); gap: 0.65rem; }
+  .py-workspace__actions { flex-wrap: wrap; justify-content: flex-start; }
+  .py-editor__head { flex-wrap: wrap; }
+  .py-editor__head h2 { flex-basis: 100%; }
+  .py-editor__head-actions { margin-left: 0; flex-wrap: wrap; min-width: 0; }
+  .py-ai-block__head { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .py-side-panel__content--fade { animation: none; }
 }
 </style>
 

@@ -12,6 +12,12 @@ class TrialService(BaseService):
     """教师发布与学生参与试炼"""
 
     @staticmethod
+    def tutoring_policy(value):
+        if value not in {'auto', 'disabled', 'concept_only', 'guided'}:
+            raise ValueError('辅导策略无效')
+        return value
+
+    @staticmethod
     def is_internal_sandbox_trial(trial: Trial) -> bool:
         """测试账号 bootstrap 写入的内部通关试炼，不在学生端展示。"""
         title = (trial.title or '').strip()
@@ -155,6 +161,7 @@ class TrialService(BaseService):
             teacher_id=current_user_id,
             title=(payload.get('title') or '未命名试炼').strip()[:120],
             trial_type=payload.get('trial_type') or 'solo',
+            tutoring_policy=TrialService.tutoring_policy(payload.get('tutoring_policy', 'auto')),
             knowledge_key=payload.get('knowledge_key'),
             difficulty=int(payload.get('difficulty') or 50),
             duration_minutes=duration,
@@ -264,6 +271,9 @@ class TrialService(BaseService):
         TrialService._get_teacher_class(trial.class_id, current_user_id, role_name)
         if role_name == 'teacher' and trial.teacher_id != current_user_id:
             raise PermissionError('不能修改他人创建的试炼')
+
+        if 'tutoring_policy' in payload:
+            trial.tutoring_policy = TrialService.tutoring_policy(payload['tutoring_policy'])
 
         if 'status' in payload and payload['status']:
             new_status = payload['status']
@@ -396,9 +406,9 @@ class TrialService(BaseService):
             computed_score, answered_count, _ = AssignmentService.compute_trial_score(user_id, trial_id)
             if answered_count < len(questions):
                 raise ValueError('请先完成全部题目再提交试炼')
-            final_score = int(score if score is not None else computed_score)
+            final_score = int(computed_score)
         else:
-            final_score = int(score if score is not None else max(60, trial.difficulty))
+            raise ValueError('试卷尚未配置题目，无法形成正式成绩')
 
         part.status = 'completed'
         part.score = final_score
@@ -479,18 +489,45 @@ class TrialService(BaseService):
         }
 
     @staticmethod
+    def _student_stat_participations(user_id: int):
+        """One visibility rule for the student's totals and drill-down records."""
+        from sqlalchemy.orm import joinedload
+
+        if not db.session.get(User, user_id):
+            raise ValueError('用户不存在')
+        parts = (TrialParticipation.query.options(joinedload(TrialParticipation.trial))
+                 .filter_by(user_id=user_id)
+                 .order_by(TrialParticipation.joined_at.desc(), TrialParticipation.id.desc()).all())
+        return [p for p in parts if p.trial and not TrialService.is_internal_sandbox_trial(p.trial)]
+
+    @staticmethod
+    def get_student_trial_records(user_id: int, status='all', page=1, page_size=10):
+        if status not in ('all', 'completed', 'active'):
+            raise ValueError('status 须为 all、completed 或 active')
+        try:
+            page, page_size = int(page), int(page_size)
+        except (TypeError, ValueError):
+            raise ValueError('分页参数须为正整数')
+        if page < 1 or not 1 <= page_size <= 50:
+            raise ValueError('page 须大于零，page_size 须为 1–50')
+        parts = TrialService._student_stat_participations(user_id)
+        if status != 'all':
+            parts = [p for p in parts if p.status == ('joined' if status == 'active' else 'completed')]
+        return {
+            'items': [{
+                'id': p.id, 'trial_id': p.trial_id, 'title': p.trial.title,
+                'status': p.status, 'score': p.score if p.status == 'completed' else None,
+                'joined_at': p.joined_at.isoformat() if p.joined_at else None,
+                'completed_at': p.completed_at.isoformat() if p.completed_at else None,
+            } for p in parts[(page - 1) * page_size:page * page_size]],
+            'total': len(parts), 'page': page, 'page_size': page_size,
+        }
+
+    @staticmethod
     def get_student_trial_stats(user_id: int):
         from datetime import date, datetime, timedelta
 
-        user = db.session.get(User, user_id)
-        if not user:
-            raise ValueError('用户不存在')
-
-        parts = (
-            TrialParticipation.query.filter_by(user_id=user_id)
-            .order_by(TrialParticipation.joined_at.desc())
-            .all()
-        )
+        parts = TrialService._student_stat_participations(user_id)
         completed = [p for p in parts if p.status == 'completed']
         joined = [p for p in parts if p.status == 'joined']
 

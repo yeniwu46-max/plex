@@ -311,7 +311,7 @@ watch(
         <button type="button" @click="() => loadOverview()">重试</button>
       </div>
       <template v-else>
-        <section class="hero-band">
+        <section class="hero-band" data-tour="student-home">
           <div class="hero-band__copy">
             <p class="hero-band__eyebrow">Explorer · {{ displayName }}</p>
             <h2>今天从一条清晰的学习主线开始</h2>

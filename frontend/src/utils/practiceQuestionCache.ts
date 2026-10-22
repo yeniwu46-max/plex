@@ -42,7 +42,7 @@ export function cleanLegacyQuestionMarkup(text: string): string {
   return stripMarkdownAsterisks(text)
 }
 
-function toTrialQuestion(item: PracticeQuestionPayload): PythonTrialQuestion {
+export function toTrialQuestion(item: PracticeQuestionPayload): PythonTrialQuestion {
   const normalized = normalizeQuestion({
     id: item.id,
     code: item.code,

@@ -1,5 +1,5 @@
 """学生星轨 / 档案聚合 API"""
-from flask import Blueprint, Response, request, stream_with_context
+from flask import Blueprint, Response, request, stream_with_context, current_app
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.services.emergency_mission import EmergencyMissionService
@@ -322,7 +322,7 @@ def submit_mistake_review(mistake_id):
         from app.services.knowledge_graph import KnowledgeGraphService
         from app.services.student_profile import StudentProfileService
 
-        profile = StudentProfileService.update_from_sm2_review(user_id, record, quality)
+        profile = StudentProfileService.get_or_create(user_id).to_dict()
         node_id = resolve_node_id(record.get('knowledge_key'))
         graph = KnowledgeGraphService.get_student_graph(user_id)
         graph_node = next(
@@ -380,8 +380,8 @@ def record_code_trial_run():
     try:
         user_id = int(get_jwt_identity())
         payload = request.get_json() or {}
-        row = MistakeService.record_code_trial_run(user_id, payload)
-        return success_response({'record': row.to_dict() if row else None})
+        return success_response({'record': None, 'evidence_scope': 'self_test',
+                                 'message': '自测结果仅供排错；正式提交后记录学习证据。'})
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
     except Exception as exc:
@@ -417,86 +417,69 @@ def list_learning_resources():
 @jwt_required()
 @role_required('student')
 def messenger_chat():
+    from app.services.messenger_tutoring import MessengerTutoring
+    user_id = int(get_jwt_identity())
     try:
-        user_id = int(get_jwt_identity())
-        payload = request.get_json() or {}
-        message = payload.get('message') or payload.get('content') or ''
-        history = payload.get('history') or payload.get('messages') or []
-        return success_response(MessengerChatService.chat(user_id, message, history))
+        payload = MessengerTutoring.prepare(user_id, request.get_json(silent=True))
     except SafetyViolation as exc:
         return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
-    except ValueError as exc:
-        return error_response(str(exc), 40001, None, 400)
-    except Exception as exc:
-        return error_response(str(exc), 50001, None, 500)
+    return success_response(MessengerTutoring.answer(user_id, payload))
 
 
 @student_progress_bp.route('/messenger/chat/stream', methods=['POST'])
 @jwt_required()
 @role_required('student')
 def messenger_chat_stream():
-    """SSE 流式驿站对话：逐 token 推送回复，最后推送 done 事件。"""
+    from app.services.messenger_tutoring import MessengerTutoring
+    from app.services.tutor_context import TutorContextError
     user_id = int(get_jwt_identity())
-    payload = request.get_json() or {}
-    message = (payload.get('message') or payload.get('content') or '').strip()
-    history = payload.get('history') or payload.get('messages') or []
-    if not message:
-        return error_response('消息不能为空', 40001, None, 400)
     try:
-        # 安全检查必须在建立流式响应之前完成，违规时返回普通 JSON 错误。
-        CourseSafetyService.ensure_safe(message, enforce_course_scope=True)
+        payload = MessengerTutoring.prepare(user_id, request.get_json(silent=True))
     except SafetyViolation as exc:
         return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
 
     def generate():
         try:
-            # 立刻推送注释心跳，冲刷反向代理 / 浏览器缓冲
             yield ': connected\n\n'
-            for event in MessengerChatService.chat_stream(user_id, message, history):
-                yield sse_event(event)
-        except Exception as exc:  # 流中异常只能通过 SSE 帧告知前端
-            yield sse_event({'type': 'error', 'message': str(exc)})
+            yield from (sse_event(event) for event in MessengerTutoring.stream(user_id, payload))
+        except TutorContextError as exc:
+            yield sse_event({'type': 'error', 'message': str(exc), 'status': exc.status})
+        except Exception:
+            current_app.logger.exception('messenger reviewed stream failed')
+            yield sse_event({'type': 'error', 'message': '这次回答未完成，请使用原请求重试。'})
 
-    return Response(
-        stream_with_context(generate()),
-        mimetype='text/event-stream',
-        headers=sse_headers(),
-        direct_passthrough=False,
-    )
+    return Response(stream_with_context(generate()), mimetype='text/event-stream',
+        headers=sse_headers(), direct_passthrough=False)
+
+
+def _learning_tool(kind):
+    from app.services.messenger_artifacts import MessengerArtifactService
+    try:
+        return success_response(MessengerArtifactService.generate(int(get_jwt_identity()), request.get_json(silent=True), kind))
+    except SafetyViolation as exc:
+        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
 
 
 @student_progress_bp.route('/messenger/tools/knowledge-graph', methods=['POST'])
 @jwt_required()
 @role_required('student')
 def messenger_knowledge_graph():
-    try:
-        user_id = int(get_jwt_identity())
-        payload = request.get_json() or {}
-        topic = payload.get('topic') or payload.get('message') or ''
-        return success_response(MessengerChatService.generate_knowledge_graph(user_id, topic))
-    except SafetyViolation as exc:
-        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
-    except ValueError as exc:
-        return error_response(str(exc), 40001, None, 400)
-    except Exception as exc:
-        return error_response(str(exc), 50001, None, 500)
+    return _learning_tool('knowledge_graph')
 
 
 @student_progress_bp.route('/messenger/tools/learning-document', methods=['POST'])
 @jwt_required()
 @role_required('student')
 def messenger_learning_document():
-    try:
-        user_id = int(get_jwt_identity())
-        payload = request.get_json() or {}
-        topic = payload.get('topic') or payload.get('message') or ''
-        return success_response(MessengerChatService.generate_learning_document(user_id, topic))
-    except SafetyViolation as exc:
-        return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
-    except ValueError as exc:
-        return error_response(str(exc), 40001, None, 400)
-    except Exception as exc:
-        return error_response(str(exc), 50001, None, 500)
+    return _learning_tool('learning_document')
+
+
+@student_progress_bp.route('/messenger/tools/artifacts/<request_id>', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def messenger_learning_artifact(request_id):
+    from app.services.messenger_artifacts import MessengerArtifactService
+    return success_response(MessengerArtifactService.read(int(get_jwt_identity()), request_id))
 
 
 @student_progress_bp.route('/learning-report', methods=['GET'])

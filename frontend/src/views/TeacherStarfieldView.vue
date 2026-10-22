@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon, NModal, NSelect, NSpin, type SelectOption } from 'naive-ui'
 import { CompassOutline, InformationCircleOutline, SparklesOutline } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
+import ExplorerProfileModal, { type ExplorerProfilePayload } from '../components/teacher/ExplorerProfileModal.vue'
+import { useAuthStore } from '../stores/auth'
 import KnowledgeOrbitMap from '../components/teacher/KnowledgeOrbitMap.vue'
 import PlexKnowledgeGraph from '../components/shared/PlexKnowledgeGraph.vue'
 import PlexTeacherSuggestionPanel from '../components/agent/PlexTeacherSuggestionPanel.vue'
@@ -48,6 +50,10 @@ function writeDiagnosisCache(classId: number, payload: ClassDiagnosisResult) {
 
 const router = useRouter()
 const route = useRoute()
+const auth = useAuthStore()
+const pageActive = ref(true)
+onActivated(() => { pageActive.value = true })
+onDeactivated(() => { pageActive.value = false })
 const domainFilter = ref<string | null>(null)
 const drawerOpen = ref(false)
 const selectedNode = ref<OrbitNode | null>(null)
@@ -95,21 +101,30 @@ function goExplorer(studentId: number) {
 
 const focusedStudentId = computed(() => {
   const raw = route.query.studentId
-  const id = raw ? Number(raw) : NaN
-  return Number.isFinite(id) ? id : null
+  const id = typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : NaN
+  return Number.isSafeInteger(id) && id > 0 ? id : null
 })
 
-async function focusStudentFromQuery() {
-  const studentId = focusedStudentId.value
-  if (!studentId) return
-  if (!diagnosis.value && !diagnosisLoading.value) {
-    await runClassDiagnosis()
-  }
-  await nextTick()
-  document
-    .querySelector(`[data-student-id="${studentId}"]`)
-    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+const profileStudent = computed<ExplorerProfilePayload | null>(() => {
+  const data = overview.value
+  if (!pageActive.value || route.name !== 'teacher-starfield' || loading.value || errorMessage.value
+    || !data || data.teacher.id !== auth.profile?.id || auth.profile?.role !== 'teacher'
+    || data.selected_class?.id !== selectedClassId.value) return null
+  const student = data.students.find(item => item.id === focusedStudentId.value)
+    ?? data.attention_students.find(item => item.id === focusedStudentId.value)
+  return student ? { ...student, class_name: data.selected_class?.name } : null
+})
+
+function closeProfile() {
+  if (route.name !== 'teacher-starfield' || !route.query.studentId) return
+  const { studentId: _studentId, ...query } = route.query
+  void router.replace({ path: route.path, query })
 }
+
+const profileVisible = computed({
+  get: () => Boolean(profileStudent.value),
+  set: (visible: boolean) => { if (!visible) closeProfile() },
+})
 
 async function loadClassKnowledgeGraph() {
   if (!selectedClassId.value) return
@@ -144,14 +159,10 @@ onMounted(() => {
   void loadClassStats()
   void loadClassKnowledgeGraph()
   void runClassDiagnosis(false)
-  void focusStudentFromQuery()
 })
 
-watch(focusedStudentId, () => {
-  void focusStudentFromQuery()
-})
-
-watch(selectedClassId, () => {
+watch(selectedClassId, (value, previous) => {
+  if (previous != null && value !== previous) closeProfile()
   diagnosisError.value = ''
   const cached = selectedClassId.value ? readDiagnosisCache(selectedClassId.value) : null
   diagnosis.value = cached
@@ -277,6 +288,7 @@ function onNodeSelect(node: OrbitNode) {
                   class="starfield-page__attention-chip"
                   :class="{ 'starfield-page__attention-chip--focus': focusedStudentId === stu.id }"
                   :data-student-id="stu.id"
+                  :aria-label="`查看 ${stu.name} 的资料与学习证据`"
                   @click="goExplorer(stu.id)"
                 >
                   <strong>{{ stu.name }}</strong>
@@ -366,6 +378,12 @@ function onNodeSelect(node: OrbitNode) {
       </template>
     </section>
 
+    <explorer-profile-modal
+      v-if="profileVisible"
+      :key="profileStudent?.id"
+      v-model:show="profileVisible"
+      :student="profileStudent"
+    />
     <starfield-domain-drawer
       v-model:show="drawerOpen"
       :node="selectedNode"

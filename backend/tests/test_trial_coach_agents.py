@@ -1,5 +1,6 @@
 """试炼编程页辅导智能体接口测试。"""
 import unittest
+from unittest.mock import patch
 
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash
@@ -10,6 +11,10 @@ from app.models import Role, User, db
 
 class TrialCoachAgentsTestCase(unittest.TestCase):
     def setUp(self):
+        stub = patch('app.services.tutoring.KnowledgeService.tutor_evidence', return_value={
+            'status':'insufficient_evidence','sources':[], 'prerequisite_gaps':[]})
+        stub.start()
+        self.addCleanup(stub.stop)
         self.app = create_app('testing')
         self.client = self.app.test_client()
         with self.app.app_context():
@@ -36,7 +41,7 @@ class TrialCoachAgentsTestCase(unittest.TestCase):
     def _payload(self, intent: str):
         return {
             'intent': intent,
-            'exerciseId': 'stage1-intro-greet',
+            'exerciseId': 'hello-print',
             'questionTitle': '星际问候',
             'questionPrompt': '使用 print 输出 Hello, PLEX!',
             'topic': 'print 与字符串',

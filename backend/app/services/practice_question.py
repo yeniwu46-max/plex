@@ -360,12 +360,12 @@ class PracticeQuestionService:
         }
 
     @staticmethod
-    def list_for_student(knowledge_key: str | None = None, limit: int = 500) -> list[dict]:
+    def list_for_student(knowledge_key: str | None = None, limit: int = 500, *, user_id: int | None = None) -> list[dict]:
         """返回练习题目；优先取统一题库，库为空时退回旧的导入题 + 内置题。"""
         bank_items = PracticeQuestionService._list_from_bank(knowledge_key, limit)
         if bank_items:
             return bank_items
-        return PracticeQuestionService._list_legacy(knowledge_key, limit)
+        return PracticeQuestionService._list_legacy(knowledge_key, limit, user_id=user_id)
 
     @staticmethod
     def _list_from_bank(knowledge_key: str | None, limit: int) -> list[dict]:
@@ -409,7 +409,7 @@ class PracticeQuestionService:
         return items
 
     @staticmethod
-    def _list_legacy(knowledge_key: str | None = None, limit: int = 500) -> list[dict]:
+    def _list_legacy(knowledge_key: str | None = None, limit: int = 500, *, user_id: int | None = None) -> list[dict]:
         """旧路径：导入题优先于同 knowledge_key 的内置题。"""
         items: list[dict] = []
         seen_ids: set[str] = set()
@@ -421,6 +421,11 @@ class PracticeQuestionService:
             .join(Trial, Trial.id == TrialQuestion.trial_id)
             .order_by(TrialQuestion.id.asc())
         )
+        if user_id is not None:
+            from app.models import User
+            user = db.session.get(User, user_id)
+            query = query.filter(Trial.class_id == user.class_id if user and user.class_id else False,
+                                 Trial.status.in_(['running', 'ended']))
         if knowledge_key:
             query = query.filter(TrialQuestion.knowledge_key == knowledge_key)
 
@@ -558,18 +563,30 @@ class PracticeQuestionService:
         return None
 
     @staticmethod
-    def recommend_for_student(user_id: int) -> dict | None:
+    def recommend_for_student(user_id: int, *, state_snapshot=None) -> dict | None:
         """基于薄弱知识点与题库匹配一道推荐题（供驿站快捷推荐）。"""
         from app.services.mistake import MistakeService
+        from flask import current_app
+        if current_app.config.get('LEARNER_STATE_READ_MODE', 'shadow') == 'evidence':
+            from app.services.learner_state import LearnerStateService
+            from app.services.learner_decision import LearnerDecisionService
+            snapshot = state_snapshot if state_snapshot is not None else LearnerStateService.snapshot(user_id)
+            decision = LearnerDecisionService.from_snapshot(snapshot)
+            candidates = PracticeQuestionService.list_for_student(knowledge_key=decision['concept_id'], limit=100, user_id=user_id)
+            avoid = set(decision['next_exercise']['avoid_question_ids'])
+            candidates = [c for c in candidates if c.get('db_question_id') not in avoid and not c.get('needs_review')]
+            if not candidates:
+                return None
+            return {**candidates[0], 'state_version': snapshot['state_version'], 'learning_decision': decision}
 
         weak = MistakeService.list_weak_knowledge(user_id, limit=5)
         knowledge_key = None
         if weak:
             knowledge_key = weak[0].get('knowledge_key')
 
-        candidates = PracticeQuestionService.list_for_student(knowledge_key=knowledge_key, limit=30)
+        candidates = PracticeQuestionService.list_for_student(knowledge_key=knowledge_key, limit=30, user_id=user_id)
         if not candidates:
-            candidates = PracticeQuestionService.list_for_student(limit=30)
+            candidates = PracticeQuestionService.list_for_student(limit=30, user_id=user_id)
         if not candidates:
             return None
 

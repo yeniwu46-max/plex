@@ -661,7 +661,7 @@ onActivated(() => {
     @search-submit="runQuestionSearch"
   >
     <main class="starpath-main">
-      <section class="starpath-tabs" aria-label="星域分类">
+      <section class="starpath-tabs" data-tour="student-path" aria-label="星域分类">
         <button
           v-for="tab in STAR_PATH_TABS"
           :key="tab.key"

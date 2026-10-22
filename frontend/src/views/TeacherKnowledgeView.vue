@@ -22,6 +22,9 @@ import {
 import { CloudUploadOutline, GitNetworkOutline, LibraryOutline, PulseOutline, SparklesOutline } from '@vicons/ionicons5'
 import TeacherDashboardShell from '../components/layout/TeacherDashboardShell.vue'
 import PlexKnowledgeGraph from '../components/shared/PlexKnowledgeGraph.vue'
+import KnowledgeDocumentAccess from '../components/shared/KnowledgeDocumentAccess.vue'
+import AiUsageSummary from '../components/shared/AiUsageSummary.vue'
+import LearningObservationsPanel from '../components/teacher/LearningObservationsPanel.vue'
 import { useTeacherOverviewInjected } from '../composables/useTeacherOverview'
 import type { KgNode, KgNodeStatus } from '../data/knowledgeGraphData'
 import {
@@ -33,6 +36,7 @@ import {
   fetchKnowledgeAnalytics,
   fetchKnowledgeConcept,
   fetchKnowledgeGraph,
+  fetchKnowledgeDocuments,
   uploadKnowledgeDocument,
   verifyKnowledgeDocument,
   verifyKnowledgeRelation,
@@ -40,6 +44,7 @@ import {
   type KnowledgeAnalyticsOverview,
   type KnowledgeConceptDetail,
   type KnowledgeGraphResult,
+  type KnowledgeDocument,
   type RelationType,
 } from '../api/knowledge'
 import { mapConceptEdges, mapConceptNodes } from '../utils/knowledgeGraphMap'
@@ -224,6 +229,25 @@ watch([analyticsDays, classFilter], () => void loadAnalytics())
 
 // ------------------------------------------------------------------ 教师资源上传
 const uploading = ref(false)
+const publicationDocs = ref<KnowledgeDocument[]>([])
+const publicationError = ref('')
+const publicationLoading = ref(false)
+const publicationPage = ref(1)
+const publicationTotal = ref(0)
+async function loadPublicationDocs() {
+  publicationLoading.value = true
+  publicationError.value = ''
+  try {
+    const page = await fetchKnowledgeDocuments({ page: publicationPage.value, per_page: 5 })
+    publicationDocs.value = page.items
+    publicationTotal.value = page.total
+  } catch (err) { publicationError.value = (err as Error).message }
+  finally { publicationLoading.value = false }
+}
+function publicationSaved(doc: KnowledgeDocument) {
+  publicationDocs.value = publicationDocs.value.map((item) => item.id === doc.id ? doc : item)
+  message.success('发布范围已保存')
+}
 async function handleUpload({ file, onFinish, onError }: UploadCustomRequestOptions) {
   if (!file.file) return onError()
   uploading.value = true
@@ -234,7 +258,9 @@ async function handleUpload({ file, onFinish, onError }: UploadCustomRequestOpti
       concept_ids: selected.value ? [selected.value.concept_id] : undefined,
       chapter: selected.value?.chapter || undefined,
     })
-    message.success(`「${doc.title}」已入库并开始索引，小E 将在索引完成后使用`)
+    message.success(`「${doc.title}」已登记为私有文档，请在下方设置发布班级`)
+    publicationPage.value = 1
+    void loadPublicationDocs()
     onFinish()
   } catch (error) {
     message.error((error as Error).message)
@@ -247,12 +273,16 @@ async function handleUpload({ file, onFinish, onError }: UploadCustomRequestOpti
 onMounted(() => {
   void loadGraph()
   void loadAnalytics()
+  void loadPublicationDocs()
 })
 </script>
 
 <template>
   <TeacherDashboardShell active-nav="knowledge" page-title="知识星域" page-subtitle="查看知识点关系、审核 AI 教学资源、修正关联并观察学生的高频疑问" hide-search hide-toolbar>
     <main class="tk-page">
+      <LearningObservationsPanel v-if="overview.selectedClassId.value" :class-id="overview.selectedClassId.value" />
+      <AiUsageSummary />
+      <AiUsageSummary v-if="overview.selectedClassId.value" :class-id="overview.selectedClassId.value" />
       <section v-if="analytics" class="tk-metrics" aria-label="知识使用指标">
         <article><span>学生提问</span><strong>{{ analytics.total_queries }}</strong></article>
         <article><span>提问学生</span><strong>{{ analytics.unique_students }}</strong></article>
@@ -355,7 +385,7 @@ onMounted(() => {
                   <small>{{ c.document_title }}</small>
                 </header>
                 <p class="tk-material-preview" :class="{ full: expandedChunk === c.chunk_id }">{{ c.content }}</p>
-                <footer>
+                <footer v-if="c.can_manage">
                   <n-button size="tiny" :type="c.teacher_verified ? 'default' : 'warning'" secondary :loading="verifyingDoc === c.document_id" @click.stop="verifyDocument(c.document_id, !c.teacher_verified)">
                     {{ c.teacher_verified ? '取消审核' : '审核通过并加权' }}
                   </n-button>
@@ -367,9 +397,24 @@ onMounted(() => {
             <n-upload-dragger class="tk-dragger">
               <n-icon :component="CloudUploadOutline" size="22" />
               <p>{{ uploading ? '上传中…' : selected ? `上传「${selected.name}」的教师资源` : '上传教师资源（讲义 / 例题 / 错题解析）' }}</p>
-              <small>自动标记为教师审核，索引完成后小E 即可引用</small>
+              <small>上传后默认私有；选择班级并发布后，小E 才能为该班学生引用</small>
             </n-upload-dragger>
           </n-upload>
+          <section class="tk-publication" aria-label="教学材料发布">
+            <h3>教学材料发布</h3>
+            <p>审核标记表示材料质量，可见范围决定谁能使用。已有上传材料请核对后发布。</p>
+            <n-button size="small" :loading="publicationLoading" @click="loadPublicationDocs">刷新材料</n-button>
+            <p v-if="publicationError" role="alert">{{ publicationError }}</p>
+            <article v-for="doc in publicationDocs" :key="doc.id" class="tk-publication__item">
+              <h4>{{ doc.title }}</h4>
+              <KnowledgeDocumentAccess :document="doc" @saved="publicationSaved" />
+            </article>
+            <div class="tk-publication__pages">
+              <n-button size="small" :disabled="publicationPage === 1 || publicationLoading" @click="publicationPage--; loadPublicationDocs()">上一页</n-button>
+              <span>{{ publicationPage }} / {{ Math.max(1, Math.ceil(publicationTotal / 5)) }}</span>
+              <n-button size="small" :disabled="publicationPage * 5 >= publicationTotal || publicationLoading" @click="publicationPage++; loadPublicationDocs()">下一页</n-button>
+            </div>
+          </section>
         </article>
 
         <article class="tk-card tk-card--analytics">
@@ -417,6 +462,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.tk-publication { margin-top: 24px; padding: 16px; border: 1px solid var(--plex-border); border-radius: 12px; background: var(--plex-bg-card); color: var(--plex-text); }
+.tk-publication h3, .tk-publication h4 { color: inherit; }
+.tk-publication p { font-size: 13px; line-height: 1.6; opacity: .8; }
+.tk-publication__item { padding: 14px 0; border-bottom: 1px solid rgba(148,163,184,.2); min-width: 0; }
+.tk-publication__item h4 { margin: 0 0 12px; overflow-wrap: anywhere; }
+.tk-publication__pages { margin-top: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 768px) {
+  .tk-card .tk-head { grid-template-columns: 26px minmax(0, 1fr); }
+  .tk-card .tk-filters { grid-column: 1 / -1; flex-wrap: wrap; }
+}
 .tk-page { width: 100%; padding: 0 var(--plex-page-gutter-x) 2rem; display: grid; gap: 1rem; }
 
 .tk-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; }

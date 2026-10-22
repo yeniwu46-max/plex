@@ -60,6 +60,7 @@ def init_database() -> None:
             except Exception as exc:
                 print(f'upgrade failed ({exc}); stamping head and syncing schema')
                 command.stamp(config, 'head')
+            db.engine.dispose()
             db.create_all()
         else:
             inspector = inspect(db.engine)
@@ -81,6 +82,7 @@ def init_database() -> None:
                 baseline = '20260529_0001'
             command.stamp(config, baseline)
             command.upgrade(config, 'head')
+            db.engine.dispose()
             db.create_all()
         after = set(inspect(db.engine).get_table_names())
         print(f'database initialized: existing={len(before)} total={len(after)} revision=head')
@@ -96,6 +98,9 @@ def upgrade_database() -> None:
             print(f'upgrade failed ({exc}); running init recovery')
             init_database()
             return
+        # Alembic applies DDL on its own engine; discard pre-migration SQLite
+        # connections so create_all does not use a stale schema view.
+        db.engine.dispose()
         db.create_all()
         print('database upgraded to head')
 
@@ -187,14 +192,25 @@ def seed_neo4j_graph() -> None:
     runpy.run_path(str(ROOT / 'scripts' / 'seed_neo4j_knowledge_graph.py'), run_name='__main__')
 
 
+def student_maintenance():
+    from app.services.resource_trash import ResourceTrash
+    from app.services.student_practice import MockExams
+    app = database_app()
+    with app.app_context():
+        print('expired resource payloads cleared:', ResourceTrash.purge())
+        MockExams.sweep()
+        print('exam deadline/grade pass completed')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'command',
-        choices=('init', 'upgrade', 'migration-smoke', 'seed-demo', 'knowledge-check', 'seed-neo4j-graph'),
+        choices=('init', 'upgrade', 'migration-smoke', 'seed-demo', 'knowledge-check', 'seed-neo4j-graph', 'student-maintenance'),
     )
     args = parser.parse_args()
     {
+        'student-maintenance': student_maintenance,
         'init': init_database,
         'upgrade': upgrade_database,
         'migration-smoke': migration_smoke,

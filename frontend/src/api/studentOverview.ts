@@ -386,6 +386,7 @@ export interface DuelMatchResult {
   difficulty?: DuelMatchDifficulty
   difficulty_label?: string
   time_sec?: number
+  questions?: import('./practiceQuestions').PracticeQuestionPayload[]
   question_ids?: string[]
   opponent?: {
     user_id: number

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { NButton, NIcon, NTag, useMessage } from 'naive-ui'
 import { ChevronDownOutline, ChevronUpOutline } from '@vicons/ionicons5'
 import {
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
+const router = useRouter()
 const authStore = useAuthStore()
 const selections = ref<Record<number, number | null>>({})
 const submittingId = ref<number | null>(null)
@@ -120,7 +122,7 @@ watch(
         <span>{{ item.trial_title }} · {{ item.teacher_name }}</span>
       </div>
       <h3>{{ item.stem }}</h3>
-      <ul class="assign-card__options" role="list">
+      <ul v-if="item.question_type !== 'coding'" class="assign-card__options" role="list">
         <li v-for="(option, index) in item.options" :key="index">
           <button
             type="button"
@@ -145,6 +147,15 @@ watch(
       </ul>
       <footer class="assign-card__foot">
         <n-button
+          v-if="item.question_type === 'coding'"
+          type="primary"
+          size="small"
+          @click="router.push({ path: '/student/trials', query: { trialId: String(item.trial_id) } })"
+        >
+          进入代码试炼
+        </n-button>
+        <n-button
+          v-else
           type="primary"
           size="small"
           :loading="submittingId === item.id"

@@ -5,15 +5,19 @@ Controller 只做参数校验与权限判断，业务全部委托 IndexService /
 """
 from __future__ import annotations
 
+from functools import wraps
+
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from ..models.knowledge_document import KNOWLEDGE_TYPES, RESOURCE_TYPES
+from ..models import KnowledgeDocument
 from ..models.knowledge_graph import NODE_TYPES, RELATION_TYPES
 from ..services.knowledge import KnowledgeService
 from ..services.knowledge.analytics_service import KnowledgeAnalyticsService
 from ..services.knowledge.graph_service import GraphService, GraphValidationError
 from ..services.knowledge.index_service import DocumentValidationError, IndexService
+from ..services.knowledge.access_service import KnowledgeAccessService
 from ..utils.access import current_user_from_id
 from ..utils.decorators import role_required
 from ..utils.response import error_response, paginated_response, success_response
@@ -25,6 +29,23 @@ _STAFF = ('teacher', 'admin')
 
 def _uid() -> int:
     return int(get_jwt_identity())
+
+
+def _document_payload(doc):
+    user = KnowledgeAccessService.actor(_uid())
+    admin = KnowledgeAccessService.role(user) == 'admin'
+    return {**doc.to_dict(), 'can_manage': admin or doc.uploaded_by == _uid(), 'may_publish_public': admin}
+
+
+def _document_access(*, edit=False):
+    def decorate(fn):
+        @wraps(fn)
+        def wrapped(document_id, *args, **kwargs):
+            if not KnowledgeAccessService.document(_uid(), document_id, edit=edit):
+                return error_response('文档不存在或无权访问', 40401, None, 404)
+            return fn(document_id, *args, **kwargs)
+        return wrapped
+    return decorate
 
 
 def _bool(value, default: bool = False) -> bool:
@@ -95,7 +116,7 @@ def upload_document():
                 chapter=(body.get('chapter') or '').strip(),
                 resource_type=resource_type,
                 audience_level=body.get('audience_level') or 'beginner',
-                source=body.get('source') or 'manual',
+                source='manual',
                 teacher_verified=_bool(body.get('teacher_verified')),
                 concept_hints=_list(body.get('concept_ids')),
                 meta=body.get('meta') if isinstance(body.get('meta'), dict) else None,
@@ -105,7 +126,7 @@ def upload_document():
         return error_response(str(exc), 40001, None, 400)
     except ValueError as exc:  # 文件签名校验失败等
         return error_response(str(exc), 40001, None, 400)
-    payload = doc.to_dict()
+    payload = _document_payload(doc)
     job = IndexService.latest_job(doc.id)
     payload['job'] = job.to_dict() if job else None
     return success_response(payload, '文档已登记', status_code=201)
@@ -119,6 +140,7 @@ def list_documents():
     page = _int(args.get('page'), 1, 1, 10_000)
     per_page = _int(args.get('per_page') or args.get('limit'), 20, 1, 100)
     pagination = IndexService.list_documents(
+        user_id=_uid(),
         status=(args.get('status') or '').strip().upper() or None,
         course_id=(args.get('course_id') or '').strip() or None,
         source=(args.get('source') or '').strip() or None,
@@ -126,19 +148,20 @@ def list_documents():
         page=page,
         per_page=per_page,
     )
-    return paginated_response([d.to_dict() for d in pagination.items], pagination.total, page, per_page)
+    return paginated_response([_document_payload(d) for d in pagination.items], pagination.total, page, per_page)
 
 
 @knowledge_bp.get('/documents/<string:document_id>')
 @jwt_required()
 @role_required(*_STAFF)
+@_document_access()
 def get_document(document_id: str):
     from ..models import KnowledgeDocument, db
 
     doc = db.session.get(KnowledgeDocument, document_id)
     if not doc:
         return error_response('文档不存在', 40401, None, 404)
-    payload = doc.to_dict()
+    payload = _document_payload(doc)
     job = IndexService.latest_job(document_id)
     payload['job'] = job.to_dict() if job else None
     return success_response(payload)
@@ -147,6 +170,7 @@ def get_document(document_id: str):
 @knowledge_bp.patch('/documents/<string:document_id>')
 @jwt_required()
 @role_required(*_STAFF)
+@_document_access(edit=True)
 def update_document(document_id: str):
     body = request.get_json(silent=True) or {}
     if 'resource_type' in body and body['resource_type'] not in RESOURCE_TYPES:
@@ -162,12 +186,13 @@ def update_document(document_id: str):
     )
     if not doc:
         return error_response('文档不存在', 40401, None, 404)
-    return success_response(doc.to_dict(), '文档已更新')
+    return success_response(_document_payload(doc), '文档已更新')
 
 
 @knowledge_bp.post('/documents/<string:document_id>/index')
 @jwt_required()
 @role_required(*_STAFF)
+@_document_access(edit=True)
 def index_document(document_id: str):
     """触发（重新）索引：version+1，异步执行，前端轮询 GET /documents/{id}。"""
     try:
@@ -180,6 +205,7 @@ def index_document(document_id: str):
 @knowledge_bp.post('/documents/<string:document_id>/verify')
 @jwt_required()
 @role_required(*_STAFF)
+@_document_access(edit=True)
 def verify_document(document_id: str):
     body = request.get_json(silent=True) or {}
     doc = IndexService.verify_document(
@@ -190,12 +216,13 @@ def verify_document(document_id: str):
     )
     if not doc:
         return error_response('文档不存在', 40401, None, 404)
-    return success_response(doc.to_dict(), '审核状态已更新')
+    return success_response(_document_payload(doc), '审核状态已更新')
 
 
 @knowledge_bp.get('/documents/<string:document_id>/chunks')
 @jwt_required()
 @role_required(*_STAFF)
+@_document_access()
 def list_chunks(document_id: str):
     args = request.args
     page = _int(args.get('page'), 1, 1, 10_000)
@@ -218,12 +245,43 @@ def delete_document(document_id: str):
     return success_response(None, '文档已删除')
 
 
+@knowledge_bp.patch('/documents/<string:document_id>/access')
+@jwt_required()
+@role_required(*_STAFF)
+def update_document_access(document_id: str):
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return error_response('请求体必须为对象', 40001, None, 400)
+    try:
+        doc = KnowledgeAccessService.update(_uid(), document_id, body)
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
+    if not doc:
+        return error_response('文档不存在或无权访问', 40401, None, 404)
+    return success_response(_document_payload(doc), '发布范围已保存')
+
+
+@knowledge_bp.get('/publication-classes')
+@jwt_required()
+@role_required(*_STAFF)
+def publication_classes():
+    from ..models import Class
+    query = Class.query
+    if KnowledgeAccessService.role(KnowledgeAccessService.actor(_uid())) != 'admin':
+        query = query.filter(Class.teacher_id == _uid())
+    return success_response({'items': [{'id': c.id, 'name': c.name} for c in query.order_by(Class.id).all()]})
+
+
 # ---------------------------------------------------------------------- index status
 @knowledge_bp.get('/index/status')
 @jwt_required()
 @role_required(*_STAFF)
 def index_status():
-    return success_response(KnowledgeService.status())
+    status = KnowledgeService.status()
+    visible = {d.id for d in KnowledgeAccessService.documents(_uid()).with_entities(KnowledgeDocument.id).all()}
+    for key in ('running_jobs', 'recent_failed'):
+        status[key] = [j for j in status.get(key, []) if j['document_id'] in visible]
+    return success_response(status)
 
 
 @knowledge_bp.post('/seed')

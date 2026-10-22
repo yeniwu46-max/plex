@@ -174,10 +174,7 @@ async function handleUserSelect(key: string) {
 
 <template>
   <header class="plex-topbar" :class="{ 'plex-topbar--compact': hideSearch, 'plex-topbar--comic': isComicStudent }">
-    <div class="plex-topbar__heading">
-      <h1>{{ title }}<span aria-hidden="true" /></h1>
-      <p>{{ subtitle }}</p>
-    </div>
+    <h1 class="plex-sr-only">{{ title }}</h1>
 
     <div v-if="!hideSearch" class="plex-topbar__search">
       <PlexLocalSearch
@@ -280,11 +277,11 @@ async function handleUserSelect(key: string) {
 .plex-topbar {
   position: relative;
   z-index: 3;
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(320px, 540px) minmax(260px, 1fr);
-  align-items: start;
-  gap: 1.5rem;
-  padding: 1.35rem var(--plex-page-gutter-x) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem var(--plex-page-gutter-x) 0.35rem;
 }
 
 .plex-topbar--compact {
@@ -311,7 +308,7 @@ async function handleUserSelect(key: string) {
   gap: 0.7rem;
   min-width: 0;
   margin: 0;
-  color: #ffffff;
+  color: var(--plex-text);
   font-size: clamp(1.7rem, 2.2vw, 2.25rem);
   font-weight: 740;
   line-height: 1.1;
@@ -329,16 +326,20 @@ async function handleUserSelect(key: string) {
 
 .plex-topbar__heading p {
   margin: 0.7rem 0 0;
-  color: rgba(221, 230, 239, 0.72);
+  color: var(--plex-text-muted);
   font-size: 0.98rem;
 }
 
 /* PlexLocalSearch fills the topbar search slot via local-search.css */
 .plex-topbar__search {
+  flex: 1 1 300px;
+  max-width: 540px;
+  min-width: 0;
   position: relative;
 }
 
 .plex-topbar__userbar {
+  margin-left: auto;
   justify-self: end;
   display: flex;
   align-items: center;
@@ -348,7 +349,7 @@ async function handleUserSelect(key: string) {
 .plex-topbar__divider {
   width: 1px;
   height: 40px;
-  background: rgba(219, 235, 249, 0.1);
+  background: var(--plex-border-subtle);
 }
 
 .plex-topbar__icon-btn {
@@ -359,7 +360,7 @@ async function handleUserSelect(key: string) {
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: #edf7ff;
+  color: var(--plex-text);
   cursor: pointer;
 }
 
@@ -369,7 +370,7 @@ async function handleUserSelect(key: string) {
   gap: 0.85rem;
   border: 0;
   background: transparent;
-  color: #ffffff;
+  color: var(--plex-text);
   cursor: pointer;
 }
 
@@ -433,8 +434,8 @@ async function handleUserSelect(key: string) {
   width: fit-content;
   padding: 0.04rem 0.34rem;
   border-radius: 0.35rem;
-  background: rgba(37, 245, 238, 0.18);
-  color: #57fff2;
+  background: color-mix(in srgb, var(--plex-accent) 18%, transparent);
+  color: var(--plex-accent-hover);
   font-size: 0.76rem;
   font-style: normal;
 }
@@ -451,8 +452,8 @@ async function handleUserSelect(key: string) {
   align-items: center;
   justify-content: space-between;
   padding: 0.35rem 0.15rem 0.65rem;
-  border-bottom: 1px solid rgba(130, 212, 255, 0.12);
-  color: #edf7ff;
+  border-bottom: 1px solid var(--plex-border-subtle);
+  color: var(--plex-text);
 }
 
 .plex-notif-panel__list {
@@ -479,14 +480,14 @@ async function handleUserSelect(key: string) {
 }
 
 .plex-notif-item__title {
-  color: #ffffff;
+  color: var(--plex-text);
   font-size: 0.88rem;
   font-weight: 680;
 }
 
 .plex-notif-item__body {
   margin: 0.25rem 0 0;
-  color: rgba(224, 237, 247, 0.78);
+  color: var(--plex-text-muted);
   font-size: 0.82rem;
   line-height: 1.5;
 }
@@ -494,7 +495,7 @@ async function handleUserSelect(key: string) {
 .plex-notif-item__time {
   display: block;
   margin-top: 0.35rem;
-  color: rgba(142, 163, 184, 0.85);
+  color: var(--plex-text-muted);
   font-size: 0.72rem;
 }
 
@@ -516,7 +517,8 @@ async function handleUserSelect(key: string) {
 @media (max-width: 900px) {
   .plex-topbar {
     grid-template-columns: minmax(0, 1fr);
-    padding: 0.9rem 1rem 0;
+    padding: 0.5rem 1rem;
+    flex-wrap: wrap;
     gap: 0.75rem;
   }
 
@@ -547,9 +549,9 @@ async function handleUserSelect(key: string) {
 
   .plex-topbar__userbar {
     justify-self: stretch;
-    justify-content: flex-start;
+    justify-content: flex-end;
     gap: 0.75rem;
-    overflow-x: auto;
+    flex-wrap: wrap;
     padding-bottom: 0.2rem;
   }
 

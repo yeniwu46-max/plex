@@ -4,9 +4,14 @@
  */
 import { formatHttpError, http, type ApiEnvelope } from './http'
 import type { KnowledgeDocument, KnowledgeType, Paginated } from './knowledge'
+import type { TutorContextRequest } from './tutorContext'
+import type { TutorResponse } from './tutoring'
+import { useAuthStore } from '../stores/auth'
+import { ragRequestIdentity } from '../utils/ragRequestIdentity'
+export { latestRagRequest } from '../utils/ragRequestIdentity'
 
 export type RagScene = 'chat' | 'trial' | 'practice' | 'exercise' | 'emergency' | 'problem' | 'diagnosis' | 'path' | 'resource'
-export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW_CONFIDENCE'
+export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW_CONFIDENCE' | 'UNASSESSED'
 
 export interface RagConceptView {
   concept_id: string
@@ -19,6 +24,9 @@ export interface RagConceptView {
 export interface RagSourceView {
   chunk_id: string
   document_id: string
+  version?: number
+  chapter?: string
+  url?: string
   title: string
   document_title: string
   knowledge_type: KnowledgeType
@@ -59,7 +67,9 @@ export interface RagRequestContext {
   hint_level?: number
 }
 
-export interface RagQueryPayload {
+export interface RagQueryPayload extends TutorContextRequest {
+  request_id?: string
+  session_id?: string
   query: string
   scene?: RagScene
   context?: RagRequestContext
@@ -171,17 +181,19 @@ export interface RagDebugPayload {
 }
 
 export interface RagAnswer {
+  request_id?: string
+  tutor?: TutorResponse
   answer: string
   concepts: RagConceptView[]
   sources: RagSourceView[]
-  confidence: number
+  confidence: number | null
   confidence_level: ConfidenceLevel
   knowledge_grounded: boolean
   teaching_strategy: RagStrategyView
   recommended_next: RagRecommendedNext[]
   hint_level: number | null
   intent: string
-  generation_mode: 'llm' | 'extractive' | 'refused'
+  generation_mode: 'llm' | 'extractive' | 'refused' | 'llm_reviewed'
   latency_ms: number
   log_id: number | null
   model?: string | null
@@ -224,6 +236,8 @@ export interface RagRetrievePayload {
 export interface RagSourceDetail {
   chunk_id: string
   document_id: string
+  version?: number
+  chapter?: string
   title: string
   document_title?: string
   knowledge_type: KnowledgeType
@@ -274,16 +288,48 @@ async function guard<T>(promise: Promise<{ data: ApiEnvelope<T> }>, fallback: st
   }
 }
 
-export function ragQuery(payload: RagQueryPayload) {
-  return guard(http.post<ApiEnvelope<RagAnswer>>('/v1/rag/query', payload, { timeout: 90000 }), '知识问答失败')
+export async function ragQuery(payload: RagQueryPayload) {
+  const auth = useAuthStore(), owner = auth.profile?.id, role = auth.profile?.role
+  if (!owner) throw new Error('请先登录')
+  const { request_id: explicit, ...body } = payload
+  const identity = await ragRequestIdentity(owner, body, explicit)
+  const current = () => auth.profile?.id === owner && auth.profile?.role === role
+  if (!current()) throw new Error('账号已切换，请重新提问')
+  try {
+    const { data } = await http.post<ApiEnvelope<RagAnswer>>('/v1/rag/query',
+      { ...body, request_id: identity.requestId }, { timeout: 90000 })
+    if (!current()) throw new Error('账号已切换，请重新提问')
+    if (data.code !== 0) throw new Error(data.message || '知识问答失败')
+    identity.clear()
+    return data.data
+  } catch (error) {
+    if (!current()) throw new Error('账号已切换，请重新提问')
+    const response = (error as { response?: { status?: number; data?: { data?: { reason?: string } } } }).response
+    const reason = response?.data?.data?.reason
+    if (response?.status === 400 || ['request_conflict', 'sources_changed', 'not_found', 'access_changed', 'attempt_limit'].includes(reason || '')) identity.clear()
+    throw new Error(formatHttpError(error, '知识问答失败；可恢复上次结果，或用相同内容重试'))
+  }
+}
+
+export interface RagRequestResult {
+  request_id: string
+  status: 'processing' | 'complete' | 'failed' | 'expired'
+  attempts_remaining: number
+  answer: RagAnswer | null
+}
+export async function fetchRagRequest(id: string) {
+  const auth = useAuthStore(), owner = auth.profile?.id, role = auth.profile?.role
+  const result = await guard(http.get<ApiEnvelope<RagRequestResult>>(`/v1/rag/requests/${encodeURIComponent(id)}`), '问答恢复失败')
+  if (!owner || auth.profile?.id !== owner || auth.profile?.role !== role) throw new Error('账号已切换，请重新读取')
+  return result
 }
 
 export function ragRetrieve(payload: RagRetrievePayload) {
   return guard(http.post<ApiEnvelope<RagRetrieveResult>>('/v1/rag/retrieve', payload, { timeout: 60000 }), '检索失败')
 }
 
-export function fetchRagSource(chunkId: string) {
-  return guard(http.get<ApiEnvelope<RagSourceDetail>>(`/v1/rag/sources/${encodeURIComponent(chunkId)}`), '来源加载失败')
+export function fetchRagSource(chunkId: string, version?: number) {
+  return guard(http.get<ApiEnvelope<RagSourceDetail>>(`/v1/rag/sources/${encodeURIComponent(chunkId)}`, { params: { version } }), '来源已更新、撤回或暂时无法访问，请重新提问')
 }
 
 export function fetchRagLogs(params: { page?: number; per_page?: number; user_id?: number; scene?: string; status?: string } = {}) {

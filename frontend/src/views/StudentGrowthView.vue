@@ -11,7 +11,7 @@ import PlexBarChart from '../components/charts/PlexBarChart.vue'
 import EmergencyMissionGrowthModal from '../components/growth/EmergencyMissionGrowthModal.vue'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import type { StudentOverview } from '../api/studentOverview'
-import { fetchArchiveInsights } from '../api/studentProgress'
+import { fetchArchiveInsights, type ArchiveSkill } from '../api/studentProgress'
 import type { EmergencyMissionArchiveRecord } from '../api/emergencyMission'
 import type { LearningReportResult } from '../api/learningReport'
 import { fetchStudentKnowledgeGraph } from '../api/knowledgeGraph'
@@ -43,7 +43,9 @@ const workspace = useStudentWorkspaceStore()
 const overview = ref<StudentOverview | null>(null)
 const learningReport = ref<LearningReportResult | null>(null)
 const knowledgeGraphNodes = ref<KgNode[]>([])
-const skillItems = ref<Array<{ key: string; label: string; percent: number }>>([])
+const skillItems = ref<ArchiveSkill[]>([])
+const skillStateVersion = ref<number | null>(null)
+const skillEvidenceMode = ref(false)
 const emergencyMissions = ref<EmergencyMissionArchiveRecord[]>([])
 const expandedEmergencyIds = ref<Set<number>>(new Set())
 const detailRecord = ref<EmergencyMissionArchiveRecord | null>(null)
@@ -152,14 +154,18 @@ const mistakePieData = computed(() => {
 })
 
 const trendDays = computed(() => learningReport.value?.trend.x_data ?? [])
-const trendCorrect = computed(() => learningReport.value?.trend.correct_rate ?? [])
+const trendCorrect = computed(() => (learningReport.value?.trend.correct_rate ?? []).map(
+  (value, index) => (learningReport.value?.trend.practice_count[index] ?? 0) > 0 ? value : null,
+))
 const trendCount = computed(() => learningReport.value?.trend.practice_count ?? [])
 
-const domainBarLabels = computed(
-  () => learningReport.value?.domain_mastery.map((item) => item.label) ?? [],
-)
+const completedQuestionCount = computed(() => trendCount.value.reduce((sum, count) => sum + count, 0))
+const correctRateLabel = computed(() => !learningReport.value ? '暂无统计'
+  : completedQuestionCount.value > 0 ? `${learningReport.value.summary.correct_rate}%` : '暂无已完成题目')
+const observedDomains = computed(() => learningReport.value?.domain_mastery.filter(item => item.answered > 0) ?? [])
+const domainBarLabels = computed(() => observedDomains.value.map(item => item.label))
 const domainBarValues = computed(
-  () => learningReport.value?.domain_mastery.map((item) => item.mastery_rate) ?? [],
+  () => observedDomains.value.map((item) => item.mastery_rate),
 )
 
 async function loadArchive(force = false) {
@@ -178,6 +184,8 @@ async function loadArchive(force = false) {
     learningReport.value = report
     knowledgeGraphNodes.value = graph?.nodes ?? []
     skillItems.value = insights.skills
+    skillStateVersion.value = insights.state_version ?? null
+    skillEvidenceMode.value = insights.state_source === 'evidence'
     emergencyMissions.value = insights.emergency_missions ?? []
     dueReviews.value = reviewQueue?.items ?? []
   } catch (error) {
@@ -279,8 +287,8 @@ onActivated(() => {
             <div class="tech-stat-card tech-stat-card--rate">
               <span class="tech-stat-card__corner tech-stat-card__corner--tl" aria-hidden="true" />
               <span class="tech-stat-card__corner tech-stat-card__corner--br" aria-hidden="true" />
-              <small>近 7 日正确率</small>
-              <strong>{{ learningReport?.summary.correct_rate ?? 0 }}%</strong>
+              <small>近 7 日已完成题目正确率</small>
+              <strong>{{ correctRateLabel }}</strong>
             </div>
           </div>
         </section>
@@ -336,7 +344,8 @@ onActivated(() => {
           </article>
 
           <article class="growth-card skill-card">
-            <header><span>能力分布</span><h3>技能掌握度</h3></header>
+            <header><span>学习依据</span><h3>{{ skillEvidenceMode ? '知识证据概览' : '历史技能统计' }}</h3></header>
+            <p v-if="skillEvidenceMode" class="empty">学习状态 v{{ skillStateVersion }} · 仅汇总已观测知识点的启发式估计，未经概率校准，不代表整个学域的掌握程度。</p>
             <div class="skill-hud">
               <span class="skill-hud__corner skill-hud__corner--tl" aria-hidden="true" />
               <span class="skill-hud__corner skill-hud__corner--br" aria-hidden="true" />
@@ -344,9 +353,10 @@ onActivated(() => {
                 <li v-for="skill in skillItems" :key="skill.key" class="skill-grid__item">
                   <div class="skill-grid__head">
                     <strong>{{ skill.label }}</strong>
-                    <em>{{ skill.percent }}%</em>
+                    <em>{{ skill.percent === null ? '尚待了解' : `${skill.percent}%` }}</em>
                   </div>
-                  <div class="skill-grid__track">
+                  <small v-if="skillEvidenceMode">已观测 {{ skill.observed_concepts }}/{{ skill.total_concepts }} 个知识点 · {{ skill.formal_attempts }} 次正式作答</small>
+                  <div v-if="skill.percent !== null" class="skill-grid__track">
                     <span class="skill-grid__fill" :style="{ width: `${skill.percent}%` }" />
                   </div>
                 </li>
@@ -393,7 +403,7 @@ onActivated(() => {
             <plex-radar-chart :dimensions="radarLabels" :values="radarValues" title="知识点掌握度" color="#34e6c5" />
             <p class="report-summary">
               {{ learningReport.summary.level_label }} · 探索指数 {{ learningReport.summary.index }}
-              · 近 7 日正确率 {{ learningReport.summary.correct_rate }}%
+              · 已完成题目正确率：{{ correctRateLabel }}
             </p>
           </article>
 
@@ -412,24 +422,25 @@ onActivated(() => {
             class="growth-charts-row"
           >
             <article v-if="trendDays.length" class="growth-card chart-card">
-              <header><span>学习趋势</span><h3>近 7 天练习</h3></header>
+              <header><span>学习趋势</span><h3>近 7 天已完成题目</h3></header>
+              <p>仅统计已完成题目；代码尝试与过程证据见上方知识证据概览。</p>
               <div class="chart-wrap">
                 <plex-line-chart
                   :x-data="trendDays"
                   :series="[
                     { name: '正确率(%)', data: trendCorrect, color: '#34e6c5' },
-                    { name: '练习次数', data: trendCount, color: '#38bdf8' },
+                    { name: '完成题数', data: trendCount, color: '#38bdf8' },
                   ]"
                 />
               </div>
             </article>
 
             <article v-if="domainBarLabels.length" class="growth-card chart-card">
-              <header><span>星域掌握</span><h3>知识域进度</h3></header>
+              <header><span>作答统计</span><h3>已观测学域的答题正确率</h3></header>
               <div class="chart-wrap">
                 <plex-bar-chart
                   :x-data="domainBarLabels"
-                  :series="[{ name: '掌握度', data: domainBarValues, color: '#34e6c5' }]"
+                  :series="[{ name: '已完成题目正确率(%)', data: domainBarValues, color: '#34e6c5' }]"
                 />
               </div>
             </article>

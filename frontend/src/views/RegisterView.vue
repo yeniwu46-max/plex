@@ -2,61 +2,45 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon, NInput, useMessage } from 'naive-ui'
-import { ArrowBackOutline, LockClosedOutline, MailOutline, PersonAddOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, PersonAddOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
+import { passwordValid, safeAuthRedirect } from '../utils/authValidation'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
 
-const account = ref('')
+const username = ref('')
+const email = ref('')
+const nickname = ref('')
 const password = ref('')
+const confirmation = ref('')
 const loading = ref(false)
-
-function normalizeUsername(value: string) {
-  const normalized = value
-    .trim()
-    .split('@')[0]
-    .replace(/[^\w-]/g, '_')
-    .replace(/^_+|_+$/g, '')
-  return (normalized || `explorer_${Date.now()}`).slice(0, 50)
-}
-
-function accountPayload(value: string) {
-  const raw = value.trim()
-  const isEmail = raw.includes('@')
-  const username = isEmail ? normalizeUsername(raw) : normalizeUsername(raw)
-  const email = isEmail ? raw.toLowerCase() : `${username}@plex.local`
-  return {
-    username,
-    email,
-    real_name: username,
-  }
-}
 
 async function onSubmit(e: Event) {
   e.preventDefault()
-  if (!account.value.trim() || !password.value) {
-    message.warning('请输入用户名或邮箱以及登录密码')
-    return
+  if (loading.value) return
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{2,29}$/.test(username.value.trim())) {
+    message.warning('用户名需为 3–30 位字母、数字、下划线或短横线，以字母或数字开头'); return
   }
-  if (password.value.length < 6) {
-    message.warning('密码至少需要 6 位')
-    return
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()) || email.value.trim().endsWith('.local')) {
+    message.warning('请输入可接收邮件的邮箱地址'); return
   }
+  if (!nickname.value.trim()) { message.warning('请填写昵称'); return }
+  if (!passwordValid(password.value)) { message.warning('密码需为 8–128 位，至少包含字母和数字'); return }
+  if (password.value !== confirmation.value) { message.warning('两次输入的密码不一致'); return }
 
   loading.value = true
   try {
-    const base = accountPayload(account.value)
     const session = await auth.register({
-      ...base,
+      username: username.value.trim(), email: email.value.trim(), real_name: nickname.value.trim(),
       password: password.value,
       role: 'student',
     })
     message.success('注册成功')
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-    await router.replace(redirect || auth.homePathForRole(session.role))
+    const redirect = safeAuthRedirect(route.query.redirect, auth.homePathForRole(session.role))
+    await router.replace(redirect)
   } catch (err) {
     message.error(err instanceof Error ? err.message : '注册失败')
   } finally {
@@ -89,31 +73,22 @@ function backToLogin() {
       </header>
 
       <form class="form" @submit="onSubmit">
-        <n-input
-          v-model:value="account"
-          size="large"
-          round
-          placeholder="用户名或邮箱"
-          :input-props="{ autocomplete: 'username' }"
-        >
-          <template #prefix>
-            <n-icon :component="MailOutline" class="field-icon" />
-          </template>
-        </n-input>
-
-        <n-input
-          v-model:value="password"
-          size="large"
-          round
-          type="password"
-          placeholder="登录密码"
-          :input-props="{ autocomplete: 'new-password' }"
-        >
-          <template #prefix>
-            <n-icon :component="LockClosedOutline" class="field-icon" />
-          </template>
-        </n-input>
-
+        <label>用户名
+          <n-input v-model:value="username" size="large" :maxlength="30" placeholder="3–30 位字母、数字、下划线或短横线" :input-props="{ autocomplete: 'username', 'aria-label': '用户名' }" />
+        </label>
+        <label>昵称
+          <n-input v-model:value="nickname" size="large" :maxlength="50" placeholder="希望小E怎样称呼你" :input-props="{ autocomplete: 'nickname', 'aria-label': '昵称' }" />
+        </label>
+        <label>邮箱
+          <n-input v-model:value="email" size="large" :maxlength="100" placeholder="用于找回密码，请填写真实邮箱" :input-props="{ type: 'email', autocomplete: 'email', 'aria-label': '邮箱' }" />
+        </label>
+        <label>登录密码
+          <n-input v-model:value="password" size="large" type="password" show-password-on="click" :maxlength="128" placeholder="8–128 位，至少包含字母和数字" :input-props="{ autocomplete: 'new-password', 'aria-label': '登录密码' }" />
+        </label>
+        <label>确认密码
+          <n-input v-model:value="confirmation" size="large" type="password" :maxlength="128" placeholder="再次输入密码" :input-props="{ autocomplete: 'new-password', 'aria-label': '确认密码' }" />
+        </label>
+        <p class="registration-note">注册的是学生账号。加入班级后，可使用老师发布的练习与学习资源。</p>
         <button type="submit" class="submit" :disabled="loading">
           {{ loading ? '注册中...' : '注册并进入' }}
         </button>
@@ -125,6 +100,8 @@ function backToLogin() {
 </template>
 
 <style scoped>
+.form label { display: grid; gap: 8px; font-size: 14px; }
+.registration-note { margin: 0; font-size: 13px; color: #b6c5d4; line-height: 1.6; }
 .register-page {
   min-height: 100%;
   display: flex;

@@ -1,31 +1,50 @@
-"""驿站回复质量：明确概念题不应被低质反问糊弄。"""
-from app.services.messenger_chat import MessengerChatService
+"""Free-chat quality at the current structured review boundary.
+
+The reviewer is a deterministic fixture here: this tests publication policy,
+not the real model's ability to recognize off-topic or evasive prose.
+"""
+import pytest
+from test_learner_state import app
+from test_tutoring_modes import dependencies, Provider, APPROVED
+from test_messenger_tutoring import generated, send, message
+from app.services.tutor_intents import infer_mode
+from app.models.tutor_session import TutorTurn
 
 
-def test_evasive_reply_detected_for_clear_question():
-    reply = '你好！看起来你在学习Python编程，但似乎有些困惑。能否告诉我你具体遇到了什么问题呢？'
-    assert MessengerChatService._is_evasive_reply(reply, '请解释列表推导式并给例子')
+@pytest.mark.parametrize('reply', [
+    '能否告诉我你具体遇到了什么问题呢？',
+    '变量用来保存数据，例如 my_variable = 10。',
+])
+def test_reviewer_rejected_evasive_or_off_topic_answer_is_not_published(app, dependencies, reply):
+    raw = generated()
+    raw['summary'] = reply
+    review = {**APPROVED, 'policy_violation': True}
+    result = send(app, message('请解释列表推导式并给例子'), Provider(raw, review)).json['data']
+    assert result['tutor']['status'] == 'safe_fallback'
+    assert reply not in result['reply']
+    with app.app_context():
+        assert reply not in str(TutorTurn.query.one().response)
 
 
-def test_substantive_reply_not_evasive():
-    reply = (
-        '**列表推导式**用一行表达式生成列表。'
-        '例如：`[x*x for x in range(5)]` 得到平方数。'
-        '思考：如果加 `if x % 2 == 0`，结果会变成什么？'
-    )
-    assert not MessengerChatService._is_evasive_reply(reply, '请解释列表推导式并给例子')
+def test_reviewed_substantive_explanation_is_preserved(app, dependencies):
+    raw = generated()
+    raw['summary'] = '列表推导式用一行表达式生成列表。'
+    raw['example'] = {'code': '[x*x for x in range(5)]', 'explanation': '生成平方数列表。'}
+    provider = Provider(raw)
+    result = send(app, message('请解释列表推导式并给例子'), provider).json['data']
+    assert result['tutor']['status'] == 'ok'
+    assert raw['summary'] in result['reply']
+    assert raw['example']['code'] in result['reply']
+    assert len(provider.calls) == 2
 
 
-def test_vague_student_message_allows_clarifying_question():
-    reply = '你卡在报错信息的哪一行？把那一行贴过来我帮你看。'
-    assert not MessengerChatService._is_evasive_reply(reply, '不会')
+def test_vague_question_uses_clarification_and_explicit_question_uses_explanation():
+    assert infer_mode('不会') == 'clarify'
+    assert infer_mode('请解释列表推导式并给例子') == 'concept_explain'
 
 
-def test_off_topic_reply_rejected():
-    reply = '变量用来保存数据，例如 `my_variable = 10`。'
-    assert MessengerChatService._is_off_topic_reply(reply, '请解释列表推导式并给例子')
-
-
-def test_on_topic_reply_accepted():
-    reply = '列表推导式可以用 `[x*x for x in range(5)]` 一行生成平方列表。'
-    assert not MessengerChatService._is_low_quality_reply(reply, '请解释列表推导式并给例子')
+def test_missing_review_fields_fail_closed(app, dependencies):
+    raw = generated()
+    result = send(app, message(), Provider(raw, {})).json['data']
+    assert result['tutor']['status'] == 'safe_fallback'
+    assert raw['summary'] not in result['reply']

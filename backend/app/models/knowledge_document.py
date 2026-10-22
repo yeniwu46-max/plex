@@ -56,6 +56,10 @@ class KnowledgeDocument(db.Model):
     source = db.Column(db.String(64), default='upload')  # upload|builtin|platform_resource|ai_generated
     audience_level = db.Column(db.String(24), default='beginner')  # beginner|intermediate|advanced|all
     uploaded_by = db.Column(db.Integer, index=True)
+    # Index readiness and student publication are deliberately separate.
+    visibility = db.Column(db.String(16), nullable=False, default='private', server_default='private')
+    class_id = db.Column(db.Integer, index=True)
+    published = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     version = db.Column(db.Integer, nullable=False, default=1)
     status = db.Column(db.String(16), nullable=False, default='PENDING', index=True)
     stage_progress = db.Column(db.Integer, nullable=False, default=0)
@@ -93,6 +97,9 @@ class KnowledgeDocument(db.Model):
             'source': self.source,
             'audience_level': self.audience_level,
             'uploaded_by': self.uploaded_by,
+            'visibility': self.visibility,
+            'class_id': self.class_id,
+            'published': bool(self.published),
             'version': self.version,
             'status': self.status,
             'stage_progress': self.stage_progress,

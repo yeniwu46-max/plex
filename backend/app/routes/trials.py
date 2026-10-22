@@ -1,4 +1,7 @@
 """试炼路由"""
+from app.services.execution_errors import ExecutionUnavailable
+from app.services.tutor_context import TutorContextError
+
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -114,7 +117,8 @@ def update_teacher_trial(trial_id):
     except PermissionError as exc:
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
-        return error_response(str(exc), 40401, None, 404)
+        status = 404 if str(exc) == '试炼不存在' else 400
+        return error_response(str(exc), status * 100 + 1, None, status)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 
@@ -231,14 +235,14 @@ def list_student_practice_questions():
     try:
         from app.services.practice_question import PracticeQuestionService
 
-        knowledge_key = (request.args.get('knowledge_key') or '').strip() or None
-        search_q = (request.args.get('q') or request.args.get('search') or '').strip()
-        limit = min(int(request.args.get('limit') or 500), 500)
-        if search_q:
-            items = PracticeQuestionService.search_for_student(search_q, limit=min(limit, 30))
-        else:
-            items = PracticeQuestionService.list_for_student(knowledge_key=knowledge_key, limit=limit)
-        return success_response({'items': items, 'total': len(items)})
+        from app.services.student_practice import StudentPractice
+        uid = int(get_jwt_identity())
+        if _role_name(uid) != 'student':
+            items = PracticeQuestionService.list_for_student(
+                knowledge_key=request.args.get('knowledge_key') or None,
+                limit=min(500, max(1, request.args.get('limit', 500, type=int))), user_id=uid)
+            return success_response({'items': items, 'total': len(items)})
+        return success_response(StudentPractice.catalog(uid, request.args))
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
     except Exception as exc:
@@ -252,7 +256,6 @@ def get_student_practice_question(question_ref):
     try:
         pack_code = (request.args.get('pack_code') or '').strip()
         if pack_code:
-            from flask_jwt_extended import get_jwt_identity
             from app.services.student_store import StudentStoreService
 
             item = StudentStoreService.challenge_question(int(get_jwt_identity()), pack_code, question_ref)
@@ -260,10 +263,18 @@ def get_student_practice_question(question_ref):
 
         from app.services.practice_question import PracticeQuestionService
 
-        item = PracticeQuestionService.get_by_ref(question_ref)
+        from app.services.student_practice import StudentPractice
+        from app.models import User
+        viewer = db.session.get(User, int(get_jwt_identity()))
+        if viewer and viewer.role.name == 'student':
+            _, item = StudentPractice.question(viewer.id, question_ref)
+        else:
+            item = PracticeQuestionService.get_by_ref(question_ref)
         if not item:
             return error_response('题目不存在', 40401, None, 404)
         return success_response(item)
+    except TutorContextError as exc:
+        return error_response(str(exc), exc.status * 100 + 1, None, exc.status)
     except PermissionError as exc:
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
@@ -377,6 +388,8 @@ def submit_student_code_assignment(question_id):
         return error_response(str(exc), 40301, None, 403)
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
+    except ExecutionUnavailable:
+        raise
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
 
@@ -392,6 +405,19 @@ def get_student_trial_stats():
         return error_response(str(exc), 40401, None, 404)
     except Exception as exc:
         return error_response(str(exc), 50001, None, 500)
+
+
+@trials_bp.route('/student/trial-stats/records', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_student_trial_records():
+    try:
+        return success_response(TrialService.get_student_trial_records(
+            int(get_jwt_identity()), request.args.get('status', 'all'),
+            request.args.get('page', '1'), request.args.get('page_size', '10'),
+        ))
+    except ValueError as exc:
+        return error_response(str(exc), 40001, None, 400)
 
 
 @trials_bp.route('/student/trials/<int:trial_id>/complete', methods=['POST'])

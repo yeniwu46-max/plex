@@ -1,0 +1,1770 @@
+{
+  "catalog_hash": "c93cbc48fc9c3cf39c3e24e0a85d048d8ec0e1ea900bb9a2740cad5a784e49a4",
+  "human_review_status": "pending",
+  "items": [
+    {
+      "id": "L01",
+      "content_hash": "7780e624c36e1eef4b270fceb653861a4e4ac2ded06caf2f856ed15f3f76e387",
+      "verified_at": "2026-10-16T16:22:33.657830Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "0a2e0f2ebb925465786e0d30647c903e9622aa18c4dc2bb70d7b7c6fac898794",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "a0801b4d0a1d607eef62c76ab60d3fa5a68161fcf89bd613294b893c32d51f70",
+        "declared_inputs": 6,
+        "total_inputs": 33,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 12,
+        "properties": [
+          {
+            "property": "append_zero_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "concatenation_additive",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "append_zero_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "concatenation_additive",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 24,
+      "elapsed_ms": 13899
+    },
+    {
+      "id": "L02",
+      "content_hash": "b0a830089e0f4a6800d24e08820b551042a4b0924d2c774ec443cc102e9de536",
+      "verified_at": "2026-10-16T16:22:48.167193Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "2e8693a23763a2d45efcc543e879783813163d06869b07cbcd311004ad2e9900",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "7a553db2d88cd5238483d8dfc750f198403eb6fb77b13d8cd1a30c5c9f9caa8f",
+        "declared_inputs": 6,
+        "total_inputs": 33,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 12,
+        "properties": [
+          {
+            "property": "append_zero_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "concatenation_additive",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "append_zero_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "concatenation_additive",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 19,
+      "elapsed_ms": 14506
+    },
+    {
+      "id": "L03",
+      "content_hash": "03b2d6cebbc18efa9f82d9b900801d3c45002e7fdaa7125e2d34bc14d15b9fc2",
+      "verified_at": "2026-10-16T16:22:55.636718Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "ff3ba4f942b9b2543fe4c89ee52b42c095092aaff15a04af8e9fe6157960e7e5",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "eb5dfd427e92910db3fbe46a70d96c0249998929e1b74cdbd86aceed8d318a6b",
+        "declared_inputs": 6,
+        "total_inputs": 21,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 3,
+      "elapsed_ms": 7463
+    },
+    {
+      "id": "L04",
+      "content_hash": "bfdb23cf9745a2794a919e2974e392ebaf8dd5e34d94819dc092d4b1532af459",
+      "verified_at": "2026-10-16T16:23:02.878905Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "b43d82c9f53449c06c0f1af5629e95ee6de1d0e900f40d3888adfba5d0a7075d",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "c6fe43ab47d8b0f05a8566eaf2adde12e540ae481f54c18198202ad757d9fbd9",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 19,
+      "elapsed_ms": 7237
+    },
+    {
+      "id": "L05",
+      "content_hash": "dfa021fb288e6b5acc410bc010fe1ef9fbdda470e51117eff4b1925f080c4664",
+      "verified_at": "2026-10-16T16:23:09.961630Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "ec36db8a4363ce0352205a1c5506c7cefc0ab45d014af86dc28dd1a1ecb37fcd",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "09a0c906715b6cfb69d77c1e19e1b962e296fb49037dd7238c6440267539d3d0",
+        "declared_inputs": 6,
+        "total_inputs": 20,
+        "boundary_inputs": 14,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 7,
+      "elapsed_ms": 7077
+    },
+    {
+      "id": "L06",
+      "content_hash": "3ea50421f09d35bbfc1a6482ca52304ff950c82850c92e7debdf0b43e950be03",
+      "verified_at": "2026-10-16T16:23:17.163445Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "0a0356ef2959c2df7448516141942a58a2e075f1a3e3ad6bda54f3d4f110518b",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "6416e7477a986230c1d2d46b96d904ff56b6df2a06a2d1da238d7f91afcb077c",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 19,
+      "elapsed_ms": 7196
+    },
+    {
+      "id": "L07",
+      "content_hash": "05b000de5509e03da477c5e88ebc6dd39c504e92e3e06373a894013dd79f2b84",
+      "verified_at": "2026-10-16T16:23:24.544202Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "7d5cd049406cc7819ad2f02a3cbb6f38d7022701e55588fd030911f794c9b695",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "1a9bbda2ea5990ca22f2e83574b0854fdc029431df14dc42c42dcb70f4caf51e",
+        "declared_inputs": 6,
+        "total_inputs": 21,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 3,
+      "elapsed_ms": 7374
+    },
+    {
+      "id": "L08",
+      "content_hash": "44881afdd176288073db2486b301ef9e9a8e3323dc2cbe50d03ea49d638bbf17",
+      "verified_at": "2026-10-16T16:23:31.748262Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "7bf0571958b5d942b766bcc230c1d5408c53c079ee6ee3b9710076307fabcbc1",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "6641a45e95620e2df9546b3795f3253bab8fd1f4cded15bcd6e78862626e0d9b",
+        "declared_inputs": 6,
+        "total_inputs": 21,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 17,
+      "elapsed_ms": 7197
+    },
+    {
+      "id": "L09",
+      "content_hash": "d9d0035ddbf717249180a813a735245d9629cafa7a7d19909ef53d2f32d405c2",
+      "verified_at": "2026-10-16T16:23:39.260419Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "e442cefcf181718cdccc7b941dbb4813b30f4059a2cfdbed1a4e6139899e9a8e",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "78e968991468acbcad2f0ac64f24f0123075af8e21ba188bc35a563f43b6327f",
+        "declared_inputs": 6,
+        "total_inputs": 21,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 13,
+      "elapsed_ms": 7505
+    },
+    {
+      "id": "L10",
+      "content_hash": "4842ec592d2ec0f667799f6193b1d1340753a0c24256b7a785aba873f53c6e35",
+      "verified_at": "2026-10-16T16:23:47.405269Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "972277e38cca645007ed208e5ff72eb7a7decd85cf205005a0a0a9b52c0b67b7",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "4a18ac5cb06d5798b13c98882ef2361f2919b86973561a75ba85bc6333ab5ac6",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 9,
+      "elapsed_ms": 8137
+    },
+    {
+      "id": "E01",
+      "content_hash": "264202698b2b22c5f06f3138ff90b670cc8daa5fb61c8732d5d1efd8c2a6e95f",
+      "verified_at": "2026-10-18T14:32:11.177885Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "98d48581b5ea44f5ad812cc4b8aedd8a4949516172d329c7520b7fd32dabfb32",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "9acfdfb8139690fce3127429071b98d19aff8b6413bcc521b96b8815e095585b",
+        "declared_inputs": 5,
+        "total_inputs": 24,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 4,
+        "properties": [
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "result_is_member",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "result_is_member",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 6746
+    },
+    {
+      "id": "E02",
+      "content_hash": "138ac0395c666eb7fac64be82dea9d1490dd47b1cc74f11a90bee7a09bd9bcb7",
+      "verified_at": "2026-10-18T14:32:17.719216Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "b748a7aa91f32c9c7dbf0aa8b20b6d3c474f3c99faf4daa7af3d12579a0efd58",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "25b549302da95a881a7a7d74aa269c18de7b9f36c8d084c50e75c93a5e1219de",
+        "declared_inputs": 5,
+        "total_inputs": 24,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 4,
+        "properties": [
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "result_is_member",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "result_is_member",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 6536
+    },
+    {
+      "id": "E03",
+      "content_hash": "2cc504859397feb68776ebe7c26aeec086f29fe4cd1b09540942fae2fad97339",
+      "verified_at": "2026-10-18T14:32:24.677755Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "4e868dbe517c03078314d24c3faed4e0a1903a770d1acc299ff91b9383515653",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "da9f643091df1e04e1e29428c1d8ae608d0ee22c6e61a1b94d1d6ae2ba71fb90",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [
+          {
+            "property": "result_is_member",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "result_is_member",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 6951
+    },
+    {
+      "id": "E04",
+      "content_hash": "08bfd00544bb32df8df6168373c3e2c22446c8420cabb049b9c544e08987a23c",
+      "verified_at": "2026-10-18T14:32:32.000461Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "b0e55bc49ddb892894b63cbcf85665b577c429e0c11eb50e4c14db276600d99e",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "89126beefd615687f566a427e88416304a266e17d3afcd36cb7ecafa5846e8df",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [
+          {
+            "property": "result_is_member",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "result_is_member",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 7314
+    },
+    {
+      "id": "E05",
+      "content_hash": "d1d74cc6b28f2850c33f478409d77e94d33da1cb5c407b375fba07b424685a92",
+      "verified_at": "2026-10-18T14:32:39.322923Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "49a1c90badf1674cc5a8df2ad5725200bebcc8f46ffd4f6b4180045c403c4c1e",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "db7de3b84cadbbfd2113e38f1ef6bdd6cc9445fc92988ec646188836708c7af8",
+        "declared_inputs": 5,
+        "total_inputs": 22,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 2,
+        "properties": [
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 7312
+    },
+    {
+      "id": "E06",
+      "content_hash": "2b3562fcaf69698abe6250216fba77b646f1c76b2c8a5116ffc3b3047954ed3f",
+      "verified_at": "2026-10-18T14:32:55.617531Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "e83245cd373e50ea9affa843b612207a1647c6409ed5c730d8b49afab59bbc1c",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "b4304cd83e47808f8c588e1c81e9ebe85d8b64e4cf87710f1433d80c13d95543",
+        "declared_inputs": 5,
+        "total_inputs": 28,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 8,
+        "properties": [
+          {
+            "property": "duplicate_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "duplicate_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 16286
+    },
+    {
+      "id": "E07",
+      "content_hash": "35c49f189b72909851c6c4a5902fadd6584e0c65052b5ec56e54392c16e58cb7",
+      "verified_at": "2026-10-18T14:33:01.791262Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "ba779a52dc0af28c7f5e2e37a110ac7c92895cceb7293713ccc6e54100eabd94",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "c65de0ca7d0bd81abf1915712188ca235916d0e61691ce95fb9fe20959a3eee6",
+        "declared_inputs": 5,
+        "total_inputs": 24,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 4,
+        "properties": [
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 6166
+    },
+    {
+      "id": "E08",
+      "content_hash": "a8f64256a271fec079c63a5348aa740c5bed9f63e6c256ca645ffb81ad1c798b",
+      "verified_at": "2026-10-18T14:33:07.565591Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "66834a5006e0691940084892eb6ae273cf89dc1bec4a3295b2ba3c40f1c40396",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "69aedc361bcf383e12dc0fe136a63917f5367b75d8de99ae6459ab21d38d2a6a",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 5766
+    },
+    {
+      "id": "E09",
+      "content_hash": "5f039d5442a2ae37d6c3678aa229800d2dff0747d599af3dadccc15af92405fc",
+      "verified_at": "2026-10-18T14:33:14.134188Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "cd007d1fb6b79825eaab390eb494ffd550bc8c8af603d3862d5f9d0a468a8de4",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "97c9a2cde7205f6fed4462ba5620406857d3351f6391200cc727f6414647f3de",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 6561
+    },
+    {
+      "id": "E10",
+      "content_hash": "d0afcc844068f66d9557daf854352f5e32da0e62ed37dffef6f1ee03c7885b5f",
+      "verified_at": "2026-10-18T14:33:21.502875Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "6a93f37ec61943a79f59285b57b252bbffafac6f3adedb0a06b447334f9a4f66",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "9f59a53266f25a043a9d0bdca5b0c88981df07b9454d585b3af9642edc9d9344",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 1,
+      "elapsed_ms": 7357
+    },
+    {
+      "id": "D01",
+      "content_hash": "471776b7f628f8f56d21b7854364d10bd090a3ae009dae2a6654ea9446d7eb03",
+      "verified_at": "2026-10-18T14:33:34.959504Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "111a91acdfd1b1e3a8628e41e1fce3b2b55f2e9f1056c7becef96a1bb11e77d7",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "ab2ac523099b6352b8d852259f5cc68ac45de629abaa4d767f9223a15b9a3903",
+        "declared_inputs": 6,
+        "total_inputs": 33,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 12,
+        "properties": [
+          {
+            "property": "append_zero_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "duplicate_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "append_zero_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "duplicate_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 19,
+      "elapsed_ms": 13449
+    },
+    {
+      "id": "D02",
+      "content_hash": "11406efbe7095184ec872a9bb569bf497624be70136c0876628de57ec9f19910",
+      "verified_at": "2026-10-18T14:33:47.565236Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "cd4dc61f0c3faa77e178552f501180784b916677696ceaa1dcb3e458111ce39f",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "8478357bc1b82ce94a631aa3e5d4537c81e123c4765ed212b5faae3b8ca923e5",
+        "declared_inputs": 5,
+        "total_inputs": 28,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 8,
+        "properties": [
+          {
+            "property": "duplicate_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "duplicate_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 18,
+      "elapsed_ms": 12597
+    },
+    {
+      "id": "D03",
+      "content_hash": "eb30911859371a905cc148b8666f33841640240f139ed5658493b87ec557860b",
+      "verified_at": "2026-10-18T14:33:59.528970Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "09d52983ce5fc3b77e52c67248eaeea4c367c4f8c649428948046b7f2ecffa12",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "d6972873243251079dca7fbb76cda94524ace0da3c060a81bdb96f9e542d13b7",
+        "declared_inputs": 5,
+        "total_inputs": 32,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 12,
+        "properties": [
+          {
+            "property": "append_zero_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "concatenation_additive",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "append_zero_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "concatenation_additive",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 18,
+      "elapsed_ms": 11954
+    },
+    {
+      "id": "D04",
+      "content_hash": "1ac9500098b68369f03e470f2f6e5d483f97f8193cbb0037f5b8f839701491e3",
+      "verified_at": "2026-10-18T14:34:11.091682Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "e496bf6875b2a57a71c9c873680118a0f8c52f3282e787b9cc81c70ae906bf9a",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "54fa334fc5522edc53f92032adb193dc230c0465cfbf3d48bd97447ea3c7898a",
+        "declared_inputs": 5,
+        "total_inputs": 27,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 7,
+        "properties": [
+          {
+            "property": "concatenation_additive",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "concatenation_additive",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 8,
+      "elapsed_ms": 11554
+    },
+    {
+      "id": "D05",
+      "content_hash": "d3f0a3cf2c29f307598e148046689347753f8e60d9a2e80c619a15fae2a5f6d8",
+      "verified_at": "2026-10-18T14:34:17.309174Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "000a17c5977f1451a2d22b338cc9cb8661e989eb0e765388025975ac55155a3b",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "b1f025b583562c19accf7cb65d6feba28ec2fc4156a27f5340947e70f4aad154",
+        "declared_inputs": 5,
+        "total_inputs": 23,
+        "boundary_inputs": 14,
+        "metamorphic_inputs": 4,
+        "properties": [
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 5,
+      "elapsed_ms": 6207
+    },
+    {
+      "id": "D06",
+      "content_hash": "f9bc77fe85b69461b6c65fcdaaa9d4071fbdf100ea86e073b167acf53e65fbf4",
+      "verified_at": "2026-10-18T14:34:29.369758Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "8799f7c9936d26e649cb052d0fbb0195ae0af55cf080d1bda096b063b767b21e",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "cd23c6a78a42d08d7590e2fd651f243a49b1a7f18ebefeabe84c0ec1259d43cd",
+        "declared_inputs": 5,
+        "total_inputs": 28,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 8,
+        "properties": [
+          {
+            "property": "duplicate_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "duplicate_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 19,
+      "elapsed_ms": 12053
+    },
+    {
+      "id": "D07",
+      "content_hash": "cff687e3707289f68cb23209a509127ee401170599a5ff643187a2f7e6f75c3e",
+      "verified_at": "2026-10-18T14:34:36.688497Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "2ce428d986bed977f2fbcbac564bbc33035ac1666ef9e1b54fb462c8b98383a6",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "fb28e39e9661941a201b0e6a65fb0c4dd647d08097a977ac8a00f6b683c7d53c",
+        "declared_inputs": 5,
+        "total_inputs": 24,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 4,
+        "properties": [
+          {
+            "property": "duplicate_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "duplicate_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 9,
+      "elapsed_ms": 7306
+    },
+    {
+      "id": "D08",
+      "content_hash": "539b18ed0f70c2744b72f2e79153c99eacf4c797d42945a12840222e0de1fd7e",
+      "verified_at": "2026-10-18T14:34:43.832260Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "1c50b6e76d6f18f895ee4b60349de6ed2f1380f9008a7243c66a686529aad4d7",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "aa365a80c1b65c9ff4dca98c3c6735d5f3a0be88a5287bafd2fa2770d7a19df9",
+        "declared_inputs": 5,
+        "total_inputs": 20,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 0,
+        "properties": [],
+        "failures": []
+      },
+      "witness_count": 13,
+      "elapsed_ms": 7130
+    },
+    {
+      "id": "D09",
+      "content_hash": "77331ee2f01222e8f32b2f66e799f78d41dbcebb5ac70a04f27d964f870a4820",
+      "verified_at": "2026-10-18T14:34:58.259230Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "9a9def0b717c9dec69263d75d6253ec2bd6ea7597d76d93f0fa464a5198852db",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "eaec9206f956ff1a8f9b1bec244071fb69e5fb571b2c0ab9e0312c9ade0dbaa5",
+        "declared_inputs": 6,
+        "total_inputs": 28,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 7,
+        "properties": [
+          {
+            "property": "concatenation_additive",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "concatenation_additive",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 11,
+      "elapsed_ms": 14412
+    },
+    {
+      "id": "D10",
+      "content_hash": "7fcbedf1143afd44c5f058ba1b5f780a449255308ebc0aece97e2a0529c3b56c",
+      "verified_at": "2026-10-18T14:35:10.869107Z",
+      "passed": true,
+      "reason": null,
+      "validator_version": "differential-properties-v2",
+      "report_hash": "2dd753f4cde786f79af53574fb0a402624f511ee1f9e41edb782e23d6514cdbd",
+      "runtimes": [
+        {
+          "program": "reference",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "fixed",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        },
+        {
+          "program": "buggy",
+          "backend": "docker",
+          "python": "3.12.15",
+          "image_id": "sha256:ac3df9d2d7237428e8799570805e1f1a36bcb28854216e37946f99c28e23a3ae",
+          "harness_hash": "0588d8ba365c601cf0d317205492837ea901ad4bdb4da107a8987d250a1a7495"
+        }
+      ],
+      "scope": "declared_and_bounded_checks",
+      "coverage": {
+        "policy_version": "bounded-properties-v1",
+        "plan_hash": "5368ffa946337bad8ed3e7f6dba4fc3b06a35ead0c5f60b50fefa25352136f40",
+        "declared_inputs": 6,
+        "total_inputs": 25,
+        "boundary_inputs": 15,
+        "metamorphic_inputs": 4,
+        "properties": [
+          {
+            "property": "permutation_invariant",
+            "program": "reference",
+            "checked": 4,
+            "failed": 0
+          },
+          {
+            "property": "permutation_invariant",
+            "program": "fixed",
+            "checked": 4,
+            "failed": 0
+          }
+        ],
+        "failures": []
+      },
+      "witness_count": 6,
+      "elapsed_ms": 12597
+    }
+  ]
+}

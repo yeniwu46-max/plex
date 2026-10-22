@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NIcon, NSelect, NTag, useMessage, type SelectOption } from 'naive-ui'
-import { CheckmarkCircleOutline, ChevronForwardOutline, CodeSlashOutline, HourglassOutline, LocateOutline, PlanetOutline, StarOutline } from '@vicons/ionicons5'
-import { useThemeStore } from '../stores/theme'
+import { NInput, NPagination, NButton, NIcon, NSelect, NTag, useMessage, type SelectOption } from 'naive-ui'
+import { CheckmarkCircleOutline, ChevronForwardOutline, CodeSlashOutline, StarOutline, Star } from '@vicons/ionicons5'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import {
-  fetchStudentTrialStats,
-  fetchStudentTrials,
+  fetchStudentArenaTrials,
   joinStudentTrial,
   type StudentTrial,
-  type StudentTrialStatsResult,
 } from '../api/studentTrials'
+import TrialStatsToolbar from '../components/trial/TrialStatsToolbar.vue'
 import TrialExamPanel from '../components/trial/TrialExamPanel.vue'
 import {
   getStarPathNode,
@@ -31,11 +29,23 @@ import { buildTrialPageRecommendation } from '../utils/trialPageRecommendation'
 import { fetchServerMistakeRecords, getTrialMistakeRecords, type TrialMistakeRecord } from '../utils/trialMistakeLog'
 import { fetchLearningPath } from '../api/studentProgress'
 import { isQuestionAccepted, mergeAcceptedQuestionIds } from '../utils/starPathProgress'
-import { formatQuestionLabel } from '../utils/questionNaming'
-import { ensurePracticeQuestionsLoaded, practiceCacheVersion } from '../utils/practiceQuestionCache'
+import { formatQuestionLabel, normalizeQuestion } from '../utils/questionNaming'
+import { ensurePracticeQuestionsLoaded } from '../utils/practiceQuestionCache'
 
+import { practiceRequest, setQuestionFavorite } from '../api/studentPractice'
+import type { PracticeQuestionPayload } from '../api/practiceQuestions'
+const questionSearch = ref(''), questionDifficulty = ref<string|null>(null), questionDone = ref<string|null>(null), questionKnowledge = ref<string|null>(null), favoriteOnly = ref(false), questionPage = ref(1), questionTotal = ref(0)
+const questionRows = ref<Array<PracticeQuestionPayload & {favorite:boolean;done:boolean}>>([])
+const questionsError = ref(''), questionsBusy = ref(false)
+let questionRequest = 0
+const knowledgeFilters = computed(()=>STAR_PATH_DOMAINS.find(d=>d.key===selectedDomainKey.value)?.knowledgePoints.map(k=>({label:k.title,value:k.id}))||[])
+async function loadQuestionCatalog(){
+ const ticket=++questionRequest;questionsBusy.value=true
+ try{const result=await practiceRequest<{items:typeof questionRows.value;total:number}>('get','/practice-questions',undefined,{knowledge_key:questionKnowledge.value||selectedDomainKey.value,q:questionSearch.value,difficulty:questionDifficulty.value,done:questionDone.value,favorite:favoriteOnly.value,page:questionPage.value,page_size:24});if(ticket===questionRequest){questionRows.value=result.items;questionTotal.value=result.total;questionsError.value=''}}
+ catch(e){if(ticket===questionRequest)questionsError.value=e instanceof Error?e.message:'题目加载失败'}finally{if(ticket===questionRequest)questionsBusy.value=false}
+}
+async function toggleFavorite(id:string){const item=questionRows.value.find(q=>q.id===id);if(!item)return;try{await setQuestionFavorite(id,!item.favorite);await loadQuestionCatalog()}catch(e){message.error(e instanceof Error?e.message:'收藏更新失败')}}
 const message = useMessage()
-const themeStore = useThemeStore()
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
@@ -47,8 +57,6 @@ const highlightTrialId = computed(() => {
 
 const loading = ref(true)
 const errorMessage = ref('')
-const trialStats = ref<StudentTrialStatsResult | null>(null)
-const statsLoading = ref(true)
 const trials = ref<StudentTrial[]>([])
 const serverMistakes = ref<TrialMistakeRecord[]>([])
 const acceptedQuestionIds = ref<Set<string>>(new Set())
@@ -59,7 +67,6 @@ const currentView = ref<'card' | 'list'>('card')
 const TRIAL_LIST_CACHE_MS = 30_000
 let trialListLoadedAt = 0
 
-const displayName = computed(() => auth.profile?.real_name || auth.profile?.username || 'Explorer')
 const userId = computed(() => auth.profile?.id ?? 'guest')
 
 const unlockedNodes = computed(() => getUnlockedStarPathNodes(acceptedQuestionIds.value))
@@ -77,38 +84,14 @@ const nodeSelectOptions = computed<SelectOption[]>(() => {
   ).map((opt) => ({ label: opt.label, value: opt.value }))
 })
 
-const activeQuestions = computed(() => {
-  // 读一下版本号，接口真题到货后重新解析，否则会一直停在离线兜底题上
-  void practiceCacheVersion.value
-  const domainNodes = unlockedNodes.value.filter(
-    (node) => resolveModuleCategory(node.id) === selectedDomainKey.value,
-  )
-  const seen = new Set<string>()
-  const questions = []
-  for (const node of domainNodes) {
-    for (const q of resolveQuestionsForNode(node.id)) {
-      if (seen.has(q.id)) continue
-      seen.add(q.id)
-      questions.push(q)
-    }
-  }
-  // 若该大类暂无已解锁节点题，兜底取代表节点题（含「其它」）
-  if (!questions.length) {
-    const fallbackNodes =
-      selectedDomainKey.value === 'other'
-        ? unlockedNodes.value.filter((n) => resolveModuleCategory(n.id) === 'other')
-        : STAR_PATH_DOMAINS.find((d) => d.key === selectedDomainKey.value)?.knowledgePoints ?? []
-    for (const node of fallbackNodes) {
-      const id = 'id' in node ? node.id : (node as { id: string }).id
-      for (const q of resolveQuestionsForNode(id)) {
-        if (seen.has(q.id)) continue
-        seen.add(q.id)
-        questions.push(q)
-      }
-    }
-  }
-  return questions
-})
+const activeQuestions = computed(() => questionRows.value.map(item=>normalizeQuestion({id:item.id,code:item.code,title:item.title,topic:item.topic,difficulty:item.difficulty,rewardXp:item.reward_xp,durationMin:item.duration_min,tags:item.tags,description:item.description,constraints:item.constraints,examples:item.examples,testCases:item.test_cases,starterCode:item.starter_code,runMode:item.run_mode,hint:item.hint})))
+watch(selectedDomainKey,()=>{if(!STAR_PATH_DOMAINS.find(d=>d.key===selectedDomainKey.value)?.knowledgePoints.some(k=>k.id===questionKnowledge.value))questionKnowledge.value=null})
+watch(()=>route.query.knowledge_key,(key)=>{if(typeof key==='string'){const d=STAR_PATH_DOMAINS.find(d=>d.knowledgePoints.some(k=>k.id===key));if(d)selectedDomainKey.value=d.key as ModuleCategoryValue;questionKnowledge.value=key}},{immediate:true})
+
+watch([selectedDomainKey,questionKnowledge,questionSearch,questionDifficulty,questionDone,favoriteOnly],()=>{questionPage.value=1;void loadQuestionCatalog()})
+watch(questionPage,()=>void loadQuestionCatalog())
+onActivated(()=>void loadQuestionCatalog())
+onMounted(()=>void loadQuestionCatalog())
 
 const pageRecommendation = computed(() =>
   buildTrialPageRecommendation(
@@ -129,27 +112,6 @@ function isInternalSandboxTrial(trial: StudentTrial) {
 }
 
 const visibleTrials = computed(() => trials.value.filter((trial) => !isInternalSandboxTrial(trial)))
-
-const visibleTrialStats = computed(() => {
-  if (!trialStats.value) return null
-  const recent = trialStats.value.recent_completions.filter(
-    (item) => !item.title.endsWith('通关试炼') && !(item.score === 100 && item.title.includes('通关')),
-  )
-  const completedCount = recent.length
-  const avgScore = completedCount
-    ? Math.round(recent.reduce((sum, item) => sum + item.score, 0) / completedCount)
-    : trialStats.value.summary.avg_score
-  return {
-    ...trialStats.value,
-    summary: {
-      ...trialStats.value.summary,
-      completed_count: completedCount || trialStats.value.summary.completed_count,
-      avg_score: avgScore,
-    },
-    recent_completions: recent,
-  }
-})
-
 
 const questionAcStatus = computed(() => {
   const records = serverMistakes.value.length
@@ -183,17 +145,6 @@ watch(
   { immediate: true },
 )
 
-async function loadTrialStats() {
-  statsLoading.value = true
-  try {
-    trialStats.value = await fetchStudentTrialStats()
-  } catch {
-    trialStats.value = null
-  } finally {
-    statsLoading.value = false
-  }
-}
-
 async function loadTrials(force = false) {
   if (!force && trials.value.length && Date.now() - trialListLoadedAt < TRIAL_LIST_CACHE_MS) {
     return
@@ -201,7 +152,7 @@ async function loadTrials(force = false) {
   loading.value = true
   errorMessage.value = ''
   try {
-    const data = await fetchStudentTrials()
+    const data = await fetchStudentArenaTrials()
     trials.value = data.trials
     trialListLoadedAt = Date.now()
   } catch (error) {
@@ -231,7 +182,7 @@ async function onJoin(trial: StudentTrial) {
 
 async function onMcqCompleted() {
   activeMcqTrial.value = null
-  await Promise.all([loadTrials(true), loadTrialStats()])
+  await Promise.all([loadTrials(true)])
 }
 
 function onSearchSubmit(query: string) {
@@ -282,7 +233,6 @@ onMounted(() => {
   }
   void Promise.all([
     loadTrials(),
-    loadTrialStats(),
     refreshPracticeProgress(),
     ensurePracticeQuestionsLoaded(),
   ])
@@ -302,42 +252,7 @@ onActivated(() => {
     @search-submit="onSearchSubmit"
   >
     <section class="student-trial" aria-label="学生试炼关卡">
-      <p class="student-trial__welcome">你好，{{ displayName }} — 从 Python 入门题开始试炼，或参与班级任务。</p>
-
-      <section v-if="!activeMcqTrial" class="student-trial__stats" aria-label="试炼战绩">
-        <div v-if="statsLoading" class="student-trial__stats-loading">同步战绩…</div>
-        <template v-else-if="trialStats">
-          <div class="student-trial__stats-grid">
-            <article class="student-trial__stat-card">
-              <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="CheckmarkCircleOutline" aria-hidden="true" />
-              <span class="student-trial__stat-label">已完成</span>
-              <strong>{{ visibleTrialStats?.summary.completed_count ?? trialStats.summary.completed_count }}</strong>
-            </article>
-            <article class="student-trial__stat-card">
-              <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="HourglassOutline" aria-hidden="true" />
-              <span class="student-trial__stat-label">进行中</span>
-              <strong>{{ trialStats.summary.active_count }}</strong>
-            </article>
-            <article class="student-trial__stat-card">
-              <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="LocateOutline" aria-hidden="true" />
-              <span class="student-trial__stat-label">均分</span>
-              <strong>{{ visibleTrialStats?.summary.avg_score ?? trialStats.summary.avg_score }}</strong>
-            </article>
-            <article class="student-trial__stat-card">
-              <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="PlanetOutline" aria-hidden="true" />
-              <span class="student-trial__stat-label">累计参与</span>
-              <strong>{{ trialStats.summary.total_participations }}</strong>
-            </article>
-          </div>
-          <ul v-if="visibleTrialStats?.recent_completions.length" class="student-trial__recent">
-            <li v-for="item in visibleTrialStats.recent_completions" :key="`${item.trial_id}-${item.completed_at}`">
-              <n-icon v-if="themeStore.isComic" class="comic-record-star" :component="StarOutline" aria-hidden="true" />
-              <span>{{ item.title }}</span>
-              <em>{{ item.score }} 分</em>
-            </li>
-          </ul>
-        </template>
-      </section>
+      <TrialStatsToolbar v-if="!activeMcqTrial" />
 
       <TrialExamPanel
         v-if="activeMcqTrial"
@@ -354,7 +269,7 @@ onActivated(() => {
         <header class="student-trial__section-head">
           <div class="student-trial__section-intro">
             <h2>Python 入门试炼</h2>
-            <p>选择已解锁的星轨板块，完成该节点下的全部代码试炼。</p>
+            <p>按知识点和难度选择题目，正式提交后同步作答记录。</p>
           </div>
           <div class="student-trial__section-picker">
             <label class="student-trial__picker-label" for="starpath-node-select">星轨板块</label>
@@ -373,6 +288,15 @@ onActivated(() => {
           </div>
         </header>
 
+        <div class="practice-filters" data-tour="student-trials">
+          <n-input v-model:value="questionSearch" clearable placeholder="搜索题目" />
+          <n-select v-model:value="questionKnowledge" clearable filterable :options="knowledgeFilters" placeholder="知识点" />
+          <n-select v-model:value="questionDifficulty" clearable :options="['基础','进阶','挑战'].map(v=>({label:v,value:v}))" placeholder="难度" />
+          <n-select v-model:value="questionDone" clearable :options="[{label:'做过',value:'yes'},{label:'未做过',value:'no'}]" placeholder="作答状态" />
+          <n-button class="plex-action-button practice-favorite-filter" :class="{'is-selected':favoriteOnly}" :aria-pressed="favoriteOnly" @click="favoriteOnly=!favoriteOnly"><template #icon><n-icon :component="favoriteOnly ? Star : StarOutline" /></template>我的收藏</n-button>
+        </div>
+        <p v-if="questionsError" role="alert">{{questionsError}} <n-button @click="loadQuestionCatalog">重试</n-button></p>
+        <p v-if="questionsBusy">正在筛选…</p>
         <ul v-if="activeQuestions.length" class="student-trial__python-list" :class="{ 'student-trial__python-list--list': currentView === 'list' }">
           <li v-for="(question, index) in activeQuestions" :key="question.id">
             <button
@@ -406,9 +330,11 @@ onActivated(() => {
                 <n-icon :component="ChevronForwardOutline" />
               </div>
             </button>
+            <div class="question-row-actions"><small>{{questionRows[index]?.done?'已作答':'未作答'}}</small><n-button class="plex-action-button" size="small" :class="{ 'is-selected': questionRows[index]?.favorite }" :aria-label="`${questionRows[index]?.favorite ? '取消收藏' : '收藏'} ${question.title}`" :aria-pressed="questionRows[index]?.favorite" @click="toggleFavorite(question.id)"><template #icon><n-icon :component="questionRows[index]?.favorite ? Star : StarOutline" /></template>{{questionRows[index]?.favorite?'已收藏':'收藏'}}</n-button></div>
           </li>
         </ul>
-        <p v-else class="student-trial__state">暂无已解锁板块，请先在星轨路径中推进进度。</p>
+        <p v-else class="student-trial__state">当前筛选没有题目，可调整筛选条件。</p>
+        <n-pagination v-model:page="questionPage" :item-count="questionTotal" :page-size="24" />
         </section>
       </div>
 
@@ -416,7 +342,7 @@ onActivated(() => {
         <header class="student-trial__section-head">
           <div>
             <h2>班级试炼</h2>
-            <p>教师发布的进行中任务，完成后可获得班级积分奖励。</p>
+            <p>教师发布的试卷与即将开始的任务，按教师规则参与作答。</p>
           </div>
         </header>
 
@@ -441,16 +367,21 @@ onActivated(() => {
             <p class="student-trial__meta">
               难度 {{ trial.difficulty }} · 约 {{ trial.duration_minutes }} 分钟 ·
               {{ trial.participant_count ?? 0 }} 人已参与
+              <span v-if="trial.starts_at"> · {{new Date(trial.starts_at).toLocaleString()}} 开始</span>
             </p>
-            <p v-if="trial.my_status === 'completed'" class="student-trial__done">已完成 · 得分 {{ trial.my_score }}</p>
+            <div v-if="trial.my_status === 'completed'">
+              <p class="student-trial__done">已完成 · 得分 {{ trial.my_score }}</p>
+              <n-button size="small" @click="activeMcqTrial = { id: trial.id, title: trial.title }">查看答题与复盘</n-button>
+            </div>
             <div v-else class="student-trial__actions">
               <n-button
                 v-if="!trial.my_status"
+                :disabled="trial.effective_status==='scheduled'"
                 type="primary"
                 :loading="actingId === trial.id"
                 @click="onJoin(trial)"
               >
-                参与试炼
+                {{trial.effective_status==='scheduled'?'尚未开始':'参与试炼'}}
               </n-button>
               <n-button
                 v-else-if="trial.my_status === 'joined'"
@@ -470,6 +401,9 @@ onActivated(() => {
 </template>
 
 <style scoped>
+.practice-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:16px 0}
+.student-trial__counterexample-entry { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 18px; margin-bottom: 20px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 12px; }
+.student-trial__counterexample-entry p { margin: 6px 0 0; opacity: .75; }
 .student-trial {
   flex: 1;
   width: 100%;
@@ -849,4 +783,5 @@ onActivated(() => {
 .student-trial__python-list--list .student-trial__tags {
   display: none;
 }
+.question-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:8px 10px 12px}.question-row-actions small{color:var(--plex-text-muted);font-size:12px}
 </style>

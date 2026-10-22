@@ -4,6 +4,8 @@ import { useAuthStore } from '../stores/auth'
 export const MESSENGER_SESSION_LIMIT = 5
 
 export type PersistedChatMessage = {
+  tutorRequestId?: string
+  artifactRequestId?: string
   role: 'user' | 'assistant'
   text: string
   streaming?: boolean
@@ -44,6 +46,15 @@ function newSession(index: number): MessengerChatSession {
   }
 }
 
+/** New artifacts persist only a private server reference, never a stale course copy. */
+export function persistedMessage(message: PersistedChatMessage): PersistedChatMessage {
+  if (message.artifactRequestId) return {
+    role: message.role, artifactRequestId: message.artifactRequestId,
+    artifact: message.artifact, text: '正在核对学习材料…',
+  }
+  return { ...message, streaming: false, stageLabel: undefined }
+}
+
 export function useMessengerChatSessions() {
   const auth = useAuthStore()
   const sessions = ref<MessengerChatSession[]>([])
@@ -57,9 +68,10 @@ export function useMessengerChatSessions() {
       if (raw) {
         const parsed = JSON.parse(raw) as MessengerChatSession[]
         if (Array.isArray(parsed) && parsed.length) {
-          sessions.value = parsed.slice(0, MESSENGER_SESSION_LIMIT)
+          sessions.value = parsed.slice(0, MESSENGER_SESSION_LIMIT).map(s => ({...s, messages: (Array.isArray(s.messages) ? s.messages : []).map(persistedMessage)}))
           activeSessionId.value = sessions.value[0]?.id ?? ''
           hydrated.value = true
+          persist()
           return
         }
       }
@@ -119,11 +131,7 @@ export function useMessengerChatSessions() {
   function setSessionMessages(id: string, messages: PersistedChatMessage[]) {
     const session = sessions.value.find((s) => s.id === id)
     if (!session) return
-    session.messages = messages.map((m) => ({
-      ...m,
-      streaming: false,
-      stageLabel: undefined,
-    }))
+    session.messages = messages.map(persistedMessage)
     session.updatedAt = Date.now()
     session.lastActiveAt = Date.now()
     persist()

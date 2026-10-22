@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from typing import Any
+from flask import current_app
 
 from app.data.knowledge_node_registry import (
     get_entry,
     kg_id_from_key,
     kg_id_from_star_path,
+    resolve_node_id,
 )
-from app.models import PersonalizedLearningResource, StudentProfile, TrialQuestion, User, db
+from app.models import PersonalizedLearningResource, StudentProfile, TrialQuestion, Trial, User, db
 from app.services.knowledge_graph import KnowledgeGraphService
 from app.services.learning_adaptation import LearningAdaptationService
 from app.services.mistake import MistakeService
@@ -31,7 +33,12 @@ from app.constants.star_path_unlock import MASTERY_THRESHOLD, UNLOCK_ALL
 
 class LearningPathService:
     @staticmethod
-    def _mastery_map(user_id: int) -> dict[str, dict]:
+    def _mastery_map(user_id: int, state_snapshot=None) -> dict[str, dict]:
+        if state_snapshot is not None:
+            return {resolve_node_id(c['concept_id']) or c['concept_id']: {
+                'status': 'unknown' if c['estimate'] is None else 'mastered' if c['estimate'] >= MASTERY_THRESHOLD else 'learning',
+                'mastery_score': c['estimate'],
+            } for c in state_snapshot['concepts']}
         user = db.session.get(User, user_id)
         if is_test_sandbox_user(user):
             topology = get_graph_store().get_topology()
@@ -60,7 +67,8 @@ class LearningPathService:
         if UNLOCK_ALL:
             return True
         for pre in prereq_map.get(node_id, []):
-            if mastery.get(pre, {}).get('mastery_score', 0) < MASTERY_THRESHOLD:
+            score = mastery.get(pre, {}).get('mastery_score')
+            if score is None or score < MASTERY_THRESHOLD:
                 return False
         return True
 
@@ -98,10 +106,11 @@ class LearningPathService:
         due_node_ids: set[str] | None = None,
     ) -> float:
         score = mastery.get(node_id, {}).get('mastery_score', 0.0)
-        gap = 1.0 - score
+        # Exploration priority for an unknown concept is not an ability estimate.
+        gap = .5 if score is None else 1.0 - score
         focus_bonus = 0.15 if focus_id and node_id == focus_id else 0.0
         related_bonus = 0.08 if focus_id and focus_id in get_graph_store().get_prerequisites(node_id) else 0.0
-        level_penalty = 0.05 if entry_level == 'intermediate' and score < 0.3 else 0.0
+        level_penalty = 0.05 if entry_level == 'intermediate' and (score is None or score < 0.3) else 0.0
         due_bonus = 0.12 if due_node_ids and node_id in due_node_ids else 0.0
         return gap + focus_bonus + related_bonus + due_bonus - level_penalty
 
@@ -148,11 +157,16 @@ class LearningPathService:
         ]
 
     @staticmethod
-    def _bind_trials(kg_id: str) -> list[dict]:
+    def _bind_trials(kg_id: str, user_id: int) -> list[dict]:
         entry = get_entry(kg_id)
         keys = list(entry.knowledge_keys) if entry else [kg_id]
+        user = db.session.get(User, user_id)
+        if not user or not user.class_id:
+            return []
         rows = (
-            TrialQuestion.query.filter(TrialQuestion.knowledge_key.in_(keys))
+            TrialQuestion.query.join(Trial, Trial.id == TrialQuestion.trial_id).filter(
+                TrialQuestion.knowledge_key.in_(keys), Trial.class_id == user.class_id,
+                Trial.status.in_(['running', 'ended']))
             .order_by(TrialQuestion.sort_order.asc())
             .limit(3)
             .all()
@@ -203,20 +217,42 @@ class LearningPathService:
         user_id: int,
         focus_node_id: str | None = None,
         diagnosis_payload: dict | None = None,
+        state_snapshot: dict | None = None,
     ) -> dict[str, Any]:
         topology = get_graph_store().get_topology()
         nodes_base = topology.get('nodes', [])
         node_ids = [n['id'] for n in nodes_base]
-        mastery = cls._mastery_map(user_id)
+        evidence_mode = current_app.config.get('LEARNER_STATE_READ_MODE', 'shadow') == 'evidence'
+        if evidence_mode and state_snapshot is None:
+            from app.services.learner_state import LearnerStateService
+            state_snapshot = LearnerStateService.snapshot(user_id)
+        if not evidence_mode:
+            state_snapshot = None
+        mastery = cls._mastery_map(user_id, state_snapshot)
+        if evidence_mode:
+            for nid in node_ids:
+                mastery.setdefault(nid, {'status': 'unknown', 'mastery_score': None})
         prereq_map = cls._prerequisite_map()
         focus_id = cls._resolve_focus(focus_node_id)
-        if diagnosis_payload:
+        if diagnosis_payload and not evidence_mode:
             weak = diagnosis_payload.get('weakPoints') or diagnosis_payload.get('weak_points') or []
             if weak and not focus_id:
                 focus_id = kg_id_from_key(str(weak[0]))
 
-        remediation_paths = cls._build_remediation_paths(user_id, mastery)
-        due_node_ids = cls._due_node_ids(user_id)
+        decision = None
+        if evidence_mode:
+            from app.services.learner_decision import LearnerDecisionService
+            decision = LearnerDecisionService.from_snapshot(state_snapshot, focus_concept=focus_id)
+            focus_id = decision['concept_id'] or focus_id
+            remediation_paths = []
+            if decision['basis'] in ('repeated_candidate', 'confirmed_misconception', 'formal_evidence'):
+                remediation_paths = [{'trigger_node': focus_id, 'knowledge_key': focus_id,
+                    'steps': [decision['hint']['action'], decision['next_exercise']['action'], decision['review']['action']],
+                    'state_version': decision['state_version'], 'evidence_ids': decision['evidence_ids']}]
+            due_node_ids = {focus_id} if decision['basis'] == 'review_due' and focus_id else set()
+        else:
+            remediation_paths = cls._build_remediation_paths(user_id, mastery)
+            due_node_ids = cls._due_node_ids(user_id)
 
         # 星轨要把注册表中的节点全部铺出来：既然已经取消解锁限制，学生可以任意跳转，
         # 路径就不该只列"还没掌握的"那几个（全掌握时原来只会剩 5 个兜底节点）。
@@ -233,6 +269,8 @@ class LearningPathService:
             scored.append((cls._nba_score(nid, mastery, focus_id, entry.level if entry else 'basic', due_node_ids), nid))
         scored.sort(key=lambda item: (-item[0], position[item[1]]))
         ordered_ids = [nid for _, nid in scored] or node_ids
+        if decision and focus_id in ordered_ids:
+            ordered_ids = [focus_id] + [nid for nid in ordered_ids if nid != focus_id]
 
         ordered_nodes: list[dict] = []
         for index, nid in enumerate(ordered_ids):
@@ -246,15 +284,17 @@ class LearningPathService:
                 'star_path_id': entry.star_path_id if entry else base.get('star_path_id'),
                 'label': base.get('label', entry.label if entry else nid),
                 'order_index': index,
-                'status': m.get('status', 'unlearned'),
-                'mastery_score': m.get('mastery_score', 0.0),
+                'status': m.get('status', 'unknown' if evidence_mode else 'unlearned'),
+                'mastery_score': m.get('mastery_score', None if evidence_mode else 0.0),
+                'state_version': state_snapshot['state_version'] if evidence_mode else None,
+                'state_source': 'evidence' if evidence_mode else 'legacy',
                 'locked': locked,
                 'prerequisites_met': prereqs_met,
                 'prerequisites': prereq_map.get(nid, []),
                 'difficulty': entry.level if entry else base.get('level', 'basic'),
                 'default_difficulty': entry.default_difficulty if entry else 1,
                 'recommended_resources': cls._bind_resources(user_id, nid),
-                'recommended_trials': cls._bind_trials(nid),
+                'recommended_trials': cls._bind_trials(nid, user_id),
                 'remediation': next(
                     (r for r in remediation_paths if r['trigger_node'] == nid),
                     None,
@@ -262,11 +302,13 @@ class LearningPathService:
             })
 
         active_node = next(
-            (n['id'] for n in ordered_nodes if not n['locked'] and n['mastery_score'] < MASTERY_THRESHOLD),
+            (n['id'] for n in ordered_nodes if not n['locked'] and (n['mastery_score'] is None or n['mastery_score'] < MASTERY_THRESHOLD)),
             ordered_nodes[0]['id'] if ordered_nodes else None,
         )
+        if decision and focus_id and any(n['id'] == focus_id and not n['locked'] for n in ordered_nodes):
+            active_node = focus_id
         active_entry = next((n for n in ordered_nodes if n['id'] == active_node), None)
-        nba_reason = (
+        nba_reason = decision['reason'] if decision else (
             f'前置已满足，掌握度 {int((active_entry or {}).get("mastery_score", 0) * 100)}%，'
             f'建议进入难度带 [0.4, 0.6]'
             if active_entry and active_entry.get('prerequisites_met')
@@ -282,10 +324,15 @@ class LearningPathService:
                 'node_id': active_node,
                 'reason': nba_reason,
                 'action': 'practice' if active_entry and not active_entry.get('locked') else 'review',
+                'state_version': state_snapshot['state_version'] if evidence_mode else None,
+                'evidence_ids': decision['evidence_ids'] if decision else [],
             },
             'remediation_paths': remediation_paths,
             'graph_backend': graph_backend_name(),
             'topology_source': topology.get('source', 'memory'),
+            'state_source': 'evidence' if evidence_mode else 'legacy',
+            'state_version': state_snapshot['state_version'] if evidence_mode else None,
+            'learning_decision': decision,
         }
 
     @classmethod
@@ -296,17 +343,19 @@ class LearningPathService:
 
         plan = cls.plan(user_id, focus_node_id=focus_node_id)
         nodes = plan.get('ordered_nodes') or []
-        weak = [n for n in nodes if (n.get('mastery_score') or 0) < 0.75][:6]
+        weak = [n for n in nodes if n.get('mastery_score') is not None and n['mastery_score'] < 0.75][:6]
         strong = [n for n in nodes if (n.get('mastery_score') or 0) >= 0.75][:3]
         nba = plan.get('next_best_action') or {}
 
         def _fmt(items: list[dict]) -> str:
             return '、'.join(
-                f"{item.get('label')}({int((item.get('mastery_score') or 0) * 100)}%)"
+                f"{item.get('label')}（证据估计 {int(item['mastery_score'] * 100)}%，未校准）"
                 for item in items
             ) or '暂无'
 
         fallback = {
+            'state_version': plan.get('state_version'),
+            'learning_decision': plan.get('learning_decision'),
             'advice': (
                 f"建议优先巩固：{_fmt(weak)}。"
                 f"当前下一步：{nba.get('reason') or '按星轨顺序推进'}。"
@@ -382,6 +431,8 @@ class LearningPathService:
                 return fallback
             return {
                 'advice': advice,
+                'state_version': plan.get('state_version'),
+                'learning_decision': plan.get('learning_decision'),
                 'next_step': next_step or advice[:80],
                 'backend': 'deepseek',
                 'fallback': False,

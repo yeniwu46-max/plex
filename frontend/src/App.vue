@@ -5,9 +5,13 @@ import { destroyActiveTour } from './composables/usePlexTour'
 import { NConfigProvider, NMessageProvider, darkTheme, zhCN, dateZhCN } from 'naive-ui'
 import { getPlexNaiveOverrides } from './theme/plexTokens'
 import { useThemeStore, type PlexPersona } from './stores/theme'
+import { useAuthStore } from './stores/auth'
 
 const route = useRoute()
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
+watch(() => [authStore.profile?.id, authStore.profile?.preferences] as const,
+  ([id, preferences]) => themeStore.bindAccount(id ?? null, preferences), { immediate: true })
 
 const currentTheme = computed(() => (themeStore.isDark ? darkTheme : null))
 const themeOverrides = computed(() =>
@@ -58,13 +62,18 @@ watch(() => themeStore.visualStyle, () => destroyActiveTour())
   >
     <n-message-provider>
       <div class="app-root">
-        <router-view />
+        <div v-if="themeStore.preferenceError" role="status" class="appearance-sync-notice">
+          {{ themeStore.preferenceError }} <button type="button" @click="themeStore.persistAppearance">重试同步</button>
+        </div>
+        <router-view :key="authStore.profile?.id ?? 'guest'" />
       </div>
     </n-message-provider>
   </n-config-provider>
 </template>
 
 <style scoped>
+.appearance-sync-notice { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; max-width: calc(100vw - 32px); width: max-content; padding: 12px 18px; background: #11263a; color: #eef7ff; border: 1px solid #f6cd68; border-radius: 12px; }
+.appearance-sync-notice button { color: #55eee9; background: transparent; border: 0; text-decoration: underline; cursor: pointer; }
 .app-root {
   height: 100%;
   min-height: 100%;

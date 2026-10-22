@@ -38,7 +38,7 @@ onMounted(() => {
   >
     <router-view v-slot="{ Component }">
       <!-- KeepAlive 始终挂载，避免进出出题页时整表缓存被销毁 -->
-      <keep-alive :max="6" :exclude="['TeacherTrialCreateView']">
+      <keep-alive :max="6" :exclude="['TeacherTrialCreateView', 'TeacherCounterexampleView']">
         <component :is="Component" :key="pageKey" />
       </keep-alive>
     </router-view>

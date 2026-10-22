@@ -1,6 +1,7 @@
 """学生星轨 / 探索档案聚合（由试炼、委托、积分推导）"""
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from flask import current_app
 
 from app.constants.star_path_unlock import (
     DOMAIN_COMPLETE_PROGRESS,
@@ -183,6 +184,9 @@ class StudentProgressService:
             'next_best_action': path_plan.get('next_best_action'),
             'remediation_paths': path_plan.get('remediation_paths', []),
             'graph_backend': path_plan.get('graph_backend'),
+            'state_version': path_plan.get('state_version'),
+            'state_source': path_plan.get('state_source'),
+            'learning_decision': path_plan.get('learning_decision'),
             'question_ac_status': StudentProgressService._question_ac_status(user_id, user),
         }
 
@@ -228,7 +232,30 @@ class StudentProgressService:
                 }
             )
 
-        if not any(item['percent'] > 0 for item in skills):
+        evidence_mode = current_app.config.get('LEARNER_STATE_READ_MODE', 'shadow') == 'evidence'
+        state_version = None
+        if evidence_mode:
+            from app.services.learner_state import LearnerStateService
+            from app.data.knowledge_node_registry import get_entry, resolve_node_id
+
+            snapshot = LearnerStateService.snapshot(user_id)
+            state_version = snapshot['state_version']
+            observed = defaultdict(list)
+            for concept in snapshot['concepts']:
+                entry = get_entry(resolve_node_id(concept['concept_id']) or concept['concept_id'])
+                if entry and concept['estimate'] is not None:
+                    observed[entry.domain_key].append(concept)
+            skills = []
+            for domain in DOMAIN_CATALOG:
+                concepts = observed[domain['key']]
+                skills.append({
+                    'key': domain['key'], 'label': domain['title'],
+                    'percent': round(100 * sum(c['estimate'] for c in concepts) / len(concepts)) if concepts else None,
+                    'observed_concepts': len(concepts),
+                    'total_concepts': len(nodes_for_domain(domain['key'])),
+                    'formal_attempts': sum(c['independent_count'] + c['assisted_count'] for c in concepts),
+                })
+        elif not any(item['percent'] > 0 for item in skills):
             level_boost = min(30, (user.level or 1) * 4)
             for index, item in enumerate(skills):
                 item['percent'] = max(0, min(100, level_boost // (index + 2)))
@@ -256,7 +283,9 @@ class StudentProgressService:
 
         return {
             'tendency': {'label': label, 'description': desc},
-            'skills': skills[:7],
+            'skills': skills,
+            'state_source': 'evidence' if evidence_mode else 'legacy',
+            'state_version': state_version,
             'stats': {
                 'completed_trials': trial_count,
                 'completed_daily_quests': completed_q,

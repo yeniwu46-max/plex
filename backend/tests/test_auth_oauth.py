@@ -76,6 +76,7 @@ class AuthOAuthTestCase(unittest.TestCase):
         profile_response.json.return_value = {
             'sub': 'google-123',
             'email': 'google-user@example.com',
+            'email_verified': True,
             'name': 'Google User',
             'picture': 'https://example.com/avatar.png',
         }

@@ -1,4 +1,6 @@
 """数据库模型"""
+from .learner_state import LearningEvent, LearnerState, LearnerConceptState, LearnerStateChange, TutorDisplayReceipt
+from .learner_misconception import LearnerMisconception, LearnerMisconceptionEvidence
 from .base import BaseModel, db
 
 from .user import User
@@ -41,7 +43,24 @@ from .knowledge_document import KnowledgeDocument, KnowledgeChunk, KnowledgeInde
 from .rag_query_log import RagQueryLog
 from .store import StoreProduct, StoreProductProblem, UserEntitlement, UserChallengeProgress, StoreOrder
 
+from .auth_security import AuthSessionState, AuthToken, AuthRateLimit, OAuthIdentity
+from .onboarding import StudentOnboarding, AdventurerCounter, UserAppearance
+from .tutor_context import TutorCodeRun
+from .tutor_session import TutorSession, TutorTurn
+from .counterexample import (CounterexampleSpec, CounterexampleChallenge, CounterexampleVersion,
+    CounterexampleValidation, CounterexampleAttempt, CounterexampleExplanationReview, CounterexampleGenerationTask,
+    CounterexampleGenerationCall)
+
+from .ai_runtime import AiRuntimeLock, TutorRequestAttempt, TutorRequestCancellation, AiModelCall
+from .rag_runtime import RagRequest, RagRequestAttempt
+
 __all__ = [
+    'CounterexampleSpec', 'CounterexampleChallenge', 'CounterexampleVersion', 'CounterexampleValidation',
+    'CounterexampleAttempt', 'CounterexampleExplanationReview', 'CounterexampleGenerationTask', 'CounterexampleGenerationCall',
+    'LearnerMisconception', 'LearnerMisconceptionEvidence',
+    'LearningEvent', 'LearnerState', 'LearnerConceptState', 'LearnerStateChange', 'TutorDisplayReceipt',
+    'StudentOnboarding', 'AdventurerCounter', 'UserAppearance',
+    'AuthSessionState', 'AuthToken', 'AuthRateLimit', 'OAuthIdentity',
     'db',
     'BaseModel',
     'User',
@@ -96,3 +115,5 @@ __all__ = [
     'UserChallengeProgress',
     'StoreOrder',
 ]
+
+from .student_practice import PracticeAttempt, QuestionFavorite, MockExam

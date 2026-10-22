@@ -1,0 +1,110 @@
+"""Server-owned wrapper. This entire file runs inside the isolated container."""
+import builtins
+import hashlib
+import json
+import itertools
+import sys
+
+# __PLEX_INPUT__
+
+class TraceStepLimit(Exception):
+    pass
+
+class TraceOutputLimit(Exception):
+    pass
+
+class CapturedOutput:
+    def __init__(self):
+        self.data = b''
+    def write(self, text):
+        data = text.encode('utf-8', errors='replace')
+        remaining = 4096 - len(self.data)
+        self.data += data[:max(0, remaining)]
+        if len(data) > remaining:
+            raise TraceOutputLimit()
+        return len(text)
+    def flush(self):
+        pass
+
+output = CapturedOutput()
+
+def safe_print(*values, sep=' ', end='\n'):
+    builtins.print(*values, sep=sep, end=end, file=output)
+
+def safe_input(prompt=''):
+    safe_print(prompt, end='')
+    text = sys.stdin.readline()
+    if not text:
+        raise EOFError('EOF when reading a line')
+    return text.rstrip('\n').rstrip('\r')
+
+def preview(value, depth=0, seen=None):
+    seen = set() if seen is None else seen
+    kind = type(value)
+    if kind is int:
+        return str(value) if value.bit_length() <= 256 else '<large integer>'
+    if kind in (bool, type(None), float):
+        return repr(value)
+    if kind in (str, bytes):
+        text = repr(value[:60])
+        return text + ('…' if len(value) > 60 else '')
+    if kind in (list, tuple, dict, set):
+        if id(value) in seen: return '<cycle>'
+        if depth >= 2: return '<' + kind.__name__ + '>'
+        seen = seen | {id(value)}
+        if kind is dict:
+            values = list(itertools.islice(value.items(), 4))
+            text = ', '.join(preview(k, depth+1, seen) + ': ' + preview(v, depth+1, seen) for k,v in values)
+            start, end = '{', '}'
+        else:
+            values = list(itertools.islice(value, 4))
+            text = ', '.join(preview(v, depth+1, seen) for v in values)
+            start, end = ('[', ']') if kind is list else ('(', ')') if kind is tuple else ('{', '}')
+        return start + text + (', …' if len(value) > 4 else '') + end
+    return '<value preview unavailable>'
+
+def snapshot(namespace):
+    present = [name for name in NAMES if name in namespace]
+    result = {}
+    for name in present[:6]:
+        candidate = {**result, name: preview(namespace[name])[:140]}
+        if len(json.dumps(candidate, ensure_ascii=False).encode('utf-8')) > 500:
+            break
+        result = candidate
+    return {'values':result, 'omitted':len(present)-len(result)}
+
+steps = []
+last_line = 1
+
+def trace(frame, event, arg):
+    global last_line
+    if frame.f_code.co_filename == '<plex-trace-input>' and event == 'line':
+        last_line = frame.f_lineno
+        if len(steps) >= MAX_STEPS:
+            raise TraceStepLimit()
+        steps.append({'line':last_line, 'variables':snapshot(frame.f_locals)})
+    return trace
+
+allowed = {name:getattr(builtins, name) for name in ALLOWED_CALLS}
+allowed.update(print=safe_print, input=safe_input)
+namespace = {'__builtins__':allowed}
+outcome, error_type, error_message = 'completed', '', ''
+try:
+    program = compile(SOURCE, '<plex-trace-input>', 'exec')
+    sys.settrace(trace)
+    exec(program, namespace, namespace)
+except TraceStepLimit:
+    outcome = 'step_limit'
+except TraceOutputLimit:
+    outcome = 'output_limit'
+except Exception as exc:
+    outcome, error_type, error_message = 'runtime_error', type(exc).__name__, str(exc)[:300]
+finally:
+    sys.settrace(None)
+report = {'policy':POLICY, 'nonce':NONCE,
+    'source_sha256':hashlib.sha256(SOURCE.encode('utf-8')).hexdigest(),
+    'python_version':sys.version.split()[0], 'outcome':outcome, 'steps':steps,
+    'final_variables':snapshot(namespace), 'last_line':last_line,
+    'stdout':output.data.decode('utf-8', errors='ignore'),
+    'error_type':error_type, 'error_message':error_message}
+print(json.dumps(report, ensure_ascii=False, separators=(',', ':'), allow_nan=False))

@@ -110,7 +110,7 @@ const {
 .teacher-toolbar__filter :deep(.n-base-selection),
 .teacher-toolbar__class :deep(.n-base-selection) {
   --n-height: 52px !important;
-  --n-color: rgba(4, 15, 25, 0.72) !important;
+  --n-color: var(--plex-bg-input) !important;
   --n-border: 1px solid var(--teacher-border, rgba(130, 212, 255, 0.12)) !important;
   --n-border-hover: 1px solid rgba(255, 145, 31, 0.45) !important;
   --n-text-color: var(--teacher-text, #fff7ed) !important;
@@ -149,7 +149,7 @@ const {
 
 .teacher-toolbar__refresh {
   flex-shrink: 0;
-  color: #fed7aa !important;
+  color: var(--teacher-text) !important;
 }
 
 @media (max-width: 1280px) {
@@ -161,19 +161,22 @@ const {
 
 @media (max-width: 760px) {
   .teacher-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    margin-inline: 1rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    margin-inline: 0;
   }
 
   .teacher-toolbar__class,
-  .teacher-toolbar__filter,
-  .teacher-toolbar__activity {
+  .teacher-toolbar__filter {
     width: 100%;
     min-width: 0;
   }
 
   .teacher-toolbar__activity {
+    flex: 1 1 200px;
+    width: auto;
+    min-width: 0;
     padding-left: 0;
     border-left: 0;
   }

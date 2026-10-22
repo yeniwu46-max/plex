@@ -30,7 +30,9 @@ def sse_headers() -> dict:
     return {
         'Cache-Control': 'no-cache, no-transform',
         'X-Accel-Buffering': 'no',
-        'Connection': 'keep-alive',
+        # Connection lifetime belongs to the WSGI server/proxy. Advertising
+        # keep-alive here conflicts with Werkzeug's own Connection: close and
+        # can strand a reused client's next request in the server's drain loop.
         'Content-Type': 'text/event-stream; charset=utf-8',
     }
 

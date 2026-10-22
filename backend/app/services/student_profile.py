@@ -51,8 +51,9 @@ class StudentProfileService:
         return {'value': None, 'confidence': 0.0, 'evidence': [], 'source': 'conversation'}
 
     @staticmethod
-    def get_or_create(user_id: int, persist: bool = False) -> StudentProfile:
-        row = StudentProfile.query.filter_by(user_id=user_id).first()
+    def get_or_create(user_id: int, persist: bool = False, *, commit: bool = True) -> StudentProfile:
+        query = StudentProfile.query.filter_by(user_id=user_id)
+        row = (query.populate_existing().with_for_update() if not commit else query).first()
         if row:
             return row
         row = StudentProfile(
@@ -63,7 +64,10 @@ class StudentProfileService:
         )
         if persist:
             db.session.add(row)
-            db.session.commit()
+            if commit:
+                db.session.commit()
+            else:
+                db.session.flush()
         return row
 
     @staticmethod
@@ -182,37 +186,37 @@ class StudentProfileService:
         return changes
 
     @staticmethod
-    def update_from_sm2_review(user_id: int, mistake_record: dict, quality: int) -> dict:
+    def update_from_sm2_review(user_id: int, mistake_record: dict, quality: int, *, commit: bool = True) -> dict:
         """Persist spaced-review evidence into the dynamic learner profile."""
         schedule = mistake_record.get('review_schedule') or {}
         repetitions = int(schedule.get('repetitions') or 0)
         label = mistake_record.get('knowledge_label') or mistake_record.get('knowledge_key') or '当前知识点'
         evidence = [
-            f'SM-2 复习质量 {quality}/5',
+            f'用户自评 SM-2 回忆质量 {quality}/5，未经测验验证',
             f'连续成功复习轮次 {repetitions}',
             f'下一次复习时间 {schedule.get("due_at") or "待安排"}',
         ]
         if quality < 3:
-            foundation = f'「{label}」复习未通过，需要按计划重新学习'
+            foundation = f'用户自评「{label}」回忆困难，待练习验证'
             state = '需要支持：本轮回忆不稳定，已安排次日复习'
         elif repetitions >= 2:
-            foundation = f'「{label}」已通过两轮及以上间隔复习，掌握表现稳定'
+            foundation = f'用户自评「{label}」连续 {repetitions} 轮回忆顺利，待练习验证'
             state = '复习状态稳定，可继续下一知识点并按期回顾'
         else:
-            foundation = f'「{label}」已通过首轮复习，仍需继续间隔巩固'
+            foundation = f'用户自评「{label}」首轮回忆顺利，待练习验证'
             state = '本轮复习通过，等待下一次间隔复习验证'
         return StudentProfileService.apply_changes(
             user_id,
             {
                 'knowledge_foundation': StudentProfileService._dimension(
-                    foundation, evidence, 0.92, 'behavior'
+                    foundation, evidence, 0.6, 'self_report'
                 ),
                 'cognitive_state': StudentProfileService._dimension(
-                    state, evidence, 0.88, 'behavior'
+                    state, evidence, 0.6, 'self_report'
                 ),
             },
             'sm2_review',
-            'local_rules',
+            'local_rules', commit=commit,
         )
 
     @staticmethod
@@ -404,8 +408,8 @@ class StudentProfileService:
         return '\n'.join(lines)
 
     @staticmethod
-    def apply_changes(user_id: int, changes: dict, reason: str, backend: str = 'manual') -> dict:
-        row = StudentProfileService.get_or_create(user_id, persist=True)
+    def apply_changes(user_id: int, changes: dict, reason: str, backend: str = 'manual', *, commit: bool = True) -> dict:
+        row = StudentProfileService.get_or_create(user_id, persist=True, commit=commit)
         dimensions = dict(row.dimensions or {})
         normalized = {}
         for key, raw in changes.items():
@@ -440,7 +444,10 @@ class StudentProfileService:
             reason=reason,
             backend=backend,
         ))
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return row.to_dict()
 
     @staticmethod

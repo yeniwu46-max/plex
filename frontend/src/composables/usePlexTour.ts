@@ -25,6 +25,7 @@ const TOUR_CONFIGS: Record<TourRole, TourStepConfig[]> = {
 }
 
 let activeDriver: ReturnType<typeof driver> | null = null
+let stopFollowing: (() => void) | null = null
 
 function lsGet(key: string): string | null {
   try {
@@ -56,6 +57,8 @@ function cleanupDriverDom() {
 
 /** 强制销毁导览，避免遮罩残留阻塞页面点击 */
 export function destroyActiveTour() {
+  stopFollowing?.()
+  stopFollowing = null
   if (activeDriver) {
     try {
       activeDriver.destroy()
@@ -65,10 +68,7 @@ export function destroyActiveTour() {
     activeDriver = null
   }
   cleanupDriverDom()
-}
-
-function filterExistingSteps(steps: TourStepConfig[]): TourStepConfig[] {
-  return steps.filter((step) => document.querySelector(step.element))
+  document.dispatchEvent(new Event('plex:tour-change'))
 }
 
 async function runStepPrepare(
@@ -149,7 +149,7 @@ export function usePlexTour() {
 
     await runStepPrepare(router, allSteps[0])
 
-    const validSteps = filterExistingSteps(allSteps)
+    const validSteps = allSteps
     if (!validSteps.length) {
       markTourSeen(role)
       return
@@ -160,10 +160,10 @@ export function usePlexTour() {
 
     try {
       const driverInstance = driver({
-        animate: true,
+        animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
         showProgress: false,
         allowClose: true,
-        overlayOpacity: 0.72,
+        overlayOpacity: 0.35,
         stagePadding: 6,
         stageRadius: 8,
         nextBtnText: '下一步',
@@ -194,13 +194,12 @@ export function usePlexTour() {
             `,
           },
         })),
-        onHighlightStarted: async (_element, _step, options) => {
-          const idx = options.state.activeIndex ?? 0
-          await runStepPrepare(router, validSteps[idx])
-        },
         onDestroyed: () => {
+          stopFollowing?.()
+          stopFollowing = null
           activeDriver = null
           cleanupDriverDom()
+          document.dispatchEvent(new Event('plex:tour-change'))
           if (neverShowHandler) {
             document.removeEventListener('click', neverShowHandler)
             neverShowHandler = null
@@ -213,7 +212,7 @@ export function usePlexTour() {
           }
           finishTour(role, d)
         },
-        onNextClick: (_element, _step, { driver: d, state }) => {
+        onNextClick: async (_element, _step, { driver: d, state }) => {
           const idx = state.activeIndex ?? 0
           if (idx >= total - 1) {
             if ((window as Window & { __plexTourNeverShow?: boolean }).__plexTourNeverShow) {
@@ -222,12 +221,10 @@ export function usePlexTour() {
             }
             finishTour(role, d)
           } else {
-            d.moveNext()
+            await goTo((state.activeIndex ?? 0) + 1)
           }
         },
-        onPrevClick: (_element, _step, { driver: d }) => {
-          d.movePrevious()
-        },
+        onPrevClick: (_element, _step, { state }) => { void goTo(Math.max(0, (state.activeIndex ?? 0) - 1)) },
         onDestroyStarted: () => {
           if ((window as Window & { __plexTourNeverShow?: boolean }).__plexTourNeverShow) {
             markNeverShow(role)
@@ -237,10 +234,67 @@ export function usePlexTour() {
       })
 
       activeDriver = driverInstance
-      driverInstance.drive()
+      let moving = false
+      let refreshFrame = 0
+      const refresh = () => {
+        if (!moving && activeDriver === driverInstance && !refreshFrame) {
+          refreshFrame = requestAnimationFrame(() => { refreshFrame = 0; driverInstance.refresh() })
+        }
+      }
+      const targetResize = new ResizeObserver(refresh)
+      document.addEventListener('scroll', refresh, { passive: true, capture: true })
+      window.addEventListener('resize', refresh)
+      const removeRouteListener = router.afterEach(() => { if (!moving) destroyActiveTour() })
+      stopFollowing = () => {
+        targetResize.disconnect(); cancelAnimationFrame(refreshFrame)
+        document.removeEventListener('scroll', refresh, true)
+        window.removeEventListener('resize', refresh)
+        removeRouteListener()
+      }
+      async function goTo(index: number) {
+        if (moving) return
+        moving = true
+        try {
+          await runStepPrepare(router, validSteps[index])
+          targetResize.disconnect()
+          let target: Element | null = null
+          for (let n=0; n<40; n++) {
+            if (activeDriver !== driverInstance) return
+            target = document.querySelector(validSteps[index]!.element)
+            if (target && target.getBoundingClientRect().height > 0 && target.getBoundingClientRect().width > 0) break
+            target = null
+            await delay(100)
+          }
+          if (activeDriver !== driverInstance) return
+          if (target) {
+            target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' })
+            await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+            if (activeDriver !== driverInstance) return
+            targetResize.observe(target)
+          }
+          const rect = target?.getBoundingClientRect()
+          const side: 'left' | 'right' | 'top' | 'bottom' = !rect ? 'bottom'
+            : innerWidth - rect.right >= 350 ? 'right'
+            : rect.left >= 350 ? 'left'
+            : innerHeight - rect.bottom >= 230 ? 'bottom' : rect.top >= 230 ? 'top' : 'bottom'
+          const steps = validSteps.map((step, i) => ({
+            element: i === index && !target ? undefined : step.element,
+            popover: {side, align: 'start' as const, title: `${i+1} / ${total} · ${step.title}`, description: i === index && !target
+              ? '模块尚未加载。<button id="plex-tour-retry" type="button">重试</button>，或点击下一步跳过。'
+              : `${step.description}${i === total-1 ? '<p><button id="plex-tour-never" type="button">不再提示</button></p>' : ''}`}
+          }))
+          // setSteps resets Driver's DOM references; across routes this leaves
+          // the old popover behind. Keep state while replacing the step config.
+          driverInstance.setConfig({ ...driverInstance.getConfig(), steps })
+          driverInstance.drive(index)
+          document.dispatchEvent(new Event('plex:tour-change'))
+        } finally { moving = false }
+      }
+      await goTo(0)
 
       neverShowHandler = (e: MouseEvent) => {
         const target = e.target as HTMLElement
+        if (target.id === 'plex-tour-retry') void goTo(driverInstance.getActiveIndex() ?? 0)
         if (target.id === 'plex-tour-never') {
           ;(window as Window & { __plexTourNeverShow?: boolean }).__plexTourNeverShow = true
           markNeverShow(role)
@@ -251,7 +305,6 @@ export function usePlexTour() {
     } catch (err) {
       console.warn('[PlexTour] 导览初始化失败，已忽略', err)
       destroyActiveTour()
-      markTourSeen(role)
     }
   }
 

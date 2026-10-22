@@ -14,6 +14,10 @@ _SAFE_NAME = re.compile(r'^[A-Za-z0-9._-]+$')
 def get_media(category: str, filename: str):
     if not _SAFE_NAME.match(category) or not _SAFE_NAME.match(filename):
         abort(404)
+    from app.models.personalized_resource import PersonalizedLearningResource
+    references = PersonalizedLearningResource.query.filter_by(content_url=f'/api/v1/media/{category}/{filename}').all()
+    if references and all(row.deleted_at for row in references):
+        abort(410)
     directory = MEDIA_ROOT / category
     if not directory.is_dir():
         abort(404)

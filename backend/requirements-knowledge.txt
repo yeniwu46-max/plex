@@ -1,0 +1,7 @@
+# Optional persistent Chroma backend. Version 1.1.1 cannot open the schema-10
+# index shipped by newer Chroma runtimes. Verify a copy before any upgrade.
+-r requirements.txt
+chromadb==1.5.9
+
+# PDF coordinates, layout extraction and conservative repeated-margin cleanup.
+pdfplumber==0.11.10

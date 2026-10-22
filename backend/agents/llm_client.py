@@ -166,6 +166,10 @@ def _extract_json(text: str) -> dict[str, Any] | None:
         return None
 
 
+class LLMCallError(RuntimeError):
+    """Safe machine-readable failure; never includes provider bodies or credentials."""
+
+
 def chat_json(
     *,
     system: str,
@@ -175,10 +179,13 @@ def chat_json(
     provider: tuple[str, str, str] | None = None,
     temperature: float = 0.4,
     force_json_object: bool = False,
+    raise_on_error: bool = False,
 ) -> dict[str, Any] | None:
     """调用 LLM 并解析 JSON 对象响应。"""
     provider = provider or llm_provider()
     if not provider:
+        if raise_on_error:
+            raise LLMCallError('llm_not_available')
         return None
     api_key, endpoint, model = provider
     payload: dict[str, Any] = {
@@ -202,11 +209,23 @@ def chat_json(
             json=payload,
             timeout=timeout,
         )
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            raise LLMCallError(f'llm_http_{resp.status_code}')
         data = resp.json()
-        content = data['choices'][0]['message']['content']
-        return _extract_json(content)
-    except Exception:
+        choice = data['choices'][0]
+        if choice.get('finish_reason') == 'length':
+            raise LLMCallError('llm_output_truncated')
+        content = choice['message']['content']
+        parsed = _extract_json(content)
+        if parsed is None:
+            raise LLMCallError('llm_json_invalid')
+        return parsed
+    except Exception as exc:
+        if raise_on_error:
+            if isinstance(exc, LLMCallError):
+                raise
+            code = 'llm_timeout' if isinstance(exc, requests.Timeout) else 'llm_connection_error' if isinstance(exc, requests.ConnectionError) else 'llm_response_invalid'
+            raise LLMCallError(code) from None
         return None
 
 

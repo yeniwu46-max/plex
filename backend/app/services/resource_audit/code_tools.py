@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from app.services.code_execution import CodeExecutionService
+from app.services.execution_errors import ExecutionUnavailable
 
 DEFAULT_TIMEOUT = 10
 _SUBPROCESS_KW = {
@@ -42,12 +43,12 @@ def _run_command(args: list[str], cwd: Path, timeout: int = DEFAULT_TIMEOUT) -> 
 
 def _tool_module(module: str) -> bool:
     try:
-        subprocess.run(
+        result = subprocess.run(
             [sys.executable, '-m', module, '--version'],
             timeout=5,
             **_SUBPROCESS_KW,
         )
-        return True
+        return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
@@ -74,7 +75,7 @@ def run_static_suite(sources: list[tuple[str, str]]) -> list[dict[str, Any]]:
     with tempfile.TemporaryDirectory(prefix='plex_audit_') as tmp:
         root = Path(tmp)
         for index, (label, source) in enumerate(sources):
-            path = root / f'{index}_{label}.py'
+            path = root / f'snippet_{index}.py'
             path.write_text(source, encoding='utf-8')
 
             comp = compile_python(source, label)
@@ -166,9 +167,14 @@ def run_runtime_checks(sources: list[tuple[str, str]]) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for label, source in sources:
         stripped = source.strip()
-        if not stripped or stripped.startswith('#'):
+        if not stripped:
             continue
-        run_result = CodeExecutionService.run('python3', stripped)
+        try:
+            run_result = CodeExecutionService.run('python3', stripped)
+        except ExecutionUnavailable:
+            results.append({'tool': 'execution_safety', 'file': label, 'level': 'FAIL',
+                            'detail': '隔离执行未完成，不能确认代码可运行；请恢复执行环境后重新审核'})
+            continue
         status_id = run_result.get('status', {}).get('id')
         if status_id == 3:
             level = 'PASS'
@@ -190,18 +196,20 @@ def run_runtime_checks(sources: list[tuple[str, str]]) -> list[dict[str, Any]]:
 def run_pytest_if_present(source: str, label: str) -> dict[str, Any] | None:
     if 'def test_' not in source:
         return None
-    if not _tool_module('pytest'):
-        return {
-            'tool': 'pytest',
-            'level': 'WARNING',
-            'detail': 'pytest 未安装，已跳过测试执行',
-        }
-    with tempfile.TemporaryDirectory(prefix='plex_pytest_') as tmp:
-        path = Path(tmp) / f'{label}.py'
-        path.write_text(source, encoding='utf-8')
-        result = _run_command([sys.executable, '-m', 'pytest', '-q', str(path)], Path(tmp))
-        return {
-            'tool': 'pytest',
-            'level': 'PASS' if result['passed'] else 'WARNING',
-            'detail': result['output'] or 'pytest 通过',
-        }
+    # Model-written tests are executable input, just like student programs.
+    wrapper = (
+        'import os, tempfile, pathlib, pytest\n'
+        'os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"\n'
+        'with tempfile.TemporaryDirectory() as work:\n'
+        '    path = pathlib.Path(work) / "test_candidate.py"\n'
+        f'    path.write_text({source!r}, encoding="utf-8")\n'
+        '    raise SystemExit(pytest.main(["-q", "-p", "no:cacheprovider", str(path)]))\n'
+    )
+    try:
+        result = CodeExecutionService.run('python', wrapper)
+    except ExecutionUnavailable:
+        return {'tool': 'pytest_safety', 'level': 'FAIL', 'detail': '隔离测试环境不可用，测试未执行'}
+    passed = result['status']['id'] == 3
+    return {'tool': 'pytest', 'level': 'PASS' if passed else 'FAIL',
+            'detail': ((result.get('stdout') or '') + (result.get('stderr') or ''))[:2000]
+                      or ('隔离测试通过' if passed else '隔离测试未通过')}

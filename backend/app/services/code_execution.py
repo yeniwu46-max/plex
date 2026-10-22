@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-"""代码执行：Mock / Judge0 / E2B 可切换。"""
+"""Isolated execution only. Infrastructure errors never become grades."""
 import os
-import subprocess
-import sys
-import tempfile
+import time
+import json
 import uuid
 import requests
+from flask import current_app, has_app_context
+
+from .execution_errors import ExecutionInputError, ExecutionUnavailable
 
 from app.utils.time import utc_now
 
@@ -119,12 +121,28 @@ class CodeExecutionService:
         return ''.join(result)
 
     @staticmethod
-    def backend_name() -> str:
-        if os.getenv('JUDGE0_API_URL', '').strip():
-            return 'judge0'
-        if os.getenv('E2B_API_KEY', '').strip() and os.getenv('CODE_EXECUTION_BACKEND', '').lower() == 'e2b':
-            return 'e2b'
-        return 'mock'
+    def _setting(name: str, default: str = '') -> str:
+        if has_app_context() and name in current_app.config:
+            return str(current_app.config[name])
+        return os.getenv(name, default)
+
+    @classmethod
+    def backend_name(cls) -> str:
+        selected = cls._setting('CODE_EXECUTION_BACKEND', 'auto').strip().lower()
+        if selected == 'auto':
+            return 'judge0' if cls._setting('JUDGE0_API_URL').strip() else 'disabled'
+        # The legacy "mock" and E2B process adapter do not meet the execution
+        # contract. They are deliberately disabled, never a host fallback.
+        return selected if selected in {'judge0', 'docker'} else 'disabled'
+
+    @classmethod
+    def capabilities(cls) -> dict:
+        backend = cls.backend_name()
+        from .python_trace import PythonTraceService
+        return {'trace': PythonTraceService.capabilities(), 'backend': backend, 'configured': backend != 'disabled',
+                'isolation_required': True, 'host_fallback': False,
+                'max_code_bytes': 65536, 'max_stdin_bytes': 65536,
+                'max_test_cases': 30}
 
     @staticmethod
     def wrap_python_case(code: str, setup: str = '', invoke: str = '', run_mode: str = 'stdout') -> str:
@@ -139,115 +157,44 @@ class CodeExecutionService:
 
     @staticmethod
     def _normalize_output(value) -> str:
-        return str(value or '').replace('\r\n', '\n').strip()
-
-    @staticmethod
-    def _mock_run(language: str, code: str, stdin: str = '') -> dict:
-        lang = language.lower()
-        token = str(uuid.uuid4())[:8]
-        if 'SyntaxError' in code:
-            return {
-                'token': token,
-                'status': {'id': 6, 'description': 'Compilation Error'},
-                'stdout': None,
-                'stderr': None,
-                'compile_output': 'SyntaxError: invalid syntax',
-                'time': '0.00',
-                'memory': 0,
-                'language': lang,
-                'backend': 'mock',
-            }
-        if lang in ('python', 'python3'):
-            return CodeExecutionService._mock_run_python(code, stdin, token, lang)
-        return {
-            'token': token,
-            'status': {'id': 6, 'description': 'Unsupported Language'},
-            'stdout': None,
-            'stderr': 'Only Python is supported',
-            'compile_output': None,
-            'time': '0.00',
-            'memory': 0,
-            'language': lang,
-            'backend': 'mock',
-        }
-
-    @staticmethod
-    def _mock_run_python(code: str, stdin: str, token: str, lang: str) -> dict:
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False, encoding='utf-8') as fh:
-            fh.write(code)
-            path = fh.name
-        try:
-            proc = subprocess.run(
-                [sys.executable, path],
-                input=stdin or '',
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if proc.returncode != 0:
-                err = (proc.stderr or proc.stdout or 'Runtime error').strip()
-                return {
-                    'token': token,
-                    'status': {'id': 11, 'description': 'Runtime Error (NZEC)'},
-                    'stdout': proc.stdout or '',
-                    'stderr': err,
-                    'compile_output': None,
-                    'time': '0.010',
-                    'memory': 4096,
-                    'language': lang,
-                    'backend': 'mock',
-                }
-            return {
-                'token': token,
-                'status': {'id': 3, 'description': 'Accepted'},
-                'stdout': proc.stdout,
-                'stderr': proc.stderr or '',
-                'compile_output': None,
-                'time': '{:.3f}'.format(0.01 + len(code) * 0.00005),
-                'memory': 4096 + len(code),
-                'language': lang,
-                'backend': 'mock',
-            }
-        except subprocess.TimeoutExpired:
-            return {
-                'token': token,
-                'status': {'id': 5, 'description': 'Time Limit Exceeded'},
-                'stdout': '',
-                'stderr': 'Execution timed out',
-                'compile_output': None,
-                'time': '5.000',
-                'memory': 4096,
-                'language': lang,
-                'backend': 'mock',
-            }
-        finally:
-            try:
-                os.unlink(path)
-            except OSError:
-                pass
+        return str(value if value is not None else '').replace('\r\n', '\n').strip()
 
     @staticmethod
     def _judge0_run(language: str, code: str, stdin: str = '') -> dict:
-        base = os.getenv('JUDGE0_API_URL', '').rstrip('/')
+        base = CodeExecutionService._setting('JUDGE0_API_URL').rstrip('/')
         lang_key = language.lower()
         lang_id = LANGUAGE_IDS.get(lang_key)
         if not lang_id:
             raise ValueError('unsupported language')
         headers = {'Content-Type': 'application/json'}
-        auth = os.getenv('JUDGE0_AUTH_TOKEN', '').strip()
+        auth = CodeExecutionService._setting('JUDGE0_AUTH_TOKEN').strip()
         if auth:
             headers['X-Auth-Token'] = auth
         payload = {
             'source_code': code,
             'language_id': lang_id,
             'stdin': stdin or '',
+            'cpu_time_limit': 3, 'wall_time_limit': 8,
+            'memory_limit': 131072, 'max_processes_and_or_threads': 32,
+            'max_file_size': 64, 'enable_network': False,
         }
-        resp = requests.post(f'{base}/submissions?base64_encoded=false&wait=true', json=payload, headers=headers, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
+        with requests.post(f'{base}/submissions?base64_encoded=false&wait=true',
+                           json=payload, headers=headers, timeout=(3, 12), stream=True) as resp:
+            resp.raise_for_status()
+            body = bytearray()
+            started = time.monotonic()
+            for chunk in resp.iter_content(4096):
+                body.extend(chunk)
+                if len(body) > 262144 or time.monotonic() - started > 15:
+                    raise ExecutionUnavailable('judge_response_limit')
+            data = json.loads(body)
         status_id = data.get('status', {}).get('id', 13)
+        if status_id not in {3, 4, 5, 6, 7, 8, 9, 10, 11, 12} or data.get('message'):
+            raise ExecutionUnavailable('judge_unfinished_or_failed')
+        if any(len(str(data.get(key) or '').encode('utf-8')) > 65536 for key in ('stdout', 'stderr', 'compile_output')):
+            raise ExecutionUnavailable('judge_output_limit')
         return {
-            'token': str(data.get('token', uuid.uuid4())[:8]),
+            'token': str(data.get('token') or uuid.uuid4()),
             'status': {
                 'id': status_id,
                 'description': data.get('status', {}).get('description') or JUDGE0_STATUS.get(status_id, 'Unknown'),
@@ -255,82 +202,62 @@ class CodeExecutionService:
             'stdout': data.get('stdout'),
             'stderr': data.get('stderr'),
             'compile_output': data.get('compile_output'),
-            'time': str(data.get('time') or '0.00'),
-            'memory': int(data.get('memory') or 0),
+            'time': data.get('time'),
+            'memory': data.get('memory'),
             'language': lang_key,
             'backend': 'judge0',
         }
 
-    @staticmethod
-    def _e2b_run(code: str, stdin: str = '') -> dict:
-        api_key = os.getenv('E2B_API_KEY', '').strip()
-        if not api_key:
-            raise RuntimeError('E2B_API_KEY not configured')
-        from e2b import Sandbox
-
-        token = str(uuid.uuid4())[:8]
-        sandbox = Sandbox(api_key=api_key)
-        try:
-            if stdin.strip():
-                wrapped = f"import sys\n_input = '''{stdin}'''\n" + code
-            else:
-                wrapped = code
-            proc = sandbox.process.start_and_wait(wrapped, timeout=10)
-            stdout = proc.stdout or ''
-            stderr = proc.stderr or ''
-            if proc.exit_code != 0:
-                return {
-                    'token': token,
-                    'status': {'id': 11, 'description': 'Runtime Error (NZEC)'},
-                    'stdout': stdout,
-                    'stderr': stderr or 'Runtime error',
-                    'compile_output': None,
-                    'time': '0.050',
-                    'memory': 8192,
-                    'language': 'python',
-                    'backend': 'e2b',
-                }
-            return {
-                'token': token,
-                'status': {'id': 3, 'description': 'Accepted'},
-                'stdout': stdout,
-                'stderr': stderr,
-                'compile_output': None,
-                'time': '0.050',
-                'memory': 8192,
-                'language': 'python',
-                'backend': 'e2b',
-            }
-        finally:
-            sandbox.kill()
-
     @classmethod
     def run(cls, language: str, code: str, stdin: str = '') -> dict:
-        lang = language.lower()
-        if lang not in LANGUAGE_IDS:
-            raise ValueError('unsupported language')
-        if lang in ('python', 'python3'):
-            code = cls.normalize_python_source(code)
+        if not isinstance(language, str) or language.lower() not in LANGUAGE_IDS:
+            raise ExecutionInputError('仅支持 Python')
+        for label, value in (('code', code), ('stdin', stdin)):
+            if not isinstance(value, str) or len(value.encode('utf-8')) > 65536:
+                raise ExecutionInputError(f'{label} 必须是最多 64 KiB 的文本')
+        if not code.strip():
+            raise ExecutionInputError('code 不能为空')
+        code = cls.normalize_python_source(code)
         backend = cls.backend_name()
-        if backend == 'judge0':
-            try:
+        try:
+            if backend == 'judge0':
                 return cls._judge0_run(language, code, stdin)
-            except Exception:
-                return cls._mock_run(language, code, stdin)
-        if backend == 'e2b' and language.lower() in ('python', 'python3'):
-            try:
-                return cls._e2b_run(code, stdin)
-            except Exception:
-                return cls._mock_run(language, code, stdin)
-        return cls._mock_run(language, code, stdin)
+            if backend == 'docker':
+                from .docker_execution import run_container
+                return run_container(code, stdin, image=cls._setting(
+                    'CODE_EXECUTION_DOCKER_IMAGE', 'plex-python-sandbox:1'))
+        except ExecutionUnavailable:
+            raise
+        except Exception as exc:
+            # Do not expose provider URLs, credentials or host error details.
+            raise ExecutionUnavailable('provider_failed') from exc
+        raise ExecutionUnavailable('not_configured')
+
+    @classmethod
+    def validate_submission(cls, language: str, code: str, test_cases: list, run_mode: str = 'stdout') -> None:
+        if not isinstance(language, str) or language.lower() not in LANGUAGE_IDS:
+            raise ExecutionInputError('仅支持 Python')
+        if not isinstance(test_cases, list) or not 1 <= len(test_cases) <= 30:
+            raise ExecutionInputError('需要 1–30 个测试用例')
+        if not isinstance(run_mode, str) or run_mode not in {'stdout', 'expression'}:
+            raise ExecutionInputError('无效的 run_mode')
+        for case in test_cases:
+            if not isinstance(case, dict) or 'expected' not in case:
+                raise ExecutionInputError('每个测试用例必须有 expected（可以为空字符串）')
+            if any(not isinstance(case.get(key, ''), str) for key in ('setup', 'invoke', 'input')):
+                raise ExecutionInputError('用例 setup、invoke、input 必须是文本')
+        if not isinstance(code, str) or not code.strip() or len(code.encode('utf-8')) > 65536:
+            raise ExecutionInputError('code 必须是非空且最多 64 KiB 的文本')
 
     @classmethod
     def submit(cls, language: str, code: str, test_cases: list, run_mode: str = 'stdout') -> dict:
-        if language.lower() not in LANGUAGE_IDS:
-            raise ValueError('unsupported language')
+        cls.validate_submission(language, code, test_cases, run_mode)
+        started = time.monotonic()
         results = []
         all_passed = True
         for case in test_cases:
+            if time.monotonic() - started > 60:
+                raise ExecutionUnavailable('submission_budget_exceeded')
             setup = case.get('setup') or ''
             invoke = case.get('invoke') or ''
             stdin = case.get('input') or ''
@@ -341,7 +268,7 @@ class CodeExecutionService:
             run_result = cls.run(language, case_code, stdin)
             expected = cls._normalize_output(case.get('expected', ''))
             actual = cls._normalize_output(run_result.get('stdout'))
-            passed = run_result['status']['id'] == 3 and (not expected or actual == expected)
+            passed = run_result['status']['id'] == 3 and actual == expected
             if not passed:
                 all_passed = False
             error_msg = None
@@ -360,6 +287,7 @@ class CodeExecutionService:
             })
         return {
             'all_passed': all_passed,
+            'evidence_scope': 'self_test',
             'passed_count': sum(1 for x in results if x['passed']),
             'total': len(results),
             'results': results,

@@ -19,6 +19,7 @@ const props = withDefaults(
     nodes: KgNode[]
     edges: KgEdge[]
     mode?: 'student' | 'teacher' | 'admin'
+    scrollZoom?: boolean
     height?: string
     pathNodeIds?: string[]
     remediationNodeIds?: string[]
@@ -27,6 +28,7 @@ const props = withDefaults(
   }>(),
   {
     mode: 'student',
+    scrollZoom: true,
     height: '480px',
     pathNodeIds: () => [],
     remediationNodeIds: () => [],
@@ -66,6 +68,9 @@ const EDGE_LABEL_COLOR: Record<KgEdgeType, string> = {
   related: '#86efac',
   path: '#c4b5fd',
   advanced: '#fdba74',
+}
+const LIGHT_EDGE_COLOR: Record<KgEdgeType, string> = {
+  prerequisite: '#0369a1', related: '#047857', path: '#6d28d9', advanced: '#9a3412',
 }
 
 const MODE_ACCENT: Record<string, string> = {
@@ -203,14 +208,14 @@ function buildGraphData(): GraphData {
         target: e.target,
         data: { type: edgeType, label: e.label },
         style: {
-          stroke: EDGE_COLOR[edgeType],
+          stroke: themeStore.isDark ? EDGE_COLOR[edgeType] : LIGHT_EDGE_COLOR[edgeType],
           lineWidth: onPath ? 2.5 : 1.5,
           endArrow: true,
           endArrowType: 'vee',
           endArrowSize: 8,
           opacity: onPath ? 1 : tk.edgeOpacity,
           labelText: e.label ?? '',
-          labelFill: EDGE_LABEL_COLOR[edgeType],
+          labelFill: themeStore.isDark ? EDGE_LABEL_COLOR[edgeType] : LIGHT_EDGE_COLOR[edgeType],
           labelFontSize: 10,
         },
       }
@@ -243,7 +248,7 @@ async function initGraph() {
     },
     behaviors: [
       'drag-canvas',
-      'zoom-canvas',
+      ...(props.scrollZoom ? ['zoom-canvas'] : []),
       'drag-element',
     ],
     plugins: [
@@ -323,6 +328,7 @@ onBeforeUnmount(() => {
   graphInstance?.destroy()
   graphInstance = null
 })
+defineExpose({zoomMap:(factor:number)=>graphInstance?.zoomBy(factor),resetMap:()=>graphInstance?.fitView()})
 </script>
 
 <template>

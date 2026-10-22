@@ -642,8 +642,8 @@ class GraphService:
 
         # 前置：BFS，薄弱时多走一跳
         for cid in focus_ids:
-            focus_mastery = mastery.get(cid, 0.0)
-            hops = int(cfg.get('prerequisite_hops_when_weak', 2)) if focus_mastery < threshold_low else int(cfg.get('prerequisite_hops', 1))
+            focus_mastery = mastery.get(cid)
+            hops = int(cfg.get('prerequisite_hops_when_weak', 2)) if focus_mastery is not None and focus_mastery < threshold_low else int(cfg.get('prerequisite_hops', 1))
             queue = deque([(cid, 0)])
             seen = {cid}
             while queue:
@@ -665,7 +665,7 @@ class GraphService:
                         learner is not None
                         and learner.available
                         and pre_row
-                        and mastery.get(pre, 0.0) < (pre_row.mastery_threshold or 0.7)
+                        and pre in mastery and mastery[pre] < (pre_row.mastery_threshold or 0.7)
                         and pre not in ctx.unmet_prerequisites
                     ):
                         ctx.unmet_prerequisites.append(pre)

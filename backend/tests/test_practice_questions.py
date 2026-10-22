@@ -35,6 +35,9 @@ class PracticeQuestionsTestCase(unittest.TestCase):
             class_obj = Class(name='练习班', teacher_id=teacher.id, join_code='PRAC01')
             db.session.add(class_obj)
             db.session.flush()
+            # Imported trial questions belong to this class, not the public
+            # question bank. Access requires actual student membership.
+            student.class_id = class_obj.id
             trial = Trial(
                 class_id=class_obj.id,
                 teacher_id=teacher.id,

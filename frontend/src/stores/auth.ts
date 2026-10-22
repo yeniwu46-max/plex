@@ -2,8 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import axios, { type AxiosError } from 'axios'
 import { http, storageKeys, type ApiEnvelope } from '../api/http'
-
-const API_PROXY_HINT = import.meta.env.VITE_API_PROXY || 'http://127.0.0.1:5100'
+import type { Appearance, ArrivalSummary } from '../api/onboarding'
 
 export interface LoginPayload {
   id: number
@@ -18,6 +17,8 @@ export interface LoginPayload {
   access_token: string
   refresh_token: string
   expiresIn?: number
+  onboarding?: ArrivalSummary
+  preferences?: Appearance | null
 }
 
 export interface RegisterPayload {
@@ -42,6 +43,18 @@ export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(localStorage.getItem(storageKeys.access))
   const refreshToken = ref<string | null>(localStorage.getItem(storageKeys.refresh))
   const profile = ref(readProfile())
+  const accountReady = ref(false)
+  let loadingAccount: Promise<void> | null = null
+  let loadingToken: string | null = null
+  function syncStoredSession() {
+    const previousRefresh = refreshToken.value
+    accessToken.value = localStorage.getItem(storageKeys.access)
+    refreshToken.value = localStorage.getItem(storageKeys.refresh)
+    profile.value = readProfile()
+    if (previousRefresh !== refreshToken.value) accountReady.value = false
+  }
+  window.addEventListener('plex-session-changed', syncStoredSession)
+  window.addEventListener('storage', syncStoredSession)
 
   const isAuthenticated = computed(() => Boolean(accessToken.value))
 
@@ -50,18 +63,37 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = access_token
     refreshToken.value = refresh_token
     profile.value = rest
+    accountReady.value = Boolean(payload.onboarding)
     localStorage.setItem(storageKeys.access, access_token)
     localStorage.setItem(storageKeys.refresh, refresh_token)
     localStorage.setItem(storageKeys.profile, JSON.stringify(rest))
   }
 
   function clearSession() {
+    accountReady.value = false
     accessToken.value = null
     refreshToken.value = null
     profile.value = null
     localStorage.removeItem(storageKeys.access)
     localStorage.removeItem(storageKeys.refresh)
     localStorage.removeItem(storageKeys.profile)
+  }
+
+  async function ensureAccount() {
+    if (accountReady.value) return
+    const owner = refreshToken.value
+    if (!loadingAccount || loadingToken !== owner) {
+      loadingToken = owner
+      const pending = http.get<ApiEnvelope<Omit<LoginPayload, 'access_token' | 'refresh_token'>>>('/v1/users/me')
+        .then(({ data }) => {
+          if (owner !== refreshToken.value) throw new Error('登录状态已变化，请重试')
+          if (data.code !== 0 || !data.data?.onboarding) throw new Error('账号信息加载失败，请重试')
+          syncProfile(data.data)
+          accountReady.value = true
+        }).finally(() => { if (loadingAccount === pending) loadingAccount = null })
+      loadingAccount = pending
+    }
+    await loadingAccount
   }
 
   function syncProfile(nextProfile: Partial<Omit<LoginPayload, 'access_token' | 'refresh_token' | 'expiresIn'>>) {
@@ -91,7 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
         const status = ax.response?.status
         if (status === 502 || status === 503 || ax.code === 'ERR_NETWORK') {
           throw new Error(
-            `无法连接后端 API（502）。请先在 backend 目录执行 python run.py，并确认 ${API_PROXY_HINT} 可访问。`,
+            '暂时无法连接服务，请稍后重试。',
           )
         }
       }
@@ -132,9 +164,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      await http.post('/v1/auth/logout')
+      await http.post('/v1/auth/logout', { refresh_token: refreshToken.value })
     } catch {
-      /* 无状态 JWT，忽略网络错误 */
+      /* 离线时仍清理本机状态；服务端撤销需网络请求成功。 */
     } finally {
       clearSession()
     }
@@ -152,6 +184,8 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken,
     profile,
     isAuthenticated,
+    accountReady,
+    ensureAccount,
     login,
     register,
     acceptSession,

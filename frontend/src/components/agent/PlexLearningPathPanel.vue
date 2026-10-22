@@ -88,11 +88,13 @@ function difficultyLabel(node: LearningPathOrderedNode) {
           <strong>{{ node.label }}</strong>
           <span class="plex-learning-path__diff">{{ difficultyLabel(node) }}</span>
         </div>
-        <div class="plex-learning-path__bar">
+        <div v-if="node.mastery_score !== null" class="plex-learning-path__bar">
           <span :style="{ width: `${masteryPct(node)}%` }" />
         </div>
         <p class="plex-learning-path__meta">
-          掌握度 {{ masteryPct(node) }}%
+          <template v-if="node.mastery_score === null">尚待了解 · 还没有正式作答证据</template>
+          <template v-else-if="node.state_source === 'evidence'">证据估计 {{ masteryPct(node) }}% · 未经概率校准</template>
+          <template v-else>掌握度 {{ masteryPct(node) }}%</template>
           <template v-if="node.locked"> · 先把前面学完</template>
           <template v-else-if="node.remediation"> · 我在帮你补强</template>
         </p>

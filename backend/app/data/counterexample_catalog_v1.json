@@ -1,0 +1,2558 @@
+{
+  "version": "counterexample-catalog-v1",
+  "provenance": "ai_assisted_draft",
+  "human_review_status": "pending",
+  "items": [
+    {
+      "id": "L01",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "range 的右边界不包含自身，少写一位会漏掉末尾元素。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "整数数组求和",
+        "statement": "返回数组所有元素之和；空数组返回 0。",
+        "concept_id": "loop-accumulator",
+        "reference_note": "AI 辅助编写待审草稿 L01。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return sum(data)",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              1,
+              2
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              -2,
+              4
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              4,
+              -4,
+              2
+            ],
+            "expected": 2
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "append_zero_invariant",
+            "concatenation_additive",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、追加零不改变结果、数组重复一遍使结果翻倍；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    total = 0\n    for i in range(len(data)-1):\n        total += data[i]\n    return total",
+        "fixed_code": "def solve(data):\n    total = 0\n    for value in data:\n        total += value\n    return total",
+        "bug_kind": "loop_boundary",
+        "explanation": "range 的右边界不包含自身，少写一位会漏掉末尾元素。"
+      },
+      "content_hash": "7780e624c36e1eef4b270fceb653861a4e4ac2ded06caf2f856ed15f3f76e387"
+    },
+    {
+      "id": "L02",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "下标从 1 开始会跳过第一项，第一项为正数时计数偏小。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "正数计数",
+        "statement": "统计严格大于 0 的元素个数；空数组返回 0。",
+        "concept_id": "loop-counter",
+        "reference_note": "AI 辅助编写待审草稿 L02。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 28
+        },
+        "reference_code": "def solve(data):\n    return sum(1 for value in data if value > 0)",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              -2
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              3,
+              0,
+              -1
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              1,
+              2,
+              2
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              0,
+              4
+            ],
+            "expected": 1
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "append_zero_invariant",
+            "concatenation_additive",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、追加零不改变结果、数组重复一遍使结果翻倍；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    count = 0\n    for i in range(1, len(data)):\n        if data[i] > 0:\n            count += 1\n    return count",
+        "fixed_code": "def solve(data):\n    count = 0\n    for value in data:\n        if value > 0:\n            count += 1\n    return count",
+        "bug_kind": "loop_boundary",
+        "explanation": "下标从 1 开始会跳过第一项，第一项为正数时计数偏小。"
+      },
+      "content_hash": "b0a830089e0f4a6800d24e08820b551042a4b0924d2c774ec443cc102e9de536"
+    },
+    {
+      "id": "L03",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "顺序查找漏掉末尾位置，会把只在最后出现的目标误判为不存在。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "查找首个零",
+        "statement": "返回第一次出现 0 的下标；没有 0 或输入为空时返回 -1。",
+        "concept_id": "search-linear",
+        "reference_note": "AI 辅助编写待审草稿 L03。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return data.index(0) if 0 in data else -1",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": -1
+          },
+          {
+            "input": [
+              0
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              2,
+              0
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              0,
+              2,
+              0
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              -1,
+              3
+            ],
+            "expected": -1
+          },
+          {
+            "input": [
+              3,
+              2,
+              0
+            ],
+            "expected": 2
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    for i in range(len(data)-1):\n        if data[i] == 0:\n            return i\n    return -1",
+        "fixed_code": "def solve(data):\n    for i in range(len(data)):\n        if data[i] == 0:\n            return i\n    return -1",
+        "bug_kind": "loop_boundary",
+        "explanation": "顺序查找漏掉末尾位置，会把只在最后出现的目标误判为不存在。"
+      },
+      "content_hash": "03b2d6cebbc18efa9f82d9b900801d3c45002e7fdaa7125e2d34bc14d15b9fc2"
+    },
+    {
+      "id": "L04",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "前缀和需要为每个输入位置生成一项，循环提前结束会缺少最后一项。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "包含当前位置的前缀和",
+        "statement": "返回每个位置及其之前元素之和构成的数组；空数组返回 []。",
+        "concept_id": "array-traverse",
+        "reference_note": "AI 辅助编写待审草稿 L04。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer_array",
+          "minimum": -32,
+          "maximum": 32,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "reference_code": "def solve(data):\n    return [sum(data[:i+1]) for i in range(len(data))]",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": []
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": [
+              3
+            ]
+          },
+          {
+            "input": [
+              1,
+              2
+            ],
+            "expected": [
+              1,
+              3
+            ]
+          },
+          {
+            "input": [
+              -2,
+              4,
+              -1
+            ],
+            "expected": [
+              -2,
+              2,
+              1
+            ]
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": [
+              0,
+              0
+            ]
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    result = []\n    total = 0\n    for i in range(len(data)-1):\n        total += data[i]\n        result.append(total)\n    return result",
+        "fixed_code": "def solve(data):\n    result = []\n    total = 0\n    for value in data:\n        total += value\n        result.append(total)\n    return result",
+        "bug_kind": "loop_boundary",
+        "explanation": "前缀和需要为每个输入位置生成一项，循环提前结束会缺少最后一项。"
+      },
+      "content_hash": "bfdb23cf9745a2794a919e2974e392ebaf8dd5e34d94819dc092d4b1532af459"
+    },
+    {
+      "id": "L05",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "相邻对共 len(data)-1 个，错误循环又少迭代一次，遗漏最后一对。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "相邻递增对计数",
+        "statement": "统计相邻两项中后一项严格大于前一项的对数；不足两项返回 0。",
+        "concept_id": "loop-range-detail",
+        "reference_note": "AI 辅助编写待审草稿 L05。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 28
+        },
+        "reference_code": "def solve(data):\n    return sum(1 for i in range(1, len(data)) if data[i] > data[i-1])",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              1
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              1,
+              2
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              3,
+              2,
+              4
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              1,
+              1,
+              2
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              -2,
+              0,
+              3
+            ],
+            "expected": 2
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    count = 0\n    for i in range(len(data)-2):\n        if data[i+1] > data[i]:\n            count += 1\n    return count",
+        "fixed_code": "def solve(data):\n    count = 0\n    for i in range(len(data)-1):\n        if data[i+1] > data[i]:\n            count += 1\n    return count",
+        "bug_kind": "loop_boundary",
+        "explanation": "相邻对共 len(data)-1 个，错误循环又少迭代一次，遗漏最后一对。"
+      },
+      "content_hash": "dfa021fb288e6b5acc410bc010fe1ef9fbdda470e51117eff4b1925f080c4664"
+    },
+    {
+      "id": "L06",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "负步长 range 仍不包含终点，终点设为 0 会漏掉下标 0。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "数组逆序",
+        "statement": "返回原数组逆序后的数组；空数组返回 []。",
+        "concept_id": "array-slice",
+        "reference_note": "AI 辅助编写待审草稿 L06。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "reference_code": "def solve(data):\n    return data[::-1]",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": []
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": [
+              2
+            ]
+          },
+          {
+            "input": [
+              1,
+              3
+            ],
+            "expected": [
+              3,
+              1
+            ]
+          },
+          {
+            "input": [
+              -2,
+              0,
+              4
+            ],
+            "expected": [
+              4,
+              0,
+              -2
+            ]
+          },
+          {
+            "input": [
+              1,
+              1
+            ],
+            "expected": [
+              1,
+              1
+            ]
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    result = []\n    for i in range(len(data)-1, 0, -1):\n        result.append(data[i])\n    return result",
+        "fixed_code": "def solve(data):\n    result = []\n    for i in range(len(data)-1, -1, -1):\n        result.append(data[i])\n    return result",
+        "bug_kind": "loop_boundary",
+        "explanation": "负步长 range 仍不包含终点，终点设为 0 会漏掉下标 0。"
+      },
+      "content_hash": "3ea50421f09d35bbfc1a6482ca52304ff950c82850c92e7debdf0b43e950be03"
+    },
+    {
+      "id": "L07",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "从第二对才开始检查，会忽略最前面的下降相邻对。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "非递减序列判定",
+        "statement": "判断数组是否非递减，即每一项不小于前一项；空数组和单元素数组返回 true。",
+        "concept_id": "loop-control",
+        "reference_note": "AI 辅助编写待审草稿 L07。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "boolean"
+        },
+        "reference_code": "def solve(data):\n    return all(data[i-1] <= data[i] for i in range(1, len(data)))",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": true
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": true
+          },
+          {
+            "input": [
+              2,
+              1
+            ],
+            "expected": false
+          },
+          {
+            "input": [
+              3,
+              1,
+              2
+            ],
+            "expected": false
+          },
+          {
+            "input": [
+              -1,
+              0,
+              0
+            ],
+            "expected": true
+          },
+          {
+            "input": [
+              1,
+              3,
+              2
+            ],
+            "expected": false
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    for i in range(2, len(data)):\n        if data[i] < data[i-1]:\n            return False\n    return True",
+        "fixed_code": "def solve(data):\n    for i in range(1, len(data)):\n        if data[i] < data[i-1]:\n            return False\n    return True",
+        "bug_kind": "loop_boundary",
+        "explanation": "从第二对才开始检查，会忽略最前面的下降相邻对。"
+      },
+      "content_hash": "05b000de5509e03da477c5e88ebc6dd39c504e92e3e06373a894013dd79f2b84"
+    },
+    {
+      "id": "L08",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "位置权重不能补偿缺失的遍历，最后一项及其权重都被遗漏。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "按位置加权求和",
+        "statement": "返回各元素乘以其从 1 开始的位置后相加的值；空数组返回 0。",
+        "concept_id": "loop-enumerate",
+        "reference_note": "AI 辅助编写待审草稿 L08。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return sum((i+1)*value for i, value in enumerate(data))",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              1,
+              2
+            ],
+            "expected": 5
+          },
+          {
+            "input": [
+              2,
+              -1,
+              3
+            ],
+            "expected": 9
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              -2,
+              1
+            ],
+            "expected": 0
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    total = 0\n    for i in range(len(data)-1):\n        total += (i+1)*data[i]\n    return total",
+        "fixed_code": "def solve(data):\n    total = 0\n    for i, value in enumerate(data):\n        total += (i+1)*value\n    return total",
+        "bug_kind": "loop_boundary",
+        "explanation": "位置权重不能补偿缺失的遍历，最后一项及其权重都被遗漏。"
+      },
+      "content_hash": "44881afdd176288073db2486b301ef9e9a8e3323dc2cbe50d03ea49d638bbf17"
+    },
+    {
+      "id": "L09",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "配对遍历必须包含最后一个右端位置，否则最后一对乘积不计入。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "相邻元素乘积和",
+        "statement": "把每对相邻元素的乘积相加；不足两项返回 0。",
+        "concept_id": "loop-zip",
+        "reference_note": "AI 辅助编写待审草稿 L09。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return sum(a*b for a, b in zip(data, data[1:]))",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              2,
+              3
+            ],
+            "expected": 6
+          },
+          {
+            "input": [
+              1,
+              2,
+              3
+            ],
+            "expected": 8
+          },
+          {
+            "input": [
+              -2,
+              3,
+              -1
+            ],
+            "expected": -9
+          },
+          {
+            "input": [
+              0,
+              4
+            ],
+            "expected": 0
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    total = 0\n    for i in range(1, len(data)-1):\n        total += data[i-1]*data[i]\n    return total",
+        "fixed_code": "def solve(data):\n    total = 0\n    for i in range(1, len(data)):\n        total += data[i-1]*data[i]\n    return total",
+        "bug_kind": "loop_boundary",
+        "explanation": "配对遍历必须包含最后一个右端位置，否则最后一对乘积不计入。"
+      },
+      "content_hash": "d9d0035ddbf717249180a813a735245d9629cafa7a7d19909ef53d2f32d405c2"
+    },
+    {
+      "id": "L10",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "长度为奇数时末尾下标为偶数，终点少一位会漏掉应该保留的末尾元素。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "偶数下标取值",
+        "statement": "按原顺序返回下标为 0、2、4 等偶数下标的元素；空数组返回 []。",
+        "concept_id": "loop-range-detail",
+        "reference_note": "AI 辅助编写待审草稿 L10。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "reference_code": "def solve(data):\n    return data[::2]",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": []
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": [
+              2
+            ]
+          },
+          {
+            "input": [
+              1,
+              2
+            ],
+            "expected": [
+              1
+            ]
+          },
+          {
+            "input": [
+              1,
+              2,
+              3
+            ],
+            "expected": [
+              1,
+              3
+            ]
+          },
+          {
+            "input": [
+              4,
+              3,
+              2,
+              1
+            ],
+            "expected": [
+              4,
+              2
+            ]
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    result = []\n    for i in range(0, len(data)-1, 2):\n        result.append(data[i])\n    return result",
+        "fixed_code": "def solve(data):\n    result = []\n    for i in range(0, len(data), 2):\n        result.append(data[i])\n    return result",
+        "bug_kind": "loop_boundary",
+        "explanation": "长度为奇数时末尾下标为偶数，终点少一位会漏掉应该保留的末尾元素。"
+      },
+      "content_hash": "4842ec592d2ec0f667799f6193b1d1340753a0c24256b7a785aba873f53c6e35"
+    },
+    {
+      "id": "E01",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "max 没有给出空输入的默认值，会在合法空数组上抛出 ValueError。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "数组最大值",
+        "statement": "返回最大元素；空数组约定返回 0。",
+        "concept_id": "search-stat",
+        "reference_note": "AI 辅助编写待审草稿 E01。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return sorted(data)[-1] if data else 0",
+        "allowed_bug_exceptions": [
+          "ValueError"
+        ],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              -3
+            ],
+            "expected": -3
+          },
+          {
+            "input": [
+              -4,
+              -2
+            ],
+            "expected": -2
+          },
+          {
+            "input": [
+              1,
+              4,
+              2
+            ],
+            "expected": 4
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": 0
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "permutation_invariant",
+            "result_is_member"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、非空数组的结果来自输入元素；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return max(data)",
+        "fixed_code": "def solve(data):\n    return max(data) if data else 0",
+        "bug_kind": "empty_input",
+        "explanation": "max 没有给出空输入的默认值，会在合法空数组上抛出 ValueError。"
+      },
+      "content_hash": "264202698b2b22c5f06f3138ff90b670cc8daa5fb61c8732d5d1efd8c2a6e95f"
+    },
+    {
+      "id": "E02",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "min 需要至少一个元素，遗漏空数组分支会抛出 ValueError。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "数组最小值",
+        "statement": "返回最小元素；空数组约定返回 0。",
+        "concept_id": "search-stat",
+        "reference_note": "AI 辅助编写待审草稿 E02。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return sorted(data)[0] if data else 0",
+        "allowed_bug_exceptions": [
+          "ValueError"
+        ],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              2,
+              4
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              -1,
+              4,
+              -3
+            ],
+            "expected": -3
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": 0
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "permutation_invariant",
+            "result_is_member"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、非空数组的结果来自输入元素；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return min(data)",
+        "fixed_code": "def solve(data):\n    return min(data) if data else 0",
+        "bug_kind": "empty_input",
+        "explanation": "min 需要至少一个元素，遗漏空数组分支会抛出 ValueError。"
+      },
+      "content_hash": "138ac0395c666eb7fac64be82dea9d1490dd47b1cc74f11a90bee7a09bd9bcb7"
+    },
+    {
+      "id": "E03",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "下标 0 只在数组非空时存在，必须先处理合法空输入。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "首元素查询",
+        "statement": "返回第一个元素；空数组返回 0。",
+        "concept_id": "array-basic",
+        "reference_note": "AI 辅助编写待审草稿 E03。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return data[:1][0] if data else 0",
+        "allowed_bug_exceptions": [
+          "IndexError"
+        ],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              -2,
+              4
+            ],
+            "expected": -2
+          },
+          {
+            "input": [
+              0,
+              1
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": 2
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "result_is_member"
+          ],
+          "rationale": "草稿性质依据：题意要求 非空数组的结果来自输入元素；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return data[0]",
+        "fixed_code": "def solve(data):\n    if not data:\n        return 0\n    return data[0]",
+        "bug_kind": "empty_input",
+        "explanation": "下标 0 只在数组非空时存在，必须先处理合法空输入。"
+      },
+      "content_hash": "2cc504859397feb68776ebe7c26aeec086f29fe4cd1b09540942fae2fad97339"
+    },
+    {
+      "id": "E04",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "负下标也不能读取空数组，-1 并不自动提供缺省值。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "末元素查询",
+        "statement": "返回最后一个元素；空数组返回 0。",
+        "concept_id": "array-basic",
+        "reference_note": "AI 辅助编写待审草稿 E04。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return data[len(data)-1] if data else 0",
+        "allowed_bug_exceptions": [
+          "IndexError"
+        ],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              -2,
+              4
+            ],
+            "expected": 4
+          },
+          {
+            "input": [
+              1,
+              0
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": 2
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "result_is_member"
+          ],
+          "rationale": "草稿性质依据：题意要求 非空数组的结果来自输入元素；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return data[-1]",
+        "fixed_code": "def solve(data):\n    if not data:\n        return 0\n    return data[-1]",
+        "bug_kind": "empty_input",
+        "explanation": "负下标也不能读取空数组，-1 并不自动提供缺省值。"
+      },
+      "content_hash": "08bfd00544bb32df8df6168373c3e2c22446c8420cabb049b9c544e08987a23c"
+    },
+    {
+      "id": "E05",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "空数组的长度为 0，遗漏分支会使整除发生 ZeroDivisionError。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "整数平均值",
+        "statement": "返回所有元素之和除以元素数后的向下取整结果；空数组返回 0。",
+        "concept_id": "seq-arith",
+        "reference_note": "AI 辅助编写待审草稿 E05。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return sum(data)//len(data) if data else 0",
+        "allowed_bug_exceptions": [
+          "ZeroDivisionError"
+        ],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              1,
+              2
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              -2,
+              -1
+            ],
+            "expected": -2
+          },
+          {
+            "input": [
+              4,
+              -4
+            ],
+            "expected": 0
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    total = 0\n    for value in data:\n        total += value\n    return total//len(data)",
+        "fixed_code": "def solve(data):\n    if not data:\n        return 0\n    total = 0\n    for value in data:\n        total += value\n    return total//len(data)",
+        "bug_kind": "empty_input",
+        "explanation": "空数组的长度为 0，遗漏分支会使整除发生 ZeroDivisionError。"
+      },
+      "content_hash": "d1d74cc6b28f2850c33f478409d77e94d33da1cb5c407b375fba07b424685a92"
+    },
+    {
+      "id": "E06",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "非空时极值差有效，但空数组不能调用缺省参数下的 max/min。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "极差计算",
+        "statement": "返回最大元素与最小元素的差；空数组返回 0。",
+        "concept_id": "search-stat",
+        "reference_note": "AI 辅助编写待审草稿 E06。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 28
+        },
+        "reference_code": "def solve(data):\n    ordered = sorted(data)\n    return ordered[-1]-ordered[0] if ordered else 0",
+        "allowed_bug_exceptions": [
+          "ValueError"
+        ],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              -2,
+              4
+            ],
+            "expected": 6
+          },
+          {
+            "input": [
+              -4,
+              -1
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": 0
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "duplicate_invariant",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、加入已有元素不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return max(data)-min(data)",
+        "fixed_code": "def solve(data):\n    return max(data)-min(data) if data else 0",
+        "bug_kind": "empty_input",
+        "explanation": "非空时极值差有效，但空数组不能调用缺省参数下的 max/min。"
+      },
+      "content_hash": "2b3562fcaf69698abe6250216fba77b646f1c76b2c8a5116ffc3b3047954ed3f"
+    },
+    {
+      "id": "E07",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "空乘积的单位元是 1，照搬求和的空值 0 会违反题意。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "数组连乘",
+        "statement": "返回全部元素的乘积；空数组按空乘积约定返回 1。",
+        "concept_id": "loop-accumulator",
+        "reference_note": "AI 辅助编写待审草稿 E07。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -65536,
+          "maximum": 65536
+        },
+        "reference_code": "def solve(data):\n    result = 1\n    for value in data:\n        result *= value\n    return result",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 1
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              2,
+              -2
+            ],
+            "expected": -4
+          },
+          {
+            "input": [
+              0,
+              4
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              -1,
+              -1,
+              -1
+            ],
+            "expected": -1
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    if not data:\n        return 0\n    product = 1\n    for value in data:\n        product *= value\n    return product",
+        "fixed_code": "def solve(data):\n    product = 1\n    for i in range(len(data)):\n        product *= data[i]\n    return product",
+        "bug_kind": "empty_input",
+        "explanation": "空乘积的单位元是 1，照搬求和的空值 0 会违反题意。"
+      },
+      "content_hash": "35c49f189b72909851c6c4a5902fadd6584e0c65052b5ec56e54392c16e58cb7"
+    },
+    {
+      "id": "E08",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "空输入没有违反相邻顺序的元素对，题意约定应返回 true 而不是 false。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "序列有序性",
+        "statement": "判断数组是否非递减；空数组及单元素数组均约定为有序。",
+        "concept_id": "loop-control",
+        "reference_note": "AI 辅助编写待审草稿 E08。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "boolean"
+        },
+        "reference_code": "def solve(data):\n    return all(data[i-1] <= data[i] for i in range(1, len(data)))",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": true
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": true
+          },
+          {
+            "input": [
+              1,
+              2,
+              2
+            ],
+            "expected": true
+          },
+          {
+            "input": [
+              2,
+              1
+            ],
+            "expected": false
+          },
+          {
+            "input": [
+              -2,
+              -1,
+              0
+            ],
+            "expected": true
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    if not data:\n        return False\n    for i in range(1, len(data)):\n        if data[i-1] > data[i]:\n            return False\n    return True",
+        "fixed_code": "def solve(data):\n    for i in range(1, len(data)):\n        if data[i-1] > data[i]:\n            return False\n    return True",
+        "bug_kind": "empty_input",
+        "explanation": "空输入没有违反相邻顺序的元素对，题意约定应返回 true 而不是 false。"
+      },
+      "content_hash": "a8f64256a271fec079c63a5348aa740c5bed9f63e6c256ca645ffb81ad1c798b"
+    },
+    {
+      "id": "E09",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "用第一项初始化结果前必须判断非空，否则合法空数组会抛出 IndexError。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "连续重复压缩",
+        "statement": "把每段连续相同元素压缩成一个，保留段的顺序；空数组返回 []。",
+        "concept_id": "array-traverse",
+        "reference_note": "AI 辅助编写待审草稿 E09。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "reference_code": "def solve(data):\n    return [value for i, value in enumerate(data) if i == 0 or value != data[i-1]]",
+        "allowed_bug_exceptions": [
+          "IndexError"
+        ],
+        "tests": [
+          {
+            "input": [],
+            "expected": []
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": [
+              2
+            ]
+          },
+          {
+            "input": [
+              1,
+              1,
+              2,
+              2
+            ],
+            "expected": [
+              1,
+              2
+            ]
+          },
+          {
+            "input": [
+              1,
+              2,
+              1
+            ],
+            "expected": [
+              1,
+              2,
+              1
+            ]
+          },
+          {
+            "input": [
+              0,
+              0,
+              0
+            ],
+            "expected": [
+              0
+            ]
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    result = [data[0]]\n    for value in data[1:]:\n        if value != result[-1]:\n            result.append(value)\n    return result",
+        "fixed_code": "def solve(data):\n    result = []\n    for value in data:\n        if not result or value != result[-1]:\n            result.append(value)\n    return result",
+        "bug_kind": "empty_input",
+        "explanation": "用第一项初始化结果前必须判断非空，否则合法空数组会抛出 IndexError。"
+      },
+      "content_hash": "5f039d5442a2ae37d6c3678aa229800d2dff0747d599af3dadccc15af92405fc"
+    },
+    {
+      "id": "E10",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "固定预放一个 0 只适用于非空输入，空数组不应凭空增加输出位置。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "不含当前位置的前缀和",
+        "statement": "对每个位置返回其左侧全部元素的和，不包含当前位置；空数组返回 []。",
+        "concept_id": "array-traverse",
+        "reference_note": "AI 辅助编写待审草稿 E10。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer_array",
+          "minimum": -32,
+          "maximum": 32,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "reference_code": "def solve(data):\n    return [sum(data[:i]) for i in range(len(data))]",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": []
+          },
+          {
+            "input": [
+              3
+            ],
+            "expected": [
+              0
+            ]
+          },
+          {
+            "input": [
+              1,
+              2
+            ],
+            "expected": [
+              0,
+              1
+            ]
+          },
+          {
+            "input": [
+              -2,
+              4,
+              1
+            ],
+            "expected": [
+              0,
+              -2,
+              2
+            ]
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": [
+              0,
+              0
+            ]
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    result = [0]\n    total = 0\n    for value in data[:-1]:\n        total += value\n        result.append(total)\n    return result",
+        "fixed_code": "def solve(data):\n    result = []\n    total = 0\n    for value in data:\n        result.append(total)\n        total += value\n    return result",
+        "bug_kind": "empty_input",
+        "explanation": "固定预放一个 0 只适用于非空输入，空数组不应凭空增加输出位置。"
+      },
+      "content_hash": "d0afcc844068f66d9557daf854352f5e32da0e62ed37dffef6f1ee03c7885b5f"
+    },
+    {
+      "id": "D01",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "未去重直接累加会把同一数值计算多次。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "不同数值求和",
+        "statement": "返回所有不同整数的和，每个数值只计一次；空数组返回 0。",
+        "concept_id": "array-set",
+        "reference_note": "AI 辅助编写待审草稿 D01。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return sum(set(data))",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              1,
+              2,
+              1
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              -2,
+              -2,
+              4
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              1,
+              2,
+              3
+            ],
+            "expected": 6
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "append_zero_invariant",
+            "duplicate_invariant",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、加入已有元素不改变结果、追加零不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return sum(data)",
+        "fixed_code": "def solve(data):\n    seen = []\n    total = 0\n    for value in data:\n        if value not in seen:\n            seen.append(value)\n            total += value\n    return total",
+        "bug_kind": "duplicate_elements",
+        "explanation": "未去重直接累加会把同一数值计算多次。"
+      },
+      "content_hash": "471776b7f628f8f56d21b7854364d10bd090a3ae009dae2a6654ea9446d7eb03"
+    },
+    {
+      "id": "D02",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "元素总数和不同数值个数不同，出现重复时不能直接使用数组长度。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "不同数值计数",
+        "statement": "返回不同整数的个数；空数组返回 0。",
+        "concept_id": "search-stat",
+        "reference_note": "AI 辅助编写待审草稿 D02。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 28
+        },
+        "reference_code": "def solve(data):\n    return len(set(data))",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              1,
+              2,
+              1
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              -2,
+              0,
+              2
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              0,
+              0,
+              0
+            ],
+            "expected": 1
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "duplicate_invariant",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、加入已有元素不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return len(data)",
+        "fixed_code": "def solve(data):\n    seen = []\n    for value in data:\n        if value not in seen:\n            seen.append(value)\n    return len(seen)",
+        "bug_kind": "duplicate_elements",
+        "explanation": "元素总数和不同数值个数不同，出现重复时不能直接使用数组长度。"
+      },
+      "content_hash": "11406efbe7095184ec872a9bb569bf497624be70136c0876628de57ec9f19910"
+    },
+    {
+      "id": "D03",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "去重会丢失出现次数，普通求和不能先转为集合。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "数组元素总和",
+        "statement": "返回全部元素的和，重复出现的数值每次都参与；空数组返回 0。",
+        "concept_id": "loop-accumulator",
+        "reference_note": "AI 辅助编写待审草稿 D03。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": -200,
+          "maximum": 200
+        },
+        "reference_code": "def solve(data):\n    return sum(data)",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": 4
+          },
+          {
+            "input": [
+              1,
+              2,
+              1
+            ],
+            "expected": 4
+          },
+          {
+            "input": [
+              -2,
+              -2,
+              4
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": 0
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "append_zero_invariant",
+            "concatenation_additive",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、追加零不改变结果、数组重复一遍使结果翻倍；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return sum(set(data))",
+        "fixed_code": "def solve(data):\n    total = 0\n    for value in data:\n        total += value\n    return total",
+        "bug_kind": "duplicate_elements",
+        "explanation": "去重会丢失出现次数，普通求和不能先转为集合。"
+      },
+      "content_hash": "eb30911859371a905cc148b8666f33841640240f139ed5658493b87ec557860b"
+    },
+    {
+      "id": "D04",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "成员判断只回答有没有零，不能区分一次和多次出现。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "零的出现次数",
+        "statement": "返回数值 0 出现的次数；空数组返回 0。",
+        "concept_id": "loop-counter",
+        "reference_note": "AI 辅助编写待审草稿 D04。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 28
+        },
+        "reference_code": "def solve(data):\n    return data.count(0)",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              0
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              0,
+              0
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              1,
+              0,
+              2,
+              0
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              -1,
+              2
+            ],
+            "expected": 0
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "concatenation_additive",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、数组重复一遍使结果翻倍；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return int(0 in data)",
+        "fixed_code": "def solve(data):\n    count = 0\n    for value in data:\n        if value == 0:\n            count += 1\n    return count",
+        "bug_kind": "duplicate_elements",
+        "explanation": "成员判断只回答有没有零，不能区分一次和多次出现。"
+      },
+      "content_hash": "1ac9500098b68369f03e470f2f6e5d483f97f8193cbb0037f5b8f839701491e3"
+    },
+    {
+      "id": "D05",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "只检查相邻项会漏掉被其他元素隔开的重复值。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "重复元素判定",
+        "statement": "判断是否存在至少两个相等元素，位置不要求相邻；空数组返回 false。",
+        "concept_id": "array-set",
+        "reference_note": "AI 辅助编写待审草稿 D05。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "boolean"
+        },
+        "reference_code": "def solve(data):\n    return len(set(data)) < len(data)",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": false
+          },
+          {
+            "input": [
+              1
+            ],
+            "expected": false
+          },
+          {
+            "input": [
+              1,
+              1
+            ],
+            "expected": true
+          },
+          {
+            "input": [
+              1,
+              2,
+              1
+            ],
+            "expected": true
+          },
+          {
+            "input": [
+              -2,
+              0,
+              2
+            ],
+            "expected": false
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return any(data[i] == data[i-1] for i in range(1, len(data)))",
+        "fixed_code": "def solve(data):\n    seen = []\n    for value in data:\n        if value in seen:\n            return True\n        seen.append(value)\n    return False",
+        "bug_kind": "duplicate_elements",
+        "explanation": "只检查相邻项会漏掉被其他元素隔开的重复值。"
+      },
+      "content_hash": "d3f0a3cf2c29f307598e148046689347753f8e60d9a2e80c619a15fae2a5f6d8"
+    },
+    {
+      "id": "D06",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "排序只改变位置，不会自动删除重复项。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "有序去重",
+        "statement": "将不同整数从小到大排列后返回，每个数值只保留一项；空数组返回 []。",
+        "concept_id": "search-sort",
+        "reference_note": "AI 辅助编写待审草稿 D06。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "reference_code": "def solve(data):\n    return sorted(set(data))",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": []
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": [
+              2
+            ]
+          },
+          {
+            "input": [
+              3,
+              1,
+              3
+            ],
+            "expected": [
+              1,
+              3
+            ]
+          },
+          {
+            "input": [
+              -2,
+              0,
+              -2
+            ],
+            "expected": [
+              -2,
+              0
+            ]
+          },
+          {
+            "input": [
+              2,
+              1
+            ],
+            "expected": [
+              1,
+              2
+            ]
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "duplicate_invariant",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、加入已有元素不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return sorted(data)",
+        "fixed_code": "def solve(data):\n    result = []\n    for value in sorted(data):\n        if not result or value != result[-1]:\n            result.append(value)\n    return result",
+        "bug_kind": "duplicate_elements",
+        "explanation": "排序只改变位置，不会自动删除重复项。"
+      },
+      "content_hash": "f9bc77fe85b69461b6c65fcdaaa9d4071fbdf100ea86e073b167acf53e65fbf4"
+    },
+    {
+      "id": "D07",
+      "revision": 1,
+      "difficulty": "入门",
+      "objective": "只与结果末尾比较只能压缩连续重复，不能删除较早位置出现过的数值。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "保持顺序的去重",
+        "statement": "删除每个数值首次出现之后的所有重复项，保留第一次出现的顺序；空数组返回 []。",
+        "concept_id": "array-traverse",
+        "reference_note": "AI 辅助编写待审草稿 D07。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "reference_code": "def solve(data):\n    return [value for i, value in enumerate(data) if value not in data[:i]]",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": []
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": [
+              2
+            ]
+          },
+          {
+            "input": [
+              1,
+              2,
+              1
+            ],
+            "expected": [
+              1,
+              2
+            ]
+          },
+          {
+            "input": [
+              3,
+              1,
+              3,
+              2,
+              1
+            ],
+            "expected": [
+              3,
+              1,
+              2
+            ]
+          },
+          {
+            "input": [
+              -2,
+              0,
+              -2
+            ],
+            "expected": [
+              -2,
+              0
+            ]
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "duplicate_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 加入已有元素不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    result = []\n    for value in data:\n        if not result or value != result[-1]:\n            result.append(value)\n    return result",
+        "fixed_code": "def solve(data):\n    result = []\n    for value in data:\n        if value not in result:\n            result.append(value)\n    return result",
+        "bug_kind": "duplicate_elements",
+        "explanation": "只与结果末尾比较只能压缩连续重复，不能删除较早位置出现过的数值。"
+      },
+      "content_hash": "cff687e3707289f68cb23209a509127ee401170599a5ff643187a2f7e6f75c3e"
+    },
+    {
+      "id": "D08",
+      "revision": 1,
+      "difficulty": "进阶",
+      "objective": "去重保留一份与原本只出现一次不是同一条件，重复值应整类排除。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "筛选仅出现一次的元素",
+        "statement": "返回在整个数组中恰好出现一次的元素，保持原顺序；空数组返回 []。",
+        "concept_id": "search-stat",
+        "reference_note": "AI 辅助编写待审草稿 D08。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "reference_code": "def solve(data):\n    return [value for value in data if data.count(value) == 1]",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": []
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": [
+              2
+            ]
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": []
+          },
+          {
+            "input": [
+              1,
+              2,
+              1,
+              3
+            ],
+            "expected": [
+              2,
+              3
+            ]
+          },
+          {
+            "input": [
+              -2,
+              0,
+              0,
+              4
+            ],
+            "expected": [
+              -2,
+              4
+            ]
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [],
+          "rationale": "草稿性质依据：任务依赖顺序或没有选定通用关系，仅核对合法边界及两份正确程序的一致性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    result = []\n    for value in data:\n        if value not in result:\n            result.append(value)\n    return result",
+        "fixed_code": "def solve(data):\n    result = []\n    for value in data:\n        count = 0\n        for other in data:\n            if other == value:\n                count += 1\n        if count == 1:\n            result.append(value)\n    return result",
+        "bug_kind": "duplicate_elements",
+        "explanation": "去重保留一份与原本只出现一次不是同一条件，重复值应整类排除。"
+      },
+      "content_hash": "539b18ed0f70c2744b72f2e79153c99eacf4c797d42945a12840222e0de1fd7e"
+    },
+    {
+      "id": "D09",
+      "revision": 1,
+      "difficulty": "进阶",
+      "objective": "最长连续相同段不等于总出现次数，分散出现的同值仍应累计。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "最高出现频次",
+        "statement": "返回某个整数在整个数组中出现次数的最大值；空数组返回 0。",
+        "concept_id": "search-stat",
+        "reference_note": "AI 辅助编写待审草稿 D09。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 28
+        },
+        "reference_code": "def solve(data):\n    return max([data.count(value) for value in data]) if data else 0",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              1,
+              2,
+              1,
+              2,
+              1
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              3,
+              1,
+              3,
+              2
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              -1,
+              0,
+              2
+            ],
+            "expected": 1
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "concatenation_additive",
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果、数组重复一遍使结果翻倍；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    best = 0\n    run = 0\n    previous = None\n    for value in data:\n        run = run+1 if value == previous else 1\n        previous = value\n        if run > best:\n            best = run\n    return best",
+        "fixed_code": "def solve(data):\n    best = 0\n    for value in data:\n        count = data.count(value)\n        if count > best:\n            best = count\n    return best",
+        "bug_kind": "duplicate_elements",
+        "explanation": "最长连续相同段不等于总出现次数，分散出现的同值仍应累计。"
+      },
+      "content_hash": "77331ee2f01222e8f32b2f66e799f78d41dbcebb5ac70a04f27d964f870a4820"
+    },
+    {
+      "id": "D10",
+      "revision": 1,
+      "difficulty": "进阶",
+      "objective": "重复元素数量不等于相等下标对数，同值出现三次时已有三对。",
+      "provenance": "ai_assisted_draft",
+      "human_review_status": "pending",
+      "specification": {
+        "title": "相等元素配对计数",
+        "statement": "统计满足 i < j 且 data[i] 等于 data[j] 的下标对数；不足两项返回 0。",
+        "concept_id": "loop-nested",
+        "reference_note": "AI 辅助编写待审草稿 D10。参考实现和显式预期按题意分别编写，未用候选运行结果生成预期；请教师逐项核对并补充真实审阅说明。",
+        "contract_version": "counterexample-v2",
+        "input_contract": {
+          "type": "integer_array",
+          "minimum": -4,
+          "maximum": 4,
+          "min_items": 0,
+          "max_items": 8
+        },
+        "output_contract": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 28
+        },
+        "reference_code": "def solve(data):\n    return sum(1 for i in range(len(data)) for j in range(i+1, len(data)) if data[i] == data[j])",
+        "allowed_bug_exceptions": [],
+        "tests": [
+          {
+            "input": [],
+            "expected": 0
+          },
+          {
+            "input": [
+              2
+            ],
+            "expected": 0
+          },
+          {
+            "input": [
+              2,
+              2
+            ],
+            "expected": 1
+          },
+          {
+            "input": [
+              2,
+              2,
+              2
+            ],
+            "expected": 3
+          },
+          {
+            "input": [
+              1,
+              2,
+              1,
+              2
+            ],
+            "expected": 2
+          },
+          {
+            "input": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "expected": 6
+          }
+        ],
+        "verification": {
+          "policy_version": "bounded-properties-v1",
+          "boundary_checks": true,
+          "properties": [
+            "permutation_invariant"
+          ],
+          "rationale": "草稿性质依据：题意要求 重排不改变结果；请教师确认其适用性。"
+        }
+      },
+      "candidate": {
+        "buggy_code": "def solve(data):\n    return len(data)-len(set(data))",
+        "fixed_code": "def solve(data):\n    count = 0\n    for i in range(len(data)):\n        for j in range(i+1, len(data)):\n            if data[i] == data[j]:\n                count += 1\n    return count",
+        "bug_kind": "duplicate_elements",
+        "explanation": "重复元素数量不等于相等下标对数，同值出现三次时已有三对。"
+      },
+      "content_hash": "7fcbedf1143afd44c5f058ba1b5f780a449255308ebc0aece97e2a0529c3b56c"
+    }
+  ],
+  "catalog_hash": "c93cbc48fc9c3cf39c3e24e0a85d048d8ec0e1ea900bb9a2740cad5a784e49a4"
+}

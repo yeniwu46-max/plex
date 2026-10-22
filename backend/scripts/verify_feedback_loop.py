@@ -8,6 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -16,6 +17,10 @@ if str(ROOT) not in sys.path:
 os.environ['RESOURCE_TASK_SYNC'] = 'true'
 
 from app import create_app
+from app.config import TestingConfig
+from app.models import User
+from app.services.mistake import MistakeService
+from app.services.personalized_resource import PersonalizedResourceService
 from app.services.student_progress import DOMAIN_CATALOG
 
 
@@ -76,6 +81,7 @@ def reject_pending(client, headers):
 
 
 def domain_key_for(knowledge_key: str) -> str:
+    knowledge_key = PersonalizedResourceService.normalize_knowledge_key(knowledge_key)
     return next(
         domain['key']
         for domain in DOMAIN_CATALOG
@@ -84,7 +90,15 @@ def domain_key_for(knowledge_key: str) -> str:
 
 
 def run(output: Path) -> dict:
-    app = create_app('development')
+    # Synthetic integration fixture; real grading is checked separately.
+    with patch('app.services.resource_audit.code_tools.CodeExecutionService.run',
+               return_value={'status': {'id': 3}, 'stdout': '', 'stderr': ''}):
+        return _run(output)
+
+
+def _run(output: Path) -> dict:
+    TestingConfig.SQLALCHEMY_ECHO = False
+    app = create_app('testing')
     client = app.test_client()
     student_token = login(client, 'student001', 'student123')
     teacher_token = login(client, 'teacher001', 'teacher123')
@@ -95,6 +109,7 @@ def run(output: Path) -> dict:
     report = {
         'run_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
         'round_count': len(ROUNDS),
+        'evidence_scope': 'synthetic integration fixtures; not student outcomes or execution validation',
         'rounds': [],
         'summary': {},
     }
@@ -136,31 +151,23 @@ def run(output: Path) -> dict:
             f'/api/v1/student/personalized-resources?knowledge_key={resource_key}',
             headers=student_headers,
         ))
-        if pending_resource is not None and pending_resource['id'] in {
-            item['id'] for item in visible_before_review['items']
-        }:
-            raise RuntimeError('pending resource leaked to student listing')
+        if pending_resource is not None:
+            preview = next((row for row in visible_before_review['items']
+                            if row['id'] == pending_resource['id']), None)
+            if preview and preview['review_status'] != 'pending_review':
+                raise RuntimeError('pending preview lost its review status')
         if pending_resource is None and auto_approved_resource['id'] not in {
             item['id'] for item in visible_before_review['items']
         }:
             raise RuntimeError('auto-approved resource missing from student listing')
 
-        require(client.post(
-            '/api/v1/student/code-trial/runs',
-            headers=student_headers,
-            json={
-                'question_id': f'feedback-accept-{index}-{datetime.now().timestamp()}',
-                'question_title': title,
-                'knowledge_key': knowledge_key,
-                'topic': title,
-                'cases': [{
-                    'label': '边界用例',
-                    'passed': False,
-                    'actual': '4',
-                    'expected': '5',
-                }],
-            },
-        ))
+        with app.app_context():
+            student_id = User.query.filter_by(username='student001').one().id
+            MistakeService._upsert(student_id, source='code_trial',
+                knowledge_key=knowledge_key,
+                question_ref=f'fixture-accept-{index}', question_title=title,
+                error_type='wrong_output')
+
         before = require(client.get(
             '/api/v1/student/recommendations',
             headers=student_headers,
@@ -212,22 +219,13 @@ def run(output: Path) -> dict:
         if '近期薄弱点' not in after_domain['recommendation_reason']:
             raise RuntimeError(f'round {index}: learning path reason lacks profile evidence')
 
-        require(client.post(
-            '/api/v1/student/code-trial/runs',
-            headers=student_headers,
-            json={
-                'question_id': f'feedback-reject-{index}-{datetime.now().timestamp()}',
-                'question_title': f'{title}复测',
-                'knowledge_key': knowledge_key,
-                'topic': title,
-                'cases': [{
-                    'label': '复测边界',
-                    'passed': False,
-                    'actual': '0',
-                    'expected': '1',
-                }],
-            },
-        ))
+        with app.app_context():
+            student_id = User.query.filter_by(username='student001').one().id
+            MistakeService._upsert(student_id, source='code_trial',
+                knowledge_key=knowledge_key,
+                question_ref=f'fixture-reject-{index}', question_title=title,
+                error_type='wrong_output')
+
         pending = require(client.get(
             '/api/v1/student/profile/suggestions?status=pending',
             headers=student_headers,

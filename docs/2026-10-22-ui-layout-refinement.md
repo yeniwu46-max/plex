@@ -1,6 +1,6 @@
 # PLEX 三端顶部与学生端布局修正
 
-日期：2026-10-22。正式前端为 Vue 3 / Naive UI，后端为 Flask。本次保留原工作区改动，不推送 GitHub，不新增数据库表或迁移。
+日期：2026-10-22。正式前端为 Vue 3 / Naive UI，后端为 Flask。实现阶段保留原工作区改动，未自动推送 GitHub；此 UI 修正本身不新增数据库表或迁移。后续已按用户要求发布，见 [当日发布交接](2026-10-22-release-and-handoff.md)。
 
 ## 实现范围
 
@@ -83,6 +83,8 @@ JWT + student 角色；用户身份只来自服务端 JWT。客户端不能指�
 - 最终聊天布局在 1440/1024/768/390px 下重新量测：模式栏、消息区、输入区上下分离，均无页面横向溢出；漫画浅色同四宽复查无溢出。测量结果见 `output/ui-layout-verification/final-layout-checks.json`。保留的验收视口实际高度为 900px。
 
 截图位于 `output/ui-layout-verification/`：导览桌面/手机、资源列表与正文、四套聊天外观、试炼均分、教师和管理员顶栏。最终小 E 截图为 `messenger-final.jpg`。
+
+可分享的公网最终截图已归档至 [发布页面抽查](design/public-release-2026-10-22/README.md)。上述 `output/` 为本机原始验收材料，不随公开仓库同步。
 
 ## 验收边界
 

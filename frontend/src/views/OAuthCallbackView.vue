@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
 import { AlertCircleOutline, CheckmarkCircleOutline } from '@vicons/ionicons5'
+import { safeAuthRedirect } from '../utils/authValidation'
 import { useAuthStore, type LoginPayload } from '../stores/auth'
 
 const router = useRouter()
@@ -17,6 +18,7 @@ function parseHash() {
 
 onMounted(async () => {
   const params = parseHash()
+  window.history.replaceState(window.history.state, '', window.location.pathname)
   const error = params.get('error')
   if (error) {
     status.value = 'error'
@@ -35,7 +37,7 @@ onMounted(async () => {
     const session = JSON.parse(rawSession) as LoginPayload
     auth.acceptSession(session)
     status.value = 'success'
-    const redirect = params.get('redirect') || auth.homePathForRole(session.role)
+    const redirect = safeAuthRedirect(params.get('redirect'), auth.homePathForRole(session.role))
     await router.replace(redirect)
   } catch (err) {
     status.value = 'error'

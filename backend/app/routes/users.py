@@ -162,6 +162,8 @@ def change_password(user_id):
             new_password=data['new_password'],
         )
         return success_response(None, '密码修改成功')
+    except ValueError as e:
+        return error_response(str(e), 40001, None, 400)
     except Exception as e:
         return error_response(str(e), 50001)
 

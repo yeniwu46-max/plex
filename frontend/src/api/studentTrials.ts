@@ -7,6 +7,8 @@ export interface StudentTrial {
   knowledge_key: string | null
   difficulty: number
   duration_minutes: number
+  starts_at?: string | null
+  ends_at?: string | null
   status: string
   effective_status?: string
   reward_points: number
@@ -99,6 +101,31 @@ export interface StudentTrialStatsResult {
 export async function fetchStudentTrialStats() {
   const { data } = await http.get<ApiEnvelope<StudentTrialStatsResult>>('/v1/student/trial-stats')
   if (data.code !== 0) throw new Error(data.message || '战绩加载失败')
+  return data.data
+}
+
+export interface StudentTrialRecord {
+  id: number
+  trial_id: number
+  title: string
+  status: 'joined' | 'completed' | 'abandoned'
+  score: number | null
+  joined_at: string | null
+  completed_at: string | null
+}
+
+export interface StudentTrialRecordsResult {
+  items: StudentTrialRecord[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export async function fetchStudentTrialRecords(status: 'all' | 'completed' | 'active', page = 1) {
+  const { data } = await http.get<ApiEnvelope<StudentTrialRecordsResult>>('/v1/student/trial-stats/records', {
+    params: { status, page, page_size: 10 },
+  })
+  if (data.code !== 0) throw new Error(data.message || '战绩明细加载失败')
   return data.data
 }
 

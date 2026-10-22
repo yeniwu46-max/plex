@@ -1,3 +1,4 @@
+import { createRequestId } from '../utils/browserCrypto'
 import { http, type ApiEnvelope } from './http'
 import type { MessengerKnowledge } from './rag'
 
@@ -35,7 +36,7 @@ export interface AgentTraceStep {
   agentId: string
   name: string
   role?: string
-  status?: 'success' | 'error' | 'running'
+  status?: 'success' | 'error' | 'running' | 'fallback'
   latencyMs: number
   summary: string
   source?: string
@@ -49,7 +50,7 @@ export interface LearningPathPlanResult {
     label: string
     order_index: number
     status: string
-    mastery_score: number
+    mastery_score: number | null
     locked: boolean
     prerequisites_met: boolean
     difficulty?: string
@@ -77,12 +78,13 @@ export interface PlanLearningPathPayload {
 
 /** 学生端 · 单题诊断完整结果 */
 export interface StudentDiagnoseResult {
+  tutor?: import('./tutoring').TutorResponse
   diagnosis: {
     // 兼容旧字段
     weakPoints: string[]
     errorType: string
     diagnosis: string
-    confidence: number
+    confidence: number | null
     // 四层错因模型新增字段
     errorLayer?: ErrorLayer
     errorLayerLabel?: string
@@ -126,8 +128,9 @@ export interface StudentDiagnoseResult {
   completedAt?: string
 }
 
-/** 单次代码提交的完整协同闭环；沙箱结果是所有智能体决策的唯一证据源。 */
-export interface LearningCycleResult extends StudentDiagnoseResult {
+/** 兼容自测闭环：本人实际运行事实与经过审核的辅导，不能视为正式成绩。 */
+export interface LearningCycleResult extends Omit<StudentDiagnoseResult, 'tutor'> {
+  tutorResponse: import('./tutoring').TutorResponse
   execution: {
     all_passed: boolean
     passed_count: number
@@ -143,28 +146,29 @@ export interface LearningCycleResult extends StudentDiagnoseResult {
       time?: string
       memory?: number
       error?: string | null
+      truncated?: boolean
     }>
   }
   learningProfile: {
     explanationPreference: string
-    visualPreferenceConfirmed: boolean
+    visualPreferenceConfirmed: boolean | null
     interventionPresentation: string
     loopMastery: string
-    loopMasteryScore?: number
+    loopMasteryScore?: number | null
     evidence: string[]
   }
   learningPath: StudentDiagnoseResult['recommendation'] & { reason: string }
   resources: {
-    executionDiagram: { title: string; description: string; steps: Array<{ round: number; condition: string; i: number; action: string }> }
-    microFix: { title: string; prompt: string; starterCode: string; expectedOutcome: string; answerPolicy: string }
+    executionDiagram: { title: string; description: string; steps: Array<{ round: number; condition: string; i: number; action: string }> } | null
+    microFix: { title: string; prompt: string; starterCode: string; expectedOutcome: string; answerPolicy: string } | null
     backend: string
   }
   tutor: { mode: 'socratic' | 'reflection'; question: string; nextAction: string }
-  knowledgeGraphUpdate: { nodeId: string; nodeLabel: string; status: string; action: 'reinforce' | 'consolidated'; evidence: string }
-  learningReport: { headline: string; outcome: 'passed' | 'needs_remediation'; diagnosis: string; nextActions: string[]; riskTags: string[] }
+  knowledgeGraphUpdate: { nodeId: string | null; nodeLabel: string; status: string; action: 'unchanged'; evidence: string }
+  learningReport: { headline: string; outcome: 'self_test_passed' | 'self_test_mismatch'; diagnosis: string; nextActions: string[]; riskTags: string[] }
 }
 
-export interface LearningCyclePayload {
+export interface LearningCyclePayload extends LegacyTutorReferences {
   language: 'python'
   code: string
   run_mode: 'stdout' | 'expression'
@@ -207,7 +211,7 @@ export interface AgentsStatusResult {
   checked_at?: string
 }
 
-export interface StudentDiagnosePayload {
+export interface StudentDiagnosePayload extends LegacyTutorReferences {
   studentId?: string
   exerciseId: string
   code: string
@@ -230,7 +234,15 @@ export interface TeacherSuggestionPayload {
   recentExercises?: string[]
 }
 
-export interface CodeHintPayload {
+export interface LegacyTutorReferences {
+  requestId?: string
+  sessionId?: string
+  runId?: string
+  formalQuestionId?: number
+  questionVersion?: string
+}
+
+export interface CodeHintPayload extends LegacyTutorReferences {
   exerciseId: string
   questionTitle?: string
   topic?: string
@@ -247,6 +259,7 @@ export interface CodeHintPayload {
 }
 
 export interface CodeHintResult {
+  tutor?: import('./tutoring').TutorResponse
   annotated_code: string
   comments: string[]
   policy: 'hint_only_no_direct_answer'
@@ -255,7 +268,10 @@ export interface CodeHintResult {
 
 export type TrialCoachIntent = 'error_diagnosis' | 'code_quality' | 'optimization' | 'custom'
 
-export interface TrialCoachPayload {
+export interface TrialCoachPayload extends LegacyTutorReferences {
+  runId?: string
+  questionVersion?: string
+  formalQuestionId?: number
   intent: TrialCoachIntent
   exerciseId: string
   questionTitle?: string
@@ -277,6 +293,9 @@ export interface TrialCoachPayload {
 }
 
 export interface TrialCoachResult {
+  tutor?: import('./tutoring').TutorResponse
+  context?: import('./tutorContext').TutorContextView
+  display_receipt_id?: string
   agentId: string
   agentName: string
   intent: TrialCoachIntent
@@ -294,7 +313,7 @@ export interface TrialCoachResult {
 
 const AGENT_TIMEOUT_MS = 15_000
 const MESSENGER_TIMEOUT_MS = 25_000
-const TRIAL_COACH_TIMEOUT_MS = 45_000
+const TRIAL_COACH_TIMEOUT_MS = 90_000
 
 async function postAgent<T>(path: string, body: Record<string, unknown> = {}, timeout = AGENT_TIMEOUT_MS) {
   const { data } = await http.post<ApiEnvelope<T>>(path, body, { timeout })
@@ -320,7 +339,7 @@ export function studentDiagnose(payload: StudentDiagnosePayload) {
 
 /** 根据服务端留存的错题与运行证据执行一次学习诊断，供小E快捷操作使用。 */
 export function diagnoseLearning() {
-  return postAgent<StudentDiagnoseResult>('/v1/agents/diagnose-learning')
+  return postAgent<StudentDiagnoseResult>('/v1/agents/diagnose-learning', { requestId: createRequestId() })
 }
 
 export type MessengerQuickAction = 'weak_points' | 'next_trial' | 'repair_path' | 'recent_growth'
@@ -345,60 +364,17 @@ export function messengerQuickAction(action: MessengerQuickAction) {
 
 /** 试炼页按需请求小E 反馈（不在运行测试时自动触发） */
 export function requestTrialFeedback(payload: StudentDiagnosePayload) {
-  return postAgent<StudentDiagnoseResult>('/v1/agents/trial-feedback', payload as unknown as Record<string, unknown>)
+  return postAgent<StudentDiagnoseResult>('/v1/agents/trial-feedback', payload as unknown as Record<string, unknown>, TRIAL_COACH_TIMEOUT_MS)
 }
 
 /** 学生端主闭环：提交代码后一次性获得沙箱、诊断、资源、辅导、图谱和报告。 */
 export function runCodeLearningCycle(payload: LearningCyclePayload) {
-  return postAgent<LearningCycleResult>('/v1/agents/code-learning-cycle', payload as unknown as Record<string, unknown>)
+  return postAgent<LearningCycleResult>('/v1/agents/code-learning-cycle', { ...payload, requestId: payload.requestId ?? createRequestId() }, 180_000)
 }
 
 /** 教师端 · 班级教学建议 */
 export function teacherAgentSuggestion(payload: TeacherSuggestionPayload) {
   return postAgent<TeacherSuggestionResult>('/v1/agents/teacher-suggestion', payload as unknown as Record<string, unknown>)
-}
-
-function isNotFound(error: unknown) {
-  return (error as { response?: { status?: number } })?.response?.status === 404
-}
-
-function localCodeHint(payload: CodeHintPayload): CodeHintResult {
-  const comments: string[] = []
-  if (payload.stderr) {
-    comments.push('先定位报错行附近的变量名、缩进、类型或函数调用是否正确。')
-  } else if (payload.expectedOutput || payload.stdout) {
-    comments.push('对比实际输出和预期输出，优先检查输出格式、循环范围和边界条件。')
-  } else {
-    comments.push('先把核心处理步骤写完整，再运行测试观察差异。')
-  }
-  const firstFailed = payload.failedCases?.[0]
-  if (firstFailed) comments.push(`重点复查「${firstFailed.label}」这个未通过用例覆盖的输入场景。`)
-  if (payload.topic) comments.push(`本题关联「${payload.topic}」，确认代码中有对应的处理逻辑。`)
-  comments.push('不要写固定输出，要让代码能处理同类输入。')
-
-  const lines = payload.code.replace(/\s+$/g, '').split('\n')
-  const annotated: string[] = [
-    '# AI 提示（不会直接给答案）',
-    `# 题目：${payload.questionTitle || payload.exerciseId}`,
-    ...comments.slice(0, 4).map((item) => `# - ${item}`),
-    '',
-  ]
-  let inserted = false
-  for (const line of lines.length ? lines : ['']) {
-    const stripped = line.trim()
-    if (!inserted && stripped && !stripped.startsWith('#')) {
-      annotated.push('# 请从这里检查变量、条件和输出是否符合题意')
-      inserted = true
-    }
-    annotated.push(line)
-  }
-  if (!inserted) annotated.push('# 请在这里补充解题逻辑，再运行测试观察差异')
-  return {
-    annotated_code: `${annotated.join('\n').trimEnd()}\n`,
-    comments: comments.slice(0, 4),
-    policy: 'hint_only_no_direct_answer',
-    backend: 'local_rules',
-  }
 }
 
 /** 试炼编程页 · 三类辅导智能体（报错/质量/优化），禁止直接给答案 */
@@ -407,13 +383,8 @@ export function trialCoach(payload: TrialCoachPayload) {
 }
 
 /** 学生端 · 代码题提示，只返回注释式提示，不直接给答案 */
-export async function codeHint(payload: CodeHintPayload) {
-  try {
-    return await postAgent<CodeHintResult>('/v1/agents/code-hint', payload as unknown as Record<string, unknown>)
-  } catch (error) {
-    if (isNotFound(error)) return localCodeHint(payload)
-    throw error
-  }
+export function codeHint(payload: CodeHintPayload) {
+  return postAgent<CodeHintResult>('/v1/agents/code-hint', payload as unknown as Record<string, unknown>, TRIAL_COACH_TIMEOUT_MS)
 }
 
 /** 管理员端 · 智能体运行状态 */
@@ -424,6 +395,7 @@ export function fetchAgentsStatus() {
 // ---- 兼容旧版分散接口（管理员 Flow 演示等） ----
 
 export interface AgentDiagnoseResult {
+  tutor?: import('./tutoring').TutorResponse
   agent: string
   status: string
   weak_points: string[]
@@ -432,20 +404,31 @@ export interface AgentDiagnoseResult {
   diagnosed_at: string
 }
 
-export function diagnoseAgent(payload: { code_errors?: string[]; mistake_count?: number } = {}) {
-  return postAgent<AgentDiagnoseResult>('/v1/agent/diagnose', payload)
+export interface LegacyStudentAgentPayload extends LegacyTutorReferences {
+  code?: string
+  question?: string
+  exerciseId?: string
+  code_errors?: string[]
+  mistake_count?: number
+  weak_points?: string[]
+  error_message?: string
+  diagnosis?: Record<string, unknown>
 }
 
-export function recommendPathAgent(payload: { weak_points?: string[] } = {}) {
-  return postAgent<Record<string, unknown>>('/v1/agent/recommend-path', payload)
+export function diagnoseAgent(payload: LegacyStudentAgentPayload = {}) {
+  return postAgent<AgentDiagnoseResult>('/v1/agent/diagnose', { ...payload, requestId: payload.requestId ?? createRequestId() }, TRIAL_COACH_TIMEOUT_MS)
 }
 
-export function analyzeCodeAgent(payload: { code?: string; error_message?: string }) {
-  return postAgent<Record<string, unknown>>('/v1/agent/analyze-code', payload)
+export function recommendPathAgent(payload: LegacyStudentAgentPayload = {}) {
+  return postAgent<Record<string, unknown>>('/v1/agent/recommend-path', { ...payload, requestId: payload.requestId ?? createRequestId() }, TRIAL_COACH_TIMEOUT_MS)
 }
 
-export function generateFeedbackAgent(payload: { diagnosis?: Record<string, unknown> } = {}) {
-  return postAgent<Record<string, unknown>>('/v1/agent/generate-feedback', payload)
+export function analyzeCodeAgent(payload: LegacyStudentAgentPayload) {
+  return postAgent<Record<string, unknown>>('/v1/agent/analyze-code', { ...payload, requestId: payload.requestId ?? createRequestId() }, TRIAL_COACH_TIMEOUT_MS)
+}
+
+export function generateFeedbackAgent(payload: LegacyStudentAgentPayload = {}) {
+  return postAgent<Record<string, unknown>>('/v1/agent/generate-feedback', { ...payload, requestId: payload.requestId ?? createRequestId() }, TRIAL_COACH_TIMEOUT_MS)
 }
 
 export function teacherSuggestionAgent() {

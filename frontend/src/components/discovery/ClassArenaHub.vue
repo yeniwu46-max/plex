@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref } from 'vue'
 import { NButton, NIcon, NModal, NTag, useMessage } from 'naive-ui'
 import {
   cancelDuelMatch,
@@ -19,30 +19,22 @@ import {
   TimerOutline,
   TrophyOutline,
 } from '@vicons/ionicons5'
+import MockExamPanel from '../trial/MockExamPanel.vue'
 import PythonTrialWorkspace from '../trial/PythonTrialWorkspace.vue'
 import {
   CLASS_ARENA_MODULES,
-  MOCK_EXAM_PROBLEM_COUNT,
-  MOCK_EXAM_RULES,
-  MOCK_EXAM_TIME_SEC,
   STUDENT_DUEL_PROBLEM_COUNT,
   type ClassArenaModuleKey,
 } from '../../data/classArenaModules'
 import {
-  getDefaultMockExamQuestions,
-  MOCK_EXAM_SETS,
-  DEFAULT_MOCK_EXAM_SET_ID,
-  getMockExamQuestionsForSet,
   STUDENT_DUEL_TIME_BY_DIFFICULTY,
   STUDENT_DUEL_TIME_SEC,
-  pickRandomStudentDuelQuestions,
-  resolveStudentDuelQuestions,
   type StudentDuelDifficulty,
 } from '../../data/classArenaQuestions'
 import type { PythonTrialQuestion } from '../../data/pythonTrialQuestions'
-import { ensurePracticeQuestionsLoaded } from '../../utils/practiceQuestionCache'
+import { toTrialQuestion, ensurePracticeQuestionsLoaded } from '../../utils/practiceQuestionCache'
 
-type CodeSessionKind = 'student_duel' | 'mock_exam'
+type CodeSessionKind = 'student_duel'
 
 interface CodeSession {
   kind: CodeSessionKind
@@ -66,28 +58,20 @@ const emit = defineEmits<{
 const message = useMessage()
 const activeModule = ref<ClassArenaModuleKey>('student_duel')
 const showDuelModal = ref(false)
-const showExamModal = ref(false)
 const showRankDetail = ref(false)
 const duelMatching = ref(false)
 const duelMatched = ref(false)
 const codeSession = ref<CodeSession | null>(null)
 const duelQuestions = ref<PythonTrialQuestion[]>([])
-const examQuestions = ref<PythonTrialQuestion[]>([...getDefaultMockExamQuestions()])
-const selectedExamSetId = ref(DEFAULT_MOCK_EXAM_SET_ID)
 const duelQuestionIndex = ref(0)
 const duelCompletedCount = ref(0)
-const examQuestionIndex = ref(0)
-const examCompletedCount = ref(0)
 const duelDifficulty = ref<StudentDuelDifficulty>('entry')
 const duelTimeLimitSec = computed(
   () => STUDENT_DUEL_TIME_BY_DIFFICULTY[duelDifficulty.value] ?? STUDENT_DUEL_TIME_SEC,
 )
 const duelRemainingSec = ref(STUDENT_DUEL_TIME_SEC)
-const examRemainingSec = ref(MOCK_EXAM_TIME_SEC)
 const duelTimerRunning = ref(false)
-const examTimerRunning = ref(false)
 let duelTimerId: ReturnType<typeof setInterval> | undefined
-let examTimerId: ReturnType<typeof setInterval> | undefined
 let matchPollId: ReturnType<typeof setInterval> | undefined
 
 const onlineCount = computed(() => Math.max(0, props.classOnlineCount || 0))
@@ -119,9 +103,7 @@ const statusType: Record<string, 'success' | 'warning' | 'default'> = {
 }
 
 const duelTimerText = computed(() => formatTimer(duelRemainingSec.value))
-const examTimerText = computed(() => formatTimer(examRemainingSec.value))
 const duelTimerUrgent = computed(() => duelRemainingSec.value <= Math.min(60, Math.floor(duelTimeLimitSec.value / 5)))
-const examTimerUrgent = computed(() => examRemainingSec.value <= 600)
 
 function formatTimer(totalSec: number) {
   const sec = Math.max(0, totalSec)
@@ -138,13 +120,7 @@ function stopDuelTimer() {
   }
 }
 
-function stopExamTimer() {
-  examTimerRunning.value = false
-  if (examTimerId !== undefined) {
-    clearInterval(examTimerId)
-    examTimerId = undefined
-  }
-}
+
 
 function startDuelTimer() {
   stopDuelTimer()
@@ -160,19 +136,7 @@ function startDuelTimer() {
   }, 1000)
 }
 
-function startExamTimer() {
-  stopExamTimer()
-  examRemainingSec.value = MOCK_EXAM_TIME_SEC
-  examTimerRunning.value = true
-  examTimerId = setInterval(() => {
-    if (examRemainingSec.value <= 0) {
-      stopExamTimer()
-      message.warning('考试时间到！')
-      return
-    }
-    examRemainingSec.value -= 1
-  }, 1000)
-}
+
 
 function resetDuelRun() {
   stopDuelTimer()
@@ -191,6 +155,7 @@ function stopMatchPoll() {
 function applyMatchedResult(result: {
   difficulty?: DuelMatchDifficulty
   time_sec?: number
+  questions?: import('../../api/practiceQuestions').PracticeQuestionPayload[]
   question_ids?: string[]
   opponent?: { user_id: number; display_name: string }
 }) {
@@ -202,29 +167,21 @@ function applyMatchedResult(result: {
   }
   rivalId.value = result.opponent?.user_id ?? null
   rivalName.value = result.opponent?.display_name || '同班对手'
-  const resolved = resolveStudentDuelQuestions(result.question_ids || [])
-  duelQuestions.value =
-    resolved.length >= STUDENT_DUEL_PROBLEM_COUNT
-      ? resolved.slice(0, STUDENT_DUEL_PROBLEM_COUNT)
-      : pickRandomStudentDuelQuestions(STUDENT_DUEL_PROBLEM_COUNT, duelDifficulty.value)
+  const resolved = (result.questions || []).map(toTrialQuestion)
+  if (resolved.length !== STUDENT_DUEL_PROBLEM_COUNT) {
+    duelMatched.value = false
+    stopMatchPoll()
+    matchWaitHint.value = '匹配题目加载失败，请重新匹配'
+    message.error(matchWaitHint.value)
+    return
+  }
+  duelQuestions.value = resolved
   duelRemainingSec.value = result.time_sec || duelTimeLimitSec.value
   stopMatchPoll()
   message.success(`已匹配对手 ${rivalName.value}，双方同一套 ${duelQuestions.value.length} 题`)
 }
 
-const activeExamSet = computed(() => MOCK_EXAM_SETS.find((item) => item.id === selectedExamSetId.value) ?? MOCK_EXAM_SETS[0])
 
-function switchExamSet(setId: string) {
-  selectedExamSetId.value = setId
-  examQuestions.value = getMockExamQuestionsForSet(setId)
-}
-
-function resetExamRun() {
-  stopExamTimer()
-  examQuestionIndex.value = 0
-  examCompletedCount.value = 0
-  examRemainingSec.value = MOCK_EXAM_TIME_SEC
-}
 
 function buildDuelQuestion(index: number): PythonTrialQuestion {
   const base = duelQuestions.value[index]
@@ -235,14 +192,7 @@ function buildDuelQuestion(index: number): PythonTrialQuestion {
   }
 }
 
-function buildExamQuestion(index: number): PythonTrialQuestion {
-  const base = examQuestions.value[index]
-  const label = base.code ? `${base.code}` : base.title
-  return {
-    ...base,
-    title: `${label} · 卷面第 ${index + 1} 题`,
-  }
-}
+
 
 function openCodeSession(session: CodeSession) {
   codeSession.value = session
@@ -259,19 +209,10 @@ function openDuelQuestion(index: number) {
   })
 }
 
-function openExamQuestion(index: number) {
-  examQuestionIndex.value = index
-  openCodeSession({
-    kind: 'mock_exam',
-    question: buildExamQuestion(index),
-    questionIndex: index,
-    totalQuestions: MOCK_EXAM_PROBLEM_COUNT,
-  })
-}
+
 
 function closeCodeSession() {
   if (codeSession.value?.kind === 'student_duel') resetDuelRun()
-  if (codeSession.value?.kind === 'mock_exam') resetExamRun()
   codeSession.value = null
   resetDuelMatch()
   emit('sessionChange', false)
@@ -301,11 +242,12 @@ async function startDuelMatch(preferredOpponent?: ClassmateRankItem) {
       void fetchDuelMatchStatus()
         .then((status) => {
           if (status.status === 'matched') applyMatchedResult(status)
+          else if (status.status === 'idle') {stopMatchPoll();duelMatching.value=false;matchWaitHint.value='匹配已结束，可重新寻找对手'}
           else if (status.status === 'waiting') {
             matchWaitHint.value = status.message || matchWaitHint.value
           }
         })
-        .catch(() => undefined)
+        .catch(() => { stopMatchPoll(); duelMatching.value = false; matchWaitHint.value = '匹配状态读取失败，请重试' })
     }, 1500)
   } catch (error) {
     duelMatching.value = false
@@ -353,13 +295,7 @@ function confirmDuelStart() {
   message.success('ACM 对战开始！先 AC 者获胜')
 }
 
-function confirmExamStart() {
-  resetExamRun()
-  examQuestions.value = getMockExamQuestionsForSet(selectedExamSetId.value)
-  startExamTimer()
-  openExamQuestion(0)
-  message.success('模拟考试开始，祝你好运！')
-}
+
 
 function onWorkspacePassed() {
   const session = codeSession.value
@@ -380,15 +316,7 @@ function onWorkspacePassed() {
     return
   }
 
-  examCompletedCount.value += 1
-  if (examQuestionIndex.value < session.totalQuestions - 1) {
-    message.success(`第 ${examCompletedCount.value} 题 AC，继续下一题`)
-    openExamQuestion(examQuestionIndex.value + 1)
-    return
-  }
-  stopExamTimer()
-  const score = Math.round((examCompletedCount.value / MOCK_EXAM_PROBLEM_COUNT) * 100)
-  message.success(`模拟考试结束！得分 ${score}，AC ${examCompletedCount.value}/${MOCK_EXAM_PROBLEM_COUNT} 题`)
+
 }
 
 onMounted(() => {
@@ -405,9 +333,10 @@ onMounted(() => {
     })
 })
 
+onDeactivated(() => { stopMatchPoll(); stopDuelTimer(); if(duelMatching.value) resetDuelMatch() })
+onActivated(() => { if(codeSession.value) closeCodeSession() })
 onUnmounted(() => {
   stopDuelTimer()
-  stopExamTimer()
   stopMatchPoll()
 })
 </script>
@@ -433,22 +362,6 @@ onUnmounted(() => {
         <div class="arena-hud__item">
           <n-icon :component="PeopleOutline" />
           <span>VS {{ rivalName }}</span>
-        </div>
-      </header>
-      <header
-        v-else
-        class="arena-hud"
-        aria-label="模拟考试状态"
-      >
-        <div class="arena-hud__item" :class="{ 'arena-hud__item--urgent': examTimerUrgent }">
-          <n-icon :component="TimerOutline" />
-          <span>{{ examTimerText }}</span>
-          <em>考试剩余</em>
-        </div>
-        <div class="arena-hud__item arena-hud__item--progress">
-          <n-icon :component="DocumentTextOutline" />
-          <span>AC {{ examCompletedCount }} / {{ MOCK_EXAM_PROBLEM_COUNT }}</span>
-          <em>套卷进度</em>
         </div>
       </header>
       <PythonTrialWorkspace
@@ -499,7 +412,7 @@ onUnmounted(() => {
         </dl>
       </header>
 
-      <nav class="class-arena__modules" aria-label="试炼场模块">
+      <nav class="class-arena__modules" data-tour="student-discovery" aria-label="试炼场模块">
         <button
           v-for="mod in CLASS_ARENA_MODULES"
           :key="mod.key"
@@ -598,42 +511,7 @@ onUnmounted(() => {
         </template>
 
         <template v-else>
-          <header class="panel-head">
-            <h3>模拟考试</h3>
-            <p>{{ MOCK_EXAM_PROBLEM_COUNT }} 道编程题 · 限时 {{ formatTimer(MOCK_EXAM_TIME_SEC) }}</p>
-          </header>
-          <div class="exam-set-tabs" role="tablist" aria-label="套卷选择">
-            <button
-              v-for="set in MOCK_EXAM_SETS"
-              :key="set.id"
-              type="button"
-              role="tab"
-              class="exam-set-tab"
-              :class="{ 'exam-set-tab--active': selectedExamSetId === set.id }"
-              :aria-selected="selectedExamSetId === set.id"
-              @click="switchExamSet(set.id)"
-            >
-              <strong>{{ set.title }}</strong>
-              <span>{{ set.difficulty }}</span>
-            </button>
-          </div>
-          <p class="exam-set-desc">{{ activeExamSet?.description }}</p>
-          <div class="exam-preview">
-            <ol class="exam-rules">
-              <li v-for="(rule, index) in MOCK_EXAM_RULES" :key="index">{{ rule }}</li>
-            </ol>
-            <div class="exam-outline">
-              <article v-for="(item, index) in examQuestions" :key="item.id" class="exam-outline__item">
-                <strong>第 {{ index + 1 }} 题</strong>
-                <span>{{ item.title }}</span>
-                <em>{{ item.topic }}</em>
-              </article>
-            </div>
-            <div class="duel-preview__actions">
-              <n-button type="primary" @click="confirmExamStart">开始模拟考试</n-button>
-              <n-button quaternary size="small" @click="showExamModal = true">考试说明</n-button>
-            </div>
-          </div>
+          <MockExamPanel />
         </template>
       </section>
 
@@ -683,14 +561,7 @@ onUnmounted(() => {
         </template>
       </n-modal>
 
-      <n-modal v-model:show="showExamModal" preset="card" title="模拟考试说明" style="max-width: 560px">
-        <ul class="modal-list">
-          <li v-for="(rule, index) in MOCK_EXAM_RULES" :key="`m-${index}`">{{ rule }}</li>
-        </ul>
-        <template #footer>
-          <n-button @click="showExamModal = false">关闭</n-button>
-        </template>
-      </n-modal>
+
     </template>
   </div>
 </template>
@@ -1323,4 +1194,8 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 }
+</style>
+
+<style scoped>
+.class-arena{scrollbar-width:none}.class-arena::-webkit-scrollbar{width:0}
 </style>

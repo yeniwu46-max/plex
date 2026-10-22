@@ -110,24 +110,82 @@ class KnowledgeService:
         history: list[dict[str, str]] | None = None,
         debug: bool = False,
         use_llm: bool | None = None,
+        request_id: str | None = None,
     ) -> RagAnswer:
-        return KnowledgeRagService().query(
-            query, user_id=user_id, role=role, scene=scene, context=context, history=history, debug=debug, use_llm=use_llm
-        )
+        if user_id is not None and role in {'teacher', 'admin'}:
+            from app.services.rag_runtime import ask
+            return ask(query, user_id=user_id, role=role, request_id=request_id, scene=scene,
+                       context=context, history=history, debug=debug, use_llm=use_llm)
+        import uuid
+        from contextlib import nullcontext
+        from app.services.model_accounting import scope
+        request_id=str(uuid.uuid4())
+        trace=scope(workflow='rag',user_id=user_id,request_id=request_id,attempt_id=request_id,
+                    policy_version='rag-answer-v1') if user_id is not None else nullcontext()
+        with trace:
+            answer=KnowledgeRagService().query(
+                query,user_id=user_id,role=role,scene=scene,context=context,history=history,debug=debug,use_llm=use_llm)
+        answer.request_id=request_id
+        return answer
 
     @staticmethod
-    def prepare(query: str, *, user_id: int | None, role: str = 'student', scene: str = 'chat', context: dict[str, Any] | None = None) -> RagPlan:
+    def prepare(query: str, *, user_id: int | None, role: str = 'student', scene: str = 'chat', context: dict[str, Any] | None = None, state_snapshot: dict | None = None, learner_context=None) -> RagPlan:
         """两段式（流式）第一步：完成检索/策略/上下文，返回 RagPlan。"""
-        return KnowledgeRagService().prepare(query, user_id=user_id, role=role, scene=scene, context=context)
+        return KnowledgeRagService().prepare(query, user_id=user_id, role=role, scene=scene, context=context, state_snapshot=state_snapshot, learner_context=learner_context)
 
     @staticmethod
     def finalize(plan: RagPlan, **kwargs: Any) -> RagAnswer:
         return KnowledgeRagService().finalize(plan, **kwargs)
 
     @staticmethod
+    def answer_prepared(plan: RagPlan, *, use_llm: bool = False) -> RagAnswer:
+        service = KnowledgeRagService()
+        text, mode, meta = service.generate(plan, use_llm=use_llm)
+        return service.finalize(plan, answer_text=text, generation_mode=mode, model=meta.get('model'),
+            provider=meta.get('provider'), token_usage=meta.get('token_usage') or {})
+
+    @staticmethod
     def apply_answer_policy(plan: RagPlan, text: str) -> str:
         """对外部 LLM 生成的文本套用 Answer Policy（Hint Level / 代码策略 / 练习禁泄题）。"""
         return KnowledgeRagService().enforce_answer_policy(plan, text)
+
+    @staticmethod
+    def tutor_evidence(query, *, user_id, task, state_snapshot, learner_context=None):
+        """Evidence only; the tutor's explicit mode owns the teaching action."""
+        plan = KnowledgeService.prepare(query, user_id=user_id, scene='trial',
+            context={'task_type': 'practice', 'concept_hint': (task or {}).get('concept_id')},
+            state_snapshot=state_snapshot, learner_context=learner_context)
+        ids = {row['chunk_id'] for row in plan.context.source_index}
+        sources, remaining = [], 9000
+        if plan.knowledge_grounded and not plan.blocked_reason:
+            for chunk in plan.chunks:
+                if chunk.chunk_id not in ids or remaining <= 0:
+                    continue
+                content = chunk.content[:min(2200, remaining)]
+                from hashlib import sha256
+                sources.append({**chunk.to_source_dict(preview_chars=0), 'content': content,
+                    'content_hash': sha256(chunk.content.encode()).hexdigest()})
+                remaining -= len(content)
+        return {'status': 'grounded' if sources else 'insufficient_evidence',
+                'sources': sources, 'blocked_reason': plan.blocked_reason,
+                'prerequisite_gaps': list(plan.retrieval.graph.unmet_prerequisites),
+                'query_intent': plan.retrieval.understanding.intent,
+                'learning_preferences': dict(learner_context.profile_dimensions) if learner_context else {}}
+
+    @staticmethod
+    def tutor_sources_current(user_id, sources):
+        from sqlalchemy.orm import Session
+        from app.models import KnowledgeChunk
+        from .access_service import KnowledgeAccessService
+        if not sources:
+            return True
+        with Session(db.engine) as session:
+            rows = KnowledgeAccessService.chunks(user_id, session=session).filter(
+                KnowledgeChunk.chunk_id.in_([s['chunk_id'] for s in sources])).all()
+            from hashlib import sha256
+            current = {(r.chunk_id, r.version): sha256(r.content.encode()).hexdigest() for r in rows}
+        return all((s['chunk_id'], s['version']) in current and (not s.get('content_hash')
+            or current[(s['chunk_id'], s['version'])] == s['content_hash']) for s in sources)
 
     @staticmethod
     def plan_context_text(plan: RagPlan | None, *, limit: int = 1400) -> str:
@@ -200,6 +258,8 @@ class KnowledgeService:
         result = retrieval.retrieve(query, learner, understanding=qu, knowledge_types=knowledge_types, top_k=max(top_k * 3, 12))
         strategy = StrategyService.select(qu, learner, result.graph)
         ranked = RerankService.rerank(result.candidates, understanding=qu, graph=result.graph, learner=learner, strategies=strategy.strategies, top_k=top_k)
+        from .access_service import KnowledgeAccessService
+        manageable = {c.document_id for c in ranked if KnowledgeAccessService.document(user_id, c.document_id, edit=True)}
         return {
             'concept_ids': concept_ids,
             'concepts': GraphService.concepts_brief(concept_ids),
@@ -210,6 +270,7 @@ class KnowledgeService:
                     **c.to_source_dict(preview_chars=0),
                     'content': c.content,
                     'difficulty': c.difficulty,
+                    'can_manage': c.document_id in manageable,
                 }
                 for c in ranked
             ],

@@ -36,6 +36,15 @@ const router = createRouter({
       meta: { public: true },
       component: () => import('../views/OAuthCallbackView.vue'),
     },
+    { path: '/reset-password', name: 'reset-password', meta: { public: true }, component: () => import('../views/ResetPasswordView.vue') },
+    {
+      path: '/student/onboarding', name: 'student-onboarding', meta: { roles: ['student'] },
+      component: () => import('../views/StudentOnboardingView.vue'),
+    },
+    {
+      path: '/student/arrival-profile', name: 'student-arrival-profile', meta: { roles: ['student'] },
+      component: () => import('../views/StudentOnboardingView.vue'),
+    },
     {
       path: '/student',
       meta: { roles: ['student'] },
@@ -80,6 +89,11 @@ const router = createRouter({
           path: 'trials/practice/:questionId',
           name: 'student-trial-practice',
           component: () => import('../views/StudentTrialPracticeView.vue'),
+        },
+        {
+          path: 'trials/counterexamples/:challengeId?',
+          name: 'student-counterexamples',
+          component: () => import('../views/StudentCounterexampleView.vue'),
         },
         {
           path: 'messenger',
@@ -139,6 +153,11 @@ const router = createRouter({
           path: 'trials/create',
           name: 'teacher-trial-create',
           component: () => import('../views/TeacherTrialCreateView.vue'),
+        },
+        {
+          path: 'counterexamples',
+          name: 'teacher-counterexamples',
+          component: () => import('../views/TeacherCounterexampleView.vue'),
         },
         {
           // 新增独立预览页：题库更新任务的标准化题目与提交记录展示，
@@ -204,7 +223,7 @@ function roleAllowed(required: string[] | undefined, role?: string) {
   return false
 }
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (to.meta.public) {
     if ((to.name === 'login' || to.name === 'register') && auth.isAuthenticated) {
@@ -226,13 +245,25 @@ router.beforeEach((to) => {
     return auth.homePathForRole(auth.profile?.role)
   }
 
+  if (auth.profile?.role === 'student' && to.name !== 'student-onboarding') {
+    try {
+      await auth.ensureAccount()
+      if (auth.profile?.onboarding?.required) return { name: 'student-onboarding', query: { redirect: to.fullPath } }
+    } catch {
+      return { name: 'student-onboarding', query: { redirect: to.fullPath } }
+    }
+  }
+
   return true
 })
 
 const routeTitles: Record<string, string> = {
+  'student-onboarding': '欢迎入驻',
+  'student-arrival-profile': '入驻资料',
   login: '登录',
   register: '注册',
   'oauth-callback': '登录授权',
+    'reset-password': '重置密码',
   'student-home': '学生首页',
   'student-discovery': '探索舱',
   'student-star-path-lab': '星轨学习',

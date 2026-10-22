@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useColorMode, usePreferredDark, useStorage } from '@vueuse/core'
+import { saveAppearance, type Appearance } from '../api/onboarding'
 
 export type ColorMode = 'dark' | 'light' | 'auto'
 export type PlexPersona = 'student' | 'teacher' | 'admin' | 'default'
@@ -13,6 +14,19 @@ const TRANSITION_MS = 160
 
 export const useThemeStore = defineStore('theme', () => {
   const prefersDark = usePreferredDark()
+  const preferenceError = ref('')
+  let accountId: number | null = null
+  let boundSignature = ''
+  let writeQueue = Promise.resolve()
+  const guest = (() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('plex-guest-appearance') || 'null') as Appearance | null
+      if (stored && ['space', 'comic'].includes(stored.visual_style) && ['dark', 'light', 'auto'].includes(stored.color_mode)) return stored
+    } catch { /* use current pre-account browser appearance */ }
+    return { visual_style: localStorage.getItem(VISUAL_STYLE_KEY) === 'comic' ? 'comic' : 'space',
+      color_mode: (['dark', 'light', 'auto'].includes(localStorage.getItem(STORAGE_KEY) || '') ? localStorage.getItem(STORAGE_KEY) : 'dark') } as Appearance
+  })()
+  localStorage.setItem('plex-guest-appearance', JSON.stringify(guest))
 
   // VueUse 管理 localStorage 持久化 + html[data-theme] 属性写入
   const colorMode = useColorMode({
@@ -44,6 +58,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   function setVisualStyle(style: VisualStyle) {
     savedVisualStyle.value = style
+    persistAppearance()
   }
 
   function setPersona(next: PlexPersona) {
@@ -59,6 +74,53 @@ export const useThemeStore = defineStore('theme', () => {
   function setMode(m: ColorMode) {
     applyTransition()
     colorMode.value = m
+    persistAppearance()
+  }
+
+  function appearance(): Appearance {
+    return { visual_style: visualStyle.value, color_mode: mode.value }
+  }
+
+  function previewAppearance(next: Appearance) {
+    savedVisualStyle.value = next.visual_style
+    colorMode.value = next.color_mode
+  }
+
+  function bindAccount(id: number | null, remote?: Appearance | null) {
+    const signature = `${id}:${JSON.stringify(remote)}`
+    if (signature === boundSignature) return
+    boundSignature = signature
+    accountId = id
+    preferenceError.value = ''
+    let next = remote ?? guest
+    if (id && !remote) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(`plex-appearance:${id}`) || 'null') as Appearance | null
+        if (cached && ['space', 'comic'].includes(cached.visual_style) && ['dark', 'light', 'auto'].includes(cached.color_mode)) next = cached
+      } catch { /* invalid local cache is ignored */ }
+    }
+    previewAppearance(next)
+    if (id && remote) localStorage.setItem(`plex-appearance:${id}`, JSON.stringify(remote))
+  }
+
+  function persistAppearance() {
+    const owner = accountId
+    const next = appearance()
+    if (owner === null) {
+      Object.assign(guest, next)
+      localStorage.setItem('plex-guest-appearance', JSON.stringify(next))
+      return
+    }
+    localStorage.setItem(`plex-appearance:${owner}`, JSON.stringify(next))
+    writeQueue = writeQueue.then(async () => {
+      if (accountId !== owner) return
+      try {
+        await saveAppearance(next)
+        if (accountId === owner) preferenceError.value = ''
+      } catch {
+        if (accountId === owner) preferenceError.value = '外观已在本机应用，暂未同步到账号'
+      }
+    })
   }
 
   // 兼容旧的 toggle() 调用
@@ -100,5 +162,10 @@ export const useThemeStore = defineStore('theme', () => {
     setPersona,
     setMode,
     toggle,
+    bindAccount,
+    previewAppearance,
+    appearance,
+    preferenceError,
+    persistAppearance,
   }
 })

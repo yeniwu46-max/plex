@@ -412,7 +412,7 @@ html[data-plex-style='comic'][data-plex-persona='student'][data-theme='light'] .
 }
 @media (max-width: 900px) {
   html[data-plex-style='comic'][data-plex-persona='student'] .plex-topbar.plex-topbar--comic .plex-topbar__userbar { overflow: visible; flex-wrap: wrap; justify-self: start; gap: 0.75rem; }
-  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-stage { height: calc(100dvh - 205px); min-height: 550px; padding-bottom: 1.5rem; }
+  html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .messenger-stage { height: auto; min-height: 0; padding-bottom: 1.5rem; }
   html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .analysis-panel { padding: 0.85rem; }
   html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .chat-thread { padding: 1rem 0.8rem; }
   html[data-plex-style='comic'][data-plex-persona='student'] .messenger-main.plex-comic-chat .prompt-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }

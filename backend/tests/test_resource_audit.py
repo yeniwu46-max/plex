@@ -13,6 +13,12 @@ from app.services.resource_audit.code_tools import run_static_suite
 class ResourceAuditTestCase(unittest.TestCase):
     def setUp(self):
         self.app = create_app('testing')
+        # These tests inspect audit composition; execution failures have their
+        # own boundary tests and real Docker integration acceptance.
+        runner = patch('app.services.resource_audit.code_tools.CodeExecutionService.run',
+                       return_value={'status': {'id': 3}, 'stdout': '', 'stderr': ''})
+        runner.start()
+        self.addCleanup(runner.stop)
 
     def test_audit_local_bundle_passes(self):
         with self.app.app_context():

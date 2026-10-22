@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { NButton, NTag, useMessage } from 'naive-ui'
+import { NButton, NCard, NTag, useMessage } from 'naive-ui'
 import {
   completeStudentTrial,
   fetchStudentTrialQuestions,
@@ -11,6 +11,7 @@ import {
   type TeacherAssignmentItem,
 } from '../../api/studentAssignments'
 import PythonTrialWorkspace from './PythonTrialWorkspace.vue'
+import TrialAiFloatingBall, { type TrialCoachContext } from './TrialAiFloatingBall.vue'
 import type { PythonTrialQuestion } from '../../data/pythonTrialQuestions'
 import { showIncentiveFeedback } from '../../utils/incentiveFeedback'
 import { advanceDailyQuest } from '../../api/studentOverview'
@@ -34,6 +35,7 @@ const submittingId = ref<number | null>(null)
 const feedback = ref<Record<number, { correct: boolean; correctIndex: number }>>({})
 const questionStartedAt = ref<Record<number, number>>({})
 const activeCodingId = ref<number | null>(null)
+const activeReviewId = ref<number | null>(null)
 
 function markQuestionStart(questionId: number) {
   if (!questionStartedAt.value[questionId]) {
@@ -63,6 +65,25 @@ const activeCodingItem = computed(() =>
 function isCoding(item: TeacherAssignmentItem) {
   return item.question_type === 'coding'
 }
+
+// Review only reads the server-returned submission; it never reopens grading.
+const activeReviewItem = computed(() => payload.value?.items.find(item =>
+  item.id === activeReviewId.value && isCoding(item) && item.status === 'completed',
+) ?? null)
+const reviewContext = computed<TrialCoachContext | null>(() => {
+  const item = activeReviewItem.value
+  if (!item) return null
+  return {
+    exerciseId: `lc-${item.id}`,
+    formalQuestionId: item.id,
+    questionTitle: item.stem.slice(0, 120),
+    questionPrompt: item.stem,
+    topic: item.knowledge_label,
+    code: item.submitted_code ?? '',
+    caseResults: [],
+    allPassed: false,
+  }
+})
 
 function toPythonQuestion(item: TeacherAssignmentItem): PythonTrialQuestion {
   const meta = item.coding_meta ?? {
@@ -154,6 +175,10 @@ async function submitMcq(item: TeacherAssignmentItem) {
 
 async function onCodingPassed() {
   message.success('编程题已通过')
+  await onCodingSubmitted()
+}
+
+async function onCodingSubmitted() {
   activeCodingId.value = null
   await loadQuestions()
   if (payload.value?.my_status === 'completed') {
@@ -183,8 +208,23 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="trial-exam" aria-label="试炼试卷">
-    <template v-if="activeCodingItem">
+  <section class="trial-exam" :class="{ 'trial-exam--code': activeCodingItem }" aria-label="试炼试卷">
+    <template v-if="activeReviewItem && reviewContext">
+      <n-card class="trial-exam__review" title="已提交代码复盘" aria-label="已提交代码复盘">
+        <template #header-extra>
+          <n-button size="small" @click="activeReviewId = null">返回试卷</n-button>
+        </template>
+        <p class="trial-exam__review-title">{{ activeReviewItem.stem }}</p>
+        <n-tag :type="activeReviewItem.code_passed === true ? 'success' : activeReviewItem.code_passed === false ? 'warning' : 'default'">
+          {{ activeReviewItem.code_passed === true ? '正式判题已通过' : activeReviewItem.code_passed === false ? '正式判题未通过' : '暂无正式判定' }}
+        </n-tag>
+        <p>这是你已提交的代码，原成绩保持不变。可通过右下角“小E 编程辅导”复盘；可用帮助以教师设置为准。</p>
+        <pre v-if="activeReviewItem.submitted_code" class="trial-exam__review-code" tabindex="0" aria-label="已提交的 Python 代码"><code>{{ activeReviewItem.submitted_code }}</code></pre>
+        <p v-else>本次记录没有保存代码，可向小 E 询问题目相关概念。</p>
+      </n-card>
+      <TrialAiFloatingBall :key="activeReviewItem.id" :context="reviewContext" />
+    </template>
+    <template v-else-if="activeCodingItem">
       <PythonTrialWorkspace
         :question="toPythonQuestion(activeCodingItem)"
         embedded
@@ -192,6 +232,7 @@ onMounted(() => {
         :trial-question-id="activeCodingItem.id"
         @back="activeCodingId = null"
         @passed="onCodingPassed"
+        @submitted="onCodingSubmitted"
       />
     </template>
 
@@ -219,9 +260,9 @@ onMounted(() => {
       <p v-else-if="!payload?.items.length" class="trial-exam__empty">该试炼暂无题目，请稍后再试。</p>
 
       <ol v-else class="trial-exam__list">
-        <li v-for="item in payload.items" :key="item.id" class="trial-exam__item">
+        <li v-for="(item, index) in payload.items" :key="item.id" class="trial-exam__item">
           <header>
-            <span>Q{{ item.sort_order }}</span>
+            <span>Q{{ index + 1 }}</span>
             <n-tag size="small" :bordered="false">{{ isCoding(item) ? '编程题' : '选择题' }}</n-tag>
             <n-tag v-if="item.status === 'completed'" size="small" type="success" :bordered="false">已完成</n-tag>
           </header>
@@ -230,6 +271,9 @@ onMounted(() => {
           <template v-if="isCoding(item)">
             <p v-if="item.code_passed" class="trial-exam__result trial-exam__result--ok">已通过全部测试</p>
             <p v-else-if="item.status === 'completed'" class="trial-exam__result trial-exam__result--fail">未通过</p>
+            <n-button v-if="item.status === 'completed'" size="small" class="trial-exam__review-button" @click="activeReviewId = item.id">
+              回看代码与辅导
+            </n-button>
             <n-button
               v-if="item.status !== 'completed' && !isDone"
               type="primary"
@@ -291,6 +335,14 @@ onMounted(() => {
   border-radius: 16px;
   background: rgba(5, 17, 29, 0.72);
   border: 1px solid rgba(74, 222, 128, 0.12);
+}
+
+.trial-exam--code {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  border: 0;
+  background: transparent;
 }
 
 .trial-exam__head {
@@ -424,4 +476,10 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
 }
+.trial-exam__review { min-width: 0; line-height: 1.7; }
+.trial-exam__review-title { font-weight: 600; overflow-wrap: anywhere; }
+.trial-exam__review-code { max-width: 100%; overflow: auto; padding: 1rem; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 8px; font: 14px/1.7 Consolas, monospace; }
+.trial-exam__review-code:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.trial-exam__review-button { margin-top: 0.75rem; }
+:global(html[data-plex-style="comic"] .trial-exam__review) { border-width: 2px; box-shadow: 3px 3px 0 color-mix(in srgb, currentColor 25%, transparent); }
 </style>

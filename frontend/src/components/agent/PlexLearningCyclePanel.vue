@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { LearningCycleResult } from '../../api/agentService'
+import TutorResponseCard from '../student/TutorResponseCard.vue'
 
 defineProps<{
   result: LearningCycleResult
@@ -14,40 +15,33 @@ defineProps<{
         <h3>{{ result.learningReport.headline }}</h3>
       </div>
       <span :class="result.execution.all_passed ? 'is-pass' : 'is-fix'">
-        {{ result.execution.all_passed ? '测试已通过' : '需要修复' }}
+        {{ result.execution.all_passed ? '本次自测通过' : '本次自测未通过' }}
       </span>
     </header>
 
     <div class="cycle-panel__grid">
       <article>
-        <h4>学习画像与路径</h4>
-        <p>讲解方式：{{ result.learningProfile.interventionPresentation }}</p>
-        <p>循环掌握度：{{ result.learningProfile.loopMastery }}</p>
-        <strong>下一步：{{ result.learningPath.nextKnowledgePoint }}</strong>
+        <h4>本次自测</h4>
+        <strong>{{ result.execution.passed_count }} / {{ result.execution.total }} 个用例通过</strong>
+        <p>有限自测通过不等于所有输入正确，不会据此修改正式成绩或掌握度。</p>
         <small>{{ result.learningPath.reason }}</small>
       </article>
 
       <article>
-        <h4>{{ result.resources.executionDiagram.title }}</h4>
-        <p>{{ result.resources.executionDiagram.description }}</p>
-        <ol class="cycle-panel__diagram">
-          <li v-for="step in result.resources.executionDiagram.steps" :key="step.round">
-            <b>第 {{ step.round }} 轮</b><span>i = {{ step.i }}</span><span>{{ step.action }}</span>
+        <h4>运行结果</h4>
+        <ol class="cycle-panel__results">
+          <li v-for="(item, index) in result.execution.results" :key="index">
+            <strong>{{ item.label || `用例 ${index + 1}` }} · {{ item.passed ? '通过' : '未通过' }}</strong>
+            <p>预期输出</p><pre>{{ item.expected || '空输出' }}</pre>
+            <p>实际输出</p><pre>{{ item.actual || '空输出' }}</pre>
+            <pre v-if="item.error">{{ item.error }}</pre>
+            <small v-if="item.truncated">较长的输出已截取显示。</small>
           </li>
         </ol>
       </article>
 
-      <article>
-        <h4>{{ result.resources.microFix.title }}</h4>
-        <p>{{ result.resources.microFix.prompt }}</p>
-        <code>{{ result.resources.microFix.starterCode }}</code>
-        <small>{{ result.resources.microFix.expectedOutcome }}</small>
-      </article>
-
       <article class="cycle-panel__tutor">
-        <h4>启发式追问</h4>
-        <p>{{ result.tutor.question }}</p>
-        <small>{{ result.tutor.nextAction }}</small>
+        <TutorResponseCard :response="result.tutorResponse" />
       </article>
     </div>
 
@@ -61,18 +55,20 @@ defineProps<{
 </template>
 
 <style scoped>
-.cycle-panel { display: grid; gap: .8rem; padding: 1rem; border: 1px solid rgba(96, 165, 250, .24); border-radius: 14px; background: linear-gradient(135deg, rgba(15, 23, 42, .8), rgba(8, 47, 73, .52)); }
-.cycle-panel__head { display: flex; justify-content: space-between; align-items: start; gap: .75rem; }
+.cycle-panel { --cycle-text: var(--plex-text); --cycle-muted: var(--plex-text-muted); --cycle-panel: var(--plex-bg-card); --cycle-raised: var(--plex-bg-elevated); --cycle-line: var(--plex-border); --cycle-accent: var(--plex-accent); display: grid; gap: .8rem; padding: 1rem; border: 1px solid var(--cycle-line); border-radius: 14px; background: var(--cycle-panel); color: var(--cycle-text); }
+.cycle-panel__head { display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: .75rem; }
 .cycle-panel__head p, .cycle-panel__head h3, .cycle-panel h4, .cycle-panel p, .cycle-panel small { margin: 0; }
-.cycle-panel__head p { color: #7dd3fc; font-size: .74rem; letter-spacing: .08em; }
-.cycle-panel__head h3 { margin-top: .18rem; color: #f8fafc; font-size: 1rem; }
-.cycle-panel__head > span { padding: .2rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 700; white-space: nowrap; }
-.is-pass { color: #6ee7b7; background: rgba(16, 185, 129, .14); }.is-fix { color: #fcd34d; background: rgba(245, 158, 11, .14); }
+.cycle-panel__head p { color: var(--cycle-accent); font-size: .74rem; letter-spacing: .08em; }
+.cycle-panel__head h3 { margin-top: .18rem; font-size: 1rem; }
+.cycle-panel__head > span { padding: .2rem .55rem; border: 1px solid currentColor; border-radius: 999px; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.is-pass { color: var(--cycle-accent); }.is-fix { color: var(--cycle-text); }
 .cycle-panel__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
-.cycle-panel article { display: grid; gap: .4rem; padding: .75rem; border-radius: 10px; background: rgba(15, 23, 42, .52); }
-.cycle-panel h4 { color: #bae6fd; font-size: .86rem; }.cycle-panel p, .cycle-panel small, .cycle-panel footer { color: rgba(226, 232, 240, .78); font-size: .8rem; line-height: 1.5; }
-.cycle-panel strong { color: #a7f3d0; font-size: .85rem; }.cycle-panel code { overflow: auto; padding: .5rem; border-radius: 7px; background: rgba(2, 6, 23, .72); color: #c4b5fd; font-size: .74rem; white-space: pre; }
-.cycle-panel__diagram { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }.cycle-panel__diagram li { display: grid; grid-template-columns: 3.3rem 2.8rem 1fr; gap: .35rem; font-size: .74rem; color: #dbeafe; }.cycle-panel__diagram b { color: #93c5fd; }
-.cycle-panel__tutor { border-color: rgba(196, 181, 253, .18); }.cycle-panel footer { display: grid; gap: .35rem; padding-top: .7rem; border-top: 1px solid rgba(148, 163, 184, .16); }.cycle-panel footer ol { margin: 0; padding-left: 1.05rem; }
+.cycle-panel article { display: grid; gap: .4rem; min-width: 0; overflow-wrap: anywhere; padding: .75rem; border: 1px solid var(--cycle-line); border-radius: 10px; background: var(--cycle-raised); }
+.cycle-panel h4 { font-size: .86rem; }.cycle-panel p, .cycle-panel small, .cycle-panel footer { color: var(--cycle-muted); font-size: .8rem; line-height: 1.5; }
+.cycle-panel strong { font-size: .85rem; }
+.cycle-panel__results { display: grid; gap: .75rem; padding-inline-start: 1.2rem; margin: 0; }
+.cycle-panel__results pre { margin: .3rem 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; }
+.cycle-panel__tutor { grid-column: 1 / -1; }.cycle-panel footer { display: grid; gap: .35rem; padding-top: .7rem; border-top: 1px solid var(--cycle-line); }.cycle-panel footer ol { margin: 0; padding-left: 1.05rem; }
+:global(html[data-plex-style='comic'][data-plex-persona='student'] .cycle-panel) { --cycle-text: var(--comic-text); --cycle-muted: var(--comic-muted); --cycle-panel: var(--comic-panel); --cycle-raised: var(--comic-raised); --cycle-line: var(--comic-line); --cycle-accent: var(--comic-accent); border-width: 2px; border-radius: 5px 16px 5px 16px; box-shadow: var(--comic-shadow); }
 @media (max-width: 680px) { .cycle-panel__grid { grid-template-columns: 1fr; } }
 </style>

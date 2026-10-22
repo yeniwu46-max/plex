@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .text_utils import normalize_text
+from .pdf_cleanup import clean_pdf_pages, lines_to_markdown
 
 SUPPORTED_TYPES = ('md', 'markdown', 'txt', 'pdf', 'docx', 'pptx', 'json')
 
@@ -131,23 +132,37 @@ class ParserService:
             pdfplumber = None
         if pdfplumber is not None:
             with pdfplumber.open(str(path)) as pdf:
-                for number, page in enumerate(pdf.pages, 1):
-                    text = _clean_text(page.extract_text() or '')
+                pages = [
+                    {'height': page.height, 'lines': page.extract_text_lines(layout=True, strip=False)}
+                    for page in pdf.pages
+                ]
+                cleaned, report = clean_pdf_pages(pages)
+                for number, lines in enumerate(cleaned, 1):
+                    text = _clean_text(lines_to_markdown(lines))
                     if text.strip():
                         doc.blocks.append(ParsedBlock(text=text, page=number))
+                doc.meta['cleanup'] = report
             doc.meta['parser'] = 'pdfplumber'
         else:
             try:
                 import pypdfium2 as pdfium  # type: ignore
             except ImportError as exc:
                 raise ParserError('解析 PDF 需要安装 pdfplumber 或 pypdfium2') from exc
-            pdf = pdfium.PdfDocument(str(path))
-            for number in range(len(pdf)):
-                page = pdf[number]
-                text = _clean_text(page.get_textpage().get_text_range() or '')
-                if text.strip():
-                    doc.blocks.append(ParsedBlock(text=text, page=number + 1))
+            with pdfium.PdfDocument(str(path)) as pdf:
+                for number in range(len(pdf)):
+                    page = pdf[number]
+                    try:
+                        textpage = page.get_textpage()
+                        try:
+                            text = _clean_text(textpage.get_text_range() or '')
+                        finally:
+                            textpage.close()
+                    finally:
+                        page.close()
+                    if text.strip():
+                        doc.blocks.append(ParsedBlock(text=text, page=number + 1))
             doc.meta['parser'] = 'pypdfium2'
+            doc.meta['cleanup'] = {'policy': 'retained_without_geometry', 'removed_line_count': 0}
         if not doc.blocks:
             raise ParserError('PDF 未提取到文本（可能是扫描件，需要 OCR）')
         return doc

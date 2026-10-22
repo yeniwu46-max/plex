@@ -5,7 +5,7 @@
 
 /* ─── 遮罩层 ─── */
 .driver-overlay {
-  background: rgba(3, 10, 18, 0.72) !important;
+  background: transparent !important;
 }
 
 /* ─── 弹窗基础 ─── */
@@ -248,3 +248,6 @@ html[data-theme='light'] .driver-overlay {
     padding: 1rem 1rem 0.85rem !important;
   }
 }
+
+.driver-overlay { background: transparent !important; }
+.driver-popover button, .driver-popover button:hover, .driver-popover button:disabled { text-shadow:none !important; }

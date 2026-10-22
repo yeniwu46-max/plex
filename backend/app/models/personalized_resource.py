@@ -30,15 +30,25 @@ class ResourceGenerationTask(BaseModel):
     started_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     audit_report = db.Column(db.JSON)
+    context_snapshot = db.Column(db.JSON)
+    context_hash = db.Column(db.String(64))
+    evidence_manifest = db.Column(db.JSON)
+    class_id = db.Column(db.Integer)
+    retry_root_id = db.Column(db.String(64))
+    request_body_hash = db.Column(db.String(64))
+    __table_args__ = (db.Index('ix_resource_class_time','class_id','created_at'),db.Index('ix_resource_retry_root','retry_root_id'))
 
     def to_dict(self, resources=None):
+        from app.services.resource_learning_context import ResourceLearningContext
+        from app.services.resource_runtime import retry_remaining
+        remaining = retry_remaining(self)
         retry_count = ResourceGenerationTask.query.filter_by(retry_of=self.task_id).count()
         dependency_graph = [
             {'agent': step.get('agent'), 'depends_on': step.get('depends_on')}
             for step in (self.steps or [])
             if isinstance(step, dict)
         ]
-        return {
+        payload = {
             'task_id': self.task_id,
             'status': self.status,
             'progress': self.progress,
@@ -50,14 +60,23 @@ class ResourceGenerationTask(BaseModel):
             'fallback_reason': self.fallback_reason,
             'retry_of': self.retry_of,
             'retry_count': retry_count,
+            'retry_remaining': remaining,
             'dependency_graph': dependency_graph,
             'profile_version': self.profile_version or 0,
+            'learning_context': ResourceLearningContext.public_summary(self.context_snapshot, self.context_hash),
             'request_fingerprint': self.request_fingerprint,
-            'recoverable': bool(self.recoverable),
+            'recoverable': bool(self.recoverable) and remaining > 0,
             'audit_report': self.audit_report,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
         }
+        from app.services.resource_course_evidence import ResourceCourseEvidence
+        evidence = ResourceCourseEvidence.summary(self.evidence_manifest, self.user_id, ResourceCourseEvidence.viewer())
+        payload['course_evidence'] = evidence
+        if evidence and evidence['status'] == 'unavailable':
+            payload.update(steps=[], resources=[], audit_report=None, error=evidence['message'], fallback_reason=None)
+        return payload
+
 
 
 class PersonalizedLearningResource(BaseModel):
@@ -97,9 +116,14 @@ class PersonalizedLearningResource(BaseModel):
     is_anomaly = db.Column(db.Boolean, nullable=False, default=False, index=True)
     student_warning = db.Column(db.String(500))
     ai_review = db.Column(db.JSON)
+    deleted_at = db.Column(db.DateTime, index=True)
+    expires_at = db.Column(db.DateTime, index=True)
+    deletion_batch = db.Column(db.String(36), index=True)
+    purged_at = db.Column(db.DateTime)
+
 
     def to_dict(self):
-        return {
+        payload = {
             'id': self.id,
             'user_id': self.user_id,
             'knowledge_key': self.knowledge_key,
@@ -125,3 +149,11 @@ class PersonalizedLearningResource(BaseModel):
             'ai_review': getattr(self, 'ai_review', None) or {},
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+        from app.services.resource_course_evidence import ResourceCourseEvidence, UNAVAILABLE
+        if not ResourceCourseEvidence.resource_current(self):
+            payload.update(title='资源暂不可用', content={}, content_url=None, citations=[],
+                           recommendation_reason=UNAVAILABLE, review_reason=None, ai_review={},
+                           student_warning=UNAVAILABLE, source_status='unavailable')
+        from app.services.resource_trash import ResourceTrash
+        return ResourceTrash.sanitize(self, payload)

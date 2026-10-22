@@ -245,6 +245,7 @@ watch(selectedClassId, () => {
               <n-icon :component="AddOutline" />
               <span>创建试炼</span>
             </n-button>
+            <n-button @click="router.push('/teacher/counterexamples')">反例工作台</n-button>
           </header>
 
           <TeacherTemplatesPanel

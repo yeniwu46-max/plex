@@ -1,5 +1,6 @@
 """错题本与 SM-2 复习闭环 API 测试"""
 import unittest
+from unittest.mock import patch
 from datetime import datetime
 
 from flask_jwt_extended import create_access_token
@@ -13,6 +14,9 @@ from app.services.mistake import MistakeService
 
 class MistakesTestCase(unittest.TestCase):
     def setUp(self):
+        self.grading_patch = patch("app.services.grading_orchestrator.GradingOrchestrator.run_after_submit", return_value=[])
+        self.grading_patch.start()
+        self.addCleanup(self.grading_patch.stop)
         self.app = create_app('testing')
         self.client = self.app.test_client()
         with self.app.app_context():
@@ -77,7 +81,7 @@ class MistakesTestCase(unittest.TestCase):
             self.assertIsNotNone(row)
             self.assertGreaterEqual(row.fail_count, 1)
 
-    def test_code_trial_run_and_list(self):
+    def test_client_code_trial_run_does_not_create_mistake(self):
         run_resp = self.client.post(
             '/api/v1/student/code-trial/runs',
             json={
@@ -97,9 +101,9 @@ class MistakesTestCase(unittest.TestCase):
         list_resp = self.client.get('/api/v1/student/mistakes', headers=self.auth(self.student_token))
         self.assertEqual(list_resp.status_code, 200)
         data = list_resp.get_json()['data']
-        self.assertGreaterEqual(data['total'], 1)
+        self.assertEqual(data['total'], 0)
 
-    def test_code_trial_pass_creates_accepted_record(self):
+    def test_client_code_trial_pass_cannot_create_accepted_record(self):
         run_resp = self.client.post(
             '/api/v1/student/code-trial/runs',
             json={
@@ -117,7 +121,7 @@ class MistakesTestCase(unittest.TestCase):
         path_resp = self.client.get('/api/v1/student/learning-path', headers=self.auth(self.student_token))
         self.assertEqual(path_resp.status_code, 200)
         ac_status = path_resp.get_json()['data'].get('question_ac_status', [])
-        self.assertIn('gen-stage1-intro-s0', ac_status)
+        self.assertNotIn('gen-stage1-intro-s0', ac_status)
 
     def test_teacher_can_view_student_mistakes(self):
         with self.app.app_context():
@@ -158,18 +162,12 @@ class MistakesTestCase(unittest.TestCase):
         self.assertEqual(low, 0)
 
     def test_review_accepts_questionnaire_payload(self):
-        run_resp = self.client.post(
-            '/api/v1/student/code-trial/runs',
-            json={
-                'question_id': 'sm2-questionnaire-01',
-                'question_title': '问卷复习题',
-                'knowledge_key': 'loop',
-                'cases': [{'label': '样例1', 'passed': False}],
-            },
-            headers=self.auth(self.student_token),
-        )
-        self.assertEqual(run_resp.status_code, 200)
-        mistake_id = run_resp.get_json()['data']['record']['id']
+        with self.app.app_context():
+            row = MistakeService.record_code_trial_run(self.student_id, {
+                'question_id': 'server-review-fixture', 'question_title': '循环复习',
+                'knowledge_key': 'loop', 'cases': [{'label': 'server-test', 'passed': False}],
+            })
+            mistake_id = row.id
 
         review_resp = self.client.post(
             f'/api/v1/student/mistakes/{mistake_id}/review',
@@ -196,18 +194,12 @@ class MistakesTestCase(unittest.TestCase):
         self.assertEqual(second['interval_days'], 6)
 
     def test_wrong_answer_enters_due_queue_and_review_reschedules_it(self):
-        run_resp = self.client.post(
-            '/api/v1/student/code-trial/runs',
-            json={
-                'question_id': 'sm2-demo-01',
-                'question_title': 'SM-2 闭环题',
-                'knowledge_key': 'loop',
-                'cases': [{'label': '样例1', 'passed': False}],
-            },
-            headers=self.auth(self.student_token),
-        )
-        self.assertEqual(run_resp.status_code, 200)
-        mistake_id = run_resp.get_json()['data']['record']['id']
+        with self.app.app_context():
+            row = MistakeService.record_code_trial_run(self.student_id, {
+                'question_id': 'server-review-fixture', 'question_title': '循环复习',
+                'knowledge_key': 'loop', 'cases': [{'label': 'server-test', 'passed': False}],
+            })
+            mistake_id = row.id
 
         due_resp = self.client.get(
             '/api/v1/student/mistakes/reviews/due',
@@ -251,7 +243,7 @@ class MistakesTestCase(unittest.TestCase):
         self.assertGreaterEqual(update['student_profile_update']['version'], 2)
         self.assertEqual(update['student_profile_update']['reason'], 'sm2_review')
         self.assertIn(
-            '两轮',
+            '用户自评',
             update['student_profile_update']['dimensions']['knowledge_foundation']['value'],
         )
         self.assertTrue(update['learning_path_update']['replanned'])

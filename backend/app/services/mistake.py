@@ -353,7 +353,9 @@ class MistakeService:
     @staticmethod
     def submit_review(user_id: int, mistake_id: int, quality: int) -> dict:
         """Record recall quality, update mastery state, and schedule the next review."""
-        row = StudentMistake.query.filter_by(id=mistake_id, user_id=user_id).first()
+        StudentMistake.query.filter_by(id=mistake_id, user_id=user_id).update(
+            {StudentMistake.id: StudentMistake.id}, synchronize_session=False)
+        row = StudentMistake.query.filter_by(id=mistake_id, user_id=user_id).populate_existing().with_for_update().first()
         if not row:
             raise ValueError('错题不存在')
 
@@ -367,6 +369,10 @@ class MistakeService:
         else:
             row.fail_count = (row.fail_count or 0) + 1
             row.last_failed_at = now
+        from app.services.learner_state import LearnerStateService
+        LearnerStateService.record_review(user_id, row, schedule, now)
+        from app.services.student_profile import StudentProfileService
+        StudentProfileService.update_from_sm2_review(user_id, row.to_dict(), quality, commit=False)
         db.session.commit()
         return row.to_dict()
 

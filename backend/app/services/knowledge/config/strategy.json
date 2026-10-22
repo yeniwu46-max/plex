@@ -11,10 +11,10 @@
   },
   "strategy_by_intent": {
     "concept_explain": ["DIRECT_EXPLANATION"],
-    "debug_error": ["MISCONCEPTION_CORRECTION", "SCAFFOLDING"],
+    "debug_error": ["SCAFFOLDING"],
     "practice_request": ["PRACTICE_RECOMMENDATION"],
     "compare": ["EXAMPLE_BASED", "DIRECT_EXPLANATION"],
-    "code_review": ["SCAFFOLDING", "MISCONCEPTION_CORRECTION"],
+    "code_review": ["SCAFFOLDING"],
     "extension": ["EXTENSION"],
     "general": []
   },

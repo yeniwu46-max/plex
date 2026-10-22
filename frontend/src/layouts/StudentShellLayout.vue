@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { NDialogProvider } from 'naive-ui'
 import { useRoute } from 'vue-router'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import StudentSectionTabs from '../components/student/StudentSectionTabs.vue'
@@ -37,6 +38,7 @@ if (typeof window !== 'undefined') {
 </script>
 
 <template>
+  <n-dialog-provider>
   <DashboardShell
     layout-host
     :active-nav="chrome.activeNav"
@@ -51,9 +53,10 @@ if (typeof window !== 'undefined') {
     </template>
     <router-view v-slot="{ Component }">
       <!-- KeepAlive 始终挂载，避免进出练习页时整表缓存被销毁 -->
-      <keep-alive :max="8" :exclude="['StudentTrialPracticeView']">
+      <keep-alive :max="8" :exclude="['StudentTrialPracticeView', 'StudentCounterexampleView']">
         <component :is="Component" :key="pageKey" />
       </keep-alive>
     </router-view>
   </DashboardShell>
+  </n-dialog-provider>
 </template>

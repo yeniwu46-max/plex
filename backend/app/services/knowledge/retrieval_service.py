@@ -12,12 +12,14 @@ from typing import Any
 from app.models import KnowledgeChunk, KnowledgeDocument, db
 
 from .graph_service import GraphService
+from .access_service import KnowledgeAccessService
 from .lexical_index import LexicalIndex
 from .providers.embedding import cosine
 from .providers.llm import get_llm_provider
 from .schemas import GraphContext, LearnerContext, QueryUnderstanding, RetrievedChunk
 from .settings import prompts_config, retrieval_config, strategy_config
 from .text_utils import normalize_text, tokenize
+from .query_preparation import prepare_query
 from .vector_service import VectorService
 
 _GENERIC_SUFFIX = re.compile(r'(基础|入门|进阶|详解|操作|方法|概念|应用|实践|技巧|专题|详述|初步)$')
@@ -62,6 +64,7 @@ class RetrievalService:
         cfg = retrieval_config().get('query_understanding', {})
         normalized = normalize_text(query)
         qu = QueryUnderstanding(query=query, normalized_query=normalized)
+        qu.retrieval_query, qu.query_preparation = prepare_query(query, enabled=cfg.get('cleanup_enabled', True))
         lowered = normalized.lower()
 
         # intent
@@ -144,9 +147,10 @@ class RetrievalService:
         qu.concept_ids = [cid for cid, score in ranked if score >= min_score][:max_concepts]
         qu.concept_scores = {cid: round(score, 3) for cid, score in ranked[:8]}
         qu.keywords = sorted(query_tokens)[:12]
-        if re.search(r'(简单|入门|基础)', lowered):
+        difficulty_query = (qu.retrieval_query or normalized).lower()
+        if re.search(r'(简单|入门|基础)', difficulty_query):
             qu.difficulty_hint = 1
-        elif re.search(r'(进阶|深入|高级|难)', lowered):
+        elif re.search(r'(进阶|深入|高级|难)', difficulty_query):
             qu.difficulty_hint = 4
 
         # 可选 LLM 精炼（默认关闭；开启且有 provider 时才调用）
@@ -205,14 +209,37 @@ class RetrievalService:
         graph = GraphService.expand(qu.concept_ids, learner)
         graph_ids = graph.node_ids()
 
-        where: dict[str, Any] = {'course_id': course_id}
-        if document_ids:
-            where['document_id'] = {'$in': list(document_ids)}
+        user_id = learner.user_id if learner else None
+        allowed_docs = KnowledgeAccessService.documents(user_id, retrieval=True, course_id=course_id)
+        if document_ids is not None:
+            allowed_docs = allowed_docs.filter(KnowledgeDocument.id.in_(document_ids))
+        allowed_ids = [r.id for r in allowed_docs.with_entities(KnowledgeDocument.id).all()]
+        if not allowed_ids:
+            return RetrievalResult(understanding=qu, graph=graph,
+                filters={'course_id': course_id, 'document_ids': [], 'access_filtered': True},
+                channel_stats={'vector': 0, 'lexical': 0, 'graph': 0})
+
+        where: dict[str, Any] = {'course_id': course_id, 'document_id': {'$in': allowed_ids}}
         if require_verified:
             where['teacher_verified'] = True
         excluded_types: set[str] = set()
+        if KnowledgeAccessService.role(KnowledgeAccessService.actor(user_id)) not in {'teacher', 'admin'}:
+            excluded_types.update(KnowledgeAccessService.STUDENT_EXCLUDED_TYPES)
         if practice_mode:
             excluded_types.update(filter_cfg.get('exclude_knowledge_types_in_practice', ['solution']))
+
+        allowed_chunks = KnowledgeAccessService.chunks(user_id, course_id=course_id).filter(
+            KnowledgeChunk.document_id.in_(allowed_ids), KnowledgeChunk.knowledge_type.notin_(excluded_types))
+        if knowledge_types:
+            allowed_chunks = allowed_chunks.filter(KnowledgeChunk.knowledge_type.in_(knowledge_types))
+        if require_verified:
+            allowed_chunks = allowed_chunks.filter(KnowledgeChunk.teacher_verified.is_(True))
+        allowed_chunk_ids = [r.chunk_id for r in allowed_chunks.with_entities(KnowledgeChunk.chunk_id).all()]
+        if not allowed_chunk_ids:
+            return RetrievalResult(understanding=qu, graph=graph,
+                filters={'course_id': course_id, 'access_filtered': True},
+                channel_stats={'vector': 0, 'lexical': 0, 'graph': 0})
+        where['chunk_id'] = {'$in': allowed_chunk_ids}
 
         k = int(top_k or vector_cfg.get('top_k', 20))
         lexical_k = int(vector_cfg.get('lexical_top_k', 20))
@@ -220,7 +247,8 @@ class RetrievalService:
 
         # 查询扩展：把识别到的概念名拼进查询，提升概念级召回
         concept_names = {item['concept_id']: item['name'] for item in GraphService.concepts_brief(graph_ids)}
-        expanded_query = qu.normalized_query
+        evidence_query = qu.retrieval_query or qu.normalized_query
+        expanded_query = evidence_query
         if qu.concept_ids:
             expanded_query += ' ' + ' '.join(concept_names.get(c, '') for c in qu.concept_ids[:2])
 
@@ -228,8 +256,8 @@ class RetrievalService:
         stats = {'vector': 0, 'lexical': 0, 'graph': 0}
 
         # 通道 1：向量检索（扩展查询用于召回；原始查询向量用于绝对证据）
-        query_vector = self.vector.embedding.embed_query(qu.normalized_query)
-        if expanded_query != qu.normalized_query:
+        query_vector = self.vector.embedding.embed_query(evidence_query)
+        if expanded_query != evidence_query:
             expanded_vector = self.vector.embedding.embed_query(expanded_query)
         else:
             expanded_vector = query_vector
@@ -243,7 +271,7 @@ class RetrievalService:
             stats['vector'] += 1
 
         # 通道 2：BM25 词法检索
-        lexical_hits = LexicalIndex.search(expanded_query, lexical_k, {'course_id': course_id} if course_id else None)
+        lexical_hits = LexicalIndex.search(expanded_query, lexical_k, where)
         for chunk_id, score, meta in lexical_hits:
             if document_ids and meta.get('document_id') not in document_ids:
                 continue
@@ -258,9 +286,9 @@ class RetrievalService:
         if graph_ids:
             priority_ids = graph.focus_ids + graph.unmet_prerequisites + graph.misconceptions
             rows = (
-                KnowledgeChunk.query.filter(
-                    KnowledgeChunk.status == 'active',
-                    KnowledgeChunk.course_id == course_id,
+                KnowledgeAccessService.chunks(user_id, course_id=course_id).filter(
+                    KnowledgeChunk.document_id.in_(allowed_ids),
+                    KnowledgeChunk.chunk_id.in_(allowed_chunk_ids),
                     KnowledgeChunk.primary_concept_id.in_(priority_ids[:8] or graph_ids[:8]),
                 )
                 .order_by(KnowledgeChunk.teacher_verified.desc(), KnowledgeChunk.sequence.asc())
@@ -284,7 +312,10 @@ class RetrievalService:
 
         # 装载正文与 metadata（MySQL 为权威）
         if candidates:
-            rows = KnowledgeChunk.query.filter(KnowledgeChunk.chunk_id.in_(list(candidates.keys())), KnowledgeChunk.status == 'active').all()
+            rows = KnowledgeAccessService.chunks(user_id, course_id=course_id).filter(
+                KnowledgeChunk.document_id.in_(allowed_ids),
+                KnowledgeChunk.chunk_id.in_(allowed_chunk_ids),
+                KnowledgeChunk.chunk_id.in_(list(candidates.keys()))).all()
             docs = {
                 d.id: d
                 for d in KnowledgeDocument.query.filter(KnowledgeDocument.id.in_({r.document_id for r in rows})).all()
@@ -293,6 +324,9 @@ class RetrievalService:
             for row in rows:
                 rc = candidates[row.chunk_id]
                 doc = docs.get(row.document_id)
+                rc.document_id = row.document_id
+                rc.version = row.version
+                rc.chapter = row.chapter or doc.chapter or ''
                 rc.content = row.content
                 rc.title = row.title or ''
                 rc.knowledge_type = row.knowledge_type
@@ -309,13 +343,22 @@ class RetrievalService:
                 loaded[row.chunk_id] = rc
             candidates = loaded
 
-        # 统一按**原始**查询计算绝对证据（词法覆盖率 + 与原始查询向量的余弦）；扩展查询只用于召回
+        # Evidence uses only the user's query after conservative phrasing cleanup;
+        # graph expansion never contributes to absolute evidence. Keep the raw
+        # coverage alongside it so cleanup effects can be audited.
         if candidates:
             ids = list(candidates.keys())
-            for cid, cov in LexicalIndex.coverage(qu.normalized_query, ids).items():
+            for cid, cov in LexicalIndex.coverage(evidence_query, ids).items():
                 candidates[cid].score_breakdown['lexical_abs'] = cov
+            raw_coverage = LexicalIndex.coverage(qu.normalized_query, ids) if evidence_query != qu.normalized_query else None
+            for cid, rc in candidates.items():
+                rc.score_breakdown['lexical_raw'] = raw_coverage[cid] if raw_coverage is not None else rc.score_breakdown.get('lexical_abs', 0.0)
             for cid, record in self.vector.store.get(ids).items():
                 candidates[cid].score_breakdown['vector_abs'] = round(max(0.0, cosine(query_vector, record.vector)), 4)
+                # Only a current index record may guide diversity. Old index
+                # vectors must not be treated as the replacement text's meaning.
+                if record.metadata.get('version') == candidates[cid].version:
+                    candidates[cid].selection_vector = record.vector
 
         # Metadata filtering
         band = int(filter_cfg.get('difficulty_band', 1))
@@ -361,7 +404,7 @@ class RetrievalService:
             return None
         rows = GraphService.concepts_brief(graph.focus_ids)
         base = round(sum(int(r.get('difficulty') or 2) for r in rows) / len(rows)) if rows else 2
-        if learner and learner.available:
+        if learner and learner.available and graph.focus_ids[0] in learner.mastery:
             mastery = learner.mastery_of(graph.focus_ids[0], 0.3)
             if mastery >= 0.75:
                 base += 1

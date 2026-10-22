@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { createRequestId } from '../../utils/browserCrypto'
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { NButton, NIcon, NInput, NSpin, useMessage } from 'naive-ui'
 import { ChatbubbleEllipsesOutline, CloseOutline, MicOutline, SendOutline } from '@vicons/ionicons5'
-import { trialCoach, type TrialCoachIntent, type TrialCoachPayload, type TrialCoachResult } from '../../api/agentService'
+import { acknowledgeTutorDisplay } from '../../api/learnerState'
+import { askTutor, cancelTutorTurn, tutorModes, type TutorMode, type TutorRequest, type TutorResponse } from '../../api/tutoring'
+import TutorResponseCard from '../student/TutorResponseCard.vue'
 import MarkdownRenderer from '../common/MarkdownRenderer.vue'
 import MessengerKnowledgeCard from '../student/MessengerKnowledgeCard.vue'
 import type { MessengerKnowledge } from '../../api/rag'
 import { useSpeechRecognitionInput } from '../../composables/useSpeechRecognitionInput'
-import { xiaoECleanProse, xiaoEThinkingMessage, XIAO_E_PERSONA_INTRO } from '../../utils/xiaoEPersona'
-import { trimTrialCoachKnowledge } from '../../utils/trialCoachPresentation'
+import { xiaoEThinkingMessage, XIAO_E_PERSONA_INTRO } from '../../utils/xiaoEPersona'
+import { useAuthStore } from '../../stores/auth'
+import { fetchTutorContext, type TutorContextView } from '../../api/tutorContext'
 
 export type TrialCoachContext = {
+  runId?: string
+  questionVersion?: string
+  runIsStale?: boolean
+  formalQuestionId?: number
   exerciseId: string
   questionTitle: string
   questionPrompt?: string
@@ -26,6 +34,9 @@ export type TrialCoachContext = {
 }
 
 type ChatMessage = {
+  tutor?: TutorResponse
+  retry?: TutorRequest
+  codeSnapshot?: string
   id: string
   role: 'user' | 'assistant'
   content: string
@@ -39,6 +50,7 @@ const props = defineProps<{
 }>()
 
 const messageApi = useMessage()
+const auth = useAuthStore()
 
 const { listening: voiceListening, toggle: toggleVoiceInput } = useSpeechRecognitionInput({
   getText: () => inputText.value,
@@ -56,24 +68,32 @@ const DEFAULT_DIALOG_HEIGHT = 600
 const MIN_DIALOG_WIDTH = 360
 const MIN_DIALOG_HEIGHT = 420
 
+const pageActive = ref(true)
 const dialogOpen = ref(false)
 const loading = ref(false)
+const cancelling = ref(false)
+const pendingTutorId = ref<string>()
 const contextLoading = ref(false)
 const contextLoaded = ref(false)
+const contextError = ref('')
+const verifiedContext = ref<TutorContextView | null>(null)
+const includeCode = ref(true)
+let coachRequestId = 0
 const inputText = ref('')
 const messages = ref<ChatMessage[]>([])
 const messagesEl = ref<HTMLElement | null>(null)
-const activeIntent = ref<TrialCoachIntent>('custom')
+const activeIntent = ref<TutorMode>('next_step')
+const tutorSessionId = ref<string>()
 const hintLevel = ref(2)
 const hintLevelOptions = [
   { label: 'L1 思路', value: 1 },
   { label: 'L2 定位', value: 2 },
-  { label: 'L3 片段', value: 3 },
-  { label: 'L4 解析', value: 4 },
 ]
 
 const dialogWidth = ref(DEFAULT_DIALOG_WIDTH)
 const dialogHeight = ref(DEFAULT_DIALOG_HEIGHT)
+const viewportWidth = ref(window.innerWidth)
+const viewportHeight = ref(window.innerHeight)
 const resizing = ref(false)
 const resizeStart = { x: 0, y: 0, width: 0, height: 0 }
 
@@ -88,37 +108,35 @@ const floatStyle = computed(() => ({
   top: `${posY.value}px`,
 }))
 
-const maxDialogWidth = computed(() => window.innerWidth - MARGIN * 2)
-const maxDialogHeight = computed(() => window.innerHeight - MARGIN * 2)
+const maxDialogWidth = computed(() => viewportWidth.value - MARGIN * 2)
+const maxDialogHeight = computed(() => viewportHeight.value - MARGIN * 2)
 
 const dialogStyle = computed(() => {
   const width = Math.min(dialogWidth.value, maxDialogWidth.value)
   const height = Math.min(dialogHeight.value, maxDialogHeight.value)
   const preferAbove = posY.value > window.innerHeight * 0.42
-  const alignLeft = posX.value + BALL_SIZE < width + MARGIN
+  const left = Math.max(MARGIN, Math.min(posX.value + BALL_SIZE - width, window.innerWidth - width - MARGIN))
+  const preferredTop = preferAbove ? posY.value - DIALOG_GAP - height : posY.value + BALL_SIZE + DIALOG_GAP
+  const top = Math.max(MARGIN, Math.min(preferredTop, window.innerHeight - height - MARGIN))
 
   return {
     width: `${width}px`,
     height: `${height}px`,
-    ...(alignLeft ? { left: '0', right: 'auto' } : { right: '0', left: 'auto' }),
-    ...(preferAbove
-      ? { bottom: `calc(100% + ${DIALOG_GAP}px)`, top: 'auto' }
-      : { top: `calc(100% + ${DIALOG_GAP}px)`, bottom: 'auto' }),
+    position: 'fixed' as const,
+    left: `${left}px`,
+    top: `${top}px`,
   }
 })
 
 const runStatusLabel = computed(() => {
+  if (props.context.runIsStale) return '代码已修改，旧运行结果仅供回看'
   if (!props.context.caseResults.length) return '尚未运行测试'
   if (props.context.allPassed) return '全部通过'
   const passed = props.context.caseResults.filter((item) => item.passed).length
   return `${passed}/${props.context.caseResults.length} 通过`
 })
 
-const shortcuts: Array<{ intent: TrialCoachIntent; label: string }> = [
-  { intent: 'error_diagnosis', label: '询问报错原因' },
-  { intent: 'code_quality', label: '分析代码质量' },
-  { intent: 'optimization', label: '提出优化建议' },
-]
+const shortcuts = tutorModes.map(item => ({ intent: item.mode, label: item.label }))
 
 function clampPosition(x: number, y: number) {
   const maxX = window.innerWidth - BALL_SIZE - MARGIN
@@ -147,6 +165,8 @@ function syncDefaultPosition() {
 }
 
 function onWindowResize() {
+  viewportWidth.value = window.innerWidth
+  viewportHeight.value = window.innerHeight
   const clamped = clampPosition(posX.value, posY.value)
   posX.value = clamped.x
   posY.value = clamped.y
@@ -216,66 +236,45 @@ function onResizeUp() {
   window.removeEventListener('pointerup', onResizeUp)
 }
 
-function buildPayload(intent: TrialCoachIntent, userQuestion: string) {
-  const failedCases = props.context.failedCases ?? []
-  const failedCase = failedCases[0]
-  const answerStatus: TrialCoachPayload['answerStatus'] = !props.context.caseResults.length
-    ? 'not_run'
-    : props.context.allPassed
-      ? 'correct'
-      : failedCase
-        ? 'wrong'
-        : 'partial'
-
+function buildPayload(intent: TutorMode, userQuestion: string) {
   return {
-    intent,
-    exerciseId: props.context.exerciseId,
-    questionTitle: props.context.questionTitle,
-    questionPrompt: props.context.questionPrompt,
-    topic: props.context.topic,
-    constraints: props.context.constraints,
-    code: props.context.code,
-    stderr: props.context.stderr,
-    stdout: props.context.stdout,
-    expectedOutput: props.context.expectedOutput,
-    failedCases,
-    caseResults: props.context.caseResults,
-    allPassed: props.context.allPassed,
-    answerStatus,
-    userQuestion,
-    hintLevel: hintLevel.value,
-    conversationHistory: messages.value
-      .filter((item) => item.content.trim())
-      .slice(-8)
-      .map((item) => ({ role: item.role, content: item.content })),
-  }
+    request_id: createRequestId(),
+    session_id: tutorSessionId.value,
+    mode: intent,
+    question_ref: props.context.exerciseId,
+    formal_question_id: props.context.formalQuestionId,
+    question_version: verifiedContext.value?.task?.version,
+    run_id: includeCode.value && !props.context.runIsStale ? props.context.runId : undefined,
+    code: includeCode.value ? props.context.code : '',
+    question: userQuestion,
+    hint_level: hintLevel.value,
+  } satisfies TutorRequest
 }
 
 function buildLocalIntro() {
-  const status = runStatusLabel.value
-  const intro = `${XIAO_E_PERSONA_INTRO} 当前题目「${props.context.questionTitle}」，运行状态：${status}。`
-  const stderr = props.context.stderr?.trim()
-  const failed = props.context.failedCases?.length ?? 0
-  if (stderr) {
-    return `${intro}\n我看到编辑器里有报错信息，你可以点「询问报错原因」或直接描述卡在哪一步。`
-  }
-  if (failed > 0) {
-    return `${intro}\n有 ${failed} 个用例未通过，我会结合你当前的代码和输出帮你定位问题。`
-  }
-  if (props.context.allPassed && props.context.caseResults.length) {
-    return `${intro}\n这题已经跑通了，如需优化或检查代码质量，可以用上方快捷按钮。`
-  }
-  return `${intro}\n先把核心逻辑写完整并运行测试，我会根据最新代码和运行结果来回答。`
+  const title = verifiedContext.value?.task?.title || '自主代码讨论'
+  return `${XIAO_E_PERSONA_INTRO} 当前题目「${title}」。\n${props.context.runId && !props.context.runIsStale ? '发送时会校验当前自测引用；自测不等同正式成绩。' : '目前没有对应当前代码的运行记录；我会先看你的代码和描述。'} 你也可以移除不相关代码再提问。`
 }
 
 async function loadPracticeContext() {
   if (contextLoading.value || contextLoaded.value) return
+  const requestId = coachRequestId
   contextLoading.value = true
+  contextError.value = ''
   try {
+    const context = await fetchTutorContext({
+      question_ref: props.context.exerciseId,
+      formal_question_id: props.context.formalQuestionId,
+      code: includeCode.value ? props.context.code : '',
+    })
+    if (requestId !== coachRequestId) return
+    verifiedContext.value = context
     pushMessage('assistant', buildLocalIntro(), '小E')
     contextLoaded.value = true
+  } catch (error) {
+    if (requestId === coachRequestId) contextError.value = error instanceof Error ? error.message : '无法核对题目，请重试'
   } finally {
-    contextLoading.value = false
+    if (requestId === coachRequestId) contextLoading.value = false
     await scrollToBottom()
   }
 }
@@ -304,44 +303,76 @@ async function scrollToBottom() {
   }
 }
 
-async function sendQuestion(question: string, intent: TrialCoachIntent = activeIntent.value) {
+const displayAcks = new Set<string>()
+function acknowledgeVisibleTutors() {
+  if (!pageActive.value || !dialogOpen.value || document.visibilityState !== 'visible') return
+  for (const msg of messages.value) {
+    const id = msg.tutor?.display_receipt_id
+    if (!id || displayAcks.has(id)) continue
+    displayAcks.add(id)
+    void acknowledgeTutorDisplay(id).catch(() => {
+      displayAcks.delete(id)
+      messageApi.warning('提示已显示，但学习记录尚未同步。')
+    })
+  }
+}
+
+async function cancelCurrentTutor() {
+  const id=pendingTutorId.value, epoch=coachRequestId
+  if(!id || cancelling.value) return
+  cancelling.value=true
+  try {
+    const result=await cancelTutorTurn(id)
+    if(epoch!==coachRequestId || pendingTutorId.value!==id) return
+    if(!result.cancelled) { messageApi.info('回答已经完成，可以继续查看。'); return }
+    ++coachRequestId;loading.value=false;pendingTutorId.value=undefined
+    pushMessage('assistant','本次请求已取消。','小E')
+  } catch(error) { if(epoch===coachRequestId) messageApi.error(error instanceof Error?error.message:'取消未确认') }
+  finally { if(pendingTutorId.value===id || !pendingTutorId.value) cancelling.value=false }
+}
+
+async function sendQuestion(question: string, intent: TutorMode = activeIntent.value, retryPayload?: TutorRequest) {
   const text = question.trim()
-  if (!text || loading.value) return
+  if (!pageActive.value || !text || loading.value || !contextLoaded.value) return
+  const requestId = coachRequestId
+  const payloadSnapshot = retryPayload || buildPayload(intent, text)
 
   activeIntent.value = intent
   loading.value = true
-  pushMessage('user', text)
+  pendingTutorId.value = payloadSnapshot.request_id
+  if (!retryPayload) pushMessage('user', text)
   inputText.value = ''
   await scrollToBottom()
 
   try {
-    const result: TrialCoachResult = await trialCoach(buildPayload(intent, text))
-    if (typeof result.hintLevel === 'number' && result.hintLevel >= 1 && result.hintLevel <= 4) {
-      hintLevel.value = result.hintLevel
-    }
-    const payloadSnapshot = buildPayload(intent, text)
-    const knowledge = trimTrialCoachKnowledge(result.knowledge ?? null, {
-      topic: payloadSnapshot.topic,
-      stderr: payloadSnapshot.stderr,
-      failedCases: payloadSnapshot.failedCases,
-      answerStatus: payloadSnapshot.answerStatus,
-    })
-    pushMessage('assistant', xiaoECleanProse(result.response), result.agentName, undefined, knowledge)
+    const result = await askTutor(payloadSnapshot)
+    if (requestId !== coachRequestId) return
+    if (result.context) verifiedContext.value = result.context
+    tutorSessionId.value = result.session_id
+    hintLevel.value = result.teaching_plan.hint_level
+    pushMessage('assistant', result.summary, '小E')
+    const added = messages.value[messages.value.length - 1]!
+    added.tutor = result
+    if (payloadSnapshot.code) added.codeSnapshot = payloadSnapshot.code
+    await nextTick()
+    acknowledgeVisibleTutors()
   } catch (error) {
+    if (requestId !== coachRequestId) return
     const msg = error instanceof Error ? error.message : 'AI 辅导请求失败'
     pushMessage('assistant', msg.includes('404') ? '辅导服务未就绪，请确认后端已重启。' : msg)
+    messages.value[messages.value.length - 1]!.retry = payloadSnapshot
   } finally {
-    loading.value = false
+    if (requestId === coachRequestId) { loading.value = false; pendingTutorId.value = undefined }
     await scrollToBottom()
   }
 }
 
-function onShortcut(intent: TrialCoachIntent, label: string) {
-  void sendQuestion(label, intent)
+function onShortcut(intent: TutorMode, label: string) {
+  void sendQuestion(inputText.value.trim() || label, intent)
 }
 
 function onSend() {
-  void sendQuestion(inputText.value, 'custom')
+  void sendQuestion(inputText.value, activeIntent.value)
 }
 
 function onInputKeydown(event: KeyboardEvent) {
@@ -355,10 +386,23 @@ function closeDialog() {
   dialogOpen.value = false
 }
 
-watch(dialogOpen, (open) => {
+watch(dialogOpen, async (open) => {
   if (open && !messages.value.length) {
     void loadPracticeContext()
   }
+  await nextTick()
+  if (open) acknowledgeVisibleTutors()
+})
+
+watch([() => props.context.exerciseId, () => props.context.formalQuestionId, () => auth.profile?.id], () => {
+  ++coachRequestId
+  messages.value = []
+  tutorSessionId.value = undefined
+  verifiedContext.value = null
+  contextLoaded.value = contextLoading.value = loading.value = false
+  pendingTutorId.value=undefined;cancelling.value=false
+  includeCode.value = true
+  if (dialogOpen.value) void loadPracticeContext()
 })
 
 onMounted(() => {
@@ -367,12 +411,25 @@ onMounted(() => {
   dialogWidth.value = size.width
   dialogHeight.value = size.height
   window.addEventListener('resize', onWindowResize)
+  document.addEventListener('visibilitychange', acknowledgeVisibleTutors)
 })
 
+function suspendCoach() {
+  pageActive.value = false
+  dialogOpen.value = false
+  dragging.value = false
+  onResizeUp()
+  if (voiceListening.value) toggleVoiceInput()
+}
+onActivated(() => { pageActive.value = true })
+onDeactivated(suspendCoach)
+
 onBeforeUnmount(() => {
+  ++coachRequestId
   dragging.value = false
   resizing.value = false
   window.removeEventListener('resize', onWindowResize)
+  document.removeEventListener('visibilitychange', acknowledgeVisibleTutors)
   window.removeEventListener('pointermove', onResizeMove)
   window.removeEventListener('pointerup', onResizeUp)
 })
@@ -380,7 +437,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div class="trial-ai-float" :style="floatStyle">
+    <div v-if="pageActive" class="trial-ai-float" :style="floatStyle">
       <Transition name="trial-ai-dialog">
         <div
           v-if="dialogOpen"
@@ -403,6 +460,23 @@ onBeforeUnmount(() => {
             </button>
           </header>
 
+          <div class="trial-ai-float__context" aria-live="polite">
+            <template v-if="verifiedContext">
+              <span v-if="verifiedContext.task">已核对题目 · {{ verifiedContext.task.version.slice(0, 8) }}</span>
+              <span v-else>未绑定服务器题面，本次仅讨论代码与描述。</span>
+              <span>{{ includeCode ? '附带当前代码' : '本次不附带代码' }}{{ context.runId && includeCode ? ' · 附带服务器自测' : '' }}</span>
+              <span v-if="context.runId && includeCode">运行引用 {{ context.runId.slice(0, 8) }}</span>
+              <span v-if="context.runIsStale">代码已修改，本次不引用旧运行记录。</span>
+              <span v-if="verifiedContext.task?.tutoring_policy === 'disabled'">教师已关闭本次任务的辅导。</span>
+              <button type="button" :disabled="loading" @click="includeCode = !includeCode">{{ includeCode ? '移除代码' : '附带代码' }}</button>
+              <button type="button" :disabled="loading" @click="tutorSessionId = undefined; contextLoaded = false; loadPracticeContext()">开始新的辅导</button>
+            </template>
+            <template v-if="contextError">
+              <span>{{ contextError }}</span>
+              <button type="button" @click="loadPracticeContext">重新核对</button>
+            </template>
+          </div>
+
           <div class="trial-ai-float__hint-row">
             <span>提示层级</span>
             <button
@@ -411,7 +485,7 @@ onBeforeUnmount(() => {
               type="button"
               class="trial-ai-float__chip"
               :class="{ 'is-active': hintLevel === opt.value }"
-              :disabled="loading"
+              :disabled="loading || !contextLoaded || verifiedContext?.task?.tutoring_policy === 'disabled'"
               @click="hintLevel = opt.value"
             >
               {{ opt.label }}
@@ -423,7 +497,9 @@ onBeforeUnmount(() => {
               :key="item.intent"
               type="button"
               class="trial-ai-float__chip"
-              :disabled="loading"
+              :aria-pressed="activeIntent === item.intent"
+              :class="{ 'is-active': activeIntent === item.intent }"
+              :disabled="loading || !contextLoaded || verifiedContext?.task?.tutoring_policy === 'disabled'"
               @click="onShortcut(item.intent, item.label)"
             >
               {{ item.label }}
@@ -441,8 +517,11 @@ onBeforeUnmount(() => {
                 <small>{{ msg.agentName }}</small>
               </header>
               <template v-if="msg.role === 'assistant'">
-                <MarkdownRenderer :content="msg.content" />
+                <small v-if="msg.codeSnapshot && msg.codeSnapshot !== context.code" class="trial-ai-float__stale">这条反馈对应旧代码，请勿套用其中的位置说明。</small>
+                <TutorResponseCard v-if="msg.tutor" :response="msg.tutor" />
+                <MarkdownRenderer v-else :content="msg.content" />
                 <MessengerKnowledgeCard v-if="msg.knowledge" :knowledge="msg.knowledge" />
+                <button v-if="msg.retry" type="button" :disabled="loading" @click="sendQuestion(msg.retry.question, msg.retry.mode, msg.retry)">重试上次提问</button>
               </template>
               <p v-else>{{ msg.content }}</p>
             </article>
@@ -473,7 +552,8 @@ onBeforeUnmount(() => {
                 @keydown="onInputKeydown"
               />
             </div>
-            <n-button type="primary" :loading="loading" :disabled="!inputText.trim()" @click="onSend">
+            <n-button v-if="loading" :disabled="cancelling" @click="cancelCurrentTutor">{{ cancelling ? '正在确认…' : '取消本次请求' }}</n-button>
+            <n-button type="primary" :loading="loading" :disabled="!inputText.trim() || !contextLoaded || verifiedContext?.task?.tutoring_policy === 'disabled'" @click="onSend">
               <template #icon><n-icon :component="SendOutline" /></template>
               发送
             </n-button>
@@ -497,6 +577,7 @@ onBeforeUnmount(() => {
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
         @pointercancel="onPointerUp"
+        @click="($event: MouseEvent) => { if ($event.detail === 0) dialogOpen = !dialogOpen }"
       >
         <span class="trial-ai-float__ball-glow" aria-hidden="true" />
         <n-icon :component="ChatbubbleEllipsesOutline" />
@@ -506,6 +587,38 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.trial-ai-float__context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 16px;
+  background: var(--plex-bg-card, #11263a);
+  color: var(--plex-text, #eef7ff);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.trial-ai-float__context button {
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.trial-ai-float__context button:focus-visible {
+  outline: 2px solid var(--plex-accent, #55eee9);
+  outline-offset: 3px;
+}
+.trial-ai-float__stale {
+  display: block;
+  margin-bottom: 8px;
+  color: #f6cd68;
+}
+@media (prefers-reduced-motion: reduce) {
+  .trial-ai-float__ball { animation: none !important; }
+  .trial-ai-dialog-enter-active, .trial-ai-dialog-leave-active { transition: none; }
+}
 .trial-ai-float {
   position: fixed;
   z-index: 2000;

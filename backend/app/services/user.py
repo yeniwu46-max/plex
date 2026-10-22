@@ -45,6 +45,8 @@ class UserService(BaseService):
         )
 
         db.session.add(user)
+        from .onboarding import OnboardingService
+        OnboardingService.enroll(user)
         if class_obj:
             class_obj.student_count = (class_obj.student_count or 0) + 1
         db.session.commit()
@@ -70,8 +72,10 @@ class UserService(BaseService):
         achievements_count = len(user.achievements)
         level_profile = IncentiveService.level_profile(user)
         incentive_summary = IncentiveService.incentive_summary(user.id)
+        from .onboarding import OnboardingService
 
         return {
+            **OnboardingService.account_fields(user.id),
             'id': user.id,
             'username': user.username,
             'email': user.email,

@@ -14,6 +14,7 @@ export interface PedagogicalBundleContent {
     competency_objectives?: string[]
     bloom_level?: string
     recommended_styles?: string[]
+    learning_guidance?: { reason?: string; exercise_action?: string }
     learning_stage?: string
   }
   explain?: string
@@ -33,6 +34,11 @@ export interface PedagogicalBundleContent {
 }
 
 const props = defineProps<{ content: PedagogicalBundleContent }>()
+const hasAnalysis = computed(() => {
+  const analysis = props.content.analysis
+  return !!(analysis?.positioning || analysis?.bloom_level || analysis?.recommended_styles?.length
+    || analysis?.learning_objectives?.length || analysis?.learning_guidance?.reason)
+})
 
 function clean(value?: string) {
   return (value ?? '').trim()
@@ -74,12 +80,13 @@ const exerciseTypeLabel: Record<string, string> = {
 
 <template>
   <div class="bundle-viewer">
-    <section v-if="content.analysis" class="bundle-viewer__analysis">
+    <section v-if="content.analysis && hasAnalysis" class="bundle-viewer__analysis">
       <h3>教学分析</h3>
-      <p>{{ clean(content.analysis.positioning) }}</p>
+      <p v-if="content.analysis.positioning">{{ clean(content.analysis.positioning) }}</p>
+      <p v-if="content.analysis.learning_guidance?.reason">{{ content.analysis.learning_guidance.reason }}</p>
       <ul>
-        <li>Bloom 层级：{{ clean(content.analysis.bloom_level) }}</li>
-        <li>推荐方式：{{ (content.analysis.recommended_styles ?? []).join('、') }}</li>
+        <li v-if="content.analysis.bloom_level">Bloom 层级：{{ clean(content.analysis.bloom_level) }}</li>
+        <li v-if="content.analysis.recommended_styles?.length">推荐方式：{{ (content.analysis.recommended_styles ?? []).join('、') }}</li>
       </ul>
       <ul v-if="content.analysis.learning_objectives?.length">
         <li v-for="item in content.analysis.learning_objectives" :key="item">{{ clean(item) }}</li>
@@ -123,7 +130,7 @@ const exerciseTypeLabel: Record<string, string> = {
         :title="`代码实操 · ${content.code.length} 项`"
       >
         <article v-for="block in content.code" :key="block.title" class="bundle-section">
-          <h4>{{ clean(block.title) }} · {{ clean(block.complexity) }}</h4>
+          <h4>{{ clean(block.title) }}<span v-if="block.complexity"> · {{ clean(block.complexity) }}</span></h4>
           <p class="bundle-section__hint">{{ clean(block.pep8_note) }}</p>
           <MarkdownRenderer :content="fenced(block.source)" />
         </article>
@@ -161,6 +168,8 @@ const exerciseTypeLabel: Record<string, string> = {
 <style scoped>
 .bundle-viewer {
   display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
   gap: 1rem;
 }
 
@@ -168,14 +177,14 @@ const exerciseTypeLabel: Record<string, string> = {
   padding: 0.85rem 1rem;
   border: 1px solid rgba(37, 245, 238, 0.14);
   border-radius: 0.55rem;
-  background: rgba(2, 10, 18, 0.55);
-  color: #cce6ef;
+  background: var(--plex-bg-card);
+  color: var(--plex-text);
 }
 
 .bundle-viewer__analysis h3,
 .bundle-section h4 {
   margin: 0 0 0.5rem;
-  color: #f0faff;
+  color: var(--plex-text);
 }
 
 .bundle-viewer__analysis ul {
@@ -192,7 +201,7 @@ const exerciseTypeLabel: Record<string, string> = {
 .bundle-section__answer {
   white-space: pre-wrap;
   line-height: 1.6;
-  color: #cce6ef;
+  color: var(--plex-text);
   margin: 0;
 }
 
@@ -206,7 +215,7 @@ const exerciseTypeLabel: Record<string, string> = {
 }
 
 .bundle-section__hint {
-  color: #7da5b6;
+  color: var(--plex-text-muted);
   font-size: 0.84rem;
 }
 </style>

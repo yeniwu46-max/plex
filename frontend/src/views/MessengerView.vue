@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { NDropdown, NIcon, NInput, useMessage } from 'naive-ui'
-import { postMessengerChat, postMessengerKnowledgeGraph, postMessengerLearningDocument, streamMessengerChat } from '../api/messenger'
+import LinkedQuestionPicker from '../components/student/LinkedQuestionPicker.vue'
+import type { TutorContextRequest } from '../api/tutorContext'
+import { createRequestId } from '../utils/browserCrypto'
+import { nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { NDropdown, NIcon, NInput, NButton, NModal, NPopover, useMessage } from 'naive-ui'
+import { postMessengerKnowledgeGraph, postMessengerLearningDocument, fetchMessengerArtifact, streamMessengerChat, type MessengerArtifactResult, type MessengerChatRequest } from '../api/messenger'
 import type { AgentTraceStep, MessengerQuickActionResult } from '../api/agentService'
 import {
   AddOutline,
@@ -20,7 +23,13 @@ import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import PlexAgentTracePanel from '../components/agent/PlexAgentTracePanel.vue'
 import MessengerKnowledgeCard from '../components/student/MessengerKnowledgeCard.vue'
 import type { MessengerKnowledge } from '../api/rag'
-import { xiaoEThinkingMessage, xiaoETimeoutMessage, xiaoENormalizeReply } from '../utils/xiaoEPersona'
+import { askTutor, cancelTutorTurn, fetchTutorUsage, type TutorUsage, fetchTutorTurn, tutorModes, type TutorMode, type TutorRequest, type TutorResponse } from '../api/tutoring'
+import { runCode, type CodeRunResult } from '../api/codeRunner'
+import { acknowledgeTutorDisplay } from '../api/learnerState'
+import { formatHttpError } from '../api/http'
+import { useAuthStore } from '../stores/auth'
+import TutorResponseCard from '../components/student/TutorResponseCard.vue'
+import { xiaoEThinkingMessage } from '../utils/xiaoEPersona'
 import { openPracticeQuestionByRef } from '../utils/practiceQuestionNav'
 import { useSpeechRecognitionInput } from '../composables/useSpeechRecognitionInput'
 import {
@@ -29,10 +38,19 @@ import {
 } from '../composables/useMessengerChatSessions'
 
 const router = useRouter()
+const route = useRoute()
 const themeStore = useThemeStore()
 const message = useMessage()
+const auth = useAuthStore()
 
 type ChatMessage = {
+  tutorRequestId?: string
+  artifactRequestId?: string
+  artifactReady?: boolean
+  artifactCheckVersion?: number
+  tutorRestored?: boolean
+  tutor?: TutorResponse
+  tutorCode?: string
   role: 'user' | 'assistant'
   text: string
   streaming?: boolean
@@ -53,49 +71,57 @@ function sanitizeDownloadName(name: string) {
   return cleaned || '学习文档.md'
 }
 
-function downloadMessageMarkdown(msg: ChatMessage) {
-  const body = (msg.text || '').trim()
-  if (!body) {
-    message.warning('文档内容为空，暂无法下载')
-    return
-  }
-  const filename = sanitizeDownloadName(
-    msg.downloadName?.endsWith('.md') ? msg.downloadName : `${msg.downloadName || '学习文档'}.md`,
-  )
-  const blob = new Blob([body], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-  message.success('已开始下载 Markdown')
-}
-
-function isTimeoutError(error: unknown) {
-  const msg = error instanceof Error ? error.message : String(error)
-  const code = (error as { code?: string })?.code
-  return code === 'ECONNABORTED' || /timeout/i.test(msg) || /超时/.test(msg)
-}
-
-function assistantErrorText(error: unknown, retry?: () => void): ChatMessage {
-  if (isTimeoutError(error)) {
-    return {
-      role: 'assistant',
-      text: `${xiaoETimeoutMessage()} 点击「重试」再试一次。`,
-      retry,
+async function downloadMessageMarkdown(msg: ChatMessage) {
+  const epoch = tutorEpoch, check = msg.artifactCheckVersion = (msg.artifactCheckVersion || 0) + 1
+  try {
+    let body = (msg.text || '').trim()
+    let name = msg.downloadName || '学习文档.md'
+    if (msg.artifactRequestId) {
+      const fresh = await fetchMessengerArtifact(msg.artifactRequestId)
+      if (epoch !== tutorEpoch || msg.artifactCheckVersion !== check) return
+      applyArtifact(msg, fresh)
+      if (fresh.status !== 'ok') throw new Error('学习材料尚未通过检查，请重新生成')
+      body = fresh.markdown; name = `${fresh.title}.md`
     }
-  }
-  return {
-    role: 'assistant',
-    text: error instanceof Error ? error.message : '小E 这次没能完成分析，稍后再试吧。',
+    if (!body) throw new Error('文档内容为空，暂无法下载')
+    const blob = new Blob([body], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url; link.download = sanitizeDownloadName(name); link.click()
+    URL.revokeObjectURL(url)
+    message.success('已开始下载 Markdown')
+  } catch (error) {
+    if (epoch !== tutorEpoch || msg.artifactCheckVersion !== check) return
+    msg.text = formatHttpError(error, '材料来源已变化或暂时不可用'); msg.knowledge = undefined; msg.artifactReady = false
+    message.error(msg.text)
   }
 }
 
-const prompt = ref('')
+const prompt = ref(typeof route.query.prompt==='string'?route.query.prompt:'')
 const chatLoading = ref(false)
+const pendingRequestId = ref<string>()
+const cancelling = ref(false)
+const usageLoading = ref(false)
+const usageOpen = ref(false)
+const usageError = ref('')
+const tutorUsage = ref<TutorUsage | null>(null)
 const chatMessages = ref<ChatMessage[]>([])
 const chatThreadEl = ref<HTMLElement | null>(null)
+const tutorMode = ref<TutorMode | null>(null)
+const conversationMode = ref<'free'|'linked'>('free')
+const linkedContext = ref<TutorContextRequest|null>(null)
+function updateLinked(value:TutorContextRequest|null){tutorSessionIds.delete(activeSessionId.value);linkedContext.value=value;if(value?.code!==undefined)tutorCode.value=value.code;tutorRun.value=null}
+function setConversationMode(value:'free'|'linked'){tutorSessionIds.delete(activeSessionId.value);conversationMode.value=value;tutorMode.value=null;linkedContext.value=null;tutorCode.value='';tutorRun.value=null}
+watch(()=>route.query,()=>{if(route.query.submission||route.query.question_ref||route.query.linked)conversationMode.value='linked'},{immediate:true})
+
+const tutorCode = ref('')
+const tutorRun = ref<{ code: string; result: CodeRunResult } | null>(null)
+const tutorRunning = ref(false)
+const tutorRestoring = ref(false)
+const tutorSessionIds = new Map<string, string>()
+let tutorEpoch = 0
+let pageActive = true
+let chatAbort: AbortController | null = null
 let scrollRaf = 0
 
 const {
@@ -119,9 +145,10 @@ function formatSessionTime(ts: number) {
 
 function persistActiveSessionMessages() {
   if (syncingSessionMessages || !activeSessionId.value) return
+  // Store only the reference. Restore through the server's fresh access/version check.
   const persisted: PersistedChatMessage[] = chatMessages.value.map(
-    ({ retry: _retry, thinking: _thinking, ...rest }) => ({
-      ...rest,
+    ({ retry: _retry, thinking: _thinking, tutor, tutorCode: _code, tutorRestored: _restored, artifactReady: _artifactReady, artifactCheckVersion: _artifactCheck, ...rest }) => ({
+      ...rest, ...((tutor || rest.tutorRequestId) ? { tutorRequestId: tutor?.request_id || rest.tutorRequestId, text: '正在核对辅导记录…' } : {}),
       streaming: false,
       stageLabel: undefined,
     }),
@@ -130,14 +157,27 @@ function persistActiveSessionMessages() {
 }
 
 watch(
-  () => activeSessionId.value,
-  (id) => {
-    if (!id) return
+  [activeSessionId, () => auth.profile?.id],
+  ([id, account], previous) => {
+    ++tutorEpoch
+    pendingRequestId.value = undefined; cancelling.value = false; tutorUsage.value = null; usageLoading.value = false; usageOpen.value = false; usageError.value = ''
+    chatAbort?.abort()
+    if (account !== previous?.[1]) {tutorSessionIds.clear(); linkedContext.value=null}
+    if(previous && id!==previous[0]){linkedContext.value=null;conversationMode.value='free';tutorMode.value=null}
+    tutorCode.value = ''
+    tutorRun.value = null
+    tutorRunning.value = false
+    tutorRestoring.value = false
+    chatLoading.value = false
     syncingSessionMessages = true
-    const stored = messengerSessions.value.find((s) => s.id === id)?.messages ?? []
+    const stored = id && account ? messengerSessions.value.find((s) => s.id === id)?.messages ?? [] : []
     chatMessages.value = stored.map((m) => ({ ...m })) as ChatMessage[]
     syncingSessionMessages = false
     scrollThreadToBottom()
+    if (pageActive && id && account) {
+      void restoreTutorMessages(id, tutorEpoch)
+      void restoreArtifactMessages(id, tutorEpoch)
+    }
   },
   { immediate: true },
 )
@@ -147,6 +187,152 @@ watch(chatMessages, () => persistActiveSessionMessages(), { deep: true })
 const renamingSessionId = ref('')
 const renameDraft = ref('')
 const messengerBoxOpen = ref(false)
+
+const displayAcks = new Set<string>()
+function acknowledgeVisibleTutors() {
+  if (!pageActive || document.visibilityState !== 'visible') return
+  for (const msg of chatMessages.value) {
+    const id = msg.tutor?.display_receipt_id
+    if (!id || displayAcks.has(id)) continue
+    displayAcks.add(id)
+    void acknowledgeTutorDisplay(id).catch(() => { displayAcks.delete(id); message.warning('提示已显示，学习记录尚未同步。') })
+  }
+}
+function onVisible() {
+  if (!pageActive) return
+  acknowledgeVisibleTutors()
+  if (document.visibilityState === 'visible') void restoreArtifactMessages(activeSessionId.value, tutorEpoch)
+}
+onMounted(() => document.addEventListener('visibilitychange', onVisible))
+function deactivateChat() {
+  pageActive = false; ++tutorEpoch
+  chatAbort?.abort(); chatAbort = null
+  if (scrollRaf) window.cancelAnimationFrame?.(scrollRaf)
+  scrollRaf = 0
+  pendingRequestId.value = undefined; cancelling.value = false
+  chatLoading.value = false; tutorRunning.value = false; tutorRestoring.value = false
+  tutorUsage.value = null; usageLoading.value = false; usageOpen.value = false; usageError.value = ''; messengerBoxOpen.value = false
+  for (const row of chatMessages.value) {
+    if (row.tutor || row.tutorRequestId || row.artifactRequestId) {
+      row.tutorRequestId = row.tutor?.request_id || row.tutorRequestId
+      row.text = '返回时将重新核对这条记录…'
+      row.tutor = undefined; row.tutorCode = undefined; row.knowledge = undefined; row.questionPick = undefined
+      row.artifactReady = false; row.streaming = false; row.stageLabel = undefined; row.retry = undefined
+    }
+  }
+}
+function activateChat() {
+  if (pageActive) return
+  pageActive = true
+  void restoreTutorMessages(activeSessionId.value, tutorEpoch)
+  void restoreArtifactMessages(activeSessionId.value, tutorEpoch)
+}
+onDeactivated(deactivateChat)
+onActivated(activateChat)
+onBeforeUnmount(() => { deactivateChat(); document.removeEventListener('visibilitychange', onVisible) })
+
+async function restoreTutorMessages(session: string, epoch: number) {
+  if (!pageActive || epoch !== tutorEpoch) return
+  const rows = chatMessages.value.filter(msg => msg.tutorRequestId)
+  if (!rows.length) return
+  tutorRestoring.value = true
+  for (const row of rows) {
+    row.tutor = undefined; row.questionPick = undefined; row.retry = undefined
+    row.text = '正在核对辅导记录…'
+    try {
+      const result = await fetchTutorTurn(row.tutorRequestId!)
+      if (epoch !== tutorEpoch || session !== activeSessionId.value) return
+      // Proxy identity is retained, so restoration updates the current DOM row.
+      row.tutor = result; row.text = result.summary; row.tutorRestored = true; row.questionPick = result.question_pick
+      tutorSessionIds.set(session, result.session_id)
+    } catch (error) {
+      if (epoch !== tutorEpoch) return
+      row.text = error instanceof Error ? error.message : '这条辅导记录暂不可用'
+      row.retry = () => { void restoreTutorMessages(session, epoch) }
+    }
+  }
+  if (epoch === tutorEpoch) tutorRestoring.value = false
+  await nextTick()
+  if (epoch === tutorEpoch) acknowledgeVisibleTutors()
+}
+
+async function loadTutorUsage() {
+  if (!pageActive || usageLoading.value) return
+  const epoch = tutorEpoch
+  usageLoading.value = true
+  usageError.value = ''
+  try { const result = await fetchTutorUsage(); if (epoch === tutorEpoch) tutorUsage.value = result }
+  catch(error) { if(epoch===tutorEpoch) usageError.value = formatHttpError(error,'暂时无法读取用量') }
+  finally { if(epoch===tutorEpoch) usageLoading.value = false }
+}
+
+function openUsage() { usageOpen.value = true; messengerBoxOpen.value = false; void loadTutorUsage() }
+
+async function cancelCurrentRequest() {
+  const id = pendingRequestId.value, epoch = tutorEpoch
+  if (!id || cancelling.value) return
+  cancelling.value = true
+  try {
+    const result = await cancelTutorTurn(id)
+    if(epoch!==tutorEpoch || pendingRequestId.value!==id) return
+    if(!result.cancelled) { message.info('回答已经完成，可以继续查看。'); return }
+    ++tutorEpoch
+    chatAbort?.abort();chatAbort=null;chatLoading.value=false;pendingRequestId.value=undefined;usageLoading.value=false
+    const row = chatMessages.value.find(item=>item.tutorRequestId===id || item.artifactRequestId===id)
+    if(row) {
+      row.text='本次请求已取消。';row.streaming=false;row.stageLabel=undefined;row.retry=undefined
+      row.tutor=undefined;row.tutorRequestId=undefined;row.artifactRequestId=undefined;row.artifact=undefined;row.artifactReady=false;row.knowledge=undefined
+    } else chatMessages.value.push({role:'assistant',text:'本次请求已取消。'})
+    void loadTutorUsage()
+  } catch(error) { if(epoch===tutorEpoch) message.error(formatHttpError(error,'取消未确认，原请求可能仍在处理')) }
+  finally { if(pendingRequestId.value===id || !pendingRequestId.value) cancelling.value=false }
+}
+
+async function runTutorCode() {
+  if (!pageActive || tutorRunning.value || !tutorCode.value.trim()) return
+  const epoch = tutorEpoch, code = tutorCode.value
+  tutorRunning.value = true
+  try {
+    const result = await runCode({ ...(conversationMode.value==='linked'?linkedContext.value:{}), language: 'python', code })
+    if (epoch === tutorEpoch) tutorRun.value = { code, result }
+  } catch (error) {
+    if (epoch === tutorEpoch) message.error(formatHttpError(error, '代码执行暂不可用'))
+  } finally { if (epoch === tutorEpoch) tutorRunning.value = false }
+}
+
+async function sendTutorQuestion(text: string, retryPayload?: TutorRequest) {
+  if (!pageActive || chatLoading.value || tutorRestoring.value || (!tutorMode.value && !retryPayload)) return
+  if(conversationMode.value==='linked'&&!linkedContext.value){message.warning('请先关联一道可用题目');return}
+  const epoch = tutorEpoch, session = activeSessionId.value
+  const payload: TutorRequest = retryPayload || {
+    request_id: createRequestId(), session_id: tutorSessionIds.get(session), mode: tutorMode.value!,
+    ...(conversationMode.value==='linked'?linkedContext.value:{}),
+    question: text, code: tutorCode.value,
+    run_id: tutorRun.value?.code === tutorCode.value ? tutorRun.value.result.run_id : undefined,
+  }
+  if (!retryPayload) chatMessages.value.push({ role: 'user', text })
+  chatLoading.value = true
+  pendingRequestId.value = payload.request_id
+  chatMessages.value.push({ role: 'assistant', text: '', tutorRequestId: payload.request_id, streaming: true, stageLabel: '小E 正在核对上下文' })
+  const row = chatMessages.value[chatMessages.value.length - 1]!
+  try {
+    const result = await askTutor(payload)
+    if (epoch !== tutorEpoch) return
+    tutorSessionIds.set(session, result.session_id)
+    row.text = result.summary; row.tutor = result; row.tutorCode = payload.code
+    row.streaming = false; row.stageLabel = undefined
+    await nextTick()
+    if (epoch === tutorEpoch) acknowledgeVisibleTutors()
+  } catch (error) {
+    if (epoch === tutorEpoch) {
+      row.text = error instanceof Error ? error.message : '辅导暂不可用'
+      row.streaming = false; row.stageLabel = undefined
+      row.retry = () => { void sendTutorQuestion(text, payload) }
+    }
+  } finally {
+    if (epoch === tutorEpoch) { chatLoading.value = false; pendingRequestId.value = undefined; scrollThreadToBottom() }
+  }
+}
 
 function startRenameSession(id: string, currentName: string) {
   renamingSessionId.value = id
@@ -195,13 +381,6 @@ const { listening: voiceListening, toggle: toggleVoiceInput } = useSpeechRecogni
   message,
 })
 
-function recentChatHistory() {
-  return chatMessages.value.slice(-18).map((msg) => ({
-    role: msg.role,
-    content: msg.text,
-  }))
-}
-
 function scrollThreadToBottom() {
   if (scrollRaf) return
   scrollRaf = window.requestAnimationFrame(() => {
@@ -249,146 +428,64 @@ const actions = [
   { label: '查看最近成长', icon: TrendingUpOutline, handler: runGrowthAction },
 ] as const
 
-async function sendChatText(text: string, appendUserMessage = true) {
-  if (!text || chatLoading.value) return
-  const history = recentChatHistory()
-  if (appendUserMessage) {
-    chatMessages.value.push({ role: 'user', text })
-    scrollThreadToBottom()
+async function sendChatText(text: string, appendUserMessage = true, retryPayload?: MessengerChatRequest) {
+  if (!pageActive || !text || chatLoading.value || tutorRestoring.value) return
+  if(conversationMode.value==='linked'&&!linkedContext.value){message.warning('请先关联一道可用题目');return}
+  const epoch = tutorEpoch, session = activeSessionId.value
+  const payload: MessengerChatRequest = retryPayload || {
+    message: text, request_id: createRequestId(), session_id: tutorSessionIds.get(session),
+    ...(conversationMode.value==='linked'?linkedContext.value:{}),
+    code: tutorCode.value,
+    run_id: tutorRun.value?.code === tutorCode.value ? tutorRun.value.result.run_id : undefined,
   }
+  if (appendUserMessage) chatMessages.value.push({ role: 'user', text })
   chatLoading.value = true
-  const retry = () => sendChatText(text, false)
-  const assistantMsg: ChatMessage = {
-    role: 'assistant',
-    text: '',
-    streaming: true,
-    stageLabel: '小E 正在组织回答',
-    thinking: [],
-  }
-  chatMessages.value.push(assistantMsg)
-  const liveIndex = chatMessages.value.length - 1
-
-  const live = () => chatMessages.value[liveIndex]!
-
+  pendingRequestId.value = payload.request_id
+  const controller = new AbortController()
+  chatAbort = controller
+  const retry = () => { void sendChatText(text, false, payload) }
+  chatMessages.value.push({ role: 'assistant', text: '', streaming: true,
+    tutorRequestId: payload.request_id, stageLabel: '小E 正在核对上下文' })
+  const index = chatMessages.value.length - 1
+  const live = () => epoch === tutorEpoch ? chatMessages.value[index] : undefined
   try {
-    const result = await streamMessengerChat(text, history, {
-      onDelta: (delta) => {
-        const msg = live()
-        if (!msg) return
-        msg.stageLabel = undefined
-        msg.text += delta
-        scrollThreadToBottom()
-      },
-      onStage: (_stage, label) => {
-        const msg = live()
-        if (!msg) return
-        msg.stageLabel = label
-        const steps = [...(msg.thinking || [])].map((s) =>
-          s.status === 'running'
-            ? {
-                ...s,
-                status: 'success' as const,
-                latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : Math.max(40, Date.now() % 280),
-              }
-            : s,
-        )
-        if (!steps.some((s) => s.agentId === _stage || s.name === label)) {
-          steps.push({
-            agentId: _stage || `stage-${steps.length}`,
-            name: label || _stage || '思考中',
-            status: 'running',
-            latencyMs: 0,
-            summary: label || '处理中…',
-          })
-        }
-        msg.thinking = steps
-        scrollThreadToBottom()
-      },
-      onDone: ( partial) => {
-        const msg = live()
-        if (!msg) return
-        const reply = xiaoENormalizeReply(partial.reply || msg.text)
-        msg.text = reply || '我先根据你的近况给一点方向：优先复习薄弱知识点，再做一道对应试炼题巩固。'
-        if (partial.thinking?.length) {
-          msg.thinking = partial.thinking
-        } else if (msg.thinking?.length) {
-          msg.thinking = msg.thinking.map((s) => ({
-            ...s,
-            status: 'success' as const,
-            latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : 80,
-          }))
-        }
-        if (partial.knowledge) msg.knowledge = partial.knowledge
-        msg.stageLabel = undefined
-        msg.streaming = false
-        scrollThreadToBottom()
-      },
-      onIllustration: (illustration) => {
-        const msg = live()
-        if (!msg) return
-        msg.illustration = illustration
-        scrollThreadToBottom()
+    const result = await streamMessengerChat(payload, [], {
+      signal: controller.signal,
+      onStage: (_stage, label) => { const row = live(); if (row) row.stageLabel = label },
+      onDelta: delta => { const row = live(); if (row) { row.text += delta; scrollThreadToBottom() } },
+      onDone: result => {
+        const row = live()
+        if (!row) return
+        row.text = result.reply; row.tutor = result.tutor; row.tutorCode = payload.code
+        row.questionPick = result.question_pick; row.streaming = false; row.stageLabel = undefined
+        if (result.tutor) tutorSessionIds.set(session, result.tutor.session_id)
       },
     })
-    const msg = live()
-    if (msg) {
-      const reply = xiaoENormalizeReply(result.reply || msg.text)
-      msg.text = reply || msg.text || '我先根据你的近况给一点方向：优先复习薄弱知识点，再做一道对应试炼题巩固。'
-      if (result.illustration) msg.illustration = result.illustration
-      if (result.knowledge) msg.knowledge = result.knowledge
-      if (result.thinking?.length) {
-        msg.thinking = result.thinking
-      } else if (msg.thinking?.length) {
-        msg.thinking = msg.thinking.map((s) => ({
-          ...s,
-          status: 'success' as const,
-          latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : 80,
-        }))
-      }
-      msg.stageLabel = undefined
-      msg.streaming = false
-    }
-    scrollThreadToBottom()
+    const row = live()
+    if (!row) return
+    row.text = result.reply; row.tutor = result.tutor; row.tutorCode = payload.code
+    row.questionPick = result.question_pick; row.streaming = false; row.stageLabel = undefined
+    if (result.tutor) tutorSessionIds.set(session, result.tutor.session_id)
+    await nextTick(); if (epoch === tutorEpoch) acknowledgeVisibleTutors()
   } catch (error) {
-    const msg = live()
-    if (msg?.text) {
-      msg.streaming = false
-      msg.stageLabel = undefined
-      msg.text = `${xiaoENormalizeReply(msg.text)}\n\n> 连接中断，以上为部分回复。`
-    } else {
-      try {
-        const fallback = await postMessengerChat(text, history)
-        if (msg) {
-          msg.knowledge = fallback.knowledge ?? null
-          msg.text = xiaoENormalizeReply(fallback.reply) || '小E 这次没组织好语言，点「重试」再来一次。'
-          msg.streaming = false
-          msg.stageLabel = undefined
-          msg.retry = retry
-        }
-      } catch (fallbackError) {
-        const err = assistantErrorText(fallbackError ?? error, retry)
-        if (msg) {
-          msg.text = err.text
-          msg.streaming = false
-          msg.stageLabel = undefined
-          msg.thinking = []
-          msg.retry = err.retry
-        } else {
-          chatMessages.value.push(err)
-        }
-      }
-    }
-    scrollThreadToBottom()
+    const row = live()
+    if (!row) return
+    // Discard incomplete transport output. A retry uses the same server turn;
+    // never launch a second untracked synchronous generation after a timeout.
+    row.text = error instanceof Error ? error.message : '这次回答未完成，请重试。'
+    row.streaming = false; row.stageLabel = undefined; row.tutor = undefined; row.retry = retry
   } finally {
-    chatLoading.value = false
+    if (epoch === tutorEpoch) { chatLoading.value = false; pendingRequestId.value = undefined; chatAbort = null; scrollThreadToBottom() }
   }
 }
 
 async function sendChat() {
+  if (tutorRestoring.value) { message.info('正在核对之前的辅导记录，请稍等。'); return }
   const text = prompt.value.trim()
   if (!text) return
   prompt.value = ''
-  await sendChatText(text)
+  if (tutorMode.value) await sendTutorQuestion(text)
+  else await sendChatText(text)
 }
 
 const toolMenuOptions = [
@@ -396,118 +493,74 @@ const toolMenuOptions = [
   { label: '生成文档', key: 'learning-document' },
 ]
 
-function sleep(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms))
+function applyArtifact(msg: ChatMessage, result: MessengerArtifactResult) {
+  msg.text = result.markdown
+  msg.artifactRequestId = result.artifact_id
+  msg.artifact = result.kind
+  msg.artifactReady = result.status === 'ok'
+  msg.downloadName = `${result.title}.md`
+  msg.knowledge = result.knowledge
+  msg.illustration = undefined
+  msg.streaming = false; msg.stageLabel = undefined; msg.thinking = undefined
 }
 
-/** 把完整文案伪流式写入气泡，让生图/生文档过程可见。 */
-async function revealAssistantText(liveIndex: number, fullText: string, chunk = 28) {
-  const text = fullText || ''
-  for (let i = 0; i < text.length; i += chunk) {
-    const msg = chatMessages.value[liveIndex]
-    if (!msg) return
-    msg.stageLabel = undefined
-    msg.text = text.slice(0, i + chunk)
-    scrollThreadToBottom()
-    await sleep(16)
+async function restoreArtifactMessages(session: string, epoch: number) {
+  if (!pageActive || epoch !== tutorEpoch) return
+  const rows = chatMessages.value.filter(msg => msg.artifactRequestId && !msg.streaming)
+  for (const row of rows) {
+    const check = row.artifactCheckVersion = (row.artifactCheckVersion || 0) + 1
+    row.text = '正在核对学习材料…'; row.knowledge = undefined; row.artifactReady = false
+    try {
+      const result = await fetchMessengerArtifact(row.artifactRequestId!)
+      if (epoch !== tutorEpoch || session !== activeSessionId.value || row.artifactCheckVersion !== check) return
+      applyArtifact(row, result)
+      row.retry = undefined
+    } catch (error) {
+      if (epoch !== tutorEpoch || session !== activeSessionId.value || row.artifactCheckVersion !== check) return
+      row.text = formatHttpError(error, '这份学习材料尚未完成或当前不可访问')
+      row.retry = () => { void restoreArtifactMessages(session, epoch) }
+    }
   }
-  const msg = chatMessages.value[liveIndex]
-  if (msg) msg.text = text
 }
 
 async function runToolAction(key: string) {
+  if (!pageActive || chatLoading.value || tutorRestoring.value) return
   const topic = prompt.value.trim()
-  if (!topic) {
-    message.warning('请先在输入框描述主题，再选择工具')
-    return
-  }
-  prompt.value = ''
-  chatLoading.value = true
+  if (!topic) { message.warning('请先在输入框描述主题，再选择工具'); return }
+  if (!['knowledge-graph', 'learning-document'].includes(key)) return
+  const epoch = tutorEpoch, session = activeSessionId.value, requestId = createRequestId()
   const isGraph = key === 'knowledge-graph'
-  chatMessages.value.push({
-    role: 'user',
-    text: isGraph ? `请帮我生成知识图：${topic}` : `请帮我生成学习文档：${topic}`,
-  })
-  const assistantMsg: ChatMessage = {
-    role: 'assistant',
-    text: '',
-    streaming: true,
-    stageLabel: isGraph ? '梳理知识结构' : '起草学习文档',
-    thinking: [
-      {
-        agentId: 'context',
-        name: '理解主题',
-        status: 'running',
-        latencyMs: 0,
-        summary: `围绕「${topic.slice(0, 40)}」整理要点…`,
-      },
-    ],
-  }
-  chatMessages.value.push(assistantMsg)
-  const liveIndex = chatMessages.value.length - 1
-  scrollThreadToBottom()
-  try {
-    const live = () => chatMessages.value[liveIndex]!
-    const markStep = (id: string, name: string, summary: string) => {
-      const msg = live()
-      if (!msg) return
-      const steps = [...(msg.thinking || [])].map((s) =>
-        s.status === 'running'
-          ? { ...s, status: 'success' as const, latencyMs: s.latencyMs || Math.max(40, Date.now() % 240) }
-          : s,
-      )
-      steps.push({ agentId: id, name, status: 'running', latencyMs: 0, summary })
-      msg.thinking = steps
-      msg.stageLabel = name
-      scrollThreadToBottom()
-    }
-
-    if (isGraph) {
-      markStep('graph', '生成知识图', '正在用课程结构生成 Mermaid 思维导图…')
-      const result = await postMessengerKnowledgeGraph(topic)
-      markStep('illustration', '配图预览', '正在生成知识图预览，结构内容将优先返回…')
-      let reply = `已生成「${result.topic}」知识图结构：\n\n\`\`\`mermaid\n${result.mermaid}\n\`\`\``
-      if (result.illustration?.url) {
-        reply += `\n\n![知识图预览](${result.illustration.url})`
-        live().illustration = result.illustration
-      }
-      await revealAssistantText(liveIndex, reply)
-      const graphMsg = live()
-      if (graphMsg) graphMsg.artifact = 'graph'
-    } else {
-      markStep('document', '撰写文档', '正在生成 Markdown 学习文档…')
-      const result = await postMessengerLearningDocument(topic)
-      await revealAssistantText(liveIndex, `# ${result.title}\n\n${result.markdown}`)
-      const docMsg = live()
-      if (docMsg) {
-        docMsg.artifact = 'document'
-        docMsg.downloadName = `${result.title || topic}.md`
+  prompt.value = ''
+  chatMessages.value.push({role:'user', text: isGraph ? `请帮我生成知识图：${topic}` : `请帮我生成学习文档：${topic}`})
+  chatMessages.value.push({role:'assistant', text:'', artifactRequestId:requestId, artifact:isGraph?'graph':'document'})
+  const row = chatMessages.value[chatMessages.value.length - 1]!
+  const perform = async () => {
+    if (epoch !== tutorEpoch || session !== activeSessionId.value || chatLoading.value) return
+    row.artifactCheckVersion = (row.artifactCheckVersion || 0) + 1
+    pendingRequestId.value = requestId
+    chatLoading.value = true; row.streaming = true; row.retry = undefined
+    row.stageLabel = '检索课程材料并核对内容'
+    const controller = new AbortController(); chatAbort = controller
+    try {
+      const result = isGraph ? await postMessengerKnowledgeGraph(topic, requestId, controller.signal)
+        : await postMessengerLearningDocument(topic, requestId, controller.signal)
+      if (epoch !== tutorEpoch || session !== activeSessionId.value) return
+      applyArtifact(row, result)
+    } catch (error) {
+      if (epoch !== tutorEpoch || session !== activeSessionId.value) return
+      row.text = formatHttpError(error, '工具调用未完成，可使用原请求重试')
+      row.retry = () => { void perform() }
+    } finally {
+      if (epoch === tutorEpoch && session === activeSessionId.value) {
+        row.streaming = false; row.stageLabel = undefined; chatLoading.value = false; pendingRequestId.value = undefined
+        if (chatAbort === controller) chatAbort = null
+        scrollThreadToBottom()
       }
     }
-    const msg = live()
-    if (msg) {
-      msg.streaming = false
-      msg.stageLabel = undefined
-      msg.thinking = (msg.thinking || []).map((s) => ({
-        ...s,
-        status: 'success' as const,
-        latencyMs: s.latencyMs && s.latencyMs > 0 ? s.latencyMs : 80,
-      }))
-    }
-    scrollThreadToBottom()
-  } catch (error) {
-    const msg = chatMessages.value[liveIndex]
-    if (msg) {
-      msg.streaming = false
-      msg.stageLabel = undefined
-      msg.text = error instanceof Error ? error.message : '工具调用失败'
-    } else {
-      message.error(error instanceof Error ? error.message : '工具调用失败')
-    }
-  } finally {
-    chatLoading.value = false
   }
+  await perform()
 }
+
 </script>
 
 <template>
@@ -518,6 +571,19 @@ async function runToolAction(key: string) {
     search-placeholder=""
     hide-search
   >
+    <n-modal v-model:show="usageOpen" preset="card" title="我的辅导用量" class="plex-reading-modal tutor-usage-modal" :style="{ width: 'min(460px, 94vw)' }">
+      <p v-if="usageLoading" role="status">正在读取用量…</p>
+      <p v-else-if="usageError" role="alert">{{ usageError }}</p>
+      <dl v-if="tutorUsage && !usageLoading && !usageError" class="tutor-usage-details">
+        <div><dt>本周期辅导</dt><dd>{{ tutorUsage.requests_used }} / {{ tutorUsage.request_limit }} 次</dd></div>
+        <div><dt>剩余额度</dt><dd>{{ tutorUsage.requests_remaining }} 次</dd></div>
+        <div><dt>模型调用</dt><dd>{{ tutorUsage.model_calls }} 次</dd></div>
+        <div><dt>已报告 Token</dt><dd>{{ tutorUsage.reported_total_tokens }}</dd></div>
+        <div v-if="tutorUsage.unknown_usage_calls"><dt>用量未知的调用</dt><dd>{{ tutorUsage.unknown_usage_calls }} 次</dd></div>
+        <div><dt>额度恢复时间</dt><dd>{{ new Date(tutorUsage.reset_at).toLocaleString('zh-CN') }}</dd></div>
+      </dl>
+      <template #footer><n-button :loading="usageLoading" @click="loadTutorUsage">{{ usageError ? '重试' : '刷新用量' }}</n-button></template>
+    </n-modal>
     <main class="messenger-main" :class="{ 'plex-comic-chat': themeStore.isComic }">
       <section class="messenger-stage" aria-label="驿站使者">
         <div class="station-bg" aria-hidden="true">
@@ -531,26 +597,31 @@ async function runToolAction(key: string) {
         </div>
 
         <aside class="analysis-panel" aria-label="与小E对话反馈">
-          <header class="analysis-panel__head">
-            <div class="analysis-panel__title-row">
-              <h2>小E 对话反馈 <span aria-hidden="true">{{ themeStore.isComic ? '✦' : '▮▮' }}</span></h2>
-            </div>
-            <div class="messenger-box">
-              <button
+          <header class="analysis-panel__head" data-tour="student-messenger">
+          <div class="conversation-modes" role="group" aria-label="提问模式">
+            <button :aria-pressed="conversationMode==='free'" :disabled="chatLoading" @click="setConversationMode('free')">随心问</button>
+            <button :aria-pressed="conversationMode==='linked'" :disabled="chatLoading" @click="setConversationMode('linked')">关联题目</button>
+          </div>
+            <div class="messenger-header-tools">
+              <n-button class="messenger-usage-toggle plex-action-button" @click="openUsage">查看用量</n-button>
+              <div class="messenger-box">
+              <n-popover :show="messengerBoxOpen" trigger="manual" placement="bottom-end" raw @clickoutside="messengerBoxOpen = false">
+              <template #trigger><button
                 type="button"
                 class="messenger-box__toggle"
                 :aria-expanded="messengerBoxOpen"
                 aria-controls="messenger-box-panel"
                 @click="messengerBoxOpen = !messengerBoxOpen"
+                @keydown.esc="messengerBoxOpen = false"
               >
                 <span class="messenger-box__label">BOX</span>
                 <span class="messenger-box__current">{{ activeSession?.name || '对话' }}</span>
                 <span class="messenger-box__chevron" aria-hidden="true">{{ messengerBoxOpen ? '▴' : '▾' }}</span>
-              </button>
+              </button></template>
               <div
-                v-show="messengerBoxOpen"
                 id="messenger-box-panel"
                 class="messenger-box__panel"
+                @keydown.esc="messengerBoxOpen = false"
                 role="tablist"
                 aria-label="对话窗口"
               >
@@ -596,10 +667,9 @@ async function runToolAction(key: string) {
                   <small>最近使用 {{ formatSessionTime(session.lastActiveAt) }}</small>
                 </div>
               </div>
+            </n-popover>
+              </div>
             </div>
-            <p v-if="activeSession" class="messenger-session-meta">
-              创建于 {{ formatSessionTime(activeSession.createdAt) }} · 最近使用 {{ formatSessionTime(activeSession.lastActiveAt) }}
-            </p>
           </header>
           <div ref="chatThreadEl" class="chat-thread" aria-label="与小E对话">
             <div v-if="!chatMessages.length" class="chat-thread__empty">
@@ -627,7 +697,11 @@ async function runToolAction(key: string) {
                 <p v-if="msg.streaming && !msg.text" class="chat-thread__stage">
                   {{ msg.stageLabel || '小E 正在组织回答' }}…
                 </p>
-                <MarkdownRenderer v-if="msg.text" :content="msg.text" :streaming="msg.streaming" />
+                <template v-if="msg.tutor">
+                  <small v-if="(msg.tutorRestored && msg.tutor.context?.code_lines) || (msg.tutorCode && msg.tutorCode !== tutorCode)" class="tutor-code-stale">这条反馈对应之前附带的代码。</small>
+                  <TutorResponseCard :response="msg.tutor" />
+                </template>
+                <MarkdownRenderer v-else-if="msg.text" :content="msg.text" :streaming="msg.streaming" />
                 <span v-if="msg.streaming" class="chat-thread__cursor" aria-hidden="true" />
                 <MessengerKnowledgeCard v-if="msg.knowledge && !msg.streaming" :knowledge="msg.knowledge" />
                 <figure v-if="msg.illustration?.url" class="chat-thread__illustration">
@@ -635,7 +709,7 @@ async function runToolAction(key: string) {
                   <figcaption>{{ msg.illustration.caption || '图解说明' }}</figcaption>
                 </figure>
                 <div
-                  v-if="msg.artifact === 'document' && !msg.streaming && msg.text"
+                  v-if="msg.artifact === 'document' && !msg.streaming && msg.text && (!msg.artifactRequestId || msg.artifactReady)"
                   class="chat-thread__actions"
                 >
                   <button
@@ -676,6 +750,23 @@ async function runToolAction(key: string) {
         </aside>
 
         <section class="prompt-dock prompt-dock--tech" aria-label="向小E提问">
+          <LinkedQuestionPicker v-if="conversationMode==='linked'" @change="updateLinked" />
+          <details v-if="conversationMode==='linked'"><summary>选择帮助方式</summary><div class="tutor-mode-picker">
+            <button :aria-pressed="tutorMode===null" @click="tutorMode=null">按问题回答</button>
+            <button v-for="item in tutorModes" :key="item.mode" :aria-pressed="tutorMode===item.mode" :disabled="chatLoading" @click="tutorMode=item.mode">{{item.label}}</button>
+          </div></details>
+          <div class="tutor-mode-picker">
+            <button v-if="chatLoading && pendingRequestId" type="button" :disabled="cancelling" @click="cancelCurrentRequest">{{ cancelling ? '正在确认取消…' : '取消本次请求' }}</button>
+          </div>
+          <small v-if="tutorRestoring" role="status">正在核对并恢复辅导记录…</small>
+          <details class="tutor-attachment">
+            <summary>附带代码与运行记录</summary>
+            <p>可编辑附带代码；修改后需重新运行自测。</p>
+            <n-input v-model:value="tutorCode" type="textarea" :autosize="{ minRows: 3, maxRows: 8 }" :disabled="chatLoading" placeholder="粘贴需要讨论的 Python 代码，可随时清空移除" :input-props="{ 'aria-label': '辅导附带代码' }" />
+            <button type="button" :disabled="chatLoading || tutorRunning || !tutorCode.trim()" @click="runTutorCode">{{ tutorRunning ? '运行中…' : '运行这段代码' }}</button>
+            <span v-if="tutorRun">{{ tutorRun.code === tutorCode ? '已附带本次服务器自测' : '代码已修改，请重新运行' }}</span>
+            <pre v-if="tutorRun">{{ tutorRun.result.stderr || tutorRun.result.stdout || '运行结束，无输出。' }}</pre>
+          </details>
           <div class="prompt-line">
             <n-dropdown
               trigger="click"
@@ -721,6 +812,17 @@ async function runToolAction(key: string) {
 </template>
 
 <style scoped>
+.tutor-mode-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.tutor-mode-picker button, .tutor-attachment button { font: inherit; color: inherit; background: transparent; border: 1px solid rgb(128 150 160 / 45%); border-radius: 7px; padding: 5px 9px; cursor: pointer; }
+.tutor-mode-picker button[aria-pressed="true"] { border-color: #22afa9; background: rgb(34 175 169 / 12%); }
+.tutor-mode-picker button:focus-visible, .tutor-attachment button:focus-visible { outline: 2px solid #22afa9; outline-offset: 2px; }
+.tutor-mode-picker button:disabled, .tutor-attachment button:disabled { opacity: .5; cursor: default; }
+.tutor-attachment { margin-bottom: 12px; font-size: 13px; }
+.tutor-attachment summary { cursor: pointer; }
+.tutor-attachment button { margin-top: 8px; margin-right: 10px; }
+.tutor-attachment pre { max-height: 140px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tutor-code-stale { display: block; margin: 6px 0; }
+:global(html[data-plex-style="comic"] .tutor-mode-picker button) { border-width: 2px; border-radius: 4px 10px 4px 10px; }
 .messenger-shell {
   display: flex;
   height: 100dvh;
@@ -867,7 +969,10 @@ async function runToolAction(key: string) {
 
 .messenger-main {
   position: relative;
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
   min-width: 0;
   overflow: hidden;
   background:
@@ -1033,14 +1138,15 @@ async function runToolAction(key: string) {
   z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(200px, 1fr) auto;
   grid-template-areas:
     'analysis'
     'prompt';
   gap: 0.9rem;
-  height: calc(100dvh - 124px);
+  flex: 1 1 0;
+  height: auto;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
   padding: 0 var(--plex-page-gutter-x) calc(var(--plex-page-gutter-bottom) + 0.25rem);
 }
 
@@ -2134,12 +2240,12 @@ async function runToolAction(key: string) {
 
   .messenger-stage {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(320px, auto) auto;
+    grid-template-rows: minmax(200px, 1fr) auto;
     grid-template-areas:
       'analysis'
       'prompt';
     height: auto;
-    min-height: calc(100dvh - 124px);
+    min-height: 0;
     overflow-y: auto;
   }
 
@@ -2241,7 +2347,7 @@ async function runToolAction(key: string) {
   }
 
   .messenger-main {
-    overflow: visible;
+    overflow: hidden;
   }
 
   .messenger-topbar,
@@ -2302,4 +2408,27 @@ async function runToolAction(key: string) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-thread__cursor,
+  .prompt-dock__glow {
+    animation: none;
+  }
+}
+</style>
+
+<style scoped>
+.analysis-panel__head{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;flex:none;min-width:0}
+.conversation-modes{display:flex;gap:4px;padding:4px;border:1px solid var(--plex-border);border-radius:12px;flex-shrink:0}
+.conversation-modes button{padding:8px 14px;border:0;border-radius:8px;color:var(--plex-text);background:transparent;cursor:pointer;white-space:nowrap}
+.conversation-modes button[aria-pressed=true]{background:color-mix(in srgb,var(--plex-primary,#55eee9) 18%,transparent);color:var(--plex-text)}
+.conversation-modes button:focus-visible,.messenger-box__toggle:focus-visible{outline:2px solid var(--plex-primary,#55eee9);outline-offset:2px}
+.messenger-header-tools{display:flex;align-items:center;gap:10px;min-width:0;margin-left:auto}
+.messenger-box{position:relative;min-width:0;width:180px}
+.messenger-box__panel{position:static;width:min(320px,90vw);max-height:min(380px,60dvh);overflow-y:auto;background:var(--plex-bg-card,#11263a);color:var(--plex-text);box-shadow:0 10px 28px #0004;scrollbar-width:thin;scrollbar-color:var(--plex-primary,#55eee9) transparent}
+.messenger-box__panel small{color:var(--plex-text-muted)}
+.messenger-session-tab__btn{color:var(--plex-text)}
+.chat-thread{scrollbar-width:none}.chat-thread::-webkit-scrollbar{width:0}.prompt-actions{display:none}
+.tutor-usage-details{margin:0}.tutor-usage-details>div{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--plex-border)}.tutor-usage-details dt{color:var(--plex-text-muted)}.tutor-usage-details dd{margin:0;text-align:right;overflow-wrap:anywhere}
+@media(max-width:700px){.analysis-panel__head{flex-wrap:wrap}.messenger-header-tools{justify-content:flex-end;flex:1 1 100%}.messenger-box{width:min(190px,55vw)}.conversation-modes{width:100%}.conversation-modes button{flex:1}.analysis-panel{padding:12px}}
 </style>

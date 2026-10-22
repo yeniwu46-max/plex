@@ -16,10 +16,10 @@ const polyline = computed(() => polylineFromPoints(props.points, 200, 56))
   <article class="spark-card teacher-panel">
     <div class="spark-card__top">
       <span>{{ label }}</span>
-      <em>{{ delta }}</em>
+      <em v-if="delta">{{ delta }}</em>
     </div>
     <strong>{{ value }}</strong>
-    <svg class="spark-card__chart" viewBox="0 0 200 56" role="img" :aria-label="`${label}趋势`">
+    <svg v-if="points.length" class="spark-card__chart" viewBox="0 0 200 56" role="img" :aria-label="`${label}趋势`">
       <polyline :points="polyline" />
     </svg>
   </article>

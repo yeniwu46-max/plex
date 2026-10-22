@@ -8,6 +8,18 @@ from scripts.verify_deprecation_budget import run as verify_deprecation_budget
 from scripts.verify_release_readiness import audit
 
 
+def test_manifest_excludes_private_smtp_and_provider_files(tmp_path, monkeypatch):
+    from scripts import generate_release_manifest as manifest
+    monkeypatch.setattr(manifest, 'REPO_ROOT', tmp_path)
+    for name in ('.env.smtp.local', '.env.spark.local', '.env.production'):
+        path = tmp_path / name
+        path.write_text('PRIVATE_PLACEHOLDER=value', encoding='utf-8')
+        assert not manifest._include(path)
+    example = tmp_path / '.env.example'
+    example.write_text('SMTP_PASSWORD=', encoding='utf-8')
+    assert manifest._include(example)
+
+
 def test_dependency_inventory_resolves_direct_dependencies(tmp_path: Path):
     report = generate(tmp_path / "dependency-inventory.json")
 

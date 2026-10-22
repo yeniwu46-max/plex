@@ -7,6 +7,9 @@ load_dotenv()
 # Local provider overrides are ignored by git and intentionally take precedence
 # over the shared development .env file.
 load_dotenv(os.path.join(BACKEND_ROOT, '.env.spark.local'), override=True)
+load_dotenv(os.path.join(BACKEND_ROOT, '.env.smtp.local'), override=True)
+load_dotenv(os.path.join(BACKEND_ROOT, '.env.execution.local'), override=True)
+load_dotenv(os.path.join(BACKEND_ROOT, '.env.learning.local'), override=True)
 INSTANCE_DIR = os.path.join(BACKEND_ROOT, 'instance')
 os.makedirs(INSTANCE_DIR, exist_ok=True)
 DEFAULT_SQLITE_URI = 'sqlite:///' + os.path.join(INSTANCE_DIR, 'learning_system.db').replace('\\', '/')
@@ -24,6 +27,14 @@ def _resolve_database_uri(raw: str | None) -> str:
 
 
 class Config:
+    LEARNER_STATE_READ_MODE = os.getenv('LEARNER_STATE_READ_MODE', 'shadow')
+    COUNTEREXAMPLE_GENERATION_WORKER_ENABLED = os.getenv('COUNTEREXAMPLE_GENERATION_WORKER_ENABLED', 'true').lower() == 'true'
+    COUNTEREXAMPLE_GENERATION_ACTIVE_LIMIT = int(os.getenv('COUNTEREXAMPLE_GENERATION_ACTIVE_LIMIT', '2'))
+    COUNTEREXAMPLE_GENERATION_DAILY_LIMIT = int(os.getenv('COUNTEREXAMPLE_GENERATION_DAILY_LIMIT', '10'))
+    COUNTEREXAMPLE_CLASS_DAILY_LIMIT = int(os.getenv('COUNTEREXAMPLE_CLASS_DAILY_LIMIT','20'))
+    COUNTEREXAMPLE_CLASS_ACTIVE_LIMIT = int(os.getenv('COUNTEREXAMPLE_CLASS_ACTIVE_LIMIT','4'))
+    COUNTEREXAMPLE_GLOBAL_ACTIVE_LIMIT = int(os.getenv('COUNTEREXAMPLE_GLOBAL_ACTIVE_LIMIT','8'))
+    LEARNER_STATE_WORKER_ENABLED = os.getenv('LEARNER_STATE_WORKER_ENABLED', 'true').lower() == 'true'
     """
     基础配置类 - 所有环境共享的配置
     """
@@ -32,6 +43,27 @@ class Config:
     DEBUG = False
     TESTING = False
     STORE_MOCK_ACTIVATION_ENABLED = False
+    TUTOR_DAILY_REQUEST_LIMIT = int(os.getenv('TUTOR_DAILY_REQUEST_LIMIT', '80'))
+    TUTOR_USER_CONCURRENCY = int(os.getenv('TUTOR_USER_CONCURRENCY', '2'))
+    TUTOR_GLOBAL_CONCURRENCY = int(os.getenv('TUTOR_GLOBAL_CONCURRENCY', '8'))
+    TUTOR_REQUEST_ATTEMPT_LIMIT = int(os.getenv('TUTOR_REQUEST_ATTEMPT_LIMIT', '3'))
+    AI_MODEL_RATE_CARD_FILE = os.getenv('AI_MODEL_RATE_CARD_FILE', '')
+    RAG_DAILY_REQUEST_LIMIT = int(os.getenv('RAG_DAILY_REQUEST_LIMIT', '40'))
+    RAG_USER_CONCURRENCY = int(os.getenv('RAG_USER_CONCURRENCY', '2'))
+    RAG_GLOBAL_CONCURRENCY = int(os.getenv('RAG_GLOBAL_CONCURRENCY', '8'))
+    RAG_REQUEST_ATTEMPT_LIMIT = int(os.getenv('RAG_REQUEST_ATTEMPT_LIMIT', '3'))
+    RESOURCE_USER_DAILY_LIMIT = int(os.getenv('RESOURCE_USER_DAILY_LIMIT','10'))
+    RESOURCE_CLASS_DAILY_LIMIT = int(os.getenv('RESOURCE_CLASS_DAILY_LIMIT','60'))
+    RESOURCE_USER_ACTIVE_LIMIT = int(os.getenv('RESOURCE_USER_ACTIVE_LIMIT','2'))
+    RESOURCE_CLASS_ACTIVE_LIMIT = int(os.getenv('RESOURCE_CLASS_ACTIVE_LIMIT','6'))
+    RESOURCE_GLOBAL_ACTIVE_LIMIT = int(os.getenv('RESOURCE_GLOBAL_ACTIVE_LIMIT','12'))
+    RESOURCE_ATTEMPTS_LIMIT = int(os.getenv('RESOURCE_ATTEMPTS_LIMIT','3'))
+    CODE_EXECUTION_BACKEND = os.getenv('CODE_EXECUTION_BACKEND', 'auto')
+    # Open only after the isolated trace acceptance script has passed.
+    CODE_TRACE_ENABLED = os.getenv('CODE_TRACE_ENABLED', 'false').lower() in {'true', '1', 'yes'}
+    CODE_EXECUTION_DOCKER_IMAGE = os.getenv('CODE_EXECUTION_DOCKER_IMAGE', 'plex-python-sandbox:1')
+    JUDGE0_API_URL = os.getenv('JUDGE0_API_URL', '')
+    JUDGE0_AUTH_TOKEN = os.getenv('JUDGE0_AUTH_TOKEN', '')
 
     # ============ 数据库配置 ============
     # MySQL 连接字符串格式: mysql+pymysql://user:password@host:port/database
@@ -62,6 +94,12 @@ class Config:
     # ============ 日志配置 ============
     LOG_LEVEL = 'INFO'
     LOG_FILE = 'logs/app.log'
+    AUTH_RATE_LIMIT_ENABLED = True
+    AUTH_SUPPORT_EMAIL = os.getenv('AUTH_SUPPORT_EMAIL', '')
+    SMTP_HOST = os.getenv('SMTP_HOST', '')
+    SMTP_PORT = int(os.getenv('SMTP_PORT', '465'))
+    SMTP_USER = os.getenv('SMTP_USER', '')
+    SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
 
     # OAuth login configuration. Set these in the backend environment before
     # enabling the Google/GitHub buttons in production.
@@ -92,16 +130,25 @@ class DevelopmentConfig(Config):
     """
     DEBUG = True
     STORE_MOCK_ACTIVATION_ENABLED = True
-    SQLALCHEMY_ECHO = True  # 打印SQL语句
+    # SQL bind values may contain private teaching material; logging is opt-in.
+    SQLALCHEMY_ECHO = os.getenv('SQLALCHEMY_ECHO', 'false').lower() == 'true'
     LOG_LEVEL = 'DEBUG'
 
 
 class TestingConfig(Config):
+    LEARNER_STATE_READ_MODE = 'shadow'
+    LEARNER_STATE_WORKER_ENABLED = False
     """
     测试环境配置
     特点: 使用内存SQLite数据库，快速测试
     """
     TESTING = True
+    # Tests must inject deterministic runners or explicitly enable a real
+    # isolated integration target; never use developer provider credentials.
+    CODE_EXECUTION_BACKEND = 'disabled'
+    JUDGE0_API_URL = ''
+    JUDGE0_AUTH_TOKEN = ''
+    AUTH_RATE_LIMIT_ENABLED = False
     STORE_MOCK_ACTIVATION_ENABLED = True
     SQLALCHEMY_ENGINE_OPTIONS = {}
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # 内存数据库

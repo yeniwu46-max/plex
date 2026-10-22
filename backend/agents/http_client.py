@@ -85,9 +85,10 @@ def _with_proxy(url: str, kwargs: dict) -> dict:
 
 
 def _request_with_retry(method: str, url: str, *args, **kwargs):
-    """本机代理/TUN 冷启动时首个请求常超时、重试即成功，故默认重试 1 次。
+    """Only connect-before-send failures can retry a billable POST safely.
 
-    重试发生在收到任何响应字节之前（连接失败/超时），对上游是安全的。
+    Read timeouts / connection resets can happen after the provider accepted work.
+    They must not silently duplicate paid generation.
     """
     retries = max(0, int(os.getenv('LLM_HTTP_RETRIES', '1')))
     host = urlparse(url).hostname
@@ -96,8 +97,11 @@ def _request_with_retry(method: str, url: str, *args, **kwargs):
     last_error: Exception | None = None
     for _ in range(retries + 1):
         try:
-            return getattr(_DIRECT, method)(url, *args, **_with_proxy(url, dict(kwargs)))
+            from app.services.model_accounting import request as accounted_request
+            return accounted_request(method,url,args,kwargs,lambda:getattr(_DIRECT, method)(url, *args, **_with_proxy(url, dict(kwargs))))
         except (requests.Timeout, requests.ConnectionError) as exc:
+            if method != 'get' and not isinstance(exc, requests.ConnectTimeout):
+                raise
             last_error = exc
     raise last_error
 

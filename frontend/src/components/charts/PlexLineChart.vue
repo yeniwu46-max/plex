@@ -13,7 +13,7 @@ use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent
 const props = withDefaults(
   defineProps<{
     xData: string[]
-    series: Array<{ name: string; data: number[]; color?: string }>
+    series: Array<{ name: string; data: Array<number | null>; color?: string }>
     title?: string
     yName?: string
   }>(),

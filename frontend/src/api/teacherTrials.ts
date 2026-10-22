@@ -6,6 +6,7 @@ export interface TeacherTrial {
   teacher_id: number
   title: string
   trial_type: string
+  tutoring_policy?: 'auto' | 'disabled' | 'concept_only' | 'guided'
   knowledge_key: string | null
   knowledge_keys?: string[]
   difficulty: number
@@ -111,6 +112,7 @@ export interface CodingBankItem {
 }
 
 export interface CreateTrialPayload {
+  tutoring_policy?: TeacherTrial['tutoring_policy']
   class_id: number
   title?: string
   trial_type?: string
@@ -182,6 +184,7 @@ export async function publishTeacherTrial(trialId: number, notifyStudents = true
 export async function updateTeacherTrial(
   trialId: number,
   payload: {
+    tutoring_policy?: TeacherTrial['tutoring_policy']
     status?: string
     title?: string
     draft_questions?: CustomTrialQuestion[]

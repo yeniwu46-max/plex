@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """文档注册 + 异步索引状态机（PENDING → PARSING → CHUNKING → EMBEDDING → INDEXING → READY / FAILED）。
 
-版本管理：重新索引时 version+1，新 chunk 与向量写入成功后再删除旧版本，失败保留旧版本可检索。
+版本管理：重新索引时 version+1，新 chunk 与向量写入成功后再删除旧版本。
+失败保留旧版本数据供恢复；学生检索仅使用 READY 文档的当前版本。
 """
 from __future__ import annotations
 
@@ -219,6 +220,8 @@ class IndexService:
                 chapter=domain.title,
                 resource_type='textbook',
                 source='builtin',
+                visibility='public',
+                published=True,
                 audience_level='beginner',
                 teacher_verified=True,
                 verified_at=utc_now(),
@@ -260,7 +263,10 @@ class IndexService:
         run_sync = IndexService._should_run_sync() if sync is None else sync
         if run_sync:
             IndexService.run_index(app, job.id)
-            db.session.expire_all()
+            # run_index uses its own app-scoped session. End our read snapshot,
+            # opened when reading job.id after commit, before observing its writes.
+            # expire_all alone retains the old MySQL REPEATABLE READ snapshot.
+            db.session.rollback()
         else:
             _EXECUTOR.submit(IndexService.run_index, app, job.id)
         return db.session.get(KnowledgeIndexJob, job.id)
@@ -386,6 +392,7 @@ class IndexService:
         doc.chunk_count = len(new_rows)
         doc.concept_ids = concept_ids[:64]
         doc.indexed_at = utc_now()
+        doc.meta = {**(doc.meta or {}), 'parsing': {**parsed.meta, 'version': new_version}}
         doc.error_message = None
         job.finished_at = utc_now()
         IndexService._set_stage(job, doc, 'READY', 100)
@@ -524,6 +531,7 @@ class IndexService:
     @staticmethod
     def list_documents(
         *,
+        user_id: int | None = None,
         status: str | None = None,
         course_id: str | None = None,
         source: str | None = None,
@@ -531,7 +539,8 @@ class IndexService:
         page: int = 1,
         per_page: int = 20,
     ):
-        query = KnowledgeDocument.query
+        from .access_service import KnowledgeAccessService
+        query = KnowledgeAccessService.documents(user_id)
         if status:
             query = query.filter(KnowledgeDocument.status == status)
         if course_id:

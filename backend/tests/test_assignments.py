@@ -90,5 +90,36 @@ class AssignmentApiTestCase(unittest.TestCase):
             self.assertGreaterEqual(count, 3)
 
 
+    def test_home_assignments_distinguish_coding_from_multiple_choice(self):
+        from app.models import Trial
+        from app.utils.time import utc_now
+        with self.app.app_context():
+            trial = Trial(class_id=self.class_id, teacher_id=self.teacher.id,
+                          title='混合题型入口', status='running', starts_at=utc_now())
+            db.session.add(trial)
+            db.session.flush()
+            code = TrialQuestion(trial_id=trial.id, stem='读取整数并求和',
+                                 question_type='coding', options=[], correct_index=0,
+                                 knowledge_key='loop-for')
+            code.set_coding_meta({'run_mode': 'stdout', 'test_cases': [
+                {'id': 'hidden', 'input': '1 2', 'expected': '3'}]})
+            choice = TrialQuestion(trial_id=trial.id, stem='选择正确范围',
+                                   question_type='mcq', options=['0,1', '1,2'], correct_index=0,
+                                   knowledge_key='loop-for')
+            db.session.add_all([code, choice])
+            db.session.commit()
+            code_id, choice_id = code.id, choice.id
+        response = self.client.get('/api/v1/student/assignments', headers=self.auth(self.student_token))
+        self.assertEqual(response.status_code, 200)
+        items = {item['id']: item for item in response.get_json()['data']['items']}
+        self.assertEqual(items[code_id]['question_type'], 'coding')
+        self.assertEqual(items[choice_id]['question_type'], 'mcq')
+        self.assertEqual(items[code_id]['status'], 'pending')
+        self.assertEqual(items[choice_id]['options'], ['0,1', '1,2'])
+        # The home entry needs only a type and trial ID, never hidden execution data.
+        self.assertNotIn('coding_meta', items[code_id])
+        self.assertNotIn('correct_index', items[choice_id])
+
+
 if __name__ == '__main__':
     unittest.main()

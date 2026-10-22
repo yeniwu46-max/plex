@@ -3,6 +3,7 @@ import { inject, onActivated, onBeforeUnmount, onDeactivated, provide, ref, watc
 import { useRouter } from 'vue-router'
 import { NIcon, NButton } from 'naive-ui'
 import { MapOutline } from '@vicons/ionicons5'
+import StudentScrollCue from '../student/StudentScrollCue.vue'
 import PlexSidebar from './PlexSidebar.vue'
 import type { StudentNavKey } from './PlexSidebar.vue'
 import PlexTopbar from './PlexTopbar.vue'
@@ -108,10 +109,11 @@ function goStarMap() {
         <slot name="toolbar" />
       </div>
 
-      <div class="main-body">
+      <div class="main-body" tabindex="0">
         <slot />
       </div>
     </div>
+    <StudentScrollCue />
     <PlexGuideTour v-if="activeNav" role="student" />
   </div>
 
@@ -227,4 +229,8 @@ function goStarMap() {
     order: 1;
   }
 }
+</style>
+
+<style scoped>
+.shell{position:relative}.main-body{scrollbar-width:none}.main-body::-webkit-scrollbar{width:0}.main-body :deep(.student-trial),.main-body :deep(.resource-page),.main-body :deep(.chat-thread),.main-body :deep(.knowledge-map){scrollbar-width:none}.main-body :deep(.student-trial::-webkit-scrollbar),.main-body :deep(.resource-page::-webkit-scrollbar),.main-body :deep(.chat-thread::-webkit-scrollbar),.main-body :deep(.knowledge-map::-webkit-scrollbar){width:0}.main-body:focus-visible{outline:2px solid var(--plex-accent,#55eee9);outline-offset:-2px}
 </style>

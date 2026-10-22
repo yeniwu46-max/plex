@@ -59,6 +59,13 @@ const draftId = computed(() => {
 const title = ref('')
 const description = ref('')
 const trialType = ref('solo')
+const tutoringPolicy = ref<'auto' | 'disabled' | 'concept_only' | 'guided'>('auto')
+const tutoringPolicyOptions = [
+  { label: '按任务类型（限时竞赛、深渊试炼期间关闭）', value: 'auto' },
+  { label: '关闭本题辅导', value: 'disabled' },
+  { label: '仅通用概念帮助', value: 'concept_only' },
+  { label: '开放引导（L1 思路 / L2 定位）', value: 'guided' },
+]
 const selectedKnowledgeKeys = ref<string[]>([])
 const difficulty = ref(72)
 const duration = ref('60')
@@ -152,6 +159,7 @@ async function loadDraft(id: number) {
     const detail = await fetchTeacherTrialDetail(id)
     title.value = detail.trial.title ?? ''
     trialType.value = detail.trial.trial_type || 'solo'
+    tutoringPolicy.value = detail.trial.tutoring_policy || 'auto'
     difficulty.value = detail.trial.difficulty ?? 72
     duration.value = String(detail.trial.duration_minutes ?? 60)
     const keys = detail.trial.knowledge_keys?.length
@@ -248,6 +256,7 @@ function buildPayloadBase() {
     title: computedTitle.value,
     description: description.value || undefined,
     trial_type: trialType.value,
+    tutoring_policy: tutoringPolicy.value,
     knowledge_keys: selectedKnowledgeKeys.value,
     knowledge_key: selectedKnowledgeKeys.value[0],
     difficulty: difficulty.value,
@@ -271,6 +280,7 @@ async function saveDraftEdit(thenPublish: boolean) {
   submitting.value = true
   try {
     await updateTeacherTrial(draftId.value, {
+      tutoring_policy: tutoringPolicy.value,
       title: computedTitle.value,
       draft_questions: serializeComposerQuestions(questions.value),
     })
@@ -435,6 +445,11 @@ onMounted(() => {
             <label class="tc-field">
               <span>试炼类型</span>
               <n-select v-model:value="trialType" :options="trialTypeOptions" />
+            </label>
+            <label class="tc-field">
+              <span>小 E 辅导权限</span>
+              <n-select v-model:value="tutoringPolicy" :options="tutoringPolicyOptions" />
+              <small>仅控制绑定本题的辅导，学生不能自行提高提示等级。</small>
             </label>
             <div class="tc-field">
               <span>难度：{{ difficulty }}</span>

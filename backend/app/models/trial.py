@@ -15,6 +15,7 @@ class Trial(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     title = db.Column(db.String(120), nullable=False)
     trial_type = db.Column(db.String(32), nullable=False, default='solo')
+    tutoring_policy = db.Column(db.String(20), nullable=False, default='auto', server_default='auto')
     knowledge_key = db.Column(db.String(32))
     knowledge_keys_json = db.Column(db.Text)
     difficulty = db.Column(db.Integer, default=50)
@@ -69,6 +70,7 @@ class Trial(db.Model):
             'teacher_id': self.teacher_id,
             'title': self.title,
             'trial_type': self.trial_type,
+            'tutoring_policy': self.tutoring_policy,
             'knowledge_key': self.knowledge_key,
             'knowledge_keys': self.knowledge_keys(),
             'difficulty': self.difficulty,

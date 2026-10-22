@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/auth'
 import type { StudentOverview } from '../api/studentOverview'
 import { useStudentWorkspaceStore } from '../stores/studentWorkspace'
 import { resolveAvatarUrl, updateMyProfile, uploadMyAvatar } from '../api/studentProfile'
+import PlexThemeSwitcher from '../components/shared/PlexThemeSwitcher.vue'
 import StudentJoinClassPanel from '../components/student/StudentJoinClassPanel.vue'
 
 const router = useRouter()
@@ -160,11 +161,13 @@ onMounted(() => {
         <n-button quaternary class="logout-btn" @click="logout">退出登录</n-button>
       </div>
 
+      <section class="appearance-settings panel" data-tour="student-settings" aria-label="外观设置"><div><h3>外观设置</h3><p>经典与太空漫画风格，黑夜、白昼或跟随系统。</p></div><PlexThemeSwitcher :allow-visual-style="true" /></section>
       <div class="student-control__grid">
         <article class="panel">
           <header>
             <h3>个人资料</h3>
             <p>设置昵称与个性签名，头像支持 PNG、JPG、GIF、WEBP 格式，文件不超过 2 MB</p>
+            <n-button text type="primary" @click="router.push('/student/arrival-profile')">入驻资料 · 编辑学习基础与外观</n-button>
           </header>
           <label class="profile-field">
             <span>昵称</span>
@@ -492,4 +495,5 @@ onMounted(() => {
     flex-direction: column;
   }
 }
+.appearance-settings{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0}.appearance-settings h3{margin:0}.appearance-settings p{margin:8px 0 0;color:var(--plex-text-muted);font-size:13px}
 </style>

@@ -3,6 +3,17 @@ from __future__ import annotations
 
 import random
 import uuid
+from threading import RLock
+from functools import wraps
+
+_queue_lock = RLock()
+
+def synchronized(fn):
+    @wraps(fn)
+    def guarded(*args, **kwargs):
+        with _queue_lock:
+            return fn(*args, **kwargs)
+    return guarded
 from datetime import timedelta
 
 from app.models import User, db
@@ -94,11 +105,13 @@ class DuelMatchService:
             'difficulty_label': meta['label'],
             'time_sec': meta['time_sec'],
             'question_ids': list(match['question_ids']),
+            'questions': match.get('questions', []),
             'opponent': DuelMatchService._user_brief(opponent_id),
             'created_at': match['created_at'].isoformat(),
         }
 
     @staticmethod
+    @synchronized
     def online_classmates(user_id: int) -> dict:
         """学生端：同班当前心跳在线同学（不含自己）。"""
         PresenceService.heartbeat(user_id)
@@ -150,6 +163,7 @@ class DuelMatchService:
         }
 
     @staticmethod
+    @synchronized
     def join(
         user_id: int,
         difficulty: str = 'entry',
@@ -175,14 +189,14 @@ class DuelMatchService:
 
         online_ids = PresenceService.online_user_ids(user.class_id, now)
         rivals = [uid for uid in online_ids if uid != user_id]
-        if not rivals:
-            raise ValueError('当前同班没有其他在线同学，请等待同学上线后再匹配')
 
         # 指定邀请：对方必须在线
         if opponent_id is not None:
             opponent_id = int(opponent_id)
             if opponent_id == user_id:
                 raise ValueError('不能与自己对战')
+            if DuelMatchService._user_match.get(opponent_id):
+                raise ValueError('该同学正在对战中，请稍后重试')
             if opponent_id not in online_ids:
                 raise ValueError('该同学当前不在线，无法邀请')
             return DuelMatchService._create_match(
@@ -238,6 +252,25 @@ class DuelMatchService:
         now=None,
     ) -> dict:
         now = now or utc_now()
+        from app.services.practice_question import PracticeQuestionService
+        from app.services.tutor_context import TutorContextService, TutorContextError
+        pool = []
+        for item in PracticeQuestionService.list_for_student(limit=100000, user_id=player_a):
+            if (item.get('question_type') or 'coding') != 'coding' or not item.get('test_cases'):
+                continue
+            if (item['difficulty'] == '基础') != (difficulty == 'entry'):
+                continue
+            try:
+                a = TutorContextService.task(player_a, item['id'])
+                b = TutorContextService.task(player_b, item['id'])
+                if not a or not b or a['formal_question_id'] or a['tutoring_policy'] == 'disabled' or b['tutoring_policy'] == 'disabled':
+                    continue
+            except TutorContextError:
+                continue
+            pool.append(item)
+        if len(pool) < 3:
+            raise ValueError('该难度的可用对战题不足三道，请选择其他难度')
+        questions = random.sample(pool, 3)
         match_id = uuid.uuid4().hex[:16]
         match = {
             'match_id': match_id,
@@ -245,7 +278,8 @@ class DuelMatchService:
             'difficulty': difficulty,
             'player_a': player_a,
             'player_b': player_b,
-            'question_ids': DuelMatchService._pick_questions(difficulty),
+            'question_ids': [q['id'] for q in questions],
+            'questions': questions,
             'created_at': now,
         }
         DuelMatchService._matches[match_id] = match
@@ -260,6 +294,7 @@ class DuelMatchService:
         return DuelMatchService._serialize_match(match, player_a)
 
     @staticmethod
+    @synchronized
     def status(user_id: int) -> dict:
         PresenceService.heartbeat(user_id)
         now = utc_now()
@@ -291,6 +326,7 @@ class DuelMatchService:
         return {'status': 'idle', 'message': '未在匹配中'}
 
     @staticmethod
+    @synchronized
     def cancel(user_id: int) -> dict:
         now = utc_now()
         DuelMatchService._prune(now)

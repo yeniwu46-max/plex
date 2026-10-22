@@ -670,13 +670,7 @@ const waveChartCircles = computed(() => {
 })
 
 const currentNav = computed(() => navItems.find((item) => item.key === activeNav.value) ?? navItems[0])
-const pageSubtitle = computed(() => {
-  if (activeNav.value === 'observer') return '观测试炼数据、平台波动与各模块运行状态'
-  if (activeNav.value === 'agents') return '配置检查智能体编排，协同完成学生做题自动校验'
-  if (activeNav.value === 'knowledge') return '管理知识库、知识星域与 Graph-enhanced RAG 检索调试'
-  if (activeNav.value === 'store') return '查看已支付订单、实收金额与已获得权益的用户'
-  return '实时掌控 PLEX 平台的运行状态与关键指标'
-})
+
 const visibleMetrics = computed(() => {
   if (activeNav.value === 'observer') return observerMetricCards.value
   if (activeNav.value === 'agents') return agentsMetricCardsLive.value
@@ -927,10 +921,7 @@ onUnmounted(() => {
 
     <main class="admin-main">
       <header class="admin-topbar">
-        <div class="title-block">
-          <h1>{{ currentNav.label }} <span>{{ currentNav.sub }}</span><i /></h1>
-          <p>{{ pageSubtitle }}</p>
-        </div>
+        <h1 class="plex-sr-only">{{ currentNav.label }}</h1>
 
         <div class="topbar-tools">
           <plex-theme-switcher />
@@ -1607,8 +1598,8 @@ onUnmounted(() => {
 }
 
 .admin-topbar {
-  display: grid;
-  grid-template-columns: minmax(300px, 1fr) minmax(280px, auto);
+  display: flex;
+  justify-content: flex-end;
   gap: 1rem;
   align-items: start;
 }

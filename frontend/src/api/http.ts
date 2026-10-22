@@ -18,6 +18,31 @@ export const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+let refreshInFlight: Promise<string> | null = null
+let refreshOwner: string | null = null
+
+function refreshAccess(refresh: string) {
+  if (!refreshInFlight || refreshOwner !== refresh) {
+    refreshOwner = refresh
+    const pending = axios.post<ApiEnvelope<{ access_token: string }>>(
+      `${import.meta.env.VITE_API_BASE_URL ?? '/api'}/v1/auth/refresh`, {},
+      { headers: { Authorization: `Bearer ${refresh}` }, timeout: 20000 },
+    ).then(({ data }) => {
+      if (data.code !== 0 || !data.data?.access_token || localStorage.getItem(LS_REFRESH) !== refresh) throw new Error('登录状态已变化')
+      localStorage.setItem(LS_ACCESS, data.data.access_token)
+      window.dispatchEvent(new Event('plex-session-changed'))
+      return data.data.access_token
+    }).finally(() => {
+      if (refreshInFlight === pending) {
+        refreshInFlight = null
+        refreshOwner = null
+      }
+    })
+    refreshInFlight = pending
+  }
+  return refreshInFlight
+}
+
 http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem(LS_ACCESS)
   if (token) {
@@ -36,35 +61,35 @@ http.interceptors.response.use(
     const status = err.response?.status
     if (status === 401 && original && !(original as { _retry?: boolean })._retry) {
       const url = original.url ?? ''
-      if (url.includes('/auth/refresh')) {
+      if (/\/auth\/(login|register|refresh|forgot-password|reset-password)(\?|$)/.test(url)) {
         return Promise.reject(err)
       }
       const refresh = localStorage.getItem(LS_REFRESH)
       if (refresh) {
         ;(original as { _retry?: boolean })._retry = true
         try {
-          const { data } = await axios.post<ApiEnvelope<{ access_token: string; expiresIn: number }>>(
-            `${import.meta.env.VITE_API_BASE_URL ?? '/api'}/v1/auth/refresh`,
-            {},
-            { headers: { Authorization: `Bearer ${refresh}` } },
-          )
-          if (data.code === 0 && data.data?.access_token) {
-            localStorage.setItem(LS_ACCESS, data.data.access_token)
+          const access = await refreshAccess(refresh)
+          if (access) {
             if (!original.headers) {
               original.headers = new AxiosHeaders()
             }
-            original.headers.set('Authorization', `Bearer ${data.data.access_token}`)
+            original.headers.set('Authorization', `Bearer ${access}`)
             return http(original)
           }
-        } catch {
-          /* fall through */
+        } catch (refreshError) {
+          // A timeout or server outage does not invalidate the saved session.
+          if (!isAxiosError(refreshError) || ![401, 403].includes(refreshError.response?.status ?? 0)) {
+            return Promise.reject(refreshError)
+          }
         }
       }
+      if (localStorage.getItem(LS_REFRESH) !== refresh) return Promise.reject(err)
       localStorage.removeItem(LS_ACCESS)
       localStorage.removeItem(LS_REFRESH)
       localStorage.removeItem(LS_USER)
+      window.dispatchEvent(new Event('plex-session-changed'))
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        window.location.assign('/login')
+        window.location.assign(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}`)
       }
     }
     return Promise.reject(err)

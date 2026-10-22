@@ -27,6 +27,8 @@ class QueryUnderstanding:
     error_type: str | None = None
     difficulty_hint: int | None = None
     method: str = 'lexical'  # lexical | llm | hint
+    retrieval_query: str = ''
+    query_preparation: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -36,6 +38,10 @@ class QueryUnderstanding:
 class LearnerContext:
     user_id: int | None
     role: str = 'student'
+    state_source: str = 'legacy'
+    state_version: int | None = None
+    misconceptions: list[dict[str, Any]] = field(default_factory=list)
+    learning_decision: dict[str, Any] = field(default_factory=dict)
     profile_dimensions: dict[str, Any] = field(default_factory=dict)
     explanation_preference: str = 'default'
     learning_pace: str = ''
@@ -107,6 +113,8 @@ class RetrievedChunk:
     chunk_id: str
     document_id: str
     content: str
+    version: int = 1
+    chapter: str = ''
     title: str = ''
     knowledge_type: str = 'concept_explanation'
     concept_ids: list[str] = field(default_factory=list)
@@ -126,9 +134,12 @@ class RetrievedChunk:
     final_score: float = 0.0
     rank: int = 0
     retrieval_channels: list[str] = field(default_factory=list)
+    selection_vector: list[float] = field(default_factory=list, repr=False)
 
     def to_debug_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        result = asdict(self)
+        result.pop('selection_vector', None)
+        return result
 
     def to_source_dict(self, preview_chars: int = 160) -> dict[str, Any]:
         """学生端安全视图：不暴露 embedding / similarity / rerank 分值。"""
@@ -136,6 +147,9 @@ class RetrievedChunk:
         return {
             'chunk_id': self.chunk_id,
             'document_id': self.document_id,
+            'version': self.version,
+            'chapter': self.chapter,
+            'url': f'/api/v1/rag/sources/{self.chunk_id}?version={self.version}',
             'title': self.title or self.document_title,
             'document_title': self.document_title,
             'knowledge_type': self.knowledge_type,
@@ -182,11 +196,13 @@ class RagAnswer:
     latency_ms: int = 0
     token_usage: dict[str, Any] = field(default_factory=dict)
     log_id: int | None = None
+    request_id: str | None = None
     debug: dict[str, Any] | None = None
 
     def to_dict(self, include_debug: bool = False) -> dict[str, Any]:
         payload = {
             'answer': self.answer,
+            'request_id': self.request_id,
             'concepts': self.concepts,
             'sources': self.sources,
             'confidence': round(self.confidence, 3),

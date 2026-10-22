@@ -109,6 +109,8 @@ class KnowledgeRagService:
         plan = self.prepare(query, user_id=user_id, role=role, scene=scene, context=context, debug=debug, course_id=course_id)
         if plan.blocked_reason:
             return self.finalize(plan, answer_text=None, generation_mode='refused', status='blocked', error=plan.blocked_reason)
+        from app.services.model_accounting import update_scope
+        update_scope(stage='generation',state_version=plan.learner.state_version)
         text, mode, meta = self.generate(plan, history=history, use_llm=use_llm)
         return self.finalize(plan, answer_text=text, generation_mode=mode, model=meta.get('model'), provider=meta.get('provider'), token_usage=meta.get('token_usage') or {})
 
@@ -174,11 +176,16 @@ class KnowledgeRagService:
         context: dict[str, Any] | None = None,
         debug: bool = False,
         course_id: str | None = None,
+        state_snapshot: dict | None = None,
+        learner_context: LearnerContext | None = None,
     ) -> RagPlan:
         started = time.perf_counter()
         query = (query or '').strip()
         context = dict(context or {})
-        learner = LearnerContextService.build(user_id, role=role, current_task=context)
+        if learner_context is not None and (learner_context.user_id != user_id or learner_context.role != role):
+            raise ValueError('learner_context_identity_mismatch')
+        learner = learner_context if learner_context is not None else LearnerContextService.build(
+            user_id, role=role, current_task=context, state_snapshot=state_snapshot)
         blocked: str | None = None
         if not query:
             blocked = 'empty_query'
@@ -244,6 +251,7 @@ class KnowledgeRagService:
         error: str | None = None,
     ) -> RagAnswer:
         latency = int((time.perf_counter() - plan.started_at) * 1000)
+        answer_text = self.enforce_answer_policy(plan, answer_text or '')
         if plan.blocked_reason:
             answer_text = answer_text or self._blocked_answer(plan.blocked_reason)
         status = status or ('low_confidence' if not plan.knowledge_grounded else 'ok')
@@ -324,6 +332,14 @@ class KnowledgeRagService:
             return strength, supported
 
         scored = [evidence(c) for c in chunks]
+        if cfg.get('deduplicate_support', True):
+            from .context_selection import evidence_key
+            groups = {}
+            for chunk, (strength, supported) in zip(chunks, scored):
+                key = evidence_key(chunk.content)
+                previous = groups.get(key, (0., False))
+                groups[key] = (max(strength, previous[0]), supported or previous[1])
+            scored = list(groups.values())  # Reprints are one evidence group.
         top_evidence = max(s for s, _ in scored)
         support = sum(1 for _, ok in scored if ok)
         concept_set = set(concept_ids)
@@ -346,6 +362,15 @@ class KnowledgeRagService:
 
     def enforce_answer_policy(self, plan: RagPlan, text: str) -> str:
         """练习场景 Answer Policy 的后置保障：提示等级不允许代码时移除代码块。"""
+        from .access_service import KnowledgeAccessService
+        if plan.extra.get('evidence_status') == 'source_changed' or not KnowledgeAccessService.plan_is_current(plan):
+            plan.chunks = []
+            plan.context.source_index = []
+            plan.knowledge_grounded = False
+            plan.confidence = 0.0
+            plan.confidence_level = 'LOW_CONFIDENCE'
+            plan.extra['evidence_status'] = 'source_changed'
+            return '课程材料已更新或访问范围发生变化，本次回答未显示。请重新提问以获取当前可用的依据。'
         if not text:
             return text
         return plan.apply_code_policy(text).strip()

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { NButton, NInput, NModal, NProgress, NRadio, NRadioGroup, NTag, useMessage } from 'naive-ui'
+import { NDrawer, NDrawerContent, NButton, NInput, NModal, NProgress, NRadio, NRadioGroup, NTag, useMessage } from 'naive-ui'
 import { RouterLink } from 'vue-router'
+import LearnerExplorationMap from '../components/student/LearnerExplorationMap.vue'
+import LearnerEvidencePanel from '../components/student/LearnerEvidencePanel.vue'
 import DashboardShell from '../components/layout/DashboardShell.vue'
 import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PlexRadarChart from '../components/charts/PlexRadarChart.vue'
@@ -15,6 +17,7 @@ import {
 import { fetchStudentLearningReport, generateStudentPhaseReport, type LearningReportResult, type PhaseLearningReport } from '../api/learningReport'
 import { fetchStudentEntitlements, type StudentEntitlementsResult } from '../api/studentStore'
 
+const profileDrawer = ref(false)
 const message = useMessage()
 const profile = ref<DynamicStudentProfile | null>(null)
 const report = ref<LearningReportResult | null>(null)
@@ -313,11 +316,10 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
         label="正在整理学习画像…"
         hint="小E 正在汇总诊断、对话与练习证据"
       />
-      <section class="profile-header">
-        <div><p class="eyebrow">学习画像 · 第 {{ profile?.version ?? 1 }} 版</p><h2>今天，先让学习路径更懂你</h2><p>基于诊断、对话和练习行为生成。每一条结论都可以通过“校准画像”调整。</p></div>
-        <div class="header-actions"><n-progress type="circle" :percentage="profile?.completion_rate ?? 0" color="#34e6c5" /><n-button type="primary" @click="diagnosticVisible = true">{{ diagnosticStatus === 'pending' ? '开始入门诊断' : '重新进行诊断' }}</n-button></div>
-      </section>
-
+      <LearnerExplorationMap />
+      <section class="profile-header"><div><h3>资料与学习偏好</h3><p>资料完整度 {{profile?.completion_rate??0}}% · 这是自述资料填写情况，不代表知识掌握度。</p></div><div class="header-actions"><n-button @click="profileDrawer=true">编辑八维资料</n-button><n-button @click="diagnosticVisible=true">入门诊断</n-button></div></section>
+      <details class="profile-history"><summary>查看学习证据与变化记录</summary><LearnerEvidencePanel /></details>
+      <n-drawer v-model:show="profileDrawer" :width="'min(920px, 96vw)'" placement="right"><n-drawer-content title="我的自述资料与偏好" closable><RouterLink class="arrival-profile-link" to="/student/arrival-profile">编辑入驻资料与外观</RouterLink>
       <section class="chat-workbench" data-tour="profile-chat">
         <article class="chat-panel">
           <header class="chat-panel__head">
@@ -372,6 +374,7 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
           <header class="chat-panel__head">
             <div><span class="eyebrow">动态学生画像</span><h3>8 维画像 · 第 {{ profile?.version ?? 1 }} 版</h3></div>
           </header>
+            <p class="dimension-card__confidence">以下保留你的自述、偏好与历史描述；正式作答依据请查看上方「最近学习变化」。字段置信标记未经概率校准，不代表测验成绩。</p>
           <div class="dimension-grid">
             <div
               v-for="card in dimensionCards"
@@ -389,7 +392,7 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
               <div class="dimension-card__meter" role="presentation">
                 <i :style="{ width: `${card.confidence}%` }" />
               </div>
-              <small class="dimension-card__confidence">置信度 {{ card.confidence }}%</small>
+              <small class="dimension-card__confidence">字段置信标记 {{ card.confidence }}% · 未校准</small>
             </div>
           </div>
         </article>
@@ -397,12 +400,15 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 
       <section class="identity-card"><div class="identity-title"><h3>当前学习身份</h3></div><div class="identity-grid"><div><small>当前阶段</small><strong>{{ coreIdentity.stage }}</strong></div><div><small>当前任务</small><strong>{{ coreIdentity.mission }}</strong></div><div><small>当前学习模式</small><strong>{{ coreIdentity.mode }}</strong></div><div><small>今日推荐时长</small><strong>{{ coreIdentity.minutes }} 分钟</strong></div></div></section>
 
+      </n-drawer-content></n-drawer>
+      <details class="profile-history"><summary>历史学习概览</summary>
       <section class="report-grid" data-tour="student-learning-report">
-        <article class="report-card radar-card"><header><h3>知识雷达图</h3><p>只关注五个会直接影响下一步学习的核心能力。</p></header><plex-radar-chart :dimensions="radarLabels" :values="radarValues" title="当前掌握度" color="#34e6c5" /></article>
+        <article class="report-card radar-card"><header><h3>学习概览图</h3><p>只关注五个会直接影响下一步学习的核心能力。</p></header><plex-radar-chart :dimensions="radarLabels" :values="radarValues" title="历史学习概览" color="#34e6c5" /></article>
         <article class="report-card"><header><h3>易错模式</h3><p>小E 从近期作答中提取，优先安排针对性练习。</p></header><ul class="mistake-list"><li v-for="item in mistakes" :key="item.id"><i>!</i><div><strong>{{ item.knowledge_label }}</strong><span>{{ item.question_title || '高频错误，建议用微练习巩固' }}</span></div></li><li v-if="!mistakes.length" class="empty">完成几道练习后，小E 会帮你找出高频错误。</li></ul></article>
         <article class="report-card state-card"><header><h3>学习状态提醒</h3></header><p>{{ stateText }}</p><div v-if="adaptations.length" class="adaptation"><n-tag type="warning">小E 已介入</n-tag><strong>{{ adaptations[0].action_plan.resources.join(' + ') }}</strong><small>{{ adaptations[0].action_plan.recovery_rule }}</small></div><div v-else class="adaptation stable"><n-tag type="success">节奏稳定</n-tag><strong>继续保持 25 分钟短时专注</strong><small>下一次练习会根据正确率自动调整。</small></div></article>
       </section>
 
+      </details>
       <section v-if="canViewPhaseReport" class="ai-summary">
         <header>
           <div>
@@ -438,7 +444,7 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
       <section v-else class="ai-summary phase-report-locked">
         <span>会员进阶权益</span>
         <h3>解锁小E 的阶段学习报告</h3>
-        <p>基础学习报告、知识雷达和易错模式仍可免费查看。会员阶段报告会结合近期学习证据，整理阶段总结和下一步行动建议。</p>
+        <p>基础学习报告、学习概览和易错模式仍可免费查看。会员阶段报告会结合近期学习证据，整理阶段总结和下一步行动建议。</p>
         <RouterLink to="/student/store" class="store-link">前往星港补给站</RouterLink>
       </section>
 
@@ -519,6 +525,8 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 </template>
 
 <style scoped>
+.arrival-profile-link { color: var(--n-primary-color, #22b8a9); text-decoration: underline; text-underline-offset: 4px; }
+
 .chat-workbench{display:grid;grid-template-columns:1.2fr 1fr;gap:1rem;margin-bottom:1rem}
 .chat-panel,.dimension-panel{border:1px solid rgba(52,230,197,.16);background:rgba(3,16,28,.86);border-radius:16px;padding:1.1rem;display:flex;flex-direction:column;min-height:430px}
 .chat-panel__head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem}
@@ -551,4 +559,8 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 .dimension-card__confidence{color:#7da5b6;font-size:.72rem}
 @media(max-width:1080px){.chat-workbench{grid-template-columns:1fr}}
 .store-link{display:inline-block;margin-top:.5rem;padding:.65rem 1rem;border-radius:9px;background:#0f9e92;color:#fff;font-weight:650;text-decoration:none}.store-link:hover{background:#12b6a6}
+</style>
+
+<style scoped>
+.profile-history{margin:18px 0;border:1px solid var(--plex-border);border-radius:14px;padding:18px}.profile-history summary{cursor:pointer;font-weight:600}.profile-header{padding:20px}.profile-page{max-width:1600px;margin:0 auto;width:100%}
 </style>

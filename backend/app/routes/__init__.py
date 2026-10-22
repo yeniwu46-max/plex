@@ -1,6 +1,8 @@
 """路由初始化"""
 from flask import Blueprint
 from .auth import auth_bp
+from .learner_state import learner_state_bp
+from .onboarding import onboarding_bp
 from .users import users_bp
 from .classes import classes_bp
 from .permissions import permissions_bp
@@ -33,10 +35,16 @@ from .rag import rag_bp
 from .student_store import student_store_bp
 from .store_payments import store_payments_bp
 from .store_admin import store_admin_bp
+from .counterexample import counterexample_bp
 
 def register_routes(app):
+    from .student_practice import student_practice_bp
+    app.register_blueprint(student_practice_bp)
+    app.register_blueprint(counterexample_bp)
+    app.register_blueprint(onboarding_bp)
     """注册所有路由"""
     app.register_blueprint(auth_bp)
+    app.register_blueprint(learner_state_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(classes_bp)
     app.register_blueprint(permissions_bp)

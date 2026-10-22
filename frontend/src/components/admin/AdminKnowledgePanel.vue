@@ -34,6 +34,7 @@ import {
   TrashOutline,
 } from '@vicons/ionicons5'
 import PlexKnowledgeGraph from '../shared/PlexKnowledgeGraph.vue'
+import KnowledgeDocumentAccess from '../shared/KnowledgeDocumentAccess.vue'
 import AdminRagDebugPanel from './AdminRagDebugPanel.vue'
 import type { KgNode } from '../../data/knowledgeGraphData'
 import {
@@ -660,6 +661,7 @@ function fmtSize(bytes: number) {
                   删除文档及其全部 Chunk 与向量？
                 </n-popconfirm>
               </div>
+              <KnowledgeDocumentAccess :document="doc" class="doc-access-row" @saved="(updated) => { documents = documents.map((item) => item.id === updated.id ? updated : item) }" />
             </li>
           </ul>
         </n-spin>
@@ -975,6 +977,7 @@ function fmtSize(bytes: number) {
 .doc-filters .n-input { width: 180px; }
 .status-select { width: 130px; }
 .doc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.doc-access-row { grid-column: 1 / -1; border-top: 1px solid rgba(148,163,184,.2); padding-top: 12px; }
 .doc-row {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(140px, 0.9fr) auto auto;

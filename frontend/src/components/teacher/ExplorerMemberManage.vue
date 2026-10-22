@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import LearnerEvidencePanel from '../student/LearnerEvidencePanel.vue'
 import {
   NButton,
   NEmpty,
@@ -475,7 +476,7 @@ onMounted(async () => {
       :title="profileStudent?.real_name || profileStudent?.username || 'Explorer 资料'"
       class="explorer-profile-card"
       :bordered="false"
-      style="width: min(420px, calc(100vw - 32px))"
+      style="width: min(680px, calc(100vw - 32px))"
     >
       <div v-if="profileStudent" class="profile-card">
         <div class="profile-card__identity">
@@ -527,6 +528,12 @@ onMounted(async () => {
             <p v-else-if="!profileLoading" class="profile-card__empty">练习数据暂不可用</p>
           </n-spin>
         </section>
+
+        <LearnerEvidencePanel
+          v-if="profileVisible"
+          :key="profileStudent.id"
+          :student-id="profileStudent.id"
+        />
 
         <footer class="profile-card__actions">
           <n-button

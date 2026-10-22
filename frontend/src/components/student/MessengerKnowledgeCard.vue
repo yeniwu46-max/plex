@@ -3,17 +3,18 @@
  * 小E 回答附带的简化知识卡片（学生视图）。
  * 只展示：相关知识点 / 推荐下一步 / 参考来源。不展示相似度、rerank 分值等内部信息。
  */
-import { computed, ref } from 'vue'
-import { NIcon, NModal, NSpin, useMessage } from 'naive-ui'
+import { computed } from 'vue'
+import { useRagSourceDialog } from '../../composables/useRagSourceDialog'
+import { NIcon, NModal, NSpin } from 'naive-ui'
 import { BookOutline, CheckmarkCircleOutline, CompassOutline, SparklesOutline } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
 import { KNOWLEDGE_TYPE_LABELS } from '../../api/knowledge'
-import { fetchRagSource, type MessengerKnowledge, type RagRecommendedNext, type RagSourceDetail, type RagSourceView } from '../../api/rag'
+import { type MessengerKnowledge, type RagRecommendedNext } from '../../api/rag'
 
 const props = defineProps<{ knowledge: MessengerKnowledge }>()
 
 const router = useRouter()
-const message = useMessage()
+const { open: sourceOpen, loading: sourceLoading, detail: sourceDetail, error: sourceError, show: openSource, retry: retrySource } = useRagSourceDialog(() => props.knowledge)
 
 const MASTERY_LABEL: Record<string, string> = {
   weak: '薄弱',
@@ -39,24 +40,6 @@ const visible = computed(() => {
 const focusConcepts = computed(() => (props.knowledge.concepts ?? []).filter((c) => c.role === 'focus'))
 const relatedConcepts = computed(() => (props.knowledge.concepts ?? []).filter((c) => c.role !== 'focus').slice(0, 4))
 const strategies = computed(() => (props.knowledge.teaching_strategy?.strategies ?? []).slice(0, 2))
-
-const sourceOpen = ref(false)
-const sourceLoading = ref(false)
-const sourceDetail = ref<RagSourceDetail | null>(null)
-
-async function openSource(source: RagSourceView) {
-  sourceOpen.value = true
-  sourceLoading.value = true
-  sourceDetail.value = null
-  try {
-    sourceDetail.value = await fetchRagSource(source.chunk_id)
-  } catch (error) {
-    message.error((error as Error).message)
-    sourceOpen.value = false
-  } finally {
-    sourceLoading.value = false
-  }
-}
 
 function goNext(item: RagRecommendedNext) {
   if (item.type === 'exercise') {
@@ -109,6 +92,8 @@ function goNext(item: RagRecommendedNext) {
             <span class="title">{{ s.title || s.document_title }}</span>
             <span class="meta">
               {{ KNOWLEDGE_TYPE_LABELS[s.knowledge_type] ?? s.knowledge_type }}
+              <template v-if="s.version"> · v{{ s.version }}</template>
+              <template v-if="s.source_page"> · 第 {{ s.source_page }} 页</template>
               <template v-if="s.teacher_verified"> · 教师审核</template>
             </span>
           </button>
@@ -116,10 +101,13 @@ function goNext(item: RagRecommendedNext) {
       </ol>
     </section>
 
-    <n-modal v-model:show="sourceOpen" preset="card" class="kcard__modal" :title="sourceDetail?.title || '参考来源'" style="width: min(720px, 92vw)">
+    <n-modal v-model:show="sourceOpen" preset="card" class="kcard__modal plex-reading-modal" :title="sourceDetail?.title || '参考来源'" style="width: min(720px, 92vw)">
+      <p v-if="sourceError" role="alert">{{ sourceError }} <button type="button" @click="retrySource">重试来源</button></p>
       <n-spin :show="sourceLoading">
         <p v-if="sourceDetail" class="kcard__source-meta">
           {{ sourceDetail.document_title || sourceDetail.document?.title }}
+          <template v-if="sourceDetail.version"> · v{{ sourceDetail.version }}</template>
+          <template v-if="sourceDetail.chapter"> · {{ sourceDetail.chapter }}</template>
           <template v-if="sourceDetail.teacher_verified"> · 教师审核</template>
           <template v-if="sourceDetail.source_page"> · 第 {{ sourceDetail.source_page }} 页</template>
         </p>
@@ -174,5 +162,19 @@ function goNext(item: RagRecommendedNext) {
 .kcard__sources .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kcard__sources .meta { color: rgba(186, 230, 253, 0.5); font-size: 0.7rem; white-space: nowrap; }
 .kcard__source-meta { margin: 0 0 0.5rem; color: rgba(186, 230, 253, 0.65); font-size: 0.76rem; }
-.kcard__source-body { margin: 0; padding: 0.7rem; border-radius: 8px; background: rgba(4, 14, 24, 0.85); color: rgba(224, 242, 254, 0.9); font-size: 0.8rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; max-height: 60vh; overflow: auto; }
+.kcard__source-body { margin: 0; padding: 0.7rem; border-radius: 8px; background: rgba(4, 14, 24, 0.85); color: rgba(224, 242, 254, 0.9); font-size: 0.8rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; max-height: none; overflow: visible; }
+
+.kcard { min-width: 0; overflow-wrap: anywhere; border-color: var(--plex-border); background: var(--plex-bg-card); }
+.kcard__head, .kcard__head strong, .kcard__next button, .kcard__sources button { color: var(--plex-text); }
+.kcard__head { flex-wrap: wrap; }
+.kcard__head small, .kcard__label, .kchip i, .kcard__next small, .kcard__sources .meta, .kcard__source-meta { color: var(--plex-text-muted); }
+.kchip, .kchip--focus, .kcard__next em, .kcard__sources .idx { color: var(--plex-accent); }
+.kcard__next button { flex-wrap: wrap; text-align: left; }
+.kcard__source-body { background: var(--plex-bg-code); color: var(--plex-text); }
+.kcard button:focus-visible { outline: 2px solid var(--plex-accent); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .kcard__sources button { grid-template-columns: auto minmax(0, 1fr); }
+  .kcard__sources .meta { grid-column: 2; white-space: normal; }
+  .kcard__sources .title { white-space: normal; }
+}
 </style>

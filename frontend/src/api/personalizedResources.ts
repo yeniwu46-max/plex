@@ -1,4 +1,6 @@
 import { http, type ApiEnvelope } from './http'
+import { useAuthStore } from '../stores/auth'
+import { resourceRequestIdentity } from '../utils/resourceRequestIdentity'
 
 export type PersonalizedResourceType =
   | 'learning_bundle'
@@ -23,7 +25,7 @@ export interface PersonalizedResource {
   estimated_minutes: number
   profile_snapshot: Record<string, string>
   recommendation_reason: string
-  citations: Array<{ document_id: string; title: string; section: string; snippet: string }>
+  citations: Array<{ document_id: string; title: string; section: string; snippet: string; kind?: string; chunk_id?: string; version?: number; source_page?: number | null }>
   confidence: number
   review_status: 'pending_review' | 'approved' | 'rejected'
   review_reason?: string | null
@@ -49,8 +51,16 @@ export interface ResourceTask {
   fallback_reason?: string | null
   retry_of?: string | null
   profile_version: number
+  learning_context?: {
+    policy_version: string; state_source: 'shadow' | 'evidence'; state_version: number | null
+    profile_version: number; context_hash: string; captured_at: string; origin: string
+    basis: string; reason: string; hint_action: string | null; exercise_action: string | null
+    review_action: string | null; evidence_count: number; estimate_disclaimer: string
+  } | null
+  course_evidence?: { status: 'retrieved' | 'builtin_only' | 'unavailable'; message: string; source_count?: number } | null
   request_fingerprint: string
   recoverable: boolean
+  retry_remaining?: number
   created_at?: string | null
   completed_at?: string | null
 }
@@ -83,18 +93,32 @@ export async function createResourceTask(
     require_real_api?: boolean
   },
 ) {
-  const { data } = await http.post<ApiEnvelope<ResourceTask>>('/v1/student/resource-generation/tasks', {
+  const auth = useAuthStore()
+  const owner = auth.profile?.id
+  if (!owner) throw new Error('请先登录后生成资源')
+  const body = {
     knowledge_key: knowledgeKey,
-    resource_types: resourceTypes,
-    idempotency_key: idempotencyKey,
+    resource_types: resourceTypes ? [...resourceTypes].sort() : undefined,
     target: options?.target,
     learning_stage: options?.learning_stage,
     learning_style: options?.learning_style,
     force_regenerate: options?.force_regenerate ?? true,
     require_real_api: options?.require_real_api ?? true,
-  })
-  if (data.code !== 0) throw new Error(data.message || '创建生成任务失败')
-  return data.data
+  }
+  const identity = idempotencyKey ? {requestId:idempotencyKey,clear(){}} : await resourceRequestIdentity(owner, body)
+  // Account changes during hashing must not submit using the next account's JWT.
+  if (auth.profile?.id !== owner) throw new Error('账号已切换，请重新发起任务')
+  try {
+    const { data } = await http.post<ApiEnvelope<ResourceTask>>('/v1/student/resource-generation/tasks', {...body,idempotency_key:identity.requestId})
+    if (data.code !== 0) throw new Error(data.message || '创建生成任务失败')
+    identity.clear()
+    if (auth.profile?.id !== owner) throw new Error('账号已切换，请从任务历史查看进度')
+    return data.data
+  } catch (error) {
+    const status = (error as {response?:{status?:number}}).response?.status
+    if (status && status >= 400 && status < 500) identity.clear()
+    throw error
+  }
 }
 
 export async function fetchResourceTasks() {
@@ -277,7 +301,10 @@ export async function releasePendingResources(releaseAll = true) {
 }
 
 /** 下载已生成资源内容为 Markdown/JSON 文件（前端导出，不落密钥）。 */
-export function downloadPersonalizedResource(item: PersonalizedResource) {
+export async function downloadPersonalizedResource(item: PersonalizedResource) {
+  const {data} = await http.get<ApiEnvelope<PersonalizedResource>>(`/v1/student/personalized-resources/${item.id}`)
+  if(data.code !== 0) throw new Error(data.message || '资源不可用')
+  item = data.data
   const content = item.content || {}
   const hasStructuredText =
     typeof content === 'object' &&

@@ -28,6 +28,8 @@ class RecommendationService:
 
     @staticmethod
     def sort_personalized_resources(resources, profile: StudentProfile | None):
+        from app.services.resource_course_evidence import ResourceCourseEvidence
+        resources = [r for r in resources if ResourceCourseEvidence.resource_current(r)]
         priorities = {
             resource_type: index
             for index, resource_type in enumerate(

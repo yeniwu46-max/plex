@@ -90,7 +90,7 @@ def _build_context_summary(payload: dict) -> str:
     title = str(payload.get('questionTitle') or payload.get('exerciseId') or '当前题目')
     topic = str(payload.get('topic') or '')
     status = _answer_status(payload)
-    status_label = {
+    status_label = payload.get('executionStatusLabel') or {
         'correct': '全部通过',
         'wrong': '未通过',
         'partial': '部分通过',
@@ -114,11 +114,13 @@ def _build_context_block(payload: dict) -> str:
         f'题目：{payload.get("questionTitle") or payload.get("exerciseId")}',
         f'题面：{payload.get("questionPrompt") or payload.get("description") or "（无）"}',
         f'知识点：{payload.get("topic") or "（无）"}',
-        f'运行状态：{status}',
+        f'运行状态：{payload.get("executionStatusLabel") or status}',
         f'学生代码：\n{payload.get("code") or "（空）"}',
     ]
     if payload.get('stderr'):
         parts.append(f'报错信息：{payload.get("stderr")}')
+    if payload.get('executionNote'):
+        parts.append(f'执行证据边界：{payload["executionNote"]}')
     if payload.get('stdout'):
         parts.append(f'实际输出：{payload.get("stdout")}')
     if payload.get('expectedOutput'):
@@ -420,6 +422,8 @@ def execute(intent: str, payload: dict, *, user_id: int | None = None) -> dict:
         'expectedOutput': payload.get('expectedOutput'),
         'failedCases': payload.get('failedCases'),
         'answerStatus': _answer_status(payload),
+        'executionNote': payload.get('executionNote'),
+        'executionStatusLabel': payload.get('executionStatusLabel'),
         'constraints': payload.get('constraints'),
         'userQuestion': user_question,
         'courseReference': knowledge_text or None,
@@ -501,10 +505,14 @@ def execute(intent: str, payload: dict, *, user_id: int | None = None) -> dict:
         from app.services.knowledge import KnowledgeService
 
         # Answer Policy：按 Hint Level / 掌握度封顶裁剪代码与完整解法，练习场景禁泄题
-        response_text = KnowledgeService.apply_answer_policy(knowledge_plan, response_text) or response_text
-        knowledge_view = KnowledgeService.student_view(
-            knowledge_plan, answer_text=response_text, generation_mode='llm' if backend != 'rules' else 'extractive', provider=backend,
-        )
+        # One release result owns both the displayed text and its source metadata.
+        answer = KnowledgeService.finalize(knowledge_plan, answer_text=response_text,
+            generation_mode='llm' if backend != 'rules' else 'extractive', provider=backend)
+        response_text = answer.answer
+        knowledge_view = answer.to_dict()
+        knowledge_view.pop('answer', None)
+        if knowledge_plan.extra.get('evidence_status') == 'source_changed':
+            body = {}
         knowledge_view = _trial_student_knowledge_view(knowledge_view, payload)
 
     return {

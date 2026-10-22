@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "version": "public-rates-2026-10-18-v1",
+  "rates": [
+    {
+      "id": "deepseek-flash-20261018",
+      "provider": "deepseek",
+      "endpoint_host": "api.deepseek.com",
+      "models": [
+        "deepseek-flash"
+      ],
+      "currency": "USD",
+      "basis": "published_peak_offpeak_range",
+      "verified_at": "2026-10-18T08:48:06Z",
+      "effective_from": "2026-10-18T08:48:06Z",
+      "valid_until": "2026-10-25T00:00:00Z",
+      "source_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "input": {
+        "min": "0.15",
+        "max": "0.30"
+      },
+      "cached_input": {
+        "min": "0.003",
+        "max": "0.006"
+      },
+      "output": {
+        "min": "0.60",
+        "max": "1.20"
+      }
+    },
+    {
+      "id": "openai-gpt-4o-mini-20261018",
+      "provider": "openai",
+      "endpoint_host": "api.openai.com",
+      "models": [
+        "gpt-4o-mini",
+        "gpt-4o-mini-2024-07-18"
+      ],
+      "currency": "USD",
+      "basis": "published_standard_text",
+      "verified_at": "2026-10-18T08:48:06Z",
+      "effective_from": "2026-10-18T08:48:06Z",
+      "valid_until": "2026-10-25T00:00:00Z",
+      "source_url": "https://developers.openai.com/api/docs/models/gpt-4o-mini",
+      "input": {
+        "min": "0.15",
+        "max": "0.15"
+      },
+      "cached_input": {
+        "min": "0.075",
+        "max": "0.075"
+      },
+      "output": {
+        "min": "0.60",
+        "max": "0.60"
+      }
+    }
+  ]
+}

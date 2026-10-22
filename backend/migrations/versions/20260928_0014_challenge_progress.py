@@ -14,8 +14,19 @@ branch_labels = None
 depends_on = None
 
 
+def _create_table_if_missing(name, *columns, **kwargs):
+    if name not in set(sa.inspect(op.get_bind()).get_table_names()):
+        op.create_table(name, *columns, **kwargs)
+
+
+def _create_index_if_missing(name, table_name, columns, **kwargs):
+    indexes = {item['name'] for item in sa.inspect(op.get_bind()).get_indexes(table_name)}
+    if name not in indexes:
+        op.create_index(name, table_name, columns, **kwargs)
+
+
 def upgrade():
-    op.create_table(
+    _create_table_if_missing(
         'user_challenge_progress',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
@@ -24,9 +35,9 @@ def upgrade():
         sa.Column('completed_at', sa.DateTime(), nullable=False),
         sa.UniqueConstraint('user_id', 'product_id', 'problem_id', name='uq_user_challenge_progress'),
     )
-    op.create_index('ix_user_challenge_progress_user_id', 'user_challenge_progress', ['user_id'])
-    op.create_index('ix_user_challenge_progress_product_id', 'user_challenge_progress', ['product_id'])
-    op.create_index('ix_user_challenge_progress_problem_id', 'user_challenge_progress', ['problem_id'])
+    _create_index_if_missing('ix_user_challenge_progress_user_id', 'user_challenge_progress', ['user_id'])
+    _create_index_if_missing('ix_user_challenge_progress_product_id', 'user_challenge_progress', ['product_id'])
+    _create_index_if_missing('ix_user_challenge_progress_problem_id', 'user_challenge_progress', ['problem_id'])
 
     products = sa.table(
         'store_products',

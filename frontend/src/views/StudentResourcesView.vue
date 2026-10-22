@@ -1,35 +1,44 @@
 <script setup lang="ts">
-import { computed, nextTick, onActivated, onMounted, ref } from 'vue'
-import { NButton, NCollapse, NCollapseItem, NIcon, NInput, NModal, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
-import { BookOutline, LayersOutline, CheckmarkCircleOutline, WarningOutline } from '@vicons/ionicons5'
+import { computed, h, nextTick, onActivated, onDeactivated, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { NPagination, useDialog, NButton, NCollapse, NCollapseItem, NIcon, NInput, NModal, NProgress, NSelect, NTag, useMessage } from 'naive-ui'
+import { TrashOutline, BookOutline, LayersOutline, CheckmarkCircleOutline, WarningOutline } from '@vicons/ionicons5'
 import { useThemeStore } from '../stores/theme'
+import { useResourceTaskSession } from '../composables/useResourceTaskSession'
 import DashboardShell from '../components/layout/DashboardShell.vue'
+import AiUsageSummary from '../components/shared/AiUsageSummary.vue'
 import PlexSyncState from '../components/common/PlexSyncState.vue'
 import PersonalizedResourceContentViewer from '../components/personalized/PersonalizedResourceContentViewer.vue'
 import AgentStepsTimeline from '../components/personalized/AgentStepsTimeline.vue'
 import {
-  createResourceTask,
   downloadPersonalizedResource,
-  fetchPersonalizedResources,
-  fetchResourceTask,
-  fetchResourceTasks,
-  retryResourceTask,
   type PersonalizedResource,
   type ResourceTask,
 } from '../api/personalizedResources'
 import {
   MODULE_CATEGORY_OPTIONS,
   knowledgeKeyForModuleCategory,
+  resolveModuleCategory,
   type ModuleCategoryValue,
 } from '../data/moduleCategories'
 import { xiaoEResourceProgressHint, xiaoEResourceBackendLabel } from '../utils/xiaoEPersona'
-import { formatHttpError } from '../api/http'
 import {
   RESOURCE_DATE_FILTER_OPTIONS,
   filterPersonalizedResources,
   type ResourceDateFilter,
 } from '../utils/resourceListFilters'
 
+import { practiceRequest } from '../api/studentPractice'
+const dialog = useDialog(), trashOpen = ref(false), trashPage = ref(1), trashTotal = ref(0), modalPage = ref(1)
+const trashBusy = ref(false), trashError = ref('')
+let trashEpoch = 0
+const trashRows = ref<Array<{id:number;title:string;batch_id:string;expires_at:string}>>([])
+async function loadTrash(){const ticket=++trashEpoch;trashBusy.value=true;trashError.value='';try{const result=await practiceRequest<{items:typeof trashRows.value;total:number}>('get','/resource-trash',undefined,{page:trashPage.value});if(ticket===trashEpoch){trashRows.value=result.items;trashTotal.value=result.total}}catch(e){if(ticket===trashEpoch)trashError.value=e instanceof Error?e.message:'回收站加载失败'}finally{if(ticket===trashEpoch)trashBusy.value=false}}
+onDeactivated(()=>{++trashEpoch;trashOpen.value=false;trashBusy.value=false;trashRows.value=[]})
+async function restoreTrash(row:typeof trashRows.value[number],batch=false){try{await practiceRequest('post','/resource-trash/restore',batch?{batch_id:row.batch_id}:{resource_id:row.id});await Promise.all([session.load(),loadTrash()]);message.success('资源已恢复')}catch(e){message.error(e instanceof Error?e.message:'恢复失败')}}
+function deleteResource(item:PersonalizedResource,whole=false){dialog.warning({title:whole?'删除整个资源包？':'删除这条资源？',content:'移入回收站后保留七天，到期后无法恢复。',positiveText:'移入回收站',negativeText:'取消',onPositiveClick:async()=>{try{await practiceRequest('delete',whole?`/resource-packages/${encodeURIComponent(item.generation_task_id)}`:`/personalized-resources/${item.id}`);selected.value=null;materialViewerOpen.value=false;await session.load();message.success(() => h('span', ['已移入回收站 ', h(NButton, { text: true, onClick: () => { trashOpen.value = true } }, () => '查看回收站')]), { duration: 6000 })}catch(e){message.error(e instanceof Error?e.message:'删除失败')}}})}
+watch(trashPage,loadTrash)
+watch(trashOpen,v=>{if(v)void loadTrash()})
 const message = useMessage()
 const themeStore = useThemeStore()
 const knowledgeKey = ref<ModuleCategoryValue>('loop')
@@ -42,16 +51,19 @@ const resourceFilter = ref('all')
 const resourceSearch = ref('')
 const resourceDateFilter = ref<ResourceDateFilter>('all')
 const resourceThemeFilter = ref<'all' | ModuleCategoryValue>('all')
+const route = useRoute()
+watch(() => route.query.knowledge_key, value => {
+  if (typeof value === 'string') {
+    knowledgeKey.value = resolveModuleCategory(value)
+    resourceThemeFilter.value = resolveModuleCategory(value)
+  }
+}, { immediate: true })
 const modalResourceSearch = ref('')
 const modalResourceDateFilter = ref<ResourceDateFilter>('all')
 const modalResourceThemeFilter = ref<'all' | ModuleCategoryValue>('all')
-const task = ref<ResourceTask | null>(null)
-const taskHistory = ref<ResourceTask[]>([])
-const resources = ref<PersonalizedResource[]>([])
-const generating = ref(false)
-const loading = ref(true)
-const loadError = ref('')
-const pollingTimedOut = ref(false)
+watch([modalResourceSearch,modalResourceDateFilter,modalResourceThemeFilter],()=>{modalPage.value=1})
+const session = useResourceTaskSession()
+const { task, taskHistory, resources, generating, loading, loadError, taskError, pollingTimedOut } = session
 const selected = ref<PersonalizedResource | null>(null)
 const materialViewerOpen = ref(false)
 const materialViewerItem = ref<PersonalizedResource | null>(null)
@@ -245,6 +257,7 @@ const anomalyResources = computed(() =>
 )
 
 function openResourceStatModal(kind: ResourceStatModal) {
+  modalPage.value = 1
   resourceStatModal.value = kind
   modalResourceSearch.value = ''
   modalResourceDateFilter.value = 'all'
@@ -330,55 +343,12 @@ function viewResourceMaterial(item: PersonalizedResource) {
   message.success(`已打开「${item.title}」资料`)
 }
 
-function downloadResourceMaterial(item: PersonalizedResource) {
+async function downloadResourceMaterial(item: PersonalizedResource) {
   try {
-    downloadPersonalizedResource(item)
+    await downloadPersonalizedResource(item)
     message.success(`开始下载「${item.title}」`)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '下载失败')
-  }
-}
-
-async function generateQuizSet() {
-  generating.value = true
-  showPipelineDetails.value = true
-  resetTypeFilter()
-  try {
-    // 借鉴 QuickForm：围绕知识点生成可回收的结构化题目集（exercise_set）
-    task.value = await createResourceTask(
-      knowledgeKeyForModuleCategory(knowledgeKey.value),
-      ['exercise_set', 'learning_bundle'],
-      undefined,
-      {
-        target: '大学',
-        learning_stage: DEFAULT_LEARNING_STAGE,
-        learning_style: learningStyles.value.length ? learningStyles.value : ['案例', '代码实验'],
-        force_regenerate: true,
-        require_real_api: true,
-      },
-    )
-    if (task.value.status !== 'completed') await poll(task.value.task_id)
-    if (task.value.status === 'failed') throw new Error(task.value.error || '出题失败')
-    await load()
-    if (task.value.resources?.length) {
-      const merged = new Map<number, PersonalizedResource>()
-      for (const item of resources.value) merged.set(item.id, item)
-      for (const item of task.value.resources) merged.set(item.id, item)
-      resources.value = [...merged.values()].filter((item) => item.review_status !== 'rejected')
-    }
-    const quiz =
-      resources.value.find(
-        (item) =>
-          item.resource_type === 'exercise_set' &&
-          item.generation_task_id === task.value?.task_id,
-      ) || preferLearningBundle(task.value.resources || [])
-    if (quiz) selectResource(quiz)
-    message.success('分层题库已生成，可查看资料或下载')
-    await revealResourceList()
-  } catch (error) {
-    message.error(formatHttpError(error, '出题失败'))
-  } finally {
-    generating.value = false
   }
 }
 
@@ -391,128 +361,64 @@ function resetTypeFilter() {
 
 async function revealResourceList() {
   await nextTick()
-  resourceListRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  resourceListRef.value?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
 }
 
-async function load(options?: { silent?: boolean }) {
-  const silent = Boolean(options?.silent && resources.value.length)
-  if (!silent) {
-    loading.value = true
-    loadError.value = ''
+async function presentResult(result: ResourceTask | null, preferQuiz = false) {
+  if (!result) return
+  if (result.status === 'failed') return
+  if (result.status !== 'completed') {
+    message.info('任务仍在后台处理中，可从最近生成记录继续查看进度')
+    return
   }
-  try {
-    const [resourceResult, taskResult] = await Promise.all([
-      fetchPersonalizedResources(),
-      fetchResourceTasks(),
-    ])
-    resources.value = resourceResult.items
-    taskHistory.value = taskResult.items
-    // 若当前选中项已被驳回，切到可见项
-    if (selected.value) {
-      const fresh = resources.value.find((item) => item.id === selected.value?.id)
-      selected.value = fresh && fresh.review_status !== 'rejected' ? fresh : null
-    }
-    pickDefaultSelection()
-  } catch (error) {
-    if (!silent) {
-      loadError.value = formatHttpError(error, '资源加载失败')
-    }
-  } finally {
-    loading.value = false
-  }
+  if (loadError.value) return
+  resetTypeFilter()
+  showPipelineDetails.value = false
+  const candidates = resources.value.filter(item => item.generation_task_id === result.task_id)
+  const preferred = (preferQuiz ? candidates.find(item => item.resource_type === 'exercise_set') : null)
+    ?? preferLearningBundle(candidates) ?? candidates[0]
+  if (preferred) selectResource(preferred)
+  else pickDefaultSelection(true)
+  await revealResourceList()
+  if (task.value?.task_id !== result.task_id) return
+  if (!candidates.length) message.warning('任务已完成，当前没有可展示的资源；请查看课程依据与任务状态')
+  else message.success('学习资源已生成，可查看资料；发布状态以教师审核为准')
 }
 
-async function poll(id: string) {
-  pollingTimedOut.value = false
-  // 资源包 JSON 较大，云端生成可能 20–40s，多等一会
-  for (let index = 0; index < 120; index += 1) {
-    task.value = await fetchResourceTask(id)
-    if (task.value.status !== 'completed') showPipelineDetails.value = true
-    if (['completed', 'failed'].includes(task.value.status)) return
-    await new Promise((resolve) => window.setTimeout(resolve, 1000))
-  }
-  pollingTimedOut.value = true
-}
-
-async function generate() {
-  generating.value = true
+async function generate(preferQuiz = false) {
+  if (generating.value) return
   showPipelineDetails.value = true
   resetTypeFilter()
-  try {
-    const coreTypes = resolveGenerateTypes()
-    task.value = await createResourceTask(
-      knowledgeKeyForModuleCategory(knowledgeKey.value),
-      coreTypes,
-      undefined,
-      {
-      target: '大学',
-      learning_stage: DEFAULT_LEARNING_STAGE,
-      learning_style: learningStyles.value,
-      force_regenerate: true,
-      require_real_api: true,
-    },
-    )
-    if (task.value.status !== 'completed') await poll(task.value.task_id)
-    if (pollingTimedOut.value) {
-      message.info('真实模型仍在生成，任务会在后台继续；可从最近生成记录查看进度')
-      return
-    }
-    if (task.value.status === 'failed') throw new Error(task.value.error || '生成任务失败')
-    await load()
-    // 任务内嵌资源优先合并，避免列表接口滞后导致「看不到」
-    if (task.value.resources?.length) {
-      const merged = new Map<number, PersonalizedResource>()
-      for (const item of resources.value) merged.set(item.id, item)
-      for (const item of task.value.resources) merged.set(item.id, item)
-      resources.value = [...merged.values()].filter((item) => item.review_status !== 'rejected')
-    }
-    resetTypeFilter()
-    showPipelineDetails.value = false
-    const preferred =
-      preferLearningBundle(task.value.resources ?? [])
-      ?? preferLearningBundle(overviewItems.value)
-      ?? flatResources.value[0]
-    if (preferred) selectResource(preferred)
-    else pickDefaultSelection(true)
-    await revealResourceList()
-    if (!resources.value.length) {
-      message.warning('任务已完成，但暂未返回可展示资源，请稍后刷新或查看任务历史')
-    } else if (pollingTimedOut.value) {
-      message.info('任务仍在处理中，可稍后从任务历史继续查看')
-    } else if (task.value.fallback_reason) {
-      message.warning('云端生成服务暂时不可用，请稍后重新生成')
-    } else {
-      const pending = resources.value.filter((item) => item.review_status === 'pending_review').length
-      const approved = resources.value.filter((item) => item.review_status === 'approved').length
-      message.success(
-        approved
-          ? `学习资源已就绪 · ${approved} 项可直接学习${pending ? ` · 另有 ${pending} 项待审可预览` : ''}`
-          : pending
-            ? `学习资源包已生成 · ${pending} 项待审，可先预览学习`
-            : '学习资源包已生成，可在下方列表点开查看',
-      )
-    }
-  } catch (error) {
-    message.error(formatHttpError(error, '生成失败'))
-  } finally {
-    generating.value = false
-  }
+  const result = await session.generate(
+    knowledgeKeyForModuleCategory(knowledgeKey.value),
+    preferQuiz ? ['exercise_set', 'learning_bundle'] : resolveGenerateTypes(),
+    undefined,
+    { target: '大学', learning_stage: DEFAULT_LEARNING_STAGE,
+      learning_style: learningStyles.value, force_regenerate: true, require_real_api: true },
+  )
+  await presentResult(result, preferQuiz)
 }
 
 async function retry(item: ResourceTask) {
-  try {
-    showPipelineDetails.value = true
-    task.value = await retryResourceTask(item.task_id)
-    await poll(task.value.task_id)
-    await load()
-    resetTypeFilter()
-    showPipelineDetails.value = false
-    pickDefaultSelection(true)
-    await revealResourceList()
-  } catch (error) {
-    message.error(formatHttpError(error, '重试失败'))
-  }
+  if (generating.value) return
+  showPipelineDetails.value = true
+  await presentResult(await session.retry(item.task_id))
 }
+
+async function inspectTask(item: ResourceTask) {
+  if (generating.value) return
+  showPipelineDetails.value = item.status !== 'completed'
+  await session.inspect(item.task_id)
+}
+
+watch(resources, () => {
+  const fresh = resources.value.find(item => item.id === selected.value?.id)
+  selected.value = fresh && fresh.review_status !== 'rejected' ? fresh : null
+  const material = resources.value.find(item => item.id === materialViewerItem.value?.id)
+  materialViewerItem.value = material && material.review_status !== 'rejected' ? material : null
+  if (!materialViewerItem.value) materialViewerOpen.value = false
+  pickDefaultSelection()
+}, { flush: 'sync' })
 
 function reviewStatusLabel(status: PersonalizedResource['review_status']) {
   if (status === 'pending_review') return '待教师审核'
@@ -520,18 +426,12 @@ function reviewStatusLabel(status: PersonalizedResource['review_status']) {
   return '已发布'
 }
 
-onMounted(() => {
-  resetTypeFilter()
-  void load()
-})
-
-onActivated(() => {
-  // KeepAlive 可能残留「思维导图」等筛选项，切回页面时恢复全部类型
-  resetTypeFilter()
-  // 教师/智能体审核后切回本页时刷新，确保已批准与待审资源立刻可见
-  void load({ silent: true }).then(() => {
-    pickDefaultSelection()
-  })
+onActivated(resetTypeFilter)
+onDeactivated(() => {
+  materialViewerOpen.value = false
+  materialViewerItem.value = null
+  selected.value = null
+  resourceStatModal.value = null
 })
 </script>
 
@@ -544,7 +444,9 @@ onActivated(() => {
     hide-search
   >
     <main class="resource-page">
-      <section class="generator">
+      <n-modal v-model:show="trashOpen" preset="card" class="plex-reading-modal resource-trash-modal" title="资源回收站 · 七天内可恢复" :style="{width:'min(900px,94vw)',maxHeight:'80dvh'}"><div class="trash-list"><p v-if="trashBusy" role="status">正在读取回收站…</p><p v-else-if="trashError" role="alert">{{trashError}} <n-button @click="loadTrash">重试</n-button></p><p v-else-if="!trashRows.length">回收站为空</p><article v-for="row in trashBusy || trashError ? [] : trashRows" :key="row.id"><div><strong>{{row.title}}</strong><p>剩余约 {{Math.max(0,Math.ceil((Date.parse(row.expires_at)-Date.now())/3600000))}} 小时 · 保留至 {{new Date(row.expires_at).toLocaleString()}}</p></div><n-button @click="restoreTrash(row)">恢复</n-button><n-button @click="restoreTrash(row,true)">恢复同批次</n-button></article></div><template #footer><n-pagination v-model:page="trashPage" :item-count="trashTotal" :page-size="20"/></template></n-modal>
+      <AiUsageSummary />
+      <section class="generator" data-tour="student-resources">
         <div class="generator__copy">
           <h2>生成个性化学习资源</h2>
           <p>选择知识点与资源类型，生成讲解、导图、练习、实操和语音资料。</p>
@@ -557,11 +459,12 @@ onActivated(() => {
             class="type-select"
             placeholder="资源类型"
           />
-          <n-button type="primary" :loading="generating" @click="generate">生成学习资源</n-button>
-          <n-button secondary :loading="generating" @click="generateQuizSet">生成题目</n-button>
+          <n-button type="primary" :loading="generating" @click="generate(false)">生成学习资源</n-button>
+          <n-button secondary :loading="generating" @click="generate(true)">生成题目</n-button>
         </div>
       </section>
 
+      <header class="resource-management-tools"><h2>我的资源</h2><n-button class="plex-action-button" @click="trashOpen=true"><template #icon><n-icon :component="TrashOutline" /></template>回收站</n-button></header>
       <section class="resource-summary" aria-label="资源概览">
         <article role="button" tabindex="0" @click="openResourceStatModal('knowledge')" @keydown.enter.prevent="openResourceStatModal('knowledge')" @keydown.space.prevent="openResourceStatModal('knowledge')">
           <n-icon v-if="themeStore.isComic" class="comic-stat-icon" :component="BookOutline" aria-hidden="true" />
@@ -588,8 +491,8 @@ onActivated(() => {
       <n-modal
         v-model:show="resourceStatModalVisible"
         preset="card"
-        class="resource-stat-modal"
-        :style="{ width: 'min(480px, 92vw)', maxWidth: '92vw' }"
+        class="resource-stat-modal plex-reading-modal"
+        :style="{ width: 'min(960px, 94vw)', maxWidth: '94vw', maxHeight: '78dvh' }"
         :title="resourceStatModal === 'knowledge' ? '按知识点分类' : resourceStatModal === 'resources' ? '可学习资源' : '异常待关注'"
       >
         <div
@@ -626,6 +529,7 @@ onActivated(() => {
                 <div class="resource-stat-list__actions">
                   <n-button size="tiny" type="primary" secondary @click="viewResourceMaterial(item)">查看资料</n-button>
                   <n-button size="tiny" quaternary @click="downloadResourceMaterial(item)">下载</n-button>
+              <n-button size="tiny" quaternary @click="deleteResource(item)">删除</n-button>
                 </div>
               </li>
             </ul>
@@ -635,7 +539,7 @@ onActivated(() => {
           <p v-if="!approvedResources.length" class="resource-stat-modal__empty">暂无审核通过的资源，可先预览待审内容</p>
           <p v-else-if="!filteredApprovedResources.length" class="resource-stat-modal__empty">没有符合筛选条件的资源</p>
           <ul v-else class="resource-stat-list">
-            <li v-for="item in filteredApprovedResources" :key="item.id">
+            <li v-for="item in filteredApprovedResources.slice((modalPage-1)*8,modalPage*8)" :key="item.id">
               <div class="resource-stat-list__main">
                 <strong>{{ item.title }}</strong>
                 <span>
@@ -646,6 +550,7 @@ onActivated(() => {
               <div class="resource-stat-list__actions">
                 <n-button size="tiny" type="primary" secondary @click="viewResourceMaterial(item)">查看资料</n-button>
                 <n-button size="tiny" quaternary @click="downloadResourceMaterial(item)">下载</n-button>
+              <n-button size="tiny" quaternary @click="deleteResource(item)">删除</n-button>
               </div>
             </li>
           </ul>
@@ -661,10 +566,12 @@ onActivated(() => {
               <div class="resource-stat-list__actions">
                 <n-button size="tiny" type="primary" secondary @click="viewResourceMaterial(item)">查看资料</n-button>
                 <n-button size="tiny" quaternary @click="downloadResourceMaterial(item)">下载</n-button>
+              <n-button size="tiny" quaternary @click="deleteResource(item)">删除</n-button>
               </div>
             </li>
           </ul>
         </div>
+        <template #footer><n-pagination v-if="resourceStatModal==='resources'" v-model:page="modalPage" :item-count="filteredApprovedResources.length" :page-size="8" /></template>
       </n-modal>
 
       <n-modal
@@ -731,9 +638,10 @@ onActivated(() => {
 
       <section v-if="task" class="task-panel">
         <header>
-          <strong>{{ task.status === 'completed' ? '资源已准备完成' : '小E 正在准备资源' }}</strong>
+          <strong>{{ task.status === 'completed' ? '资源已准备完成' : task.status === 'failed' ? '资源生成未完成' : '小E 正在准备资源' }}</strong>
           <div class="task-panel__header-actions">
-            <span v-if="task.fallback_reason">云端生成服务暂时不可用，请稍后重新生成</span>
+            <span v-if="task.fallback_reason && task.status === 'completed' && task.backend !== 'local_rules'">本次已由备用模型完成生成</span>
+            <span v-else-if="task.fallback_reason">本次使用了回退方式，请结合任务状态查看结果</span>
             <span v-else-if="task.backend === 'deepseek' || task.backend === 'iflytek_spark'">本次为云端实时生成</span>
             <n-button
               v-if="task.status === 'completed'"
@@ -747,10 +655,17 @@ onActivated(() => {
         </header>
         <n-progress :percentage="task.progress" color="#25f5ee" />
         <p class="task-panel__hint">{{ taskProgressHint }}</p>
+        <div v-if="task.learning_context" class="task-panel__hint">
+          <p>本次学习建议：{{ task.learning_context.reason }}</p>
+          <p v-if="task.learning_context.exercise_action">{{ task.learning_context.exercise_action }}</p>
+          <p>这份资源保留生成时的学习依据。完成新的练习后，可重新生成适合当前进度的资源。</p>
+        </div>
         <AgentStepsTimeline v-if="pipelineExpanded" :steps="task.steps ?? []" />
+        <p v-if="task.course_evidence" class="task-panel__hint" role="status">{{ task.course_evidence.message }}</p>
         <p v-if="task.status === 'failed' && task.error" class="task-panel__error">{{ task.error }}</p>
       </section>
 
+      <p v-if="taskError" class="task-panel__error" role="alert">{{ taskError }} · 可刷新页面或从最近生成记录核对任务，提交状态不确定时请先核对历史，避免重复创建。</p>
       <p v-if="pollingTimedOut" class="processing-note">任务仍在后台处理中，页面未将其标记为成功。</p>
       <PlexSyncState
         v-if="loading && !resources.length"
@@ -759,7 +674,7 @@ onActivated(() => {
       />
       <div v-else-if="loadError" class="resource-state resource-state--error">
         <span>{{ loadError }}</span>
-        <n-button secondary size="small" @click="load()">重试</n-button>
+        <n-button secondary size="small" @click="session.load()">重试</n-button>
       </div>
 
       <template v-else>
@@ -856,6 +771,7 @@ onActivated(() => {
                 </div>
                 <div class="resource-detail__actions">
                   <n-button size="small" secondary @click="downloadResourceMaterial(selected)">下载</n-button>
+                  <n-button @click="deleteResource(selected)">删除资源</n-button><n-button @click="deleteResource(selected,true)">删除整包</n-button>
                   <n-button quaternary @click="selected = null">关闭</n-button>
                 </div>
               </header>
@@ -892,9 +808,9 @@ onActivated(() => {
               <ul>
                 <li
                   v-for="citation in selected.citations"
-                  :key="`${citation.document_id}-${citation.section}`"
+                  :key="`${citation.document_id}-${citation.chunk_id || citation.section}`"
                 >
-                  {{ citation.title }} · {{ citation.section }}：{{ citation.snippet }}
+                  {{ citation.title }} · {{ citation.section }}<span v-if="citation.version"> · 版本 {{ citation.version }}</span>：{{ citation.snippet }}
                 </li>
               </ul>
             </template>
@@ -921,8 +837,8 @@ onActivated(() => {
                 <span>{{ item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '进行中' }}</span>
               </div>
               <div class="task-history__actions">
-                <n-button size="small" secondary @click="task = item; showPipelineDetails = item.status !== 'completed'">查看进度</n-button>
-                <n-button v-if="item.status === 'failed' && item.recoverable" size="small" @click="retry(item)">重试</n-button>
+                <n-button size="small" secondary :disabled="generating" @click="inspectTask(item)">查看进度</n-button>
+                <n-button v-if="item.status === 'failed' && item.recoverable" size="small" :disabled="generating" @click="retry(item)">重试</n-button>
               </div>
             </article>
           </n-collapse-item>
@@ -933,7 +849,18 @@ onActivated(() => {
 </template>
 
 <style scoped>
+.resource-management-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px}.resource-management-tools h2{margin:0;font-size:17px;color:var(--plex-text)}
+
+.resource-page,
+.resource-material-modal,
+.resource-stat-modal {
+  --resource-warning-text: #f6cd68;
+  --resource-error-text: #fca5a5;
+}
+
 .resource-page {
+  min-width: 0;
+  overflow-wrap: anywhere;
   width: 100%;
   padding: 0 var(--plex-page-gutter-x) 2rem;
   overflow-y: auto;
@@ -945,9 +872,9 @@ onActivated(() => {
 .resource-group,
 .resource-detail,
 .resource-summary article {
-  border: 1px solid rgba(37, 245, 238, 0.15);
+  border: 1px solid var(--plex-border);
   border-radius: 0.75rem;
-  background: rgba(3, 16, 28, 0.84);
+  background: var(--plex-bg-glass);
 }
 
 .generator {
@@ -968,13 +895,13 @@ onActivated(() => {
 .resource-detail h2,
 .resource-detail h4 {
   margin: 0;
-  color: #f2fbff;
+  color: var(--plex-text);
 }
 
 .generator p,
 .resource-detail header p {
   margin: 0.35rem 0 0;
-  color: #7da5b6;
+  color: var(--plex-text-muted);
 }
 
 .generator__controls {
@@ -999,13 +926,13 @@ onActivated(() => {
 
 .resource-material-modal__header p {
   margin: 0 0 0.4rem;
-  color: rgba(180, 210, 225, 0.78);
+  color: var(--plex-text-muted);
   font-size: 0.88rem;
 }
 
 .resource-material-modal__empty {
   padding: 1.25rem 0.5rem;
-  color: rgba(255, 210, 138, 0.95);
+  color: var(--resource-warning-text);
   font-size: 0.92rem;
   line-height: 1.55;
 }
@@ -1019,7 +946,7 @@ onActivated(() => {
 
 .pending-note {
   margin: 0.75rem 0 0;
-  color: #ffd28a;
+  color: var(--resource-warning-text);
   font-size: 0.9rem;
 }
 
@@ -1049,7 +976,7 @@ onActivated(() => {
 
 .resource-detail__placeholder {
   text-align: center;
-  color: rgba(125, 165, 182, 0.95);
+  color: var(--plex-text-muted);
   padding: 1.5rem;
 }
 
@@ -1062,19 +989,19 @@ onActivated(() => {
   padding: 0.85rem 1rem;
   border-radius: 12px;
   border: 1px solid rgba(245, 158, 11, 0.35);
-  background: rgba(120, 53, 15, 0.28);
+  background: color-mix(in srgb, var(--resource-warning-text) 10%, var(--plex-bg-card));
 }
 
 .resource-warning strong {
   display: block;
   margin-bottom: 0.35rem;
-  color: #fde68a;
+  color: var(--resource-warning-text);
   font-size: 0.9rem;
 }
 
 .resource-warning p {
   margin: 0;
-  color: rgba(254, 243, 199, 0.92);
+  color: var(--resource-warning-text);
   font-size: 0.86rem;
   line-height: 1.55;
 }
@@ -1085,14 +1012,14 @@ onActivated(() => {
 
 .resource-summary span {
   display: block;
-  color: rgba(203, 225, 235, 0.68);
+  color: var(--plex-text-muted);
   font-size: 0.78rem;
 }
 
 .resource-summary strong {
   display: block;
   margin-top: 0.3rem;
-  color: #effcff;
+  color: var(--plex-text);
   font-size: 1.05rem;
 }
 
@@ -1110,7 +1037,7 @@ onActivated(() => {
   width: min(480px, 92vw);
 }
 
-.resource-stat-modal :deep(.n-card__content) {
+.resource-stat-modal :deep(.n-card-content) {
   max-height: min(52vh, 380px);
   overflow-y: auto;
 }
@@ -1140,7 +1067,7 @@ onActivated(() => {
 
 .resource-stat-modal__empty {
   margin: 0;
-  color: rgba(148, 163, 184, 0.9);
+  color: var(--plex-text-muted);
 }
 
 .resource-stat-group + .resource-stat-group {
@@ -1149,14 +1076,14 @@ onActivated(() => {
 
 .resource-stat-group h4 {
   margin: 0 0 0.35rem;
-  color: #e2f7ff;
+  color: var(--plex-text);
 }
 
 .resource-stat-group ul,
 .resource-stat-list {
   margin: 0;
   padding-left: 1rem;
-  color: rgba(226, 232, 240, 0.85);
+  color: var(--plex-text-muted);
   font-size: 0.86rem;
 }
 
@@ -1174,7 +1101,7 @@ onActivated(() => {
   padding: 0.55rem 0.65rem;
   border-radius: 0.65rem;
   border: 1px solid rgba(46, 255, 241, 0.1);
-  background: rgba(8, 20, 34, 0.45);
+  background: var(--plex-bg-card);
 }
 
 .resource-stat-list__main {
@@ -1184,11 +1111,11 @@ onActivated(() => {
 
 .resource-stat-list strong {
   display: block;
-  color: #f8fafc;
+  color: var(--plex-text);
 }
 
 .resource-stat-list span {
-  color: rgba(148, 163, 184, 0.95);
+  color: var(--plex-text-muted);
   font-size: 0.78rem;
 }
 
@@ -1214,7 +1141,7 @@ onActivated(() => {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  color: #b9e9e6;
+  color: var(--plex-text);
   margin-bottom: 0.7rem;
 }
 
@@ -1229,19 +1156,19 @@ onActivated(() => {
 
 .task-panel__hint {
   margin: 0.75rem 0 0;
-  color: #8fb7c4;
+  color: var(--plex-text-muted);
   font-size: 0.86rem;
   line-height: 1.55;
 }
 
 .task-panel__error {
   margin: 0.55rem 0 0;
-  color: #fca5a5;
+  color: var(--resource-error-text);
   font-size: 0.84rem;
 }
 
 .processing-note {
-  color: #ffd28a;
+  color: var(--resource-warning-text);
 }
 
 .resource-state {
@@ -1252,11 +1179,11 @@ onActivated(() => {
   gap: 0.75rem;
   margin-top: 1rem;
   padding: 1rem;
-  color: rgba(214, 236, 245, 0.78);
+  color: var(--plex-text-muted);
 }
 
 .resource-state--error {
-  color: #fecaca;
+  color: var(--resource-error-text);
 }
 
 .resource-tools {
@@ -1270,7 +1197,7 @@ onActivated(() => {
 
 .resource-tools__hint {
   margin: 0.35rem 0 0;
-  color: #7da5b6;
+  color: var(--plex-text-muted);
   font-size: 0.82rem;
 }
 
@@ -1289,12 +1216,12 @@ onActivated(() => {
 
 .resource-group__header h3 {
   margin: 0;
-  color: #f2fbff;
+  color: var(--plex-text);
   font-size: 0.98rem;
 }
 
 .resource-group__count {
-  color: rgba(125, 165, 182, 0.9);
+  color: var(--plex-text-muted);
   font-size: 0.82rem;
   font-weight: 500;
 }
@@ -1309,9 +1236,9 @@ onActivated(() => {
   display: grid;
   gap: 0.65rem;
   padding: 1rem;
-  border: 1px solid rgba(37, 245, 238, 0.12);
+  border: 1px solid var(--plex-border);
   border-radius: 0.55rem;
-  background: rgba(2, 10, 18, 0.58);
+  background: var(--plex-bg-card);
   color: inherit;
   cursor: pointer;
   text-align: left;
@@ -1324,17 +1251,18 @@ onActivated(() => {
 .resource-card__tags,
 .resource-card__meta {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.5rem;
 }
 
 .resource-card strong {
-  color: #f0faff;
+  color: var(--plex-text);
 }
 
 .resource-card p,
 .resource-card__meta {
-  color: #86a8b7;
+  color: var(--plex-text-muted);
   font-size: 0.84rem;
 }
 
@@ -1368,11 +1296,11 @@ onActivated(() => {
   min-width: 0;
   flex-direction: column;
   gap: 0.25rem;
-  color: #d8f4f3;
+  color: var(--plex-text);
 }
 
 .task-history__row span {
-  color: #7da5b6;
+  color: var(--plex-text-muted);
   font-size: 0.78rem;
 }
 
@@ -1401,12 +1329,12 @@ onActivated(() => {
   max-height: none;
   overflow: visible;
   white-space: pre-wrap;
-  color: #cce6ef;
+  color: var(--plex-text);
   line-height: 1.6;
 }
 
 .resource-detail li {
-  color: #8fb7c4;
+  color: var(--plex-text-muted);
   margin: 0.45rem 0;
 }
 
@@ -1448,4 +1376,54 @@ onActivated(() => {
     grid-template-columns: 1fr;
   }
 }
+
+:global(html[data-theme='light']) .resource-page,
+:global(html[data-theme='light']) .resource-material-modal,
+:global(html[data-theme='light']) .resource-stat-modal {
+  --resource-warning-text: #8b5900;
+  --resource-error-text: #b42318;
+}
+
+.resource-material-modal__header p,
+.resource-material-modal__empty {
+  color: var(--plex-text-muted);
+}
+
+.resource-card:focus-visible,
+.resource-summary article[role='button']:focus-visible {
+  outline: 3px solid var(--plex-accent);
+  outline-offset: 3px;
+}
+
+.resource-detail,
+.resource-card,
+.task-panel,
+.resource-state {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resource-summary article[role='button'] {
+    transition: none;
+  }
+  .resource-summary article[role='button']:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .resource-detail header,
+  .task-panel > header,
+  .resource-state,
+  .resource-stat-list li {
+    flex-wrap: wrap;
+  }
+  .resource-detail__actions {
+    flex-wrap: wrap;
+  }
+}
+</style>
+
+<style>
+.resource-stat-modal.n-card{display:flex;max-height:78dvh}.resource-stat-modal.n-card>.n-card-content{min-height:0;display:flex;flex-direction:column;overflow:hidden;max-height:none!important}.resource-stat-modal__body{overflow:auto;min-height:0;scrollbar-width:none}.resource-stat-modal__body::-webkit-scrollbar{display:none}.resource-stat-modal>.n-card-header,.resource-stat-modal>.n-card__footer{flex-shrink:0}.resource-stat-modal .resource-stat-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.resource-stat-modal .resource-stat-list>li{min-width:0;display:flex;flex-direction:column;align-items:stretch;border:1px solid var(--plex-border);border-radius:12px;padding:14px}.resource-stat-list__main strong{overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.resource-stat-modal__filters{flex-shrink:0}.trash-list{max-height:56dvh;overflow:auto}.trash-list article{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--plex-border);padding:16px 0;flex-wrap:wrap}.trash-list article>div{flex:1;min-width:160px}.trash-list p{font-size:12px;opacity:.7}@media(max-width:600px){.resource-stat-modal .resource-stat-list{grid-template-columns:1fr}}
 </style>

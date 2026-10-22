@@ -273,8 +273,12 @@ class KnowledgeLayerTestCase(unittest.TestCase):
         data = resp.get_json()['data']
         self.assertNotIn('debug', data)
         self.assertNotIn('model', data)
-        self.assertTrue(data['knowledge_grounded'])
-        self.assertTrue(data['recommended_next'] or data['concepts'])
+        # Offline tests have no reviewing model. An extractive old path must
+        # not masquerade as an approved student answer after the migration.
+        self.assertIn('tutor', data)
+        self.assertIsNone(data['confidence'])
+        self.assertFalse(data['knowledge_grounded'])
+        self.assertEqual(data['generation_mode'], 'refused')
 
     def test_api_admin_debug_and_retrieve(self):
         resp = self.client.post('/api/v1/rag/query', json={'query': '列表切片怎么用', 'debug': True}, headers=self._headers('admin'))

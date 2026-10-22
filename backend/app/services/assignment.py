@@ -310,6 +310,7 @@ class AssignmentService:
                         'trial_id': trial.id,
                         'trial_title': trial.title,
                         'teacher_name': teacher_name,
+                        'question_type': question.question_type or 'mcq',
                         'knowledge_key': question.knowledge_key,
                         'knowledge_label': QuestionGenerator.label_for_key(question.knowledge_key),
                         'stem': question.stem,
@@ -328,6 +329,19 @@ class AssignmentService:
             'total_count': len(items) if include_completed else pending_count,
             'items': items,
         }
+
+    @staticmethod
+    def _claim_submission(progress):
+        # Serialize concurrent tabs; model interpretation runs after this transaction.
+        from sqlalchemy import update
+        with db.session.no_autoflush:
+            claimed = db.session.execute(update(TrialQuestionProgress).where(
+                TrialQuestionProgress.id == progress.id,
+                TrialQuestionProgress.status != 'completed',
+            ).values(status='completed').execution_options(synchronize_session=False)).rowcount
+        if not claimed:
+            db.session.rollback()
+            raise ValueError('该题已完成')
 
     @staticmethod
     def submit_answer(user_id: int, question_id: int, selected_index: int, time_spent_sec: int | None = None):
@@ -351,6 +365,8 @@ class AssignmentService:
         AssignmentService._touch_question_start(progress)
         now = utc_now()
         selected = int(selected_index)
+        if (question.question_type or 'mcq') != 'mcq' or selected < 0 or selected >= len(question.to_dict()['options']):
+            raise ValueError('题型或选项无效')
         is_correct = selected == int(question.correct_index)
         elapsed = time_spent_sec
         if elapsed is None and progress.started_at:
@@ -358,6 +374,7 @@ class AssignmentService:
         if elapsed is None:
             elapsed = 0
 
+        AssignmentService._claim_submission(progress)
         progress.status = 'completed'
         progress.selected_index = selected
         progress.selected_label = AssignmentService._option_label(selected)
@@ -368,6 +385,13 @@ class AssignmentService:
         from app.services.grading_orchestrator import GradingOrchestrator
 
         grade_result = {'correct': is_correct}
+        from app.services.learner_state import LearnerStateService
+        LearnerStateService.record_submission(user_id, question, progress, grade_result)
+        from app.services.student_practice import StudentPractice
+        from app.services.tutor_context import TutorContextService
+        task = TutorContextService.task(user_id, formal_id=question.id)
+        StudentPractice.record(user_id, task, progress.submitted_code or '', grade_result, source='teacher')
+        db.session.commit()
         agent_trace = GradingOrchestrator.run_after_submit(
             user_id=user_id,
             question=question,
@@ -454,6 +478,7 @@ class AssignmentService:
         all_passed = bool(submit_result.get('all_passed'))
         results = submit_result.get('results') or []
 
+        AssignmentService._claim_submission(progress)
         progress.status = 'completed'
         progress.submitted_code = code
         progress.code_passed = all_passed
@@ -471,6 +496,13 @@ class AssignmentService:
             'results': results,
             'execution_backend': submit_result.get('backend'),
         }
+        from app.services.learner_state import LearnerStateService
+        LearnerStateService.record_submission(user_id, question, progress, grade_result)
+        from app.services.student_practice import StudentPractice
+        from app.services.tutor_context import TutorContextService
+        task = TutorContextService.task(user_id, formal_id=question.id)
+        StudentPractice.record(user_id, task, progress.submitted_code or '', grade_result, source='teacher')
+        db.session.commit()
         agent_trace = GradingOrchestrator.run_after_submit(
             user_id=user_id,
             question=question,
@@ -488,8 +520,10 @@ class AssignmentService:
                 user_id,
                 {
                     'question_id': str(question.id),
-                    'title': question.stem[:80],
+                    'question_title': question.stem[:200],
+                    'knowledge_key': question.knowledge_key,
                     'topic': question.knowledge_key or 'coding',
+                    'cases': results,
                     'passed_count': submit_result.get('passed_count', 0),
                     'total_cases': submit_result.get('total', len(test_cases)),
                 },

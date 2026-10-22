@@ -13,7 +13,9 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from ..models import KnowledgeChunk, KnowledgeDocument, RagQueryLog, db
 from ..models.knowledge_document import KNOWLEDGE_TYPES
 from ..services.knowledge import KnowledgeService
+from ..services.knowledge.access_service import KnowledgeAccessService
 from ..services.knowledge.analytics_service import KnowledgeAnalyticsService
+from ..services.tutor_context import TutorContextError, _text
 from ..utils.access import current_user_from_id, is_admin
 from ..utils.decorators import role_required
 from ..utils.response import error_response, paginated_response, success_response
@@ -61,20 +63,37 @@ def _context(body: dict) -> dict:
             ctx[key] = body[key]
     if 'hint_level' in ctx:
         ctx['hint_level'] = _int(ctx['hint_level'], 1, 1, 4)
+    for key in ('task_type', 'concept_hint', 'stage', 'title'):
+        if key in ctx:
+            ctx[key] = _text(ctx[key], key, 200 if key == 'title' else 80)
+    for key in ('task_id', 'trial_id', 'problem_id'):
+        if key in ctx and (type(ctx[key]) not in (str, int) or len(str(ctx[key])) > 100):
+            raise TutorContextError(f'{key} 格式无效')
+    if 'concept_ids' in ctx:
+        ids = ctx['concept_ids']
+        if not isinstance(ids, list) or len(ids) > 20 or any(not isinstance(v, str) or len(v) > 80 for v in ids):
+            raise TutorContextError('concept_ids 应为最多 20 项的知识点编号列表')
     return ctx
 
 
 @rag_bp.post('/query')
 @jwt_required()
 def rag_query():
-    body = request.get_json(silent=True) or {}
-    query = (body.get('query') or body.get('question') or '').strip()
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        raise TutorContextError('请求体必须是 JSON 对象')
+    if 'query' in body and 'question' in body and body['query'] != body['question']:
+        raise TutorContextError('query 与 question 不一致')
+    query = _text(body.get('query', body.get('question')), 'query', 8000).strip()
     if not query:
         return error_response('query 不能为空', 40001, None, 400)
     if len(query) > _MAX_QUERY_CHARS:
         return error_response(f'query 超过 {_MAX_QUERY_CHARS} 字上限', 40001, None, 400)
     user, role = _actor()
-    scene = (body.get('scene') or 'chat').strip().lower()
+    if role == 'student':
+        from ..services.legacy_student_tutoring import LegacyStudentTutoring
+        return success_response(LegacyStudentTutoring.rag(user.id, body))
+    scene = _text(body.get('scene', 'chat'), 'scene', 32).strip().lower()
     if scene not in _ALLOWED_SCENES:
         scene = 'chat'
     debug = _bool(body.get('debug')) and is_admin(user)
@@ -95,8 +114,25 @@ def rag_query():
         history=history,
         debug=debug,
         use_llm=use_llm,
+        request_id=body.get('request_id'),
     )
     return success_response(answer.to_dict(include_debug=debug))
+
+
+@rag_bp.get('/usage')
+@jwt_required()
+@role_required('teacher', 'admin')
+def rag_usage():
+    from ..services.rag_runtime import usage
+    return success_response(usage(_uid()))
+
+
+@rag_bp.get('/requests/<string:request_id>')
+@jwt_required()
+@role_required('teacher', 'admin')
+def rag_request(request_id):
+    from ..services.rag_runtime import restore
+    return success_response(restore(_uid(), request_id))
 
 
 @rag_bp.post('/retrieve')
@@ -118,6 +154,14 @@ def rag_retrieve():
     # 允许以指定学生视角检索（教师/管理员调试学习者上下文），默认以自己为学习者
     as_user = body.get('as_user_id')
     learner_id = int(as_user) if isinstance(as_user, int) or (isinstance(as_user, str) and as_user.isdigit()) else (user.id if user else None)
+    if as_user is not None:
+        from ..models import User, Class
+        target = db.session.get(User, learner_id)
+        classroom = db.session.get(Class, target.class_id) if target and target.class_id else None
+        if not target or not target.role or target.role.name != 'student' or (
+            role != 'admin' and (not classroom or classroom.teacher_id != user.id)
+        ):
+            return error_response('无权查看该学习者的检索上下文', 40301, None, 403)
     payload = KnowledgeService.retrieve(
         query,
         user_id=learner_id,
@@ -136,8 +180,14 @@ def rag_retrieve():
 @jwt_required()
 def rag_source(chunk_id: str):
     """查看某条来源（chunk）的原文。学生只看安全字段，教师/管理员可看完整元数据。"""
-    chunk = db.session.get(KnowledgeChunk, chunk_id)
-    if not chunk or chunk.status != 'active':
+    query = KnowledgeAccessService.chunks(_uid()).filter(KnowledgeChunk.chunk_id == chunk_id)
+    if 'version' in request.args:
+        version = request.args.get('version', type=int)
+        if version is None or version < 1:
+            return error_response('来源版本无效', 40001, None, 400)
+        query = query.filter(KnowledgeChunk.version == version)
+    chunk = query.first()
+    if not chunk:
         return error_response('来源不存在', 40401, None, 404)
     user, role = _actor()
     doc = db.session.get(KnowledgeDocument, chunk.document_id)
@@ -148,6 +198,8 @@ def rag_source(chunk_id: str):
         payload = {
             'chunk_id': chunk.chunk_id,
             'document_id': chunk.document_id,
+            'version': chunk.version,
+            'chapter': chunk.chapter or (doc.chapter if doc else ''),
             'title': chunk.title or (doc.title if doc else ''),
             'document_title': doc.title if doc else '',
             'knowledge_type': chunk.knowledge_type,

@@ -142,6 +142,8 @@ def ensure_dev_login_users():
 
     for item in defaults:
         user = User.query.filter_by(username=item['username']).first()
+        if user:
+            continue  # Startup must preserve changed passwords and frozen accounts.
         if not user:
             user = User(username=item['username'])
             db.session.add(user)
@@ -169,6 +171,8 @@ def create_app(config_name='development'):
 
     db.init_app(app)
     jwt = JWTManager(app)
+    from app.services.auth_security import token_revoked
+    jwt.token_in_blocklist_loader(lambda _header, payload: token_revoked(payload))
     CORS(app)
 
     register_routes(app)
@@ -176,6 +180,8 @@ def create_app(config_name='development'):
 
     with app.app_context():
         db.create_all()
+        from app.services.onboarding import OnboardingService
+        OnboardingService.init_counter()
         from app.utils.db_migrate import (
             ensure_class_enrollment_schema,
             ensure_emergency_mission_schema,
@@ -236,6 +242,12 @@ def create_app(config_name='development'):
                 db.session.rollback()
                 app.logger.exception('Knowledge layer bootstrap skipped; run `python manage.py upgrade`.')
 
+    from app.services.learning_event_worker import start_learning_event_worker
+    start_learning_event_worker(app)
+    from app.services.counterexample_generation_worker import start_counterexample_generation_worker
+    start_counterexample_generation_worker(app)
+    from app.services.student_maintenance import start_student_maintenance
+    start_student_maintenance(app)
     return app
 
 

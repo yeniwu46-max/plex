@@ -154,7 +154,7 @@ export function buildRiskTrend(overview: TeacherOverview | null): number[] {
   const rows = overview?.heatmap?.rows ?? []
   const dayCount = overview?.heatmap?.days?.length ?? 0
   if (!rows.length || !dayCount) {
-    return [42, 48, 44, 52, 58, 72, 68, 64, 70]
+    return []
   }
   return Array.from({ length: Math.min(dayCount, 9) }, (_, idx) => {
     const rates = rows.map((row) => row.cells[idx]?.rate ?? 0)
@@ -163,14 +163,15 @@ export function buildRiskTrend(overview: TeacherOverview | null): number[] {
 }
 
 export function buildStarfieldKpis(overview: TeacherOverview | null) {
-  const activity = overview?.metrics?.avg_today_completion ?? 0
-  const repair = Math.max(0, Math.min(100, Math.round(activity * 0.92 + 8)))
-  const trial = Math.max(0, Math.min(100, Math.round(activity * 0.85 + 5)))
+  const metrics = overview?.metrics
+  const activity = metrics?.avg_today_completion
+  const reviewed = metrics?.reviewed_today_students
+  const intervention = metrics?.intervention_completion_rate
   const trend = buildRiskTrend(overview)
   return [
-    { key: 'activity', label: '探索活跃度', value: `${activity}%`, delta: '+6%', points: trend },
-    { key: 'repair', label: '知识修复率', value: `${repair}%`, delta: '+4%', points: trend.map((v) => Math.max(20, v - 6)) },
-    { key: 'trial', label: '试炼完成率', value: `${trial}%`, delta: '+3%', points: trend.map((v) => Math.max(18, v - 12)) },
+    { key: 'activity', label: '今日委托完成率', value: activity == null ? '暂无统计' : `${activity}%`, delta: '', points: trend },
+    { key: 'review', label: '今日已复习学生', value: reviewed == null ? '暂无统计' : `${reviewed} 人`, delta: '', points: [] },
+    { key: 'intervention', label: '干预完成率', value: intervention == null ? '暂无统计' : metrics?.intervention_count ? `${intervention}%` : '暂无工单', delta: '', points: [] },
   ]
 }
 

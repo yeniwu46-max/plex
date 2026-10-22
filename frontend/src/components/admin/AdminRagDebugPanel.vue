@@ -3,11 +3,15 @@
  * 管理员 · 检索测试 / RAG Debug。
  * 展示：识别知识点 → Graph 节点 → Vector/Lexical Top-K → Rerank Score → Context → Answer，以及 RAG 请求日志。
  */
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useAuthStore } from '../../stores/auth'
+import AiUsageSummary from '../shared/AiUsageSummary.vue'
 import { NButton, NEmpty, NIcon, NInput, NInputNumber, NSelect, NSpin, NSwitch, NTag, useMessage, type SelectOption } from 'naive-ui'
 import { RefreshOutline, SearchOutline, SparklesOutline, TerminalOutline } from '@vicons/ionicons5'
 import { KNOWLEDGE_TYPE_LABELS, type KnowledgeType } from '../../api/knowledge'
 import {
+  fetchRagRequest,
+  latestRagRequest,
   fetchRagLog,
   fetchRagLogs,
   ragQuery,
@@ -23,6 +27,12 @@ import {
 } from '../../api/rag'
 
 const message = useMessage()
+const auth = useAuthStore()
+let epoch = 0
+const lastRequest = ref<string | null>(auth.profile?.id ? latestRagRequest(auth.profile.id) : null)
+const recoveryStatus = ref('')
+const recovering = ref(false)
+onBeforeUnmount(() => { epoch++ })
 
 const query = ref('')
 const scene = ref<RagScene>('chat')
@@ -76,18 +86,21 @@ function conceptName(id: string) {
 }
 
 async function run() {
+  if (running.value || recovering.value) return
   const q = query.value.trim()
   if (!q) {
     message.warning('请输入测试问题')
     return
   }
+  const turn = epoch
   running.value = true
+  recoveryStatus.value = ''
   answerResult.value = null
   retrieveResult.value = null
   try {
     const context = hintLevel.value ? { hint_level: hintLevel.value, task_type: scene.value === 'trial' ? 'trial' : undefined } : undefined
     if (mode.value === 'retrieve') {
-      retrieveResult.value = await ragRetrieve({
+      const result = await ragRetrieve({
         query: q,
         top_k: topK.value,
         knowledge_types: knowledgeTypes.value.length ? knowledgeTypes.value : undefined,
@@ -95,9 +108,11 @@ async function run() {
         as_user_id: asUserId.value ?? undefined,
         context,
       })
+      if (turn !== epoch) return
+      retrieveResult.value = result
       activeSection.value = 'rerank'
     } else {
-      answerResult.value = await ragQuery({
+      const result = await ragQuery({
         query: q,
         scene: scene.value,
         debug: true,
@@ -105,12 +120,39 @@ async function run() {
         hint_level: hintLevel.value || undefined,
         context,
       })
+      if (turn !== epoch) return
+      answerResult.value = result
       activeSection.value = 'answer'
     }
   } catch (error) {
-    message.error((error as Error).message)
+    if (turn === epoch) message.error((error as Error).message)
   } finally {
-    running.value = false
+    if (turn === epoch) {
+      running.value = false
+      lastRequest.value = auth.profile?.id ? latestRagRequest(auth.profile.id) : null
+    }
+  }
+}
+
+async function recover() {
+  if (!lastRequest.value || running.value || recovering.value) return
+  const turn = epoch
+  recovering.value = true
+  answerResult.value = null
+  retrieveResult.value = null
+  recoveryStatus.value = ''
+  try {
+    const result = await fetchRagRequest(lastRequest.value)
+    if (turn !== epoch) return
+    if (result.answer) {
+      answerResult.value = result.answer
+      activeSection.value = 'answer'
+      recoveryStatus.value = '已恢复上次回答，未再次调用模型。'
+    } else recoveryStatus.value = result.status === 'processing' ? '仍在处理，请稍后再次恢复。' : `上次请求未完成，可重新输入相同内容重试；剩余 ${result.attempts_remaining} 次尝试。`
+  } catch (error) {
+    if (turn === epoch) recoveryStatus.value = (error as Error).message
+  } finally {
+    if (turn === epoch) recovering.value = false
   }
 }
 
@@ -148,23 +190,27 @@ const logSceneFilter = ref('')
 const logStatusFilter = ref('')
 
 async function loadLogs() {
+  const turn = epoch
   logLoading.value = true
   try {
     const result = await fetchRagLogs({ page: logPage.value, per_page: 12, scene: logSceneFilter.value || undefined, status: logStatusFilter.value || undefined })
+    if (turn !== epoch) return
     logs.value = result.items
     logTotal.value = result.total
   } catch (error) {
-    message.error((error as Error).message)
+    if (turn === epoch) message.error((error as Error).message)
   } finally {
-    logLoading.value = false
+    if (turn === epoch) logLoading.value = false
   }
 }
 
 async function openLog(row: RagQueryLog) {
+  const turn = epoch
   try {
-    logDetail.value = await fetchRagLog(row.id)
+    const result = await fetchRagLog(row.id)
+    if (turn === epoch) logDetail.value = result
   } catch (error) {
-    message.error((error as Error).message)
+    if (turn === epoch) message.error((error as Error).message)
   }
 }
 
@@ -176,6 +222,15 @@ function toggleLogs() {
   if (showLogs.value && !logs.value.length) void loadLogs()
 }
 
+watch(() => [auth.profile?.id, auth.profile?.role], () => {
+  epoch++
+  answerResult.value = null; retrieveResult.value = null
+  logs.value = []; logDetail.value = null; logTotal.value = 0
+  query.value = ''; recoveryStatus.value = ''
+  running.value = false; recovering.value = false; logLoading.value = false
+  lastRequest.value = auth.profile?.id ? latestRagRequest(auth.profile.id) : null
+}, { flush: 'sync' })
+
 function fmtTime(value: string | null | undefined) {
   if (!value) return '—'
   return value.slice(0, 19).replace('T', ' ')
@@ -184,6 +239,12 @@ function fmtTime(value: string | null | undefined) {
 
 <template>
   <div class="rag-inspect">
+    <AiUsageSummary />
+    <div v-if="lastRequest" class="rag-recovery">
+      <n-button :loading="recovering" :disabled="running || recovering" @click="recover">恢复上次问答</n-button>
+      <span>请求编号：{{ lastRequest }}</span>
+      <p v-if="recoveryStatus" role="status">{{ recoveryStatus }}</p>
+    </div>
     <article class="panel">
       <header class="section-head section-head--row">
         <n-icon :component="SearchOutline" />
@@ -400,6 +461,8 @@ function fmtTime(value: string | null | undefined) {
 </template>
 
 <style scoped>
+.rag-recovery { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px; overflow-wrap: anywhere; color: var(--plex-text); }
+.rag-recovery p { width: 100%; margin: 0; }
 .rag-inspect { display: grid; gap: 1rem; min-width: 0; --ki-body: 0.82rem; --ki-meta: 0.72rem; }
 
 .panel {

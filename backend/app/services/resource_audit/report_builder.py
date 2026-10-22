@@ -9,9 +9,13 @@ from .schema import AuditReport, DimensionScores, StepResult, Verdict
 def _citations_are_valid(citations: list[dict]) -> bool:
     from app.data.course_knowledge import document_ids
 
+    # Structural review only. ResourceCourseEvidence enforces identity, version and ACL.
     valid_ids = frozenset(document_ids().values())
     return bool(citations) and all(
-        isinstance(item, dict) and item.get('document_id') in valid_ids
+        isinstance(item, dict) and (
+            (item.get('kind') == 'course_chunk' and bool(item.get('document_id'))
+             and bool(item.get('chunk_id')) and type(item.get('version')) is int and item['version'] > 0)
+            or item.get('document_id') in valid_ids)
         for item in citations
     )
 
@@ -43,7 +47,7 @@ def _ai_trustworthiness(
         elif not _citations_are_valid(citations):
             score -= 10
             notes.append('引用待核对')
-        elif any(c.get('section') != knowledge_key for c in citations):
+        elif any(c.get('kind') != 'course_chunk' and c.get('section') != knowledge_key for c in citations):
             score -= 5
             notes.append('引用章节不匹配')
     rag_checks = [c for c in step1.checks if c.id == 'rag_consistency']

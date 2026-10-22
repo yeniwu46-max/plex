@@ -1,5 +1,6 @@
 """Regression coverage for the repeatable personalization demo flow."""
 import unittest
+from unittest.mock import patch
 
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash
@@ -11,6 +12,13 @@ from app.services.mistake import MistakeService
 
 class DemoReadinessTestCase(unittest.TestCase):
     def setUp(self):
+        # This suite verifies personalization and teacher workflow, not the
+        # administrator-managed execution backend. Its safety boundary and
+        # real container grading are covered separately.
+        runner = patch('app.services.resource_audit.code_tools.CodeExecutionService.run',
+                       return_value={'status': {'id': 3}, 'stdout': '', 'stderr': ''})
+        runner.start()
+        self.addCleanup(runner.stop)
         self.app = create_app('testing')
         self.client = self.app.test_client()
         with self.app.app_context():

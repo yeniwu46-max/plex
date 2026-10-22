@@ -163,7 +163,7 @@ onBeforeUnmount(() => {
           <button type="button" role="tab" :aria-selected="mapMode === 'starfield'" :class="{ 'is-active': mapMode === 'starfield' }" @click="mapMode = 'starfield'">
             星域探索
           </button>
-          <button type="button" role="tab" :aria-selected="mapMode === 'trial'" :class="{ 'is-active': mapMode === 'trial' }" @click="mapMode = 'trial'">
+          <button type="button" role="tab" :aria-selected="mapMode === 'trial'" :class="{ 'is-active': mapMode === 'trial' }" data-tour="discovery-trial-tab" @click="mapMode = 'trial'">
             试炼场
           </button>
         </div>

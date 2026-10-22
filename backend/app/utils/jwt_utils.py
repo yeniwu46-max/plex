@@ -16,6 +16,9 @@ def create_tokens(identity, additional_claims=None):
     """
     if additional_claims is None:
         additional_claims = {}
+    from app.services.auth_security import session_version
+    import secrets
+    additional_claims = {**additional_claims, 'auth_version': session_version(identity), 'sid': secrets.token_urlsafe(24)}
 
     access_token = create_access_token(
         identity=str(identity),

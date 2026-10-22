@@ -6,13 +6,14 @@ import DashboardShell from '../components/layout/DashboardShell.vue'
 
 defineOptions({ name: 'StudentTrialPracticeView' })
 import PythonTrialWorkspace from '../components/trial/PythonTrialWorkspace.vue'
+import PracticeChoiceQuestion from '../components/trial/PracticeChoiceQuestion.vue'
 import { getPythonTrialQuestion, type PythonTrialQuestion } from '../data/pythonTrialQuestions'
 import { getStarPathNodeByQuestionId } from '../data/starPathTrail'
 import { getStarPathKnowledgePoint } from '../data/starPathDomains'
 import { generatedQuestionId, resolveQuestionById } from '../utils/starPathQuestionGenerator'
 import { MIN_QUESTIONS_PER_KP } from '../data/starPathKnowledgeTracks'
 import { ensurePracticeQuestionsLoaded, getCachedPracticeQuestion } from '../utils/practiceQuestionCache'
-import { fetchPracticeQuestionByRef } from '../api/practiceQuestions'
+import { fetchPracticeQuestionByRef, type PracticeQuestionPayload } from '../api/practiceQuestions'
 import { completeStudentChallengeQuestion } from '../api/studentStore'
 import { formatQuestionLabel, normalizeQuestion } from '../utils/questionNaming'
 import { wrapEpisodeNarrative } from '../utils/explorationNarrative'
@@ -24,6 +25,7 @@ const router = useRouter()
 const message = useMessage()
 const practiceReady = ref(false)
 const remoteQuestion = ref<PythonTrialQuestion | null>(null)
+const rawQuestion = ref<PracticeQuestionPayload | null>(null)
 const questionTransitionKey = ref(0)
 
 onMounted(() => {
@@ -97,6 +99,9 @@ function resolveLocalQuestion(qid: string): PythonTrialQuestion | null {
 }
 
 const question = computed(() => {
+  // The in-memory question cache is not reactive. Invalidate after its async
+  // load, otherwise the header's early lookup permanently caches a null task.
+  if (!practiceReady.value) return null
   const isPackRoute = typeof route.query.pack_code === 'string' && Boolean(route.query.pack_code)
   const resolved = isPackRoute ? remoteQuestion.value : remoteQuestion.value ?? resolveLocalQuestion(questionId.value)
   return resolved ? sanitizeQuestionContent(resolved) : null
@@ -111,15 +116,21 @@ const pageSubtitle = computed(() => {
   return formatQuestionLabel(question.value)
 })
 
+let questionLoadId = 0
 async function loadQuestion(qid: string, packCode?: string) {
+  const loadId = ++questionLoadId
   practiceReady.value = false
   remoteQuestion.value = null
+  rawQuestion.value = null
   await ensurePracticeQuestionsLoaded()
+  if (loadId !== questionLoadId) return
   // Challenge pack links must always round-trip through the server entitlement check,
   // even when a matching question is already cached locally.
-  if (packCode || !resolveLocalQuestion(qid)) {
+  if (packCode || qid.startsWith('bank-') || !resolveLocalQuestion(qid)) {
     try {
       const item = await fetchPracticeQuestionByRef(qid, packCode)
+      if (loadId !== questionLoadId) return
+      rawQuestion.value = item
       const base = normalizeQuestion({
         id: item.id,
         code: item.code,
@@ -143,6 +154,7 @@ async function loadQuestion(qid: string, packCode?: string) {
       /* 保留下方缺失提示 */
     }
   }
+  if (loadId !== questionLoadId) return
   practiceReady.value = true
   questionTransitionKey.value += 1
 }
@@ -185,8 +197,9 @@ watch(
     :page-subtitle="pageSubtitle"
     search-placeholder="搜索题号或关键词…"
   >
+    <PracticeChoiceQuestion v-if="practiceReady && rawQuestion?.question_type==='mcq'" :key="rawQuestion.id" :question="rawQuestion" />
     <PythonTrialWorkspace
-      v-if="practiceReady && question"
+      v-else-if="practiceReady && question"
       :key="`${question.id}-${questionTransitionKey}`"
       class="practice-workspace"
       :question="question"

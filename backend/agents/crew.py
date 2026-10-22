@@ -130,6 +130,11 @@ def _crewai_available() -> bool:
 
 
 def backend_name() -> str:
+    # Honor the same test opt-in as the shared LLM client before importing
+    # CrewAI or starting its subprocess (which cannot inherit Flask context).
+    from agents.llm_client import _blocked_in_tests
+    if _blocked_in_tests():
+        return 'mock'
     backend = os.getenv('AGENT_BACKEND', 'auto').lower()
     if backend in ('crewai', 'auto'):
         if _crewai_available():

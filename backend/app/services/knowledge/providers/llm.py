@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterator
 
 from agents.http_client import direct_post
+from app.services.model_observation import report_model
 from agents.llm_client import _extract_json, llm_provider, messenger_provider, strip_asterisks
 
 
@@ -108,6 +109,7 @@ class OpenAICompatibleLLMProvider(LLMProvider):
         max_tokens: int = 900,
         timeout: float = 18.0,
         temperature: float = 0.45,
+        preserve_text: bool = False,
     ) -> LLMResult | None:
         provider = self._resolve()
         if not provider:
@@ -129,11 +131,17 @@ class OpenAICompatibleLLMProvider(LLMProvider):
             data = resp.json()
             content = data['choices'][0]['message']['content']
             usage = data.get('usage') or {}
-        except Exception:  # noqa: BLE001 - 上层决定回退策略
+        except Exception as exc:  # Transport metadata only; no URL, header or body logging.
+            status = getattr(getattr(exc, 'response', None), 'status_code', None)
+            error = f'http_{status}' if type(status) is int else 'transport_or_response_error'
+            report_model(status='failed', provider=_provider_label(endpoint), model=model, error_code=error, token_usage={})
             return None
-        text = strip_asterisks(str(content or ''))
+        # Structured code must retain multiplication operators and exact source.
+        text = str(content or '').strip() if preserve_text or self._purpose == 'structured_code' else strip_asterisks(str(content or ''))
         if not text:
+            report_model(status='failed', provider=_provider_label(endpoint), model=model, error_code='empty_response', token_usage=usage)
             return None
+        report_model(status='succeeded', provider=_provider_label(endpoint), model=model, error_code=None, token_usage=usage)
         return LLMResult(
             text=text,
             model=model,
@@ -144,6 +152,13 @@ class OpenAICompatibleLLMProvider(LLMProvider):
                 'total_tokens': usage.get('total_tokens'),
             },
         )
+
+    def generate_json(self, *, system: str, user: str, max_tokens: int = 400, timeout: float = 8.0) -> dict | None:
+        # JSON values may contain multiplication and Markdown punctuation as data.
+        # Formatting cleanup belongs to the renderer, never the model contract.
+        result = self.generate(system=system, user=user, max_tokens=max_tokens,
+                               timeout=timeout, temperature=0.1, preserve_text=True)
+        return _extract_json(result.text) if result else None
 
     def stream(
         self,

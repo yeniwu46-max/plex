@@ -63,7 +63,7 @@ class StrategyService:
         focus_mastery: float | None = None
         if learner and learner.available and graph.focus_ids:
             known = [learner.mastery[c] for c in graph.focus_ids if c in learner.mastery]
-            focus_mastery = min(known) if known else 0.0
+            focus_mastery = min(known) if known else None
         ts.focus_mastery = focus_mastery
         ts.mastery_band = LearnerContextService.mastery_band(focus_mastery, thresholds)
 
@@ -80,17 +80,21 @@ class StrategyService:
             add(['PREREQUISITE_REMEDIATION'], f'存在未掌握的前置知识 {len(graph.unmet_prerequisites)} 个')
 
         # 3) 错误 / 迷思
-        if understanding.intent == 'debug_error' or understanding.error_type or (
+        if learner and any(m['status'] == 'confirmed' and m['concept_id'] in graph.focus_ids
+                           for m in learner.misconceptions):
+            add(cfg.get('misconception_boost', ['MISCONCEPTION_CORRECTION']), '教师已核对并确认相关误概念')
+        elif understanding.intent == 'debug_error' or understanding.error_type or (
             learner and any(e.get('concept_id') in graph.focus_ids for e in learner.recent_errors)
         ):
-            add(cfg.get('misconception_boost', ['MISCONCEPTION_CORRECTION']), '问题涉及报错或近期错题相关知识点')
+            add(['SCAFFOLDING'], '观察到报错或未通过的练习，先核对原因，尚不能认定误概念')
 
         # 4) 意图映射
         add(cfg.get('strategy_by_intent', {}).get(understanding.intent, []), f'问题意图为 {understanding.intent}')
 
         # 5) 掌握度映射
         band_key = ts.mastery_band if ts.mastery_band in {'low', 'medium', 'high'} else 'medium'
-        add(cfg.get('strategy_by_mastery', {}).get(band_key, []), f'知识点掌握度处于 {band_key} 区间')
+        if ts.mastery_band != 'unknown':
+            add(cfg.get('strategy_by_mastery', {}).get(band_key, []), f'知识点掌握度处于 {band_key} 区间')
 
         if not picked:
             add(['DIRECT_EXPLANATION'], '默认策略')

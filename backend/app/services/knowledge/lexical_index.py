@@ -13,6 +13,7 @@ from typing import Any
 from app.models import KnowledgeChunk, db
 
 from .text_utils import tokenize
+from .settings import retrieval_config
 
 _K1 = 1.5
 _B = 0.75
@@ -39,7 +40,7 @@ class _Bm25Index:
             for term in counts:
                 self.postings[term].append(index)
 
-    def search(self, query: str, top_k: int, where: dict[str, Any] | None = None) -> list[tuple[str, float, dict]]:
+    def search(self, query: str, top_k: int, where: dict[str, Any] | None = None, *, idf_offset: float = 1.) -> list[tuple[str, float, dict]]:
         if not self.n:
             return []
         terms = tokenize(query)
@@ -60,8 +61,8 @@ class _Bm25Index:
                 tf = self.tf[index][term]
                 denom = tf + _K1 * (1 - _B + _B * self.doc_len[index] / (self.avgdl or 1))
                 scores[index] += idf * tf * (_K1 + 1) / denom
-                covered[index] += idf
-        total_idf = sum(idf_of.values()) or 1.0
+                covered[index] += idf + idf_offset
+        total_idf = sum(v + idf_offset for v in idf_of.values()) or 1.0
         ranked = sorted(scores.items(), key=lambda kv: -kv[1])
         out: list[tuple[str, float, dict]] = []
         max_score = ranked[0][1] if ranked else 1.0
@@ -79,12 +80,17 @@ class _Bm25Index:
         return out
 
 
-    def coverage(self, query: str, chunk_ids: list[str]) -> dict[str, float]:
+    def coverage(self, query: str, chunk_ids: list[str], *, idf_offset: float = 1.) -> dict[str, float]:
         """给定 chunk 的查询覆盖率（idf 加权），用于为非词法通道召回的候选补充绝对证据。"""
         terms = set(tokenize(query))
         if not terms or not self.n:
             return {cid: 0.0 for cid in chunk_ids}
-        idf_of = {t: math.log(1 + (self.n - self.df.get(t, 0) + 0.5) / (self.df.get(t, 0) + 0.5)) for t in terms}
+        # BM25's ranking IDF approaches zero for a term present in every chunk.
+        # Such a term can still be essential evidence in a small course corpus
+        # (e.g. every page concerns range). Coverage uses a positive base weight;
+        # unseen terms remain in the denominator with higher weight. No query
+        # term is discarded merely because this corpus cannot match it.
+        idf_of = {t: idf_offset + math.log(1 + (self.n - self.df.get(t, 0) + 0.5) / (self.df.get(t, 0) + 0.5)) for t in terms}
         total = sum(idf_of.values()) or 1.0
         index_of = {cid: i for i, cid in enumerate(self.ids)}
         out: dict[str, float] = {}
@@ -158,8 +164,12 @@ class LexicalIndex:
 
     @classmethod
     def search(cls, query: str, top_k: int, where: dict[str, Any] | None = None) -> list[tuple[str, float, dict]]:
-        return cls.get().search(query, top_k, where)
+        return cls.get().search(query, top_k, where, idf_offset=cls._coverage_offset())
 
     @classmethod
     def coverage(cls, query: str, chunk_ids: list[str]) -> dict[str, float]:
-        return cls.get().coverage(query, chunk_ids)
+        return cls.get().coverage(query, chunk_ids, idf_offset=cls._coverage_offset())
+
+    @staticmethod
+    def _coverage_offset():
+        return max(0., float(retrieval_config().get('confidence', {}).get('lexical_idf_offset', 1.)))

@@ -18,6 +18,7 @@
     }
   },
   "query_understanding": {
+    "cleanup_enabled": true,
     "max_concepts": 4,
     "min_lexical_score": 0.18,
     "use_llm": false,
@@ -45,9 +46,14 @@
     },
     "final_top_k": 6,
     "max_context_chars": 3200,
-    "diversity_per_document": 3
+    "diversity_per_document": 3,
+    "deduplicate_exact": true,
+    "mmr_enabled": false,
+    "mmr_relevance_weight": 0.75
   },
   "confidence": {
+    "deduplicate_support": true,
+    "lexical_idf_offset": 1.0,
     "grounded_threshold": 0.42,
     "high_threshold": 0.68,
     "min_supporting_chunks": 1,

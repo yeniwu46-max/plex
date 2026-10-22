@@ -21,7 +21,7 @@ from .text_utils import estimate_tokens, normalize_text, tokenize
 
 _HEADING = re.compile(r'^(#{1,4})\s+(.+?)\s*$')
 _PAGE_MARK = re.compile(r'^<!--\s*page:(\d+)\s*-->$')
-_FENCE = re.compile(r'^```')
+_FENCE = re.compile(r'^(`{3,})(.*)$')
 _DOC_ID = re.compile(r'`document_id:\s*([^`\s]+)\s*`')
 _BACKTICK_ID = re.compile(r'`([a-z][a-z0-9]+(?:-[a-z0-9]+)+)`')
 _NUMBERED_HEADING = re.compile(r'^\d+[\.、]\s*')
@@ -52,6 +52,18 @@ _FIELD_TO_TYPE = {
 }
 
 _DOC_ID_TO_KG = {e.document_id: e.kg_id for e in KNOWLEDGE_NODE_REGISTRY if e.document_id}
+
+
+def _fence_transition(line: str, active: int) -> tuple[bool, int]:
+    match = _FENCE.match(line.strip())
+    if not match:
+        return False, active
+    width, suffix = len(match.group(1)), match.group(2)
+    if not active and '`' not in suffix:
+        return True, width
+    if active and width >= active and not suffix.strip():
+        return True, 0
+    return False, active
 
 
 @dataclass
@@ -116,7 +128,7 @@ class ChunkService:
             pieces = self._split_by_type(body, base_type)
             for knowledge_type, text in pieces:
                 for part in self._pack(text):
-                    if len(part.strip()) < 20:
+                    if len(part.strip()) < 20 and section.page is None:
                         continue
                     draft = ChunkDraft(
                         content=part.strip(),
@@ -138,12 +150,12 @@ class ChunkService:
         sections: list[_Section] = []
         path: list[str] = []
         current = _Section(level=0, heading=title, path=[])
-        in_fence = False
+        in_fence = 0
         page: int | None = None
         for raw in (markdown or '').split('\n'):
             line = raw.rstrip()
-            if _FENCE.match(line.strip()):
-                in_fence = not in_fence
+            boundary, in_fence = _fence_transition(line, in_fence)
+            if boundary:
                 current.lines.append(line)
                 continue
             if in_fence:
@@ -152,7 +164,13 @@ class ChunkService:
             page_match = _PAGE_MARK.match(line.strip())
             if page_match:
                 page = int(page_match.group(1))
-                if not ''.join(current.lines).strip():
+                if current.page != page and ''.join(current.lines).strip():
+                    sections.append(current)
+                    current = _Section(
+                        level=current.level, heading=current.heading, path=list(current.path),
+                        page=page, document_id=current.document_id,
+                    )
+                else:
                     current.page = page
                 continue
             heading = _HEADING.match(line)
@@ -198,11 +216,11 @@ class ChunkService:
         exercise_lines: list[str] = []
         solution_lines: list[str] = []
         code_buffer: list[str] = []
-        in_fence = False
+        in_fence = 0
         target = exercise_lines
         for line in body.splitlines():
-            if _FENCE.match(line.strip()):
-                in_fence = not in_fence
+            boundary, in_fence = _fence_transition(line, in_fence)
+            if boundary:
                 target.append(line)
                 continue
             if in_fence:
@@ -230,11 +248,10 @@ class ChunkService:
         lines = body.splitlines()
         fields: dict[str, list[str]] = {}
         intro: list[str] = []
-        in_fence = False
+        in_fence = 0
         for line in lines:
-            if _FENCE.match(line.strip()):
-                in_fence = not in_fence
-            if in_fence or not _FIELD_LINE.match(line.strip()):
+            boundary, in_fence = _fence_transition(line, in_fence)
+            if boundary or in_fence or not _FIELD_LINE.match(line.strip()):
                 intro.append(line)
                 continue
             key = _FIELD_LINE.match(line.strip()).group(1)
@@ -284,14 +301,14 @@ class ChunkService:
     def _paragraph_units(text: str) -> list[str]:
         units: list[str] = []
         buffer: list[str] = []
-        in_fence = False
+        in_fence = 0
         for line in text.splitlines():
-            if _FENCE.match(line.strip()):
-                if not in_fence:
+            boundary, in_fence = _fence_transition(line, in_fence)
+            if boundary:
+                if in_fence:
                     if buffer and ''.join(buffer).strip():
                         units.append('\n'.join(buffer).strip())
                     buffer = [line]
-                    in_fence = True
                 else:
                     buffer.append(line)
                     code = '\n'.join(buffer)
@@ -301,7 +318,6 @@ class ChunkService:
                     else:
                         units.append(code)
                     buffer = []
-                    in_fence = False
                 continue
             if in_fence:
                 buffer.append(line)
@@ -341,6 +357,7 @@ class ChunkService:
                 and len(draft.content) < self.merge_short
                 and merged[-1].knowledge_type == draft.knowledge_type
                 and merged[-1].title == draft.title
+                and merged[-1].source_page == draft.source_page
                 and len(merged[-1].content) + len(draft.content) < self.max_chars
             ):
                 merged[-1].content += '\n\n' + draft.content

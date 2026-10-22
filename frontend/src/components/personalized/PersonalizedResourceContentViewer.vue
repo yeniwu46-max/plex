@@ -406,4 +406,32 @@ function fencedCode(code?: string, lang = 'python') {
 .exercise-row ul {
   padding-left: 1.2rem;
 }
+
+.content-viewer--student {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.content-viewer--student .toggle-btn {
+  color: var(--plex-text-muted);
+  border-color: var(--plex-border);
+  background: var(--plex-bg-input);
+}
+.content-viewer--student .toggle-btn--active {
+  color: var(--plex-text);
+  border-color: var(--plex-accent);
+}
+.content-viewer--student .toggle-btn:focus-visible {
+  outline: 2px solid var(--plex-accent);
+  outline-offset: 3px;
+}
+.content-viewer--student :is(.content-markdown, .content-code, .content-raw) {
+  color: var(--plex-text);
+  background: var(--plex-bg-code);
+}
+.content-viewer--student :is(.content-hint, .audio-player small, .video-player small, .content-outline summary) {
+  color: var(--plex-text-muted);
+}
+.content-viewer--student :is(.exercise-row p, .exercise-row li) {
+  color: var(--plex-text);
+}
 </style>

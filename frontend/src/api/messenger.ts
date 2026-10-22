@@ -1,16 +1,26 @@
+import { createRequestId } from '../utils/browserCrypto'
 import { http, type ApiEnvelope } from './http'
 import { postSseStream } from './sse'
 import type { LearningRecommendation } from './learningReport'
 import type { AgentTraceStep } from './agentService'
 import type { MessengerKnowledge } from './rag'
+import type { TutorResponse } from './tutoring'
+import type { TutorContextRequest } from './tutorContext'
 
 /** 驿站对话超时（LLM 生成通常 2–8 秒） */
-const MESSENGER_CHAT_TIMEOUT_MS = 25_000
-const MESSENGER_STREAM_TIMEOUT_MS = 35_000
+const MESSENGER_CHAT_TIMEOUT_MS = 90_000
+const MESSENGER_STREAM_TIMEOUT_MS = 90_000
 
+export interface MessengerChatRequest extends TutorContextRequest {
+  message: string
+  request_id?: string
+  session_id?: string
+}
 export interface MessengerChatResult {
+  tutor?: TutorResponse
+  question_pick?: TutorResponse['question_pick']
   reply: string
-  source: 'xfyun_agent' | 'spark' | 'llm' | 'rules' | 'rag'
+  source: string
   recommendations?: LearningRecommendation[]
   rag_used?: boolean
   rag_sources?: Array<{ doc_id: string; score: number; snippet?: string }>
@@ -23,10 +33,10 @@ export interface MessengerChatHistoryItem {
   content: string
 }
 
-export async function postMessengerChat(message: string, history: MessengerChatHistoryItem[] = []) {
+export async function postMessengerChat(input: string | MessengerChatRequest, _history: MessengerChatHistoryItem[] = []) {
   const { data } = await http.post<ApiEnvelope<MessengerChatResult>>(
     '/v1/student/messenger/chat',
-    { message, history: history.slice(-18) },
+    typeof input === 'string' ? { message: input, request_id: createRequestId() } : { ...input },
     { timeout: MESSENGER_CHAT_TIMEOUT_MS },
   )
   if (data.code !== 0) throw new Error(data.message || '对话失败')
@@ -34,6 +44,8 @@ export async function postMessengerChat(message: string, history: MessengerChatH
 }
 
 export interface MessengerStreamResult {
+  tutor?: TutorResponse
+  question_pick?: TutorResponse['question_pick']
   reply: string
   source: string
   recommendations?: LearningRecommendation[]
@@ -45,7 +57,7 @@ export interface MessengerStreamResult {
     context_ms: number | null
     first_token_ms: number | null
     generation_ms: number | null
-    target_first_token_ms: number
+    target_first_token_ms?: number
     degraded?: boolean
   }
 }
@@ -85,8 +97,8 @@ function mapKnowledge(raw: unknown): MessengerKnowledge | null {
 
 /** SSE 流式驿站对话：收到 done 立即返回，图解可稍后到达。 */
 export async function streamMessengerChat(
-  message: string,
-  history: MessengerChatHistoryItem[] = [],
+  input: string | MessengerChatRequest,
+  _history: MessengerChatHistoryItem[] = [],
   onDeltaOrHandlers: ((text: string) => void) | MessengerStreamHandlers = {},
   signal?: AbortSignal,
 ): Promise<MessengerStreamResult> {
@@ -98,6 +110,7 @@ export async function streamMessengerChat(
   const controller = new AbortController()
   const external = handlers.signal
   const onExternalAbort = () => controller.abort()
+  if (external?.aborted) controller.abort()
   external?.addEventListener('abort', onExternalAbort)
   const timer = window.setTimeout(() => controller.abort(), MESSENGER_STREAM_TIMEOUT_MS)
 
@@ -108,7 +121,7 @@ export async function streamMessengerChat(
   try {
     const doneEvent = await postSseStream(
       '/v1/student/messenger/chat/stream',
-      { message, history: history.slice(-18) },
+      typeof input === 'string' ? { message: input, request_id: createRequestId() } : { ...input },
       {
         settleOnDone: true,
         onDelta: handlers.onDelta,
@@ -123,6 +136,8 @@ export async function streamMessengerChat(
             illustration = event.illustration as { url: string; caption?: string }
           }
           earlyHolder.value = {
+            tutor: event.tutor as TutorResponse | undefined,
+            question_pick: event.question_pick as TutorResponse['question_pick'],
             reply: String(event.reply ?? ''),
             source: String(event.source ?? 'llm_stream'),
             recommendations: (event.recommendations as LearningRecommendation[] | undefined) ?? [],
@@ -140,6 +155,8 @@ export async function streamMessengerChat(
     )
     const result = earlyHolder.value ?? (doneEvent
       ? {
+          tutor: doneEvent.tutor as TutorResponse | undefined,
+          question_pick: doneEvent.question_pick as TutorResponse['question_pick'],
           reply: String(doneEvent.reply ?? ''),
           source: String(doneEvent.source ?? 'llm_stream'),
           recommendations: (doneEvent.recommendations as LearningRecommendation[] | undefined) ?? [],
@@ -167,35 +184,41 @@ export async function streamMessengerChat(
   }
 }
 
-export interface MessengerKnowledgeGraphResult {
-  topic: string
-  mermaid: string
-  illustration?: { url: string; caption?: string } | null
-  backend: string
-}
-
-export interface MessengerLearningDocumentResult {
+export interface MessengerArtifactResult {
+  artifact_id: string
+  request_id: string
+  session_id: string
+  kind: 'document' | 'graph'
+  status: 'ok' | 'safe_fallback' | 'needs_context'
   title: string
+  topic: string
   markdown: string
+  mermaid: string
   backend: string
+  evidence_status: string
+  evidence_notice: string
+  knowledge: MessengerKnowledge
 }
+export type MessengerKnowledgeGraphResult = MessengerArtifactResult
+export type MessengerLearningDocumentResult = MessengerArtifactResult
 
-export async function postMessengerKnowledgeGraph(topic: string) {
-  const { data } = await http.post<ApiEnvelope<MessengerKnowledgeGraphResult>>(
-    '/v1/student/messenger/tools/knowledge-graph',
-    { topic },
-    { timeout: 35_000 },
+async function postArtifact(kind: string, topic: string, requestId: string, signal?: AbortSignal) {
+  const { data } = await http.post<ApiEnvelope<MessengerArtifactResult>>(
+    `/v1/student/messenger/tools/${kind}`, { topic, request_id: requestId }, { timeout: 90_000, signal },
   )
-  if (data.code !== 0) throw new Error(data.message || '知识图生成失败')
+  if (data.code !== 0) throw new Error(data.message || '学习材料暂未生成')
   return data.data
 }
-
-export async function postMessengerLearningDocument(topic: string) {
-  const { data } = await http.post<ApiEnvelope<MessengerLearningDocumentResult>>(
-    '/v1/student/messenger/tools/learning-document',
-    { topic },
-    { timeout: 35_000 },
+export function postMessengerKnowledgeGraph(topic: string, requestId = createRequestId(), signal?: AbortSignal) {
+  return postArtifact('knowledge-graph', topic, requestId, signal)
+}
+export function postMessengerLearningDocument(topic: string, requestId = createRequestId(), signal?: AbortSignal) {
+  return postArtifact('learning-document', topic, requestId, signal)
+}
+export async function fetchMessengerArtifact(id: string, signal?: AbortSignal): Promise<MessengerArtifactResult> {
+  const { data } = await http.get<ApiEnvelope<MessengerArtifactResult>>(
+    `/v1/student/messenger/tools/artifacts/${encodeURIComponent(id)}`, { signal },
   )
-  if (data.code !== 0) throw new Error(data.message || '文档生成失败')
+  if (data.code !== 0) throw new Error(data.message || '学习材料暂不可用')
   return data.data
 }

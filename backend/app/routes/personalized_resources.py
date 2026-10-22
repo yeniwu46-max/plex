@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.services.course_safety import SafetyViolation
+from app.services.tutor_context import TutorContextError
 from app.services.personalized_resource import PersonalizedResourceService
 from app.utils.decorators import role_required
 from app.utils.response import error_response, success_response
@@ -18,10 +19,12 @@ personalized_resources_bp = Blueprint(
 def create_resource_task():
     try:
         return success_response(PersonalizedResourceService.create_task(
-            int(get_jwt_identity()), request.get_json() or {}
+            int(get_jwt_identity()), request.get_json(silent=True)
         ), '生成任务已创建', status_code=201)
     except SafetyViolation as exc:
         return error_response(str(exc), 40012, {'reason_code': exc.reason_code}, 400)
+    except TutorContextError:
+        raise
     except ValueError as exc:
         code = 40011 if '课程范围' in str(exc) else 40010 if '不允许' in str(exc) else 40001
         payload = request.get_json(silent=True) or {}
@@ -34,7 +37,23 @@ def create_resource_task():
         )
         return error_response(str(exc), code, {'reason_code': reason_code}, 400)
     except Exception as exc:
-        return error_response(f'生成任务创建失败：{exc}', 50001, None, 500)
+        return error_response('生成任务暂时无法提交，请保留请求编号后重试', 50001, None, 500)
+
+
+@personalized_resources_bp.get('/student/resource-generation/usage')
+@jwt_required()
+@role_required('student')
+def resource_usage():
+    from app.services.resource_runtime import usage
+    return success_response(usage(int(get_jwt_identity())))
+
+
+@personalized_resources_bp.get('/teacher/classes/<int:class_id>/resource-generation/usage')
+@jwt_required()
+@role_required('teacher','admin')
+def class_resource_usage(class_id):
+    from app.services.resource_runtime import usage
+    return success_response(usage(int(get_jwt_identity()),class_id=class_id))
 
 
 @personalized_resources_bp.route('/student/resource-generation/tasks', methods=['GET'])
@@ -66,6 +85,8 @@ def retry_resource_task(task_id):
         return success_response(PersonalizedResourceService.retry(int(get_jwt_identity()), task_id), status_code=201)
     except LookupError as exc:
         return error_response(str(exc), 40401, None, 404)
+    except TutorContextError:
+        raise
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
 
@@ -151,6 +172,8 @@ def rerun_resource_audit(resource_id):
         return success_response(PersonalizedResourceService.rerun_audit(resource_id), '审核已重新执行')
     except LookupError as exc:
         return error_response(str(exc), 40401, None, 404)
+    except TutorContextError:
+        raise
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)
 
@@ -169,5 +192,7 @@ def review_resource(resource_id):
         ))
     except LookupError as exc:
         return error_response(str(exc), 40401, None, 404)
+    except TutorContextError:
+        raise
     except ValueError as exc:
         return error_response(str(exc), 40001, None, 400)

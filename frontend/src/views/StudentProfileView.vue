@@ -52,6 +52,8 @@ const calibrationDraft = ref<Partial<Record<ProfileDimensionKey, string>>>({})
 const calibrationTouched = ref(false)
 const saving = ref(false)
 const loading = ref(true)
+type ProfileSection = 'overview' | 'traits' | 'chat' | 'phase'
+const activeSection = ref<ProfileSection>('overview')
 
 const coreIdentity = computed(() => ({
   stage: report.value?.summary.level_label || 'Python 起航者',
@@ -314,19 +316,32 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
         hint="小E 正在汇总诊断、对话与练习证据"
       />
       <section class="profile-header">
-        <div><p class="eyebrow">学习画像 · 第 {{ profile?.version ?? 1 }} 版</p><h2>今天，先让学习路径更懂你</h2><p>基于诊断、对话和练习行为生成。每一条结论都可以通过“校准画像”调整。</p></div>
-        <div class="header-actions"><n-progress type="circle" :percentage="profile?.completion_rate ?? 0" color="#34e6c5" /><n-button type="primary" @click="diagnosticVisible = true">{{ diagnosticStatus === 'pending' ? '开始入门诊断' : '重新进行诊断' }}</n-button></div>
+        <div><p class="eyebrow">学习画像 · 第 {{ profile?.version ?? 1 }} 版</p><h2>今天，先让学习路径更懂你</h2><p>基于诊断、对话和练习行为生成。你可以查看依据，也可以随时校准。</p></div>
+        <div class="header-actions"><div class="completion"><span>画像完整度</span><n-progress type="line" :percentage="profile?.completion_rate ?? 0" color="#34e6c5" :height="7" /></div><n-button secondary type="primary" @click="calibrationVisible = true">校准画像</n-button><n-button type="primary" @click="diagnosticVisible = true">{{ diagnosticStatus === 'pending' ? '开始入门诊断' : '重新进行诊断' }}</n-button></div>
       </section>
 
-      <section class="chat-workbench" data-tour="profile-chat">
+      <nav class="profile-tabs" aria-label="学习画像分区">
+        <button v-for="tab in [
+          { key: 'overview', label: '学习总览' },
+          { key: 'traits', label: '画像特征' },
+          { key: 'chat', label: '和小E对话' },
+          { key: 'phase', label: '阶段报告' },
+        ]" :key="tab.key" type="button" :class="{ active: activeSection === tab.key }" :aria-current="activeSection === tab.key ? 'page' : undefined" @click="activeSection = tab.key as ProfileSection">
+          {{ tab.label }}
+          <span v-if="tab.key === 'phase' && !canViewPhaseReport" class="tab-note">会员</span>
+        </button>
+      </nav>
+
+      <template v-if="activeSection === 'chat'">
+      <section class="chat-workbench chat-workbench--single" data-tour="profile-chat">
         <article class="chat-panel">
           <header class="chat-panel__head">
             <div><span class="eyebrow">对话式画像构建</span><h3>和小E聊聊，画像实时刷新</h3></div>
-            <n-tag size="small" round type="success" :bordered="false">流式对话</n-tag>
+            <div class="chat-panel__head-actions"><n-tag size="small" round type="success" :bordered="false">流式对话</n-tag><n-button size="small" secondary type="primary" @click="activeSection = 'traits'">查看画像特征</n-button></div>
           </header>
           <div ref="chatThreadEl" class="chat-panel__thread">
             <div v-if="!profileChatMessages.length" class="chat-panel__empty">
-              <p>先随便介绍一句你的专业、目标或学习困惑，小E 会主动追问并实时刷新右侧画像。</p>
+              <p>先介绍一下你的专业、目标或学习困惑，小E 会主动追问并实时更新画像特征。</p>
               <button
                 v-for="starter in chatStarters"
                 :key="starter"
@@ -368,7 +383,10 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
             <n-button type="primary" :loading="chatBusy" @click="submitProfileChat">发送</n-button>
           </div>
         </article>
-        <article class="dimension-panel">
+      </section>
+      </template>
+
+      <section v-if="activeSection === 'traits'" class="dimension-panel dimension-panel--standalone">
           <header class="chat-panel__head">
             <div><span class="eyebrow">动态学生画像</span><h3>8 维画像 · 第 {{ profile?.version ?? 1 }} 版</h3></div>
           </header>
@@ -392,9 +410,9 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
               <small class="dimension-card__confidence">置信度 {{ card.confidence }}%</small>
             </div>
           </div>
-        </article>
       </section>
 
+      <template v-if="activeSection === 'overview'">
       <section class="identity-card"><div class="identity-title"><h3>当前学习身份</h3></div><div class="identity-grid"><div><small>当前阶段</small><strong>{{ coreIdentity.stage }}</strong></div><div><small>当前任务</small><strong>{{ coreIdentity.mission }}</strong></div><div><small>当前学习模式</small><strong>{{ coreIdentity.mode }}</strong></div><div><small>今日推荐时长</small><strong>{{ coreIdentity.minutes }} 分钟</strong></div></div></section>
 
       <section class="report-grid" data-tour="student-learning-report">
@@ -402,7 +420,9 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
         <article class="report-card"><header><h3>易错模式</h3><p>小E 从近期作答中提取，优先安排针对性练习。</p></header><ul class="mistake-list"><li v-for="item in mistakes" :key="item.id"><i>!</i><div><strong>{{ item.knowledge_label }}</strong><span>{{ item.question_title || '高频错误，建议用微练习巩固' }}</span></div></li><li v-if="!mistakes.length" class="empty">完成几道练习后，小E 会帮你找出高频错误。</li></ul></article>
         <article class="report-card state-card"><header><h3>学习状态提醒</h3></header><p>{{ stateText }}</p><div v-if="adaptations.length" class="adaptation"><n-tag type="warning">小E 已介入</n-tag><strong>{{ adaptations[0].action_plan.resources.join(' + ') }}</strong><small>{{ adaptations[0].action_plan.recovery_rule }}</small></div><div v-else class="adaptation stable"><n-tag type="success">节奏稳定</n-tag><strong>继续保持 25 分钟短时专注</strong><small>下一次练习会根据正确率自动调整。</small></div></article>
       </section>
+      </template>
 
+      <template v-if="activeSection === 'phase'">
       <section v-if="canViewPhaseReport" class="ai-summary">
         <header>
           <div>
@@ -441,8 +461,7 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
         <p>基础学习报告、知识雷达和易错模式仍可免费查看。会员阶段报告会结合近期学习证据，整理阶段总结和下一步行动建议。</p>
         <RouterLink to="/student/store" class="store-link">前往星港补给站</RouterLink>
       </section>
-
-      <section class="calibration"><div><span>不是填表，而是让小E 更懂你</span><h3>校准我的学习画像</h3><p>选择更接近你的真实偏好，小E 会立刻重排资源和学习节奏。</p></div><n-button secondary type="primary" @click="calibrationVisible = true">优化画像</n-button></section>
+      </template>
     </main>
 
     <n-modal
@@ -520,8 +539,17 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 
 <style scoped>
 .chat-workbench{display:grid;grid-template-columns:1.2fr 1fr;gap:1rem;margin-bottom:1rem}
+.chat-workbench--single{grid-template-columns:minmax(0,1fr)}
 .chat-panel,.dimension-panel{border:1px solid rgba(52,230,197,.16);background:rgba(3,16,28,.86);border-radius:16px;padding:1.1rem;display:flex;flex-direction:column;min-height:430px}
+.dimension-panel--standalone{min-height:0}
+.profile-tabs{display:flex;gap:.45rem;overflow-x:auto;padding:.35rem;margin:0 0 1rem;border:1px solid rgba(91,137,160,.18);border-radius:14px;background:rgba(3,16,28,.6);scrollbar-width:thin}
+.profile-tabs button{display:inline-flex;align-items:center;gap:.45rem;white-space:nowrap;border:1px solid transparent;border-radius:10px;padding:.62rem .9rem;background:transparent;color:#9bb1bf;font:inherit;font-size:.88rem;cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+.profile-tabs button:hover{color:#e5fbf7;background:rgba(52,230,197,.06)}
+.profile-tabs button.active{color:#d9fff5;border-color:rgba(52,230,197,.3);background:rgba(52,230,197,.12)}
+.tab-note{font-size:.68rem;color:#e6c48c;border:1px solid rgba(230,196,140,.22);border-radius:999px;padding:.08rem .35rem}
+.completion{display:grid;gap:.35rem;min-width:120px;color:#8da7b6;font-size:.75rem}
 .chat-panel__head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem}
+.chat-panel__head-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
 .chat-panel__head h3{margin:.3rem 0 0;color:#f5fbff}
 .chat-panel__thread{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;padding-right:.35rem;max-height:420px}
 .chat-panel__thread::-webkit-scrollbar{width:6px}
@@ -550,5 +578,6 @@ onMounted(() => { void load().catch((error) => message.error(error instanceof Er
 .dimension-card__meter i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,#34e6c5,#5ad9ff);transition:width .5s ease}
 .dimension-card__confidence{color:#7da5b6;font-size:.72rem}
 @media(max-width:1080px){.chat-workbench{grid-template-columns:1fr}}
+@media(max-width:680px){.profile-tabs{margin-inline:-.15rem}.profile-tabs button{padding:.55rem .72rem;font-size:.82rem}.completion{min-width:100px}}
 .store-link{display:inline-block;margin-top:.5rem;padding:.65rem 1rem;border-radius:9px;background:#0f9e92;color:#fff;font-weight:650;text-decoration:none}.store-link:hover{background:#12b6a6}
 </style>
